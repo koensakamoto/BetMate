@@ -34,9 +34,11 @@ public class User {
     // ==========================================
     
     @Column(nullable = false, unique = true, length = 50)
+    @Pattern(regexp = "^[a-zA-Z0-9_]{3,50}$", message = "Username must be 3-50 characters, alphanumeric and underscore only")
     private String username;
 
     @Column(nullable = false, unique = true, length = 100)
+    @Email(message = "Invalid email format")
     private String email;
 
     @Column(nullable = false)
@@ -51,15 +53,6 @@ public class User {
 
     @Column(length = 50)
     private String lastName;
-
-    @Column(length = 100)
-    private String displayName;
-
-    @Column(length = 500)
-    private String profilePictureUrl;
-
-    @Column(length = 1000)
-    private String bio;
 
     // ==========================================
     // SECURITY & AUTHENTICATION
@@ -80,13 +73,6 @@ public class User {
     private AuthProvider authProvider = AuthProvider.LOCAL;
 
     // ==========================================
-    // USER PREFERENCES
-    // ==========================================
-    
-    @Column(length = 50)
-    private String timezone = "UTC";
-
-    // ==========================================
     // BETTING ANALYTICS & STATISTICS
     // ==========================================
     
@@ -97,6 +83,7 @@ public class User {
     private Integer lossCount = 0;
 
     @Column(nullable = false, precision = 19, scale = 2)
+    @DecimalMin(value = "0.00", message = "Credit balance cannot be negative")
     private BigDecimal creditBalance = BigDecimal.ZERO;
 
     @Column(nullable = false)
@@ -133,6 +120,12 @@ public class User {
 
     @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Message> sentMessages;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Notification> notifications;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private UserSettings settings;
 
     private LocalDateTime deletedAt;
 
@@ -176,15 +169,6 @@ public class User {
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
 
-    public String getDisplayName() { return displayName; }
-    public void setDisplayName(String displayName) { this.displayName = displayName; }
-
-    public String getProfilePictureUrl() { return profilePictureUrl; }
-    public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }
-
-    public String getBio() { return bio; }
-    public void setBio(String bio) { this.bio = bio; }
-
     public Boolean getEmailVerified() { return emailVerified; }
     public void setEmailVerified(Boolean emailVerified) { this.emailVerified = emailVerified; }
 
@@ -199,9 +183,6 @@ public class User {
 
     public AuthProvider getAuthProvider() { return authProvider; }
     public void setAuthProvider(AuthProvider authProvider) { this.authProvider = authProvider; }
-
-    public String getTimezone() { return timezone; }
-    public void setTimezone(String timezone) { this.timezone = timezone; }
 
     public Integer getWinCount() { return winCount; }
     public void setWinCount(Integer winCount) { this.winCount = winCount; }
@@ -265,6 +246,22 @@ public class User {
         this.sentMessages = sentMessages;
     }
 
+    public List<Notification> getNotifications() {
+        return notifications;
+    }
+    
+    public void setNotifications(List<Notification> notifications) {
+        this.notifications = notifications;
+    }
+
+    public UserSettings getSettings() {
+        return settings;
+    }
+    
+    public void setSettings(UserSettings settings) {
+        this.settings = settings;
+    }
+
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
 
@@ -294,7 +291,19 @@ public class User {
         } else if (lastName != null) {
             return lastName;
         }
-        return displayName != null ? displayName : username;
+        return username;
+    }
+
+    /**
+     * Gets the display name from user settings, falling back to full name.
+     * 
+     * @return effective display name for the user
+     */
+    public String getEffectiveDisplayName() {
+        if (settings != null) {
+            return settings.getEffectiveDisplayName();
+        }
+        return getFullName();
     }
 
     /**
