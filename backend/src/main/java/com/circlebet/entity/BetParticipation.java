@@ -1,6 +1,7 @@
 package com.circlebet.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -49,6 +50,8 @@ public class BetParticipation {
     // ==========================================
     
     @Column(nullable = false)
+    @Min(value = 1, message = "Chosen option must be between 1 and 4")
+    @Max(value = 4, message = "Chosen option must be between 1 and 4")
     private Integer chosenOption;
 
     @Column(nullable = false, precision = 19, scale = 2)
