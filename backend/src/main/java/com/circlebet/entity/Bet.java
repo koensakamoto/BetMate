@@ -470,7 +470,7 @@ public class Bet {
         if (poolForOption2.compareTo(BigDecimal.ZERO) == 0) {
             return 1.0;
         }
-        return totalPool.divide(poolForOption2, 4, BigDecimal.ROUND_HALF_UP).doubleValue();
+        return totalPool.divide(poolForOption2, 4, java.math.RoundingMode.HALF_UP).doubleValue();
     }
 
     /**
