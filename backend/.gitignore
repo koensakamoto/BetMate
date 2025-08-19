@@ -38,4 +38,4 @@ logs/
 application-local.yml
 
 ### claude ###
-claude.md
+../claude.md
