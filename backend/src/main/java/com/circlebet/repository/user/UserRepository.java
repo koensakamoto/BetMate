@@ -20,6 +20,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByUsernameIgnoreCase(String username);
     boolean existsByEmailIgnoreCase(String email);
     
+    // Optimized authentication query - single DB call for username OR email
+    @Query("SELECT u FROM User u WHERE u.deletedAt IS NULL AND " +
+           "(LOWER(u.username) = LOWER(:usernameOrEmail) OR LOWER(u.email) = LOWER(:usernameOrEmail))")
+    Optional<User> findByUsernameOrEmailIgnoreCase(@Param("usernameOrEmail") String usernameOrEmail);
+    
     // User status queries
     List<User> findByIsActiveTrueAndDeletedAtIsNull();
     List<User> findByEmailVerifiedFalse();

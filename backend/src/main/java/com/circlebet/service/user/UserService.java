@@ -15,7 +15,6 @@ import java.util.Optional;
 
 /**
  * Core user management service handling CRUD operations and basic user data.
- * Does NOT handle authentication, security, or financial operations.
  */
 @Service
 @Validated
@@ -52,6 +51,14 @@ public class UserService {
     public Optional<User> getUserByEmail(@NotNull String email) {
         return userRepository.findByEmailIgnoreCase(email)
             .filter(user -> !user.isDeleted());
+    }
+
+    /**
+     * Optimized method to retrieve a user by username OR email in a single database query.
+     * This is more efficient than calling getUserByUsername().or(() -> getUserByEmail()).
+     */
+    public Optional<User> getUserByUsernameOrEmail(@NotNull String usernameOrEmail) {
+        return userRepository.findByUsernameOrEmailIgnoreCase(usernameOrEmail);
     }
 
     /**
@@ -96,20 +103,6 @@ public class UserService {
         return userRepository.existsByEmailIgnoreCase(email);
     }
 
-    /**
-     * Gets user statistics.
-     */
-    public UserStats getUserStats(@NotNull Long userId) {
-        User user = getUserById(userId);
-        return new UserStats(
-            user.getWinCount(),
-            user.getLossCount(),
-            user.getCurrentStreak(),
-            user.getLongestStreak(),
-            user.getActiveBets(),
-            user.getWinRate()
-        );
-    }
 
     /**
      * Soft deletes a user.
@@ -130,15 +123,6 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    // DTO for user statistics
-    public record UserStats(
-        int winCount,
-        int lossCount,
-        int currentStreak,
-        int longestStreak,
-        int activeBets,
-        double winRate
-    ) {}
 
     public static class UserNotFoundException extends RuntimeException {
         public UserNotFoundException(String message) {

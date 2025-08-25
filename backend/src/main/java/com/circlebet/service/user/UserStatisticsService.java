@@ -89,6 +89,46 @@ public class UserStatisticsService {
     }
 
     /**
+     * Checks if user has any betting activity.
+     */
+    @Transactional(readOnly = true)
+    public boolean hasActivity(@NotNull Long userId) {
+        UserStatistics stats = getUserStatistics(userId);
+        return (stats.winCount() + stats.lossCount()) > 0 || stats.activeBets() > 0;
+    }
+
+    /**
+     * Gets user's current performance level based on win rate and activity.
+     */
+    @Transactional(readOnly = true)
+    public String getPerformanceLevel(@NotNull Long userId) {
+        UserStatistics stats = getUserStatistics(userId);
+        int totalGames = stats.winCount() + stats.lossCount();
+        
+        if (totalGames < 5) {
+            return "Rookie";
+        }
+        
+        double winRate = stats.winRate();
+        if (winRate >= 0.7) {
+            return "Expert";
+        } else if (winRate >= 0.5) {
+            return "Intermediate";
+        } else {
+            return "Beginner";
+        }
+    }
+
+    /**
+     * Determines if user is on a winning streak.
+     */
+    @Transactional(readOnly = true)
+    public boolean isOnWinningStreak(@NotNull Long userId) {
+        UserStatistics stats = getUserStatistics(userId);
+        return stats.currentStreak() > 0;
+    }
+
+    /**
      * Resets user statistics (admin function).
      */
     public void resetStatistics(@NotNull Long userId) {

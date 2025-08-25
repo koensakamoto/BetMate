@@ -1,6 +1,7 @@
 package com.circlebet.service.user;
 
 import com.circlebet.entity.user.User;
+import com.circlebet.validation.InputValidator;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -24,11 +25,13 @@ public class UserRegistrationService {
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final InputValidator inputValidator;
 
     @Autowired
-    public UserRegistrationService(UserService userService, PasswordEncoder passwordEncoder) {
+    public UserRegistrationService(UserService userService, PasswordEncoder passwordEncoder, InputValidator inputValidator) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
+        this.inputValidator = inputValidator;
     }
 
     /**
@@ -66,34 +69,34 @@ public class UserRegistrationService {
     }
 
     private void validateRegistrationRequest(RegistrationRequest request) {
-        if (!isUsernameAvailable(request.username())) {
+        // Validate and sanitize username
+        InputValidator.InputValidationResult usernameValidation = inputValidator.validateUsername(request.username());
+        if (!usernameValidation.isValid()) {
+            throw new RegistrationException(usernameValidation.getErrorMessage());
+        }
+        
+        // Validate and sanitize email
+        InputValidator.InputValidationResult emailValidation = inputValidator.validateEmail(request.email());
+        if (!emailValidation.isValid()) {
+            throw new RegistrationException(emailValidation.getErrorMessage());
+        }
+        
+        // Check availability with sanitized values
+        if (!isUsernameAvailable(usernameValidation.getSanitizedValue())) {
             throw new RegistrationException("Username already exists: " + request.username());
         }
         
-        if (!isEmailAvailable(request.email())) {
+        if (!isEmailAvailable(emailValidation.getSanitizedValue())) {
             throw new RegistrationException("Email already exists: " + request.email());
         }
         
-        validatePasswordStrength(request.password());
+        // Validate password strength
+        InputValidator.PasswordValidationResult passwordValidation = inputValidator.validatePassword(request.password());
+        if (!passwordValidation.isValid()) {
+            throw new RegistrationException(passwordValidation.getErrorMessage());
+        }
     }
 
-    private void validatePasswordStrength(String password) {
-        if (password.length() < 8) {
-            throw new RegistrationException("Password must be at least 8 characters long");
-        }
-        
-        if (!password.matches(".*[A-Z].*")) {
-            throw new RegistrationException("Password must contain at least one uppercase letter");
-        }
-        
-        if (!password.matches(".*[a-z].*")) {
-            throw new RegistrationException("Password must contain at least one lowercase letter");
-        }
-        
-        if (!password.matches(".*\\d.*")) {
-            throw new RegistrationException("Password must contain at least one number");
-        }
-    }
 
     private User createUserFromRequest(RegistrationRequest request) {
         User user = new User();

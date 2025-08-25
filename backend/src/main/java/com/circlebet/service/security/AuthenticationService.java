@@ -1,10 +1,15 @@
 package com.circlebet.service.security;
 
 import com.circlebet.entity.user.User;
+import com.circlebet.exception.AuthenticationException;
 import com.circlebet.service.user.UserService;
+import com.circlebet.validation.InputValidator;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,61 +27,102 @@ import java.util.Optional;
 @Transactional
 public class AuthenticationService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthenticationService.class);
+    
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final InputValidator inputValidator;
     
-    // Security configuration
-    private static final int MAX_FAILED_ATTEMPTS = 5;
-    private static final int LOCKOUT_DURATION_MINUTES = 15;
+    // Configurable security settings
+    @Value("${security.auth.max-failed-attempts:5}")
+    private int maxFailedAttempts;
+    
+    @Value("${security.auth.lockout-duration-minutes:15}")
+    private int lockoutDurationMinutes;
 
     @Autowired
-    public AuthenticationService(UserService userService, PasswordEncoder passwordEncoder) {
+    public AuthenticationService(UserService userService, PasswordEncoder passwordEncoder, InputValidator inputValidator) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
+        this.inputValidator = inputValidator;
     }
 
     /**
      * Authenticates a user with username/email and password.
+     * @throws AuthenticationException.InvalidCredentialsException when user not found or password invalid
+     * @throws AuthenticationException.AccountLockedException when account is locked
+     * @throws AuthenticationException.InactiveAccountException when account is inactive
      */
     public AuthenticationResult authenticate(@NotBlank String usernameOrEmail, @NotBlank String password) {
-        Optional<User> userOpt = findUserForAuthentication(usernameOrEmail);
+        log.debug("Authentication attempt for: {}", usernameOrEmail);
+        
+        // Validate and sanitize inputs
+        InputValidator.InputValidationResult usernameValidation = 
+            usernameOrEmail.contains("@") ? 
+                inputValidator.validateEmail(usernameOrEmail) : 
+                inputValidator.validateUsername(usernameOrEmail);
+                
+        if (!usernameValidation.isValid()) {
+            log.warn("Authentication failed: Invalid username/email format: {}", usernameValidation.getErrorMessage());
+            throw new AuthenticationException.InvalidCredentialsException("Invalid credentials");
+        }
+        
+        // Use sanitized input for authentication
+        String sanitizedUsernameOrEmail = usernameValidation.getSanitizedValue();
+        Optional<User> userOpt = findUserForAuthentication(sanitizedUsernameOrEmail);
         
         if (userOpt.isEmpty()) {
-            return AuthenticationResult.failed("Invalid credentials");
+            log.warn("Authentication failed: User not found for: {}", usernameOrEmail);
+            throw new AuthenticationException.InvalidCredentialsException("Invalid credentials");
         }
         
         User user = userOpt.get();
         
-        // Check account status
+        // Check account status with specific exceptions
         if (user.isAccountLocked()) {
-            return AuthenticationResult.failed("Account is temporarily locked");
+            log.warn("Authentication blocked: Account locked for user: {}", user.getUsername());
+            throw new AuthenticationException.AccountLockedException("Account is temporarily locked due to multiple failed login attempts");
         }
         
         if (!user.isActiveUser()) {
-            return AuthenticationResult.failed("Account is inactive or deleted");
+            log.warn("Authentication blocked: Inactive account for user: {}", user.getUsername());
+            throw new AuthenticationException.InactiveAccountException("Account is inactive or has been deactivated");
         }
         
         // Verify password
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             handleFailedLogin(user);
-            return AuthenticationResult.failed("Invalid credentials");
+            log.warn("Authentication failed: Invalid password for user: {}", user.getUsername());
+            throw new AuthenticationException.InvalidCredentialsException("Invalid credentials");
         }
         
         handleSuccessfulLogin(user);
+        log.info("Authentication successful for user: {}", user.getUsername());
         return AuthenticationResult.success(user);
     }
 
     /**
      * Changes a user's password.
+     * @throws AuthenticationException.InvalidCredentialsException when current password is incorrect
      */
     public void changePassword(@NotNull Long userId, @NotBlank String currentPassword, @NotBlank String newPassword) {
         User user = userService.getUserById(userId);
         
+        // Validate new password strength
+        InputValidator.PasswordValidationResult passwordValidation = inputValidator.validatePassword(newPassword);
+        if (!passwordValidation.isValid()) {
+            log.warn("Password change failed: Password validation failed for user: {} - {}", 
+                user.getUsername(), passwordValidation.getErrorMessage());
+            throw new AuthenticationException.InvalidCredentialsException(passwordValidation.getErrorMessage());
+        }
+        
         if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new InvalidPasswordException("Current password is incorrect");
+            log.warn("Password change failed: Incorrect current password for user: {}", user.getUsername());
+            throw new AuthenticationException.InvalidCredentialsException("Current password is incorrect");
         }
         
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        log.info("Password changed successfully for user: {}", user.getUsername());
         userService.saveUser(user);
     }
 
@@ -85,6 +131,15 @@ public class AuthenticationService {
      */
     public void resetPassword(@NotNull Long userId, @NotBlank String newPassword) {
         User user = userService.getUserById(userId);
+        
+        // Validate new password strength even for admin resets
+        InputValidator.PasswordValidationResult passwordValidation = inputValidator.validatePassword(newPassword);
+        if (!passwordValidation.isValid()) {
+            log.warn("Password reset failed: Password validation failed for user: {} - {}", 
+                user.getUsername(), passwordValidation.getErrorMessage());
+            throw new AuthenticationException.InvalidCredentialsException(passwordValidation.getErrorMessage());
+        }
+        
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setFailedLoginAttempts(0);
         user.setAccountLockedUntil(null);
@@ -120,18 +175,20 @@ public class AuthenticationService {
     }
 
     private Optional<User> findUserForAuthentication(String usernameOrEmail) {
-        Optional<User> user = userService.getUserByUsername(usernameOrEmail);
-        if (user.isEmpty()) {
-            user = userService.getUserByEmail(usernameOrEmail);
-        }
-        return user;
+        // Use optimized single query method
+        return userService.getUserByUsernameOrEmail(usernameOrEmail);
     }
 
     private void handleFailedLogin(User user) {
-        user.setFailedLoginAttempts(user.getFailedLoginAttempts() + 1);
+        int attempts = user.getFailedLoginAttempts() + 1;
+        user.setFailedLoginAttempts(attempts);
         
-        if (user.getFailedLoginAttempts() >= MAX_FAILED_ATTEMPTS) {
-            user.setAccountLockedUntil(LocalDateTime.now().plusMinutes(LOCKOUT_DURATION_MINUTES));
+        log.debug("Failed login attempt {} for user: {}", attempts, user.getUsername());
+        
+        // Lock account if max attempts reached
+        if (attempts >= maxFailedAttempts) {
+            user.setAccountLockedUntil(LocalDateTime.now().plusMinutes(lockoutDurationMinutes));
+            log.warn("Account locked for user: {} after {} failed attempts", user.getUsername(), attempts);
         }
         
         userService.saveUser(user);
@@ -167,11 +224,5 @@ public class AuthenticationService {
         public boolean isSuccessful() { return successful; }
         public String getErrorMessage() { return errorMessage; }
         public User getUser() { return user; }
-    }
-
-    public static class InvalidPasswordException extends RuntimeException {
-        public InvalidPasswordException(String message) {
-            super(message);
-        }
     }
 }

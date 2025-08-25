@@ -93,6 +93,10 @@ public class User {
     @DecimalMin(value = "0.00", message = "Credit balance cannot be negative")
     private BigDecimal creditBalance = BigDecimal.ZERO;
 
+    @Column(nullable = false, precision = 19, scale = 2)
+    @DecimalMin(value = "0.00", message = "Frozen credits cannot be negative")
+    private BigDecimal frozenCredits = BigDecimal.ZERO;
+
     @Column(nullable = false)
     private Integer currentStreak = 0;
 
@@ -199,6 +203,9 @@ public class User {
 
     public BigDecimal getCreditBalance() { return creditBalance; }
     public void setCreditBalance(BigDecimal creditBalance) { this.creditBalance = creditBalance; }
+
+    public BigDecimal getFrozenCredits() { return frozenCredits; }
+    public void setFrozenCredits(BigDecimal frozenCredits) { this.frozenCredits = frozenCredits; }
 
     public Integer getCurrentStreak() { return currentStreak; }
     public void setCurrentStreak(Integer currentStreak) { this.currentStreak = currentStreak; }
@@ -331,7 +338,26 @@ public class User {
         return isActive && !isDeleted();
     }
 
+    /**
+     * Calculates available credits (total balance minus frozen credits).
+     * 
+     * @return available credits for spending
+     */
+    public BigDecimal getAvailableCredits() {
+        return creditBalance.subtract(frozenCredits);
+    }
+
+    /**
+     * Checks if user has sufficient available credits for a transaction.
+     * 
+     * @param amount the amount to check
+     * @return true if user has sufficient available credits
+     */
+    public boolean hasSufficientAvailableCredits(BigDecimal amount) {
+        return getAvailableCredits().compareTo(amount) >= 0;
+    }
+
     public enum AuthProvider {
-        LOCAL, GOOGLE, FACEBOOK, GITHUB
+        LOCAL, GOOGLE
     }
 }
