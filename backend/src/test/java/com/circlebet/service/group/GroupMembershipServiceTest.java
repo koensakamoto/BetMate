@@ -21,7 +21,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class GroupMembershipServiceTest {
 
     @Mock
@@ -29,6 +33,9 @@ class GroupMembershipServiceTest {
 
     @Mock
     private GroupService groupService;
+    
+    @Mock
+    private GroupPermissionService permissionService;
 
     @InjectMocks
     private GroupMembershipService membershipService;
@@ -73,8 +80,7 @@ class GroupMembershipServiceTest {
 
     @Test
     void joinGroup_WithRole_Success() {
-        when(membershipRepository.existsByUserAndGroupAndIsActiveTrue(testUser, testGroup)).thenReturn(false);
-        when(groupService.hasAvailableSlots(testGroup.getId())).thenReturn(true);
+        when(permissionService.canJoinGroup(testUser, testGroup)).thenReturn(true);
         when(membershipRepository.save(any(GroupMembership.class))).thenReturn(testMembership);
         when(membershipRepository.countActiveMembers(testGroup)).thenReturn(5L);
         doNothing().when(groupService).updateMemberCount(anyLong(), anyInt());
@@ -87,8 +93,7 @@ class GroupMembershipServiceTest {
 
     @Test
     void joinGroup_WithoutRole_DefaultsToMember() {
-        when(membershipRepository.existsByUserAndGroupAndIsActiveTrue(testUser, testGroup)).thenReturn(false);
-        when(groupService.hasAvailableSlots(testGroup.getId())).thenReturn(true);
+        when(permissionService.canJoinGroup(testUser, testGroup)).thenReturn(true);
         when(membershipRepository.save(any(GroupMembership.class))).thenReturn(testMembership);
         when(membershipRepository.countActiveMembers(testGroup)).thenReturn(5L);
         doNothing().when(groupService).updateMemberCount(anyLong(), anyInt());
@@ -102,7 +107,7 @@ class GroupMembershipServiceTest {
 
     @Test
     void joinGroup_UserAlreadyMember_ThrowsException() {
-        when(membershipRepository.existsByUserAndGroupAndIsActiveTrue(testUser, testGroup)).thenReturn(true);
+        when(permissionService.canJoinGroup(testUser, testGroup)).thenReturn(false);
 
         assertThrows(MembershipException.class, () -> 
             membershipService.joinGroup(testUser, testGroup, GroupMembership.MemberRole.MEMBER));
@@ -129,9 +134,8 @@ class GroupMembershipServiceTest {
 
     @Test
     void inviteUserToGroup_AdminInvitingMember_Success() {
-        when(membershipRepository.isUserAdminOrModerator(adminUser, testGroup)).thenReturn(true);
-        when(membershipRepository.existsByUserAndGroupAndIsActiveTrue(testUser, testGroup)).thenReturn(false);
-        when(groupService.hasAvailableSlots(testGroup.getId())).thenReturn(true);
+        when(permissionService.canInviteUsers(adminUser, testGroup)).thenReturn(true);
+        when(permissionService.canJoinGroup(testUser, testGroup)).thenReturn(true);
         when(membershipRepository.save(any(GroupMembership.class))).thenReturn(testMembership);
         when(membershipRepository.countActiveMembers(testGroup)).thenReturn(5L);
         doNothing().when(groupService).updateMemberCount(anyLong(), anyInt());
@@ -144,10 +148,9 @@ class GroupMembershipServiceTest {
 
     @Test
     void inviteUserToGroup_AdminInvitingAdmin_Success() {
-        when(membershipRepository.isUserAdminOrModerator(adminUser, testGroup)).thenReturn(true);
-        when(membershipRepository.isUserGroupAdmin(adminUser, testGroup)).thenReturn(true);
-        when(membershipRepository.existsByUserAndGroupAndIsActiveTrue(testUser, testGroup)).thenReturn(false);
-        when(groupService.hasAvailableSlots(testGroup.getId())).thenReturn(true);
+        when(permissionService.canInviteUsers(adminUser, testGroup)).thenReturn(true);
+        when(permissionService.canChangeRoles(adminUser, testGroup)).thenReturn(true);
+        when(permissionService.canJoinGroup(testUser, testGroup)).thenReturn(true);
         when(membershipRepository.save(any(GroupMembership.class))).thenReturn(testMembership);
         when(membershipRepository.countActiveMembers(testGroup)).thenReturn(5L);
         doNothing().when(groupService).updateMemberCount(anyLong(), anyInt());
@@ -177,8 +180,7 @@ class GroupMembershipServiceTest {
 
     @Test
     void addCreatorMembership_Success() {
-        when(membershipRepository.existsByUserAndGroupAndIsActiveTrue(testUser, testGroup)).thenReturn(false);
-        when(groupService.hasAvailableSlots(testGroup.getId())).thenReturn(true);
+        when(permissionService.canJoinGroup(testUser, testGroup)).thenReturn(true);
         when(membershipRepository.save(any(GroupMembership.class))).thenReturn(testMembership);
         when(membershipRepository.countActiveMembers(testGroup)).thenReturn(1L);
         doNothing().when(groupService).updateMemberCount(anyLong(), anyInt());
@@ -218,7 +220,7 @@ class GroupMembershipServiceTest {
 
     @Test
     void changeRole_AdminChangingRegularMember_Success() {
-        when(membershipRepository.isUserAdminOrModerator(adminUser, testGroup)).thenReturn(true);
+        when(permissionService.canChangeRoles(adminUser, testGroup)).thenReturn(true);
         when(membershipRepository.atomicChangeRole(testUser, testGroup, GroupMembership.MemberRole.MODERATOR)).thenReturn(1);
         when(membershipRepository.findByUserAndGroupAndIsActiveTrue(testUser, testGroup))
             .thenReturn(Optional.of(testMembership));
@@ -231,8 +233,7 @@ class GroupMembershipServiceTest {
 
     @Test
     void changeRole_AdminPromotingToAdmin_Success() {
-        when(membershipRepository.isUserAdminOrModerator(adminUser, testGroup)).thenReturn(true);
-        when(membershipRepository.isUserGroupAdmin(adminUser, testGroup)).thenReturn(true);
+        when(permissionService.canChangeRoles(adminUser, testGroup)).thenReturn(true);
         when(membershipRepository.atomicChangeRole(testUser, testGroup, GroupMembership.MemberRole.ADMIN)).thenReturn(1);
         when(membershipRepository.findByUserAndGroupAndIsActiveTrue(testUser, testGroup))
             .thenReturn(Optional.of(testMembership));

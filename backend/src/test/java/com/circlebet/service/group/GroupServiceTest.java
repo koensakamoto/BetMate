@@ -20,6 +20,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static com.circlebet.service.group.GroupCreationService.DEFAULT_MAX_MEMBERS;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -37,7 +38,6 @@ class GroupServiceTest {
     private static final String TEST_DESCRIPTION = "Test Description";
     private static final Long TEST_USER_ID = 456L;
     private static final String TEST_USERNAME = "testuser";
-    private static final int MAX_MEMBERS = 50;
     
     private Group testGroup;
     private User testUser;
@@ -327,7 +327,8 @@ class GroupServiceTest {
     @DisplayName("Should return true when group has available slots")
     void hasAvailableSlots_Available() {
         // Arrange
-        testGroup.setMemberCount(45); // Less than MAX_MEMBERS (50)
+        testGroup.setMaxMembers(DEFAULT_MAX_MEMBERS); // Set max to 50
+        testGroup.setMemberCount(45); // Less than DEFAULT_MAX_MEMBERS (50)
         when(groupRepository.findByIdAndDeletedAtIsNull(TEST_GROUP_ID))
             .thenReturn(Optional.of(testGroup));
 
@@ -343,7 +344,8 @@ class GroupServiceTest {
     @DisplayName("Should return false when group is full")
     void hasAvailableSlots_Full() {
         // Arrange
-        testGroup.setMemberCount(MAX_MEMBERS); // Equal to MAX_MEMBERS (50)
+        testGroup.setMaxMembers(DEFAULT_MAX_MEMBERS); // Set max to 50
+        testGroup.setMemberCount(DEFAULT_MAX_MEMBERS); // Equal to DEFAULT_MAX_MEMBERS (50)
         when(groupRepository.findByIdAndDeletedAtIsNull(TEST_GROUP_ID))
             .thenReturn(Optional.of(testGroup));
 

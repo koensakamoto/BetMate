@@ -2,6 +2,7 @@ package com.circlebet.service.group;
 
 import com.circlebet.entity.group.Group;
 import com.circlebet.entity.user.User;
+import com.circlebet.repository.group.GroupMembershipRepository;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -17,11 +18,11 @@ import org.springframework.validation.annotation.Validated;
 @Transactional(readOnly = true)
 public class GroupPermissionService {
 
-    private final GroupMembershipService membershipService;
+    private final GroupMembershipRepository membershipRepository;
 
     @Autowired
-    public GroupPermissionService(GroupMembershipService membershipService) {
-        this.membershipService = membershipService;
+    public GroupPermissionService(GroupMembershipRepository membershipRepository) {
+        this.membershipRepository = membershipRepository;
     }
 
     /**
@@ -34,7 +35,7 @@ public class GroupPermissionService {
         }
         
         // Private groups require membership
-        return membershipService.isMember(user, group);
+        return membershipRepository.existsByUserAndGroupAndIsActiveTrue(user, group);
     }
 
     /**
@@ -42,7 +43,7 @@ public class GroupPermissionService {
      */
     public boolean canJoinGroup(@NotNull User user, @NotNull Group group) {
         // Can't join if already a member
-        if (membershipService.isMember(user, group)) {
+        if (membershipRepository.existsByUserAndGroupAndIsActiveTrue(user, group)) {
             return false;
         }
         
@@ -51,8 +52,8 @@ public class GroupPermissionService {
             return false;
         }
         
-        // Check if group has available slots
-        if (group.getMaxMembers() != null && group.getMemberCount() >= group.getMaxMembers()) {
+        // Check if group has available slots (using entity business logic)
+        if (group.isFull()) {
             return false;
         }
         
@@ -64,49 +65,49 @@ public class GroupPermissionService {
      * Checks if user can send messages in the group.
      */
     public boolean canSendMessage(@NotNull User user, @NotNull Group group) {
-        return membershipService.isMember(user, group);
+        return membershipRepository.existsByUserAndGroupAndIsActiveTrue(user, group);
     }
 
     /**
      * Checks if user can create bets in the group.
      */
     public boolean canCreateBet(@NotNull User user, @NotNull Group group) {
-        return membershipService.isMember(user, group);
+        return membershipRepository.existsByUserAndGroupAndIsActiveTrue(user, group);
     }
 
     /**
      * Checks if user can edit group settings.
      */
     public boolean canEditGroup(@NotNull User user, @NotNull Group group) {
-        return membershipService.isAdminOrModerator(user, group);
+        return membershipRepository.isUserAdminOrModerator(user, group);
     }
 
     /**
      * Checks if user can delete/deactivate the group.
      */
     public boolean canDeleteGroup(@NotNull User user, @NotNull Group group) {
-        return membershipService.isAdmin(user, group);
+        return membershipRepository.isUserGroupAdmin(user, group);
     }
 
     /**
      * Checks if user can invite other users to the group.
      */
     public boolean canInviteUsers(@NotNull User user, @NotNull Group group) {
-        return membershipService.isAdminOrModerator(user, group);
+        return membershipRepository.isUserAdminOrModerator(user, group);
     }
 
     /**
      * Checks if user can remove other members from the group.
      */
     public boolean canRemoveMembers(@NotNull User user, @NotNull Group group) {
-        return membershipService.isAdminOrModerator(user, group);
+        return membershipRepository.isUserAdminOrModerator(user, group);
     }
 
     /**
      * Checks if user can change roles of other members.
      */
     public boolean canChangeRoles(@NotNull User user, @NotNull Group group) {
-        return membershipService.isAdmin(user, group);
+        return membershipRepository.isUserGroupAdmin(user, group);
     }
 
     /**
@@ -120,7 +121,7 @@ public class GroupPermissionService {
      * Checks if user can view group betting history.
      */
     public boolean canViewBettingHistory(@NotNull User user, @NotNull Group group) {
-        return membershipService.isMember(user, group);
+        return membershipRepository.existsByUserAndGroupAndIsActiveTrue(user, group);
     }
 
     /**

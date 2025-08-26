@@ -25,18 +25,25 @@ public class GroupMembershipService {
 
     private final GroupMembershipRepository membershipRepository;
     private final GroupService groupService;
+    private final GroupPermissionService permissionService;
 
     @Autowired
-    public GroupMembershipService(GroupMembershipRepository membershipRepository, GroupService groupService) {
+    public GroupMembershipService(GroupMembershipRepository membershipRepository, 
+                                  GroupService groupService,
+                                  GroupPermissionService permissionService) {
         this.membershipRepository = membershipRepository;
         this.groupService = groupService;
+        this.permissionService = permissionService;
     }
 
     /**
      * Adds a user to a group with specified role.
      */
     public GroupMembership joinGroup(@NotNull User user, @NotNull Group group, @NotNull GroupMembership.MemberRole role) {
-        validateCanJoinGroup(user, group);
+        // Use permission service for validation
+        if (!permissionService.canJoinGroup(user, group)) {
+            throw new MembershipException("User cannot join this group");
+        }
         
         GroupMembership membership = new GroupMembership();
         membership.setUser(user);
@@ -71,13 +78,13 @@ public class GroupMembershipService {
      */
     public GroupMembership inviteUserToGroup(@NotNull User actor, @NotNull User userToInvite, 
                                            @NotNull Group group, @NotNull GroupMembership.MemberRole role) {
-        // Validate actor has permission
-        if (!isAdminOrModerator(actor, group)) {
+        // Validate actor has permission to invite users
+        if (!permissionService.canInviteUsers(actor, group)) {
             throw new MembershipException("Insufficient permissions to invite users");
         }
         
-        // Prevent non-admins from inviting as admin
-        if (role == GroupMembership.MemberRole.ADMIN && !isAdmin(actor, group)) {
+        // Validate actor has permission to create admins (only admins can invite other admins)
+        if (role == GroupMembership.MemberRole.ADMIN && !permissionService.canChangeRoles(actor, group)) {
             throw new MembershipException("Only admins can invite other admins");
         }
         
@@ -125,14 +132,9 @@ public class GroupMembershipService {
      */
     public GroupMembership changeRole(@NotNull User actor, @NotNull User targetUser, 
                                     @NotNull Group group, @NotNull GroupMembership.MemberRole newRole) {
-        // Validate actor has permission (admin/moderator)
-        if (!isAdminOrModerator(actor, group)) {
+        // Validate actor has permission to change roles
+        if (!permissionService.canChangeRoles(actor, group)) {
             throw new MembershipException("Insufficient permissions to change roles");
-        }
-        
-        // Prevent non-admins from creating admins
-        if (newRole == GroupMembership.MemberRole.ADMIN && !isAdmin(actor, group)) {
-            throw new MembershipException("Only admins can promote to admin role");
         }
         
         // Use atomic operation to prevent race conditions
@@ -160,8 +162,8 @@ public class GroupMembershipService {
      * @param group the group
      */
     public void removeMember(@NotNull User actor, @NotNull User userToRemove, @NotNull Group group) {
-        // Validate actor has permission
-        if (!isAdminOrModerator(actor, group)) {
+        // Validate actor has permission to remove members
+        if (!permissionService.canRemoveMembers(actor, group)) {
             throw new MembershipException("Insufficient permissions to remove members");
         }
         
@@ -258,19 +260,6 @@ public class GroupMembershipService {
             .orElseThrow(() -> new MembershipException("User is not a member of this group"));
     }
 
-    private void validateCanJoinGroup(User user, Group group) {
-        if (membershipRepository.existsByUserAndGroupAndIsActiveTrue(user, group)) {
-            throw new MembershipException("User is already a member of this group");
-        }
-        
-        if (!groupService.hasAvailableSlots(group.getId())) {
-            throw new MembershipException("Group is full");
-        }
-        
-        if (!group.getIsActive() || group.isDeleted()) {
-            throw new MembershipException("Cannot join inactive or deleted group");
-        }
-    }
 
 
     public static class MembershipException extends RuntimeException {

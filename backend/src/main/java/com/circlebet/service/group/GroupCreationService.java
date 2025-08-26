@@ -21,6 +21,8 @@ import org.springframework.validation.annotation.Validated;
 @Transactional
 public class GroupCreationService {
 
+    public static final int DEFAULT_MAX_MEMBERS = 50;
+
     private final GroupService groupService;
     private final GroupMembershipService groupMembershipService;
 
@@ -80,9 +82,9 @@ public class GroupCreationService {
         group.setDescription(request.getDescription());
         group.setGroupPictureUrl(request.getGroupPictureUrl());
         group.setPrivacy(request.getPrivacy() != null ? request.getPrivacy() : Group.Privacy.PUBLIC);
-        // Set max members with default of 50
+        // Set max members with default
         Integer maxMembers = request.getMaxMembers();
-        group.setMaxMembers(maxMembers != null ? maxMembers : 50);
+        group.setMaxMembers(maxMembers != null ? maxMembers : DEFAULT_MAX_MEMBERS);
         group.setCreator(creator);
         
         // Set defaults
