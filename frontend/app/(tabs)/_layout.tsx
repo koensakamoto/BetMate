@@ -41,7 +41,7 @@ export default function TabsLayout() {
         <Tabs.Screen
             name="profile"
             options={{
-                title: "username",
+                title: "Profile",
 
                 headerRight: () => (
                     <View style={{ paddingRight: 16 }}>

@@ -97,7 +97,6 @@ public class UserRegistrationService {
         }
     }
 
-
     private User createUserFromRequest(RegistrationRequest request) {
         User user = new User();
         user.setUsername(request.username());

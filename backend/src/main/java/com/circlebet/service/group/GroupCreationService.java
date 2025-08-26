@@ -80,7 +80,9 @@ public class GroupCreationService {
         group.setDescription(request.getDescription());
         group.setGroupPictureUrl(request.getGroupPictureUrl());
         group.setPrivacy(request.getPrivacy() != null ? request.getPrivacy() : Group.Privacy.PUBLIC);
-        group.setMaxMembers(request.getMaxMembers());
+        // Set max members with default of 50
+        Integer maxMembers = request.getMaxMembers();
+        group.setMaxMembers(maxMembers != null ? maxMembers : 50);
         group.setCreator(creator);
         
         // Set defaults

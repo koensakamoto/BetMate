@@ -52,6 +52,37 @@ public class GroupMembershipService {
         
         return savedMembership;
     }
+    
+    /**
+     * Adds a user to a group as a regular member (convenience method).
+     */
+    public GroupMembership joinGroup(@NotNull User user, @NotNull Group group) {
+        return joinGroup(user, group, GroupMembership.MemberRole.MEMBER);
+    }
+    
+    /**
+     * Admin invites a user to a group with a specific role.
+     * 
+     * @param actor the admin performing the invitation
+     * @param userToInvite the user being invited
+     * @param group the group
+     * @param role the role to assign
+     * @return the created membership
+     */
+    public GroupMembership inviteUserToGroup(@NotNull User actor, @NotNull User userToInvite, 
+                                           @NotNull Group group, @NotNull GroupMembership.MemberRole role) {
+        // Validate actor has permission
+        if (!isAdminOrModerator(actor, group)) {
+            throw new MembershipException("Insufficient permissions to invite users");
+        }
+        
+        // Prevent non-admins from inviting as admin
+        if (role == GroupMembership.MemberRole.ADMIN && !isAdmin(actor, group)) {
+            throw new MembershipException("Only admins can invite other admins");
+        }
+        
+        return joinGroup(userToInvite, group, role);
+    }
 
     /**
      * Adds creator membership when group is created.
@@ -64,22 +95,19 @@ public class GroupMembershipService {
      * User leaves a group.
      */
     public void leaveGroup(@NotNull User user, @NotNull Group group) {
-        GroupMembership membership = getMembership(user, group);
+        // Use atomic operation to prevent race conditions
+        LocalDateTime leftAt = LocalDateTime.now();
+        int rowsUpdated = membershipRepository.atomicLeaveGroup(user, group, leftAt);
         
-        // Prevent last admin from leaving
-        if (membership.getRole() == GroupMembership.MemberRole.ADMIN) {
-            long adminCount = membershipRepository.findGroupAdminsAndModerators(group).stream()
-                .filter(m -> m.getRole() == GroupMembership.MemberRole.ADMIN)
-                .count();
-            
-            if (adminCount <= 1) {
-                throw new MembershipException("Cannot leave group - you are the only admin");
+        if (rowsUpdated == 0) {
+            // Check if user exists but is last admin
+            Optional<GroupMembership> membership = membershipRepository.findByUserAndGroupAndIsActiveTrue(user, group);
+            if (membership.isEmpty()) {
+                throw new MembershipException("User is not a member of this group");
+            } else {
+                throw new MembershipException("Cannot leave group - user is the only admin");
             }
         }
-        
-        membership.setIsActive(false);
-        membership.setLeftAt(LocalDateTime.now());
-        membershipRepository.save(membership);
         
         // Update group member count
         long memberCount = membershipRepository.countActiveMembers(group);
@@ -88,45 +116,73 @@ public class GroupMembershipService {
 
     /**
      * Changes a user's role in a group.
+     * 
+     * @param actor the user performing the role change
+     * @param targetUser the user whose role is being changed
+     * @param group the group
+     * @param newRole the new role to assign
+     * @return the updated membership
      */
-    public GroupMembership changeRole(@NotNull User user, @NotNull Group group, @NotNull GroupMembership.MemberRole newRole) {
-        GroupMembership membership = getMembership(user, group);
+    public GroupMembership changeRole(@NotNull User actor, @NotNull User targetUser, 
+                                    @NotNull Group group, @NotNull GroupMembership.MemberRole newRole) {
+        // Validate actor has permission (admin/moderator)
+        if (!isAdminOrModerator(actor, group)) {
+            throw new MembershipException("Insufficient permissions to change roles");
+        }
         
-        // Prevent demoting last admin
-        if (membership.getRole() == GroupMembership.MemberRole.ADMIN && newRole != GroupMembership.MemberRole.ADMIN) {
-            long adminCount = membershipRepository.findGroupAdminsAndModerators(group).stream()
-                .filter(m -> m.getRole() == GroupMembership.MemberRole.ADMIN)
-                .count();
-            
-            if (adminCount <= 1) {
+        // Prevent non-admins from creating admins
+        if (newRole == GroupMembership.MemberRole.ADMIN && !isAdmin(actor, group)) {
+            throw new MembershipException("Only admins can promote to admin role");
+        }
+        
+        // Use atomic operation to prevent race conditions
+        int rowsUpdated = membershipRepository.atomicChangeRole(targetUser, group, newRole);
+        
+        if (rowsUpdated == 0) {
+            // Check if user exists but is last admin being demoted
+            Optional<GroupMembership> membership = membershipRepository.findByUserAndGroupAndIsActiveTrue(targetUser, group);
+            if (membership.isEmpty()) {
+                throw new MembershipException("User is not a member of this group");
+            } else if (membership.get().getRole() == GroupMembership.MemberRole.ADMIN && newRole != GroupMembership.MemberRole.ADMIN) {
                 throw new MembershipException("Cannot change role - user is the only admin");
             }
         }
         
-        membership.setRole(newRole);
-        return membershipRepository.save(membership);
+        // Return updated membership
+        return getMembership(targetUser, group);
     }
 
     /**
      * Removes a user from a group (admin action).
+     * 
+     * @param actor the user performing the removal
+     * @param userToRemove the user being removed
+     * @param group the group
      */
-    public void removeMember(@NotNull User userToRemove, @NotNull Group group) {
-        GroupMembership membership = getMembership(userToRemove, group);
-        
-        // Prevent removing last admin
-        if (membership.getRole() == GroupMembership.MemberRole.ADMIN) {
-            long adminCount = membershipRepository.findGroupAdminsAndModerators(group).stream()
-                .filter(m -> m.getRole() == GroupMembership.MemberRole.ADMIN)
-                .count();
-            
-            if (adminCount <= 1) {
-                throw new MembershipException("Cannot remove user - they are the only admin");
-            }
+    public void removeMember(@NotNull User actor, @NotNull User userToRemove, @NotNull Group group) {
+        // Validate actor has permission
+        if (!isAdminOrModerator(actor, group)) {
+            throw new MembershipException("Insufficient permissions to remove members");
         }
         
-        membership.setIsActive(false);
-        membership.setLeftAt(LocalDateTime.now());
-        membershipRepository.save(membership);
+        // Prevent self-removal (use leaveGroup instead)
+        if (actor.equals(userToRemove)) {
+            throw new MembershipException("Use leaveGroup to remove yourself");
+        }
+        
+        // Use atomic operation to prevent race conditions
+        LocalDateTime leftAt = LocalDateTime.now();
+        int rowsUpdated = membershipRepository.atomicRemoveMember(userToRemove, group, leftAt);
+        
+        if (rowsUpdated == 0) {
+            // Check if user exists but is last admin
+            Optional<GroupMembership> membership = membershipRepository.findByUserAndGroupAndIsActiveTrue(userToRemove, group);
+            if (membership.isEmpty()) {
+                throw new MembershipException("User is not a member of this group");
+            } else {
+                throw new MembershipException("Cannot remove user - user is the only admin");
+            }
+        }
         
         // Update group member count
         long memberCount = membershipRepository.countActiveMembers(group);
@@ -215,6 +271,7 @@ public class GroupMembershipService {
             throw new MembershipException("Cannot join inactive or deleted group");
         }
     }
+
 
     public static class MembershipException extends RuntimeException {
         public MembershipException(String message) {

@@ -29,8 +29,8 @@ export default function Profile() {
           <Text>Followers</Text>
         </View>
         <View style={{ alignItems: 'center' }}>
+          <Text>Record</Text>
           <Text style={{ fontSize: 20, fontWeight: 'bold' }}>1.2K</Text>
-          <Text>Likes</Text>
         </View>
     </View>
 

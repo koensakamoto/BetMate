@@ -3,6 +3,7 @@ package com.circlebet.repository.group;
 import com.circlebet.entity.group.Group;
 import com.circlebet.entity.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,6 +17,8 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
     
     // Basic queries
     Optional<Group> findByGroupNameIgnoreCase(String groupName);
+    Optional<Group> findByGroupNameIgnoreCaseAndDeletedAtIsNull(String groupName);
+    Optional<Group> findByIdAndDeletedAtIsNull(Long id);
     boolean existsByGroupNameIgnoreCase(String groupName);
     
     // Group status queries
@@ -27,7 +30,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
     List<Group> findByMemberCountGreaterThan(Integer minMembers);
     List<Group> findByMemberCountLessThan(Integer maxMembers);
     
-    @Query("SELECT g FROM Group g WHERE g.maxMembers IS NULL OR g.memberCount < g.maxMembers")
+    @Query("SELECT g FROM Group g WHERE g.memberCount < g.maxMembers AND g.deletedAt IS NULL AND g.isActive = true")
     List<Group> findGroupsWithAvailableSlots();
     
     // Activity queries
@@ -54,4 +57,13 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
     
     @Query("SELECT COUNT(g) FROM Group g WHERE g.createdAt >= :todayStart")
     Long countGroupsCreatedToday(@Param("todayStart") LocalDateTime todayStart);
+    
+    // Atomic update queries
+    @Modifying
+    @Query("UPDATE Group g SET g.totalMessages = g.totalMessages + 1, g.lastMessageAt = :lastMessageAt, g.lastMessageUser = :lastMessageUser WHERE g.id = :groupId AND g.deletedAt IS NULL")
+    int updateChatMetadata(@Param("groupId") Long groupId, @Param("lastMessageAt") LocalDateTime lastMessageAt, @Param("lastMessageUser") User lastMessageUser);
+    
+    @Modifying
+    @Query("UPDATE Group g SET g.memberCount = :memberCount WHERE g.id = :groupId AND g.deletedAt IS NULL")
+    int updateMemberCount(@Param("groupId") Long groupId, @Param("memberCount") Integer memberCount);
 }

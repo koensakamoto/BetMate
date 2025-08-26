@@ -1,4 +1,4 @@
-package com.circlebet.service.bet;
+    package com.circlebet.service.bet;
 
 import com.circlebet.entity.betting.Bet;
 import com.circlebet.entity.group.Group;
@@ -121,14 +121,14 @@ public class BetService {
      */
     @Transactional
     public Bet closeBet(@NotNull Long betId) {
-        Bet bet = getBetById(betId);
-        
-        if (bet.getStatus() != Bet.BetStatus.OPEN) {
+        int updatedRows = betRepository.closeBetAtomically(betId);
+        if (updatedRows == 0) {
+            // Either bet doesn't exist or wasn't in OPEN status
+            Bet bet = getBetById(betId); // This will throw if bet doesn't exist
             throw new BetOperationException("Bet is not open");
         }
         
-        bet.close();
-        return betRepository.save(bet);
+        return getBetById(betId); // Return updated bet
     }
 
     /**
@@ -136,14 +136,17 @@ public class BetService {
      */
     @Transactional
     public Bet cancelBet(@NotNull Long betId) {
-        Bet bet = getBetById(betId);
-        
-        if (bet.getStatus() == Bet.BetStatus.RESOLVED) {
-            throw new BetOperationException("Cannot cancel resolved bet");
+        int updatedRows = betRepository.cancelBetAtomically(betId);
+        if (updatedRows == 0) {
+            // Either bet doesn't exist or was already resolved
+            Bet bet = getBetById(betId); // This will throw if bet doesn't exist
+            if (bet.getStatus() == Bet.BetStatus.RESOLVED) {
+                throw new BetOperationException("Cannot cancel resolved bet");
+            }
+            throw new BetOperationException("Bet cannot be cancelled");
         }
         
-        bet.cancel();
-        return betRepository.save(bet);
+        return getBetById(betId); // Return updated bet
     }
 
     /**
@@ -152,7 +155,6 @@ public class BetService {
     @Transactional
     public void deleteBet(@NotNull Long betId) {
         Bet bet = getBetById(betId);
-        bet.setIsActive(false);
         bet.setDeletedAt(LocalDateTime.now());
         betRepository.save(bet);
     }
@@ -227,12 +229,6 @@ public class BetService {
         Bet.BetStatus status,
         Bet.BetOutcome outcome
     ) {}
-
-    public static class BetNotFoundException extends RuntimeException {
-        public BetNotFoundException(String message) {
-            super(message);
-        }
-    }
 
     public static class BetOperationException extends RuntimeException {
         public BetOperationException(String message) {

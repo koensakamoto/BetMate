@@ -4,6 +4,7 @@ import com.circlebet.entity.group.Group;
 import com.circlebet.entity.group.GroupMembership;
 import com.circlebet.entity.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -79,4 +80,26 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
     
     @Query("SELECT g, COUNT(gm) FROM GroupMembership gm JOIN gm.group g WHERE gm.isActive = true GROUP BY g ORDER BY COUNT(gm) DESC")
     List<Object[]> findMostPopularGroups();
+    
+    // Atomic admin operations to prevent race conditions
+    @Modifying
+    @Query("UPDATE GroupMembership gm SET gm.isActive = false, gm.leftAt = :leftAt " +
+           "WHERE gm.user = :user AND gm.group = :group AND gm.isActive = true " +
+           "AND (gm.role != 'ADMIN' OR " +
+           "(SELECT COUNT(gm2) FROM GroupMembership gm2 WHERE gm2.group = :group AND gm2.role = 'ADMIN' AND gm2.isActive = true) > 1)")
+    int atomicLeaveGroup(@Param("user") User user, @Param("group") Group group, @Param("leftAt") LocalDateTime leftAt);
+    
+    @Modifying
+    @Query("UPDATE GroupMembership gm SET gm.role = :newRole " +
+           "WHERE gm.user = :user AND gm.group = :group AND gm.isActive = true " +
+           "AND (gm.role != 'ADMIN' OR :newRole = 'ADMIN' OR " +
+           "(SELECT COUNT(gm2) FROM GroupMembership gm2 WHERE gm2.group = :group AND gm2.role = 'ADMIN' AND gm2.isActive = true) > 1)")
+    int atomicChangeRole(@Param("user") User user, @Param("group") Group group, @Param("newRole") GroupMembership.MemberRole newRole);
+    
+    @Modifying
+    @Query("UPDATE GroupMembership gm SET gm.isActive = false, gm.leftAt = :leftAt " +
+           "WHERE gm.user = :user AND gm.group = :group AND gm.isActive = true " +
+           "AND (gm.role != 'ADMIN' OR " +
+           "(SELECT COUNT(gm2) FROM GroupMembership gm2 WHERE gm2.group = :group AND gm2.role = 'ADMIN' AND gm2.isActive = true) > 1)")
+    int atomicRemoveMember(@Param("user") User user, @Param("group") Group group, @Param("leftAt") LocalDateTime leftAt);
 }

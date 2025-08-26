@@ -10,6 +10,7 @@ import com.circlebet.entity.user.User;
 import com.circlebet.service.security.UserDetailsServiceImpl;
 import com.circlebet.service.user.UserRegistrationService;
 import com.circlebet.service.user.UserService;
+import com.circlebet.service.user.UserStatisticsService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -35,11 +36,14 @@ public class UserController {
 
     private final UserService userService;
     private final UserRegistrationService userRegistrationService;
+    private final UserStatisticsService userStatisticsService;
 
     @Autowired
-    public UserController(UserService userService, UserRegistrationService userRegistrationService) {
+    public UserController(UserService userService, UserRegistrationService userRegistrationService,
+                         UserStatisticsService userStatisticsService) {
         this.userService = userService;
         this.userRegistrationService = userRegistrationService;
+        this.userStatisticsService = userStatisticsService;
     }
 
     // ==========================================
@@ -196,9 +200,9 @@ public class UserController {
      * Get user statistics.
      */
     @GetMapping("/{id}/stats")
-    public ResponseEntity<UserService.UserStats> getUserStats(@PathVariable Long id) {
+    public ResponseEntity<UserStatisticsService.UserStatistics> getUserStats(@PathVariable Long id) {
         try {
-            UserService.UserStats stats = userService.getUserStats(id);
+            UserStatisticsService.UserStatistics stats = userStatisticsService.getUserStatistics(id);
             return ResponseEntity.ok(stats);
         } catch (UserService.UserNotFoundException e) {
             return ResponseEntity.notFound().build();

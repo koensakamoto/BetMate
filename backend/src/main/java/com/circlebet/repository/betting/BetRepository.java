@@ -4,6 +4,7 @@ import com.circlebet.entity.betting.Bet;
 import com.circlebet.entity.group.Group;
 import com.circlebet.entity.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -89,4 +90,13 @@ public interface BetRepository extends JpaRepository<Bet, Long> {
            "(LOWER(b.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
            "LOWER(b.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     List<Bet> searchBets(@Param("searchTerm") String searchTerm);
+    
+    // Atomic status transition methods
+    @Modifying
+    @Query("UPDATE Bet b SET b.status = 'CLOSED' WHERE b.id = :betId AND b.status = 'OPEN'")
+    int closeBetAtomically(@Param("betId") Long betId);
+    
+    @Modifying
+    @Query("UPDATE Bet b SET b.status = 'CANCELLED' WHERE b.id = :betId AND b.status != 'RESOLVED'")
+    int cancelBetAtomically(@Param("betId") Long betId);
 }

@@ -179,8 +179,8 @@ public class BetParticipationService {
             throw new ParticipationException("Bet amount exceeds maximum: " + bet.getMaximumBet());
         }
         
-        if (!creditService.hasSufficientCredits(user.getId(), betAmount)) {
-            throw new ParticipationException("Insufficient credits for bet");
+        if (!creditService.hasSufficientAvailableCredits(user.getId(), betAmount)) {
+            throw new ParticipationException("Insufficient available credits for bet");
         }
     }
 

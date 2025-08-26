@@ -5,7 +5,6 @@ import com.circlebet.entity.group.Group;
 import com.circlebet.entity.user.User;
 import com.circlebet.exception.group.GroupNotFoundException;
 import com.circlebet.repository.group.GroupRepository;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -36,8 +35,7 @@ public class GroupService {
      * Retrieves a group by ID.
      */
     public Group getGroupById(@NotNull Long groupId) {
-        return groupRepository.findById(groupId)
-            .filter(group -> !group.isDeleted())
+        return groupRepository.findByIdAndDeletedAtIsNull(groupId)
             .orElseThrow(() -> new GroupNotFoundException("Group not found: " + groupId));
     }
 
@@ -45,8 +43,7 @@ public class GroupService {
      * Retrieves a group by name (case-insensitive).
      */
     public Optional<Group> getGroupByName(@NotNull String groupName) {
-        return groupRepository.findByGroupNameIgnoreCase(groupName)
-            .filter(group -> !group.isDeleted());
+        return groupRepository.findByGroupNameIgnoreCaseAndDeletedAtIsNull(groupName);
     }
 
     /**
@@ -81,13 +78,6 @@ public class GroupService {
     }
 
     /**
-     * Retrieves groups with available slots for new members.
-     */
-    public List<Group> getGroupsWithAvailableSlots() {
-        return groupRepository.findGroupsWithAvailableSlots();
-    }
-
-    /**
      * Retrieves most active groups by message count.
      */
     public List<Group> getMostActiveGroups() {
@@ -99,21 +89,28 @@ public class GroupService {
      */
     @Transactional
     public Group updateGroup(@NotNull Group group, @NotNull GroupUpdateRequestDto request) {
-        if (request.getGroupName() != null) {
-            group.setGroupName(request.getGroupName());
+        if (request.getGroupName() != null && !request.getGroupName().equals(group.getGroupName())) {
+            if (request.getGroupName().trim().isEmpty()) {
+                throw new IllegalArgumentException("Group name cannot be empty");
+            }
+            if (!isGroupNameAvailable(request.getGroupName())) {
+                throw new IllegalArgumentException("Group name already taken: " + request.getGroupName());
+            }
+            group.setGroupName(request.getGroupName().trim());
         }
+        
         if (request.getDescription() != null) {
-            group.setDescription(request.getDescription());
+            group.setDescription(request.getDescription().trim());
         }
+        
         if (request.getGroupPictureUrl() != null) {
             group.setGroupPictureUrl(request.getGroupPictureUrl());
         }
+        
         if (request.getPrivacy() != null) {
             group.setPrivacy(request.getPrivacy());
         }
-        if (request.getMaxMembers() != null) {
-            group.setMaxMembers(request.getMaxMembers());
-        }
+        
         
         return groupRepository.save(group);
     }
@@ -131,11 +128,11 @@ public class GroupService {
      */
     @Transactional
     public void updateChatMetadata(@NotNull Long groupId, @NotNull User lastMessageUser) {
-        Group group = getGroupById(groupId);
-        group.setTotalMessages(group.getTotalMessages() + 1);
-        group.setLastMessageAt(LocalDateTime.now());
-        group.setLastMessageUser(lastMessageUser);
-        groupRepository.save(group);
+        LocalDateTime now = LocalDateTime.now();
+        int updated = groupRepository.updateChatMetadata(groupId, now, lastMessageUser);
+        if (updated == 0) {
+            throw new GroupNotFoundException("Group not found or deleted: " + groupId);
+        }
     }
 
     /**
@@ -143,9 +140,13 @@ public class GroupService {
      */
     @Transactional
     public void updateMemberCount(@NotNull Long groupId, int newCount) {
-        Group group = getGroupById(groupId);
-        group.setMemberCount(newCount);
-        groupRepository.save(group);
+        if (newCount < 0) {
+            throw new IllegalArgumentException("Member count cannot be negative: " + newCount);
+        }
+        int updated = groupRepository.updateMemberCount(groupId, newCount);
+        if (updated == 0) {
+            throw new GroupNotFoundException("Group not found or deleted: " + groupId);
+        }
     }
 
     /**
@@ -157,17 +158,11 @@ public class GroupService {
 
     /**
      * Checks if group has available slots for new members.
+     * Uses the Group entity's own logic which considers both max members and current count.
      */
     public boolean hasAvailableSlots(@NotNull Long groupId) {
         Group group = getGroupById(groupId);
-        return group.getMaxMembers() == null || group.getMemberCount() < group.getMaxMembers();
-    }
-
-    /**
-     * Checks if group is full.
-     */
-    public boolean isGroupFull(@NotNull Long groupId) {
-        return !hasAvailableSlots(groupId);
+        return group.canAcceptNewMembers();
     }
 
     /**
@@ -224,9 +219,4 @@ public class GroupService {
         Group.Privacy privacy
     ) {}
 
-    public static class GroupNotFoundException extends RuntimeException {
-        public GroupNotFoundException(String message) {
-            super(message);
-        }
-    }
 }
