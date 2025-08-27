@@ -94,26 +94,31 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         @Override
         public List<SimpleGrantedAuthority> getAuthorities() {
-            List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-            
-            // Add default user role
-            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-            
-            // TODO: When role system is implemented, replace with:
-            // if (user.getRoles() != null) {
-            //     user.getRoles().forEach(role -> 
-            //         authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getName().toUpperCase()))
-            //     );
-            // }
-            
-            // Add admin role for admin users (placeholder logic)
-            if ("admin".equals(user.getUsername())) {
-                authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
-            }
-            
-            log.debug("User {} has authorities: {}", user.getUsername(), authorities);
-            return authorities;
+            return new ArrayList<>();
         }
+
+//        // TODO: Future role system implementation
+//        public List<SimpleGrantedAuthority> getAuthorities() {
+//            List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+//
+//            // Add default user role
+//            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+//
+//            // TODO: When role system is implemented, replace with:
+//            // if (user.getRoles() != null) {
+//            //     user.getRoles().forEach(role ->
+//            //         authorities.add(new SimpleGrantedAuthority("ROLE_" + role.getName().toUpperCase()))
+//            //     );
+//            // }
+//
+//            // Add admin role for admin users (placeholder logic)
+//            if ("admin".equals(user.getUsername())) {
+//                authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+//            }
+//
+//            log.debug("User {} has authorities: {}", user.getUsername(), authorities);
+//            return authorities;
+//        }
 
         @Override
         public boolean isAccountNonExpired() {

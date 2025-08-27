@@ -67,7 +67,6 @@ class GroupPermissionServiceTest {
         publicGroup.setMaxMembers(50);
         publicGroup.setMemberCount(25);
         publicGroup.setIsActive(true);
-        publicGroup.setCreatedAt(LocalDateTime.now());
 
         // Private group
         privateGroup = new Group();
@@ -77,7 +76,6 @@ class GroupPermissionServiceTest {
         privateGroup.setMaxMembers(30);
         privateGroup.setMemberCount(15);
         privateGroup.setIsActive(true);
-        privateGroup.setCreatedAt(LocalDateTime.now());
 
         // Invite-only group
         inviteOnlyGroup = new Group();
@@ -87,7 +85,6 @@ class GroupPermissionServiceTest {
         inviteOnlyGroup.setMaxMembers(20);
         inviteOnlyGroup.setMemberCount(10);
         inviteOnlyGroup.setIsActive(true);
-        inviteOnlyGroup.setCreatedAt(LocalDateTime.now());
 
         // Full group
         fullGroup = new Group();
@@ -97,7 +94,6 @@ class GroupPermissionServiceTest {
         fullGroup.setMaxMembers(10);
         fullGroup.setMemberCount(10);
         fullGroup.setIsActive(true);
-        fullGroup.setCreatedAt(LocalDateTime.now());
 
         // Inactive group
         inactiveGroup = new Group();
@@ -107,7 +103,6 @@ class GroupPermissionServiceTest {
         inactiveGroup.setMaxMembers(50);
         inactiveGroup.setMemberCount(5);
         inactiveGroup.setIsActive(false);
-        inactiveGroup.setCreatedAt(LocalDateTime.now());
 
         // Deleted group
         deletedGroup = new Group();
@@ -117,7 +112,6 @@ class GroupPermissionServiceTest {
         deletedGroup.setMaxMembers(50);
         deletedGroup.setMemberCount(5);
         deletedGroup.setIsActive(true);
-        deletedGroup.setCreatedAt(LocalDateTime.now());
         deletedGroup.setDeletedAt(LocalDateTime.now());
     }
 

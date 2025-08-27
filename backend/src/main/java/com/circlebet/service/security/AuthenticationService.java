@@ -121,6 +121,12 @@ public class AuthenticationService {
             throw new AuthenticationException.InvalidCredentialsException("Current password is incorrect");
         }
         
+        // Check if new password is the same as current password
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            log.warn("Password change failed: New password same as current for user: {}", user.getUsername());
+            throw new AuthenticationException.InvalidCredentialsException("New password cannot be same as current password");
+        }
+        
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         log.info("Password changed successfully for user: {}", user.getUsername());
         userService.saveUser(user);
