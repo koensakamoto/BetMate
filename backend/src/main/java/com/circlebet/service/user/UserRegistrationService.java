@@ -1,6 +1,7 @@
 package com.circlebet.service.user;
 
 import com.circlebet.entity.user.User;
+import com.circlebet.exception.user.UserRegistrationException;
 import com.circlebet.validation.InputValidator;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -72,28 +73,28 @@ public class UserRegistrationService {
         // Validate and sanitize username
         InputValidator.InputValidationResult usernameValidation = inputValidator.validateUsername(request.username());
         if (!usernameValidation.isValid()) {
-            throw new RegistrationException(usernameValidation.getErrorMessage());
+            throw new UserRegistrationException(usernameValidation.getErrorMessage());
         }
         
         // Validate and sanitize email
         InputValidator.InputValidationResult emailValidation = inputValidator.validateEmail(request.email());
         if (!emailValidation.isValid()) {
-            throw new RegistrationException(emailValidation.getErrorMessage());
+            throw new UserRegistrationException(emailValidation.getErrorMessage());
         }
         
         // Check availability with sanitized values
         if (!isUsernameAvailable(usernameValidation.getSanitizedValue())) {
-            throw new RegistrationException("Username already exists: " + request.username());
+            throw new UserRegistrationException("Username already exists: " + request.username());
         }
         
         if (!isEmailAvailable(emailValidation.getSanitizedValue())) {
-            throw new RegistrationException("Email already exists: " + request.email());
+            throw new UserRegistrationException("Email already exists: " + request.email());
         }
         
         // Validate password strength
         InputValidator.PasswordValidationResult passwordValidation = inputValidator.validatePassword(request.password());
         if (!passwordValidation.isValid()) {
-            throw new RegistrationException(passwordValidation.getErrorMessage());
+            throw new UserRegistrationException(passwordValidation.getErrorMessage());
         }
     }
 
@@ -144,9 +145,4 @@ public class UserRegistrationService {
         }
     }
 
-    public static class RegistrationException extends RuntimeException {
-        public RegistrationException(String message) {
-            super(message);
-        }
-    }
 }

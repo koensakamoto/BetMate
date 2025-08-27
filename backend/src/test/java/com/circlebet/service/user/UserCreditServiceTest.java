@@ -1,8 +1,8 @@
 package com.circlebet.service.user;
 
 import com.circlebet.entity.user.User;
-import com.circlebet.service.user.UserCreditService.InsufficientCreditsException;
-import com.circlebet.service.user.UserCreditService.InsufficientFrozenCreditsException;
+import com.circlebet.exception.user.InsufficientCreditsException;
+import com.circlebet.exception.user.InsufficientFrozenCreditsException;
 import com.circlebet.service.user.UserCreditService.TransferResult;
 import com.circlebet.service.user.UserCreditService.CreditSummary;
 import org.junit.jupiter.api.BeforeEach;
@@ -550,7 +550,7 @@ class UserCreditServiceTest {
             }
             User user = users.get(userId);
             if (user == null) {
-                throw new UserNotFoundException("User not found with ID: " + userId);
+                throw new com.circlebet.exception.user.UserNotFoundException("User not found with ID: " + userId);
             }
             return user;
         }

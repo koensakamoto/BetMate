@@ -3,7 +3,7 @@ package com.circlebet.service.user;
 import com.circlebet.entity.user.User;
 import com.circlebet.service.user.UserRegistrationService.RegistrationRequest;
 import com.circlebet.service.user.UserRegistrationService.RegistrationValidation;
-import com.circlebet.service.user.UserRegistrationService.RegistrationException;
+import com.circlebet.exception.user.UserRegistrationException;
 import com.circlebet.validation.InputValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -201,7 +201,7 @@ class UserRegistrationServiceTest {
     }
 
     @Test
-    @DisplayName("Should throw RegistrationException when username validation fails")
+    @DisplayName("Should throw UserRegistrationException when username validation fails")
     void should_ThrowException_When_UsernameValidationFails() {
         // Given
         String invalidUsername = "ab";
@@ -211,14 +211,14 @@ class UserRegistrationServiceTest {
         
         // When & Then
         assertThatThrownBy(() -> registrationService.registerUser(request))
-            .isInstanceOf(RegistrationException.class)
+            .isInstanceOf(UserRegistrationException.class)
             .hasMessageContaining(errorMessage);
         
         assertThat(userService.getLastSavedUser()).isNull();
     }
 
     @Test
-    @DisplayName("Should throw RegistrationException when email validation fails")
+    @DisplayName("Should throw UserRegistrationException when email validation fails")
     void should_ThrowException_When_EmailValidationFails() {
         // Given
         String invalidEmail = "invalid.email";
@@ -228,14 +228,14 @@ class UserRegistrationServiceTest {
         
         // When & Then
         assertThatThrownBy(() -> registrationService.registerUser(request))
-            .isInstanceOf(RegistrationException.class)
+            .isInstanceOf(UserRegistrationException.class)
             .hasMessageContaining(errorMessage);
         
         assertThat(userService.getLastSavedUser()).isNull();
     }
 
     @Test
-    @DisplayName("Should throw RegistrationException when password validation fails")
+    @DisplayName("Should throw UserRegistrationException when password validation fails")
     void should_ThrowException_When_PasswordValidationFails() {
         // Given
         String weakPassword = "123";
@@ -245,35 +245,35 @@ class UserRegistrationServiceTest {
         
         // When & Then
         assertThatThrownBy(() -> registrationService.registerUser(request))
-            .isInstanceOf(RegistrationException.class)
+            .isInstanceOf(UserRegistrationException.class)
             .hasMessageContaining(errorMessage);
         
         assertThat(userService.getLastSavedUser()).isNull();
     }
 
     @Test
-    @DisplayName("Should throw RegistrationException when username already exists")
+    @DisplayName("Should throw UserRegistrationException when username already exists")
     void should_ThrowException_When_UsernameAlreadyExists() {
         // Given
         userService.setUsernameExists(TEST_USERNAME, true);
         
         // When & Then
         assertThatThrownBy(() -> registrationService.registerUser(validRequest))
-            .isInstanceOf(RegistrationException.class)
+            .isInstanceOf(UserRegistrationException.class)
             .hasMessageContaining("Username already exists: " + TEST_USERNAME);
         
         assertThat(userService.getLastSavedUser()).isNull();
     }
 
     @Test
-    @DisplayName("Should throw RegistrationException when email already exists")
+    @DisplayName("Should throw UserRegistrationException when email already exists")
     void should_ThrowException_When_EmailAlreadyExists() {
         // Given
         userService.setEmailExists(TEST_EMAIL, true);
         
         // When & Then
         assertThatThrownBy(() -> registrationService.registerUser(validRequest))
-            .isInstanceOf(RegistrationException.class)
+            .isInstanceOf(UserRegistrationException.class)
             .hasMessageContaining("Email already exists: " + TEST_EMAIL);
         
         assertThat(userService.getLastSavedUser()).isNull();

@@ -4,6 +4,7 @@ import com.circlebet.entity.betting.Bet;
 import com.circlebet.entity.group.Group;
 import com.circlebet.entity.user.User;
 import com.circlebet.exception.betting.BetNotFoundException;
+import com.circlebet.exception.betting.BetOperationException;
 import com.circlebet.repository.betting.BetRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -230,9 +231,4 @@ public class BetService {
         Bet.BetOutcome outcome
     ) {}
 
-    public static class BetOperationException extends RuntimeException {
-        public BetOperationException(String message) {
-            super(message);
-        }
-    }
 }

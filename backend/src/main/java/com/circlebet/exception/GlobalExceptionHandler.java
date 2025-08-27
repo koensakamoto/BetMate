@@ -91,9 +91,9 @@ public class GlobalExceptionHandler {
     /**
      * Handles user not found exceptions.
      */
-    @ExceptionHandler(UserService.UserNotFoundException.class)
+    @ExceptionHandler(com.circlebet.exception.user.UserNotFoundException.class)
     public ApiResponse<Void> handleUserNotFoundException(
-            UserService.UserNotFoundException ex, HttpServletRequest request) {
+            com.circlebet.exception.user.UserNotFoundException ex, HttpServletRequest request) {
         log.warn("User not found for request {}: {}", request.getRequestURI(), ex.getMessage());
         return createErrorResponse(HttpStatus.NOT_FOUND, "User Not Found", "User not found", request.getRequestURI());
     }

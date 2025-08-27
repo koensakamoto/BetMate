@@ -172,6 +172,6 @@ public class AuthService {
      */
     private User getUserByUsername(String username) {
         return userService.getUserByUsername(username)
-            .orElseThrow(() -> new UserService.UserNotFoundException("User not found: " + username));
+            .orElseThrow(() -> new com.circlebet.exception.user.UserNotFoundException("User not found: " + username));
     }
 }

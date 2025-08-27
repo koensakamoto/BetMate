@@ -3,6 +3,7 @@ package com.circlebet.service.bet;
 import com.circlebet.entity.betting.Bet;
 import com.circlebet.entity.group.Group;
 import com.circlebet.entity.user.User;
+import com.circlebet.exception.betting.BetCreationException;
 import com.circlebet.service.group.GroupPermissionService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -156,9 +157,4 @@ public class BetCreationService {
         LocalDateTime resolveDate
     ) {}
 
-    public static class BetCreationException extends RuntimeException {
-        public BetCreationException(String message) {
-            super(message);
-        }
-    }
 }

@@ -3,6 +3,7 @@ package com.circlebet.service.bet;
 import com.circlebet.entity.betting.Bet;
 import com.circlebet.entity.betting.BetParticipation;
 import com.circlebet.entity.user.User;
+import com.circlebet.exception.betting.BetParticipationException;
 import com.circlebet.repository.betting.BetParticipationRepository;
 import com.circlebet.service.user.UserCreditService;
 import com.circlebet.service.user.UserStatisticsService;
@@ -58,7 +59,7 @@ public class BetParticipationService {
         
         // Check if user already participated
         if (participationRepository.existsByUserAndBet(user, bet)) {
-            throw new ParticipationException("User has already placed a bet on this");
+            throw new BetParticipationException("User has already placed a bet on this");
         }
         
         // Validate chosen option
@@ -87,10 +88,10 @@ public class BetParticipationService {
         Bet bet = betService.getBetById(betId);
         
         BetParticipation participation = participationRepository.findByUserAndBet(user, bet)
-            .orElseThrow(() -> new ParticipationException("No participation found for this bet"));
+            .orElseThrow(() -> new BetParticipationException("No participation found for this bet"));
         
         if (!bet.isOpenForBetting()) {
-            throw new ParticipationException("Cannot cancel participation after betting deadline");
+            throw new BetParticipationException("Cannot cancel participation after betting deadline");
         }
         
         // Refund credits
@@ -115,7 +116,7 @@ public class BetParticipationService {
         Bet bet = betService.getBetById(betId);
         
         if (bet.getStatus() != Bet.BetStatus.CLOSED) {
-            throw new ParticipationException("Bet must be closed before resolving participations");
+            throw new BetParticipationException("Bet must be closed before resolving participations");
         }
         
         List<BetParticipation> participations = participationRepository.findByBet(bet);
@@ -168,30 +169,30 @@ public class BetParticipationService {
 
     private void validateBetForParticipation(Bet bet, User user, BigDecimal betAmount) {
         if (!bet.isOpenForBetting()) {
-            throw new ParticipationException("Bet is not open for betting");
+            throw new BetParticipationException("Bet is not open for betting");
         }
         
         if (betAmount.compareTo(bet.getMinimumBet()) < 0) {
-            throw new ParticipationException("Bet amount is below minimum: " + bet.getMinimumBet());
+            throw new BetParticipationException("Bet amount is below minimum: " + bet.getMinimumBet());
         }
         
         if (bet.getMaximumBet() != null && betAmount.compareTo(bet.getMaximumBet()) > 0) {
-            throw new ParticipationException("Bet amount exceeds maximum: " + bet.getMaximumBet());
+            throw new BetParticipationException("Bet amount exceeds maximum: " + bet.getMaximumBet());
         }
         
         if (!creditService.hasSufficientAvailableCredits(user.getId(), betAmount)) {
-            throw new ParticipationException("Insufficient available credits for bet");
+            throw new BetParticipationException("Insufficient available credits for bet");
         }
     }
 
     private void validateChosenOption(Bet bet, Integer chosenOption) {
         if (chosenOption < 1 || chosenOption > 4) {
-            throw new ParticipationException("Invalid option: must be between 1 and 4");
+            throw new BetParticipationException("Invalid option: must be between 1 and 4");
         }
         
         int availableOptions = bet.getOptionCount();
         if (chosenOption > availableOptions) {
-            throw new ParticipationException("Invalid option: only " + availableOptions + " options available");
+            throw new BetParticipationException("Invalid option: only " + availableOptions + " options available");
         }
     }
 
@@ -283,9 +284,4 @@ public class BetParticipationService {
         };
     }
 
-    public static class ParticipationException extends RuntimeException {
-        public ParticipationException(String message) {
-            super(message);
-        }
-    }
 }

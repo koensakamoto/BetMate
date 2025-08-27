@@ -3,6 +3,7 @@ package com.circlebet.service.group;
 import com.circlebet.entity.group.Group;
 import com.circlebet.entity.group.GroupMembership;
 import com.circlebet.entity.user.User;
+import com.circlebet.exception.group.GroupMembershipException;
 import com.circlebet.repository.group.GroupMembershipRepository;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +43,7 @@ public class GroupMembershipService {
     public GroupMembership joinGroup(@NotNull User user, @NotNull Group group, @NotNull GroupMembership.MemberRole role) {
         // Use permission service for validation
         if (!permissionService.canJoinGroup(user, group)) {
-            throw new MembershipException("User cannot join this group");
+            throw new GroupMembershipException("User cannot join this group");
         }
         
         GroupMembership membership = new GroupMembership();
@@ -80,12 +81,12 @@ public class GroupMembershipService {
                                            @NotNull Group group, @NotNull GroupMembership.MemberRole role) {
         // Validate actor has permission to invite users
         if (!permissionService.canInviteUsers(actor, group)) {
-            throw new MembershipException("Insufficient permissions to invite users");
+            throw new GroupMembershipException("Insufficient permissions to invite users");
         }
         
         // Validate actor has permission to create admins (only admins can invite other admins)
         if (role == GroupMembership.MemberRole.ADMIN && !permissionService.canChangeRoles(actor, group)) {
-            throw new MembershipException("Only admins can invite other admins");
+            throw new GroupMembershipException("Only admins can invite other admins");
         }
         
         return joinGroup(userToInvite, group, role);
@@ -110,9 +111,9 @@ public class GroupMembershipService {
             // Check if user exists but is last admin
             Optional<GroupMembership> membership = membershipRepository.findByUserAndGroupAndIsActiveTrue(user, group);
             if (membership.isEmpty()) {
-                throw new MembershipException("User is not a member of this group");
+                throw new GroupMembershipException("User is not a member of this group");
             } else {
-                throw new MembershipException("Cannot leave group - user is the only admin");
+                throw new GroupMembershipException("Cannot leave group - user is the only admin");
             }
         }
         
@@ -134,7 +135,7 @@ public class GroupMembershipService {
                                     @NotNull Group group, @NotNull GroupMembership.MemberRole newRole) {
         // Validate actor has permission to change roles
         if (!permissionService.canChangeRoles(actor, group)) {
-            throw new MembershipException("Insufficient permissions to change roles");
+            throw new GroupMembershipException("Insufficient permissions to change roles");
         }
         
         // Use atomic operation to prevent race conditions
@@ -144,9 +145,9 @@ public class GroupMembershipService {
             // Check if user exists but is last admin being demoted
             Optional<GroupMembership> membership = membershipRepository.findByUserAndGroupAndIsActiveTrue(targetUser, group);
             if (membership.isEmpty()) {
-                throw new MembershipException("User is not a member of this group");
+                throw new GroupMembershipException("User is not a member of this group");
             } else if (membership.get().getRole() == GroupMembership.MemberRole.ADMIN && newRole != GroupMembership.MemberRole.ADMIN) {
-                throw new MembershipException("Cannot change role - user is the only admin");
+                throw new GroupMembershipException("Cannot change role - user is the only admin");
             }
         }
         
@@ -164,12 +165,12 @@ public class GroupMembershipService {
     public void removeMember(@NotNull User actor, @NotNull User userToRemove, @NotNull Group group) {
         // Validate actor has permission to remove members
         if (!permissionService.canRemoveMembers(actor, group)) {
-            throw new MembershipException("Insufficient permissions to remove members");
+            throw new GroupMembershipException("Insufficient permissions to remove members");
         }
         
         // Prevent self-removal (use leaveGroup instead)
         if (actor.equals(userToRemove)) {
-            throw new MembershipException("Use leaveGroup to remove yourself");
+            throw new GroupMembershipException("Use leaveGroup to remove yourself");
         }
         
         // Use atomic operation to prevent race conditions
@@ -180,9 +181,9 @@ public class GroupMembershipService {
             // Check if user exists but is last admin
             Optional<GroupMembership> membership = membershipRepository.findByUserAndGroupAndIsActiveTrue(userToRemove, group);
             if (membership.isEmpty()) {
-                throw new MembershipException("User is not a member of this group");
+                throw new GroupMembershipException("User is not a member of this group");
             } else {
-                throw new MembershipException("Cannot remove user - user is the only admin");
+                throw new GroupMembershipException("Cannot remove user - user is the only admin");
             }
         }
         
@@ -257,14 +258,9 @@ public class GroupMembershipService {
 
     private GroupMembership getMembership(User user, Group group) {
         return membershipRepository.findByUserAndGroupAndIsActiveTrue(user, group)
-            .orElseThrow(() -> new MembershipException("User is not a member of this group"));
+            .orElseThrow(() -> new GroupMembershipException("User is not a member of this group"));
     }
 
 
 
-    public static class MembershipException extends RuntimeException {
-        public MembershipException(String message) {
-            super(message);
-        }
-    }
 }

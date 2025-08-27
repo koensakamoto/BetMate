@@ -4,7 +4,7 @@ import com.circlebet.entity.group.Group;
 import com.circlebet.entity.user.User;
 import com.circlebet.repository.group.GroupMembershipRepository;
 import com.circlebet.service.group.GroupPermissionService.GroupPermission;
-import com.circlebet.service.group.GroupPermissionService.GroupPermissionException;
+import com.circlebet.exception.group.GroupPermissionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

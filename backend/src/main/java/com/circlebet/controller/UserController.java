@@ -67,7 +67,7 @@ public class UserController {
                 ); 
             User user = userRegistrationService.registerUser(serviceRequest);
             return ResponseEntity.status(HttpStatus.CREATED).body(UserProfileResponseDto.fromUser(user));
-        } catch (UserRegistrationService.RegistrationException e) {
+        } catch (com.circlebet.exception.user.UserRegistrationException e) {
             return ResponseEntity.badRequest().build();
         }
     }
@@ -178,7 +178,7 @@ public class UserController {
         try {
             User user = userService.getUserById(id);
             return ResponseEntity.ok(UserProfileResponseDto.fromUser(user));
-        } catch (UserService.UserNotFoundException e) {
+        } catch (com.circlebet.exception.user.UserNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
@@ -204,7 +204,7 @@ public class UserController {
         try {
             UserStatisticsService.UserStatistics stats = userStatisticsService.getUserStatistics(id);
             return ResponseEntity.ok(stats);
-        } catch (UserService.UserNotFoundException e) {
+        } catch (com.circlebet.exception.user.UserNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }

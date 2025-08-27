@@ -74,7 +74,7 @@ class UserStatisticsServiceTest {
         public User getUserById(Long userId) {
             User user = users.get(userId);
             if (user == null || user.isDeleted()) {
-                throw new UserNotFoundException("User not found: " + userId);
+                throw new com.circlebet.exception.user.UserNotFoundException("User not found: " + userId);
             }
             return user;
         }
@@ -158,7 +158,7 @@ class UserStatisticsServiceTest {
     void should_ThrowException_When_RecordingWinForNonExistentUser() {
         // When & Then
         assertThatThrownBy(() -> statisticsService.recordWin(NON_EXISTENT_USER_ID))
-            .isInstanceOf(UserService.UserNotFoundException.class)
+            .isInstanceOf(com.circlebet.exception.user.com.circlebet.exception.user.UserNotFoundException.class)
             .hasMessageContaining("User not found: " + NON_EXISTENT_USER_ID);
     }
 
@@ -186,7 +186,7 @@ class UserStatisticsServiceTest {
     void should_ThrowException_When_RecordingLossForNonExistentUser() {
         // When & Then
         assertThatThrownBy(() -> statisticsService.recordLoss(NON_EXISTENT_USER_ID))
-            .isInstanceOf(UserService.UserNotFoundException.class)
+            .isInstanceOf(com.circlebet.exception.user.com.circlebet.exception.user.UserNotFoundException.class)
             .hasMessageContaining("User not found: " + NON_EXISTENT_USER_ID);
     }
 
@@ -211,7 +211,7 @@ class UserStatisticsServiceTest {
     void should_ThrowException_When_IncrementingActiveBetsForNonExistentUser() {
         // When & Then
         assertThatThrownBy(() -> statisticsService.incrementActiveBets(NON_EXISTENT_USER_ID))
-            .isInstanceOf(UserService.UserNotFoundException.class)
+            .isInstanceOf(com.circlebet.exception.user.com.circlebet.exception.user.UserNotFoundException.class)
             .hasMessageContaining("User not found: " + NON_EXISTENT_USER_ID);
     }
 
@@ -251,7 +251,7 @@ class UserStatisticsServiceTest {
     void should_ThrowException_When_DecrementingActiveBetsForNonExistentUser() {
         // When & Then
         assertThatThrownBy(() -> statisticsService.decrementActiveBets(NON_EXISTENT_USER_ID))
-            .isInstanceOf(UserService.UserNotFoundException.class)
+            .isInstanceOf(com.circlebet.exception.user.com.circlebet.exception.user.UserNotFoundException.class)
             .hasMessageContaining("User not found: " + NON_EXISTENT_USER_ID);
     }
 
@@ -279,7 +279,7 @@ class UserStatisticsServiceTest {
     void should_ThrowException_When_GettingStatisticsForNonExistentUser() {
         // When & Then
         assertThatThrownBy(() -> statisticsService.getUserStatistics(NON_EXISTENT_USER_ID))
-            .isInstanceOf(UserService.UserNotFoundException.class)
+            .isInstanceOf(com.circlebet.exception.user.com.circlebet.exception.user.UserNotFoundException.class)
             .hasMessageContaining("User not found: " + NON_EXISTENT_USER_ID);
     }
 
@@ -421,7 +421,7 @@ class UserStatisticsServiceTest {
     void should_ThrowException_When_ResettingStatisticsForNonExistentUser() {
         // When & Then
         assertThatThrownBy(() -> statisticsService.resetStatistics(NON_EXISTENT_USER_ID))
-            .isInstanceOf(UserService.UserNotFoundException.class)
+            .isInstanceOf(com.circlebet.exception.user.com.circlebet.exception.user.UserNotFoundException.class)
             .hasMessageContaining("User not found: " + NON_EXISTENT_USER_ID);
     }
 
@@ -497,7 +497,7 @@ class UserStatisticsServiceTest {
         
         // When & Then
         assertThatThrownBy(() -> statisticsService.updateStatistics(NON_EXISTENT_USER_ID, update))
-            .isInstanceOf(UserService.UserNotFoundException.class)
+            .isInstanceOf(com.circlebet.exception.user.com.circlebet.exception.user.UserNotFoundException.class)
             .hasMessageContaining("User not found: " + NON_EXISTENT_USER_ID);
     }
 

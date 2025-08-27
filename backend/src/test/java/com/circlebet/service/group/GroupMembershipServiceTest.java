@@ -4,7 +4,7 @@ import com.circlebet.entity.group.Group;
 import com.circlebet.entity.group.GroupMembership;
 import com.circlebet.entity.user.User;
 import com.circlebet.repository.group.GroupMembershipRepository;
-import com.circlebet.service.group.GroupMembershipService.MembershipException;
+import com.circlebet.exception.group.GroupMembershipException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -109,7 +109,7 @@ class GroupMembershipServiceTest {
     void joinGroup_UserAlreadyMember_ThrowsException() {
         when(permissionService.canJoinGroup(testUser, testGroup)).thenReturn(false);
 
-        assertThrows(MembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () -> 
             membershipService.joinGroup(testUser, testGroup, GroupMembership.MemberRole.MEMBER));
     }
 
@@ -118,7 +118,7 @@ class GroupMembershipServiceTest {
         when(membershipRepository.existsByUserAndGroupAndIsActiveTrue(testUser, testGroup)).thenReturn(false);
         when(groupService.hasAvailableSlots(testGroup.getId())).thenReturn(false);
 
-        assertThrows(MembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () -> 
             membershipService.joinGroup(testUser, testGroup, GroupMembership.MemberRole.MEMBER));
     }
 
@@ -128,7 +128,7 @@ class GroupMembershipServiceTest {
         when(membershipRepository.existsByUserAndGroupAndIsActiveTrue(testUser, testGroup)).thenReturn(false);
         when(groupService.hasAvailableSlots(testGroup.getId())).thenReturn(true);
 
-        assertThrows(MembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () -> 
             membershipService.joinGroup(testUser, testGroup, GroupMembership.MemberRole.MEMBER));
     }
 
@@ -166,7 +166,7 @@ class GroupMembershipServiceTest {
         when(membershipRepository.isUserAdminOrModerator(moderatorUser, testGroup)).thenReturn(true);
         when(membershipRepository.isUserGroupAdmin(moderatorUser, testGroup)).thenReturn(false);
 
-        assertThrows(MembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () -> 
             membershipService.inviteUserToGroup(moderatorUser, testUser, testGroup, GroupMembership.MemberRole.ADMIN));
     }
 
@@ -174,7 +174,7 @@ class GroupMembershipServiceTest {
     void inviteUserToGroup_RegularUserInviting_ThrowsException() {
         when(membershipRepository.isUserAdminOrModerator(regularUser, testGroup)).thenReturn(false);
 
-        assertThrows(MembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () -> 
             membershipService.inviteUserToGroup(regularUser, testUser, testGroup, GroupMembership.MemberRole.MEMBER));
     }
 
@@ -204,7 +204,7 @@ class GroupMembershipServiceTest {
         when(membershipRepository.findByUserAndGroupAndIsActiveTrue(adminUser, testGroup))
             .thenReturn(Optional.of(adminMembership));
 
-        assertThrows(MembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () -> 
             membershipService.leaveGroup(adminUser, testGroup));
     }
 
@@ -214,7 +214,7 @@ class GroupMembershipServiceTest {
         when(membershipRepository.findByUserAndGroupAndIsActiveTrue(testUser, testGroup))
             .thenReturn(Optional.empty());
 
-        assertThrows(MembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () -> 
             membershipService.leaveGroup(testUser, testGroup));
     }
 
@@ -248,7 +248,7 @@ class GroupMembershipServiceTest {
         when(membershipRepository.isUserAdminOrModerator(moderatorUser, testGroup)).thenReturn(true);
         when(membershipRepository.isUserGroupAdmin(moderatorUser, testGroup)).thenReturn(false);
 
-        assertThrows(MembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () -> 
             membershipService.changeRole(moderatorUser, testUser, testGroup, GroupMembership.MemberRole.ADMIN));
     }
 
@@ -256,7 +256,7 @@ class GroupMembershipServiceTest {
     void changeRole_RegularUserChangingRole_ThrowsException() {
         when(membershipRepository.isUserAdminOrModerator(regularUser, testGroup)).thenReturn(false);
 
-        assertThrows(MembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () -> 
             membershipService.changeRole(regularUser, testUser, testGroup, GroupMembership.MemberRole.MODERATOR));
     }
 
@@ -270,7 +270,7 @@ class GroupMembershipServiceTest {
         when(membershipRepository.findByUserAndGroupAndIsActiveTrue(testUser, testGroup))
             .thenReturn(Optional.of(adminMembership));
 
-        assertThrows(MembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () -> 
             membershipService.changeRole(adminUser, testUser, testGroup, GroupMembership.MemberRole.MEMBER));
     }
 
@@ -281,7 +281,7 @@ class GroupMembershipServiceTest {
     void removeMember_RegularUserRemoving_ThrowsException() {
         when(membershipRepository.isUserAdminOrModerator(regularUser, testGroup)).thenReturn(false);
 
-        assertThrows(MembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () -> 
             membershipService.removeMember(regularUser, testUser, testGroup));
     }
 
@@ -289,7 +289,7 @@ class GroupMembershipServiceTest {
     void removeMember_SelfRemoval_ThrowsException() {
         when(membershipRepository.isUserAdminOrModerator(testUser, testGroup)).thenReturn(true);
 
-        assertThrows(MembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () -> 
             membershipService.removeMember(testUser, testUser, testGroup));
     }
 
@@ -303,7 +303,7 @@ class GroupMembershipServiceTest {
         when(membershipRepository.findByUserAndGroupAndIsActiveTrue(testUser, testGroup))
             .thenReturn(Optional.of(adminMembership));
 
-        assertThrows(MembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () -> 
             membershipService.removeMember(adminUser, testUser, testGroup));
     }
 

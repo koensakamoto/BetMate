@@ -4,6 +4,7 @@ import com.circlebet.entity.betting.Bet;
 import com.circlebet.entity.betting.BetResolver;
 import com.circlebet.entity.betting.BetResolutionVote;
 import com.circlebet.entity.user.User;
+import com.circlebet.exception.betting.BetResolutionException;
 import com.circlebet.repository.betting.BetRepository;
 import com.circlebet.repository.betting.BetResolverRepository;
 import com.circlebet.repository.betting.BetResolutionVoteRepository;
@@ -346,9 +347,4 @@ public class BetResolutionService {
     // EXCEPTION CLASS
     // ==========================================
 
-    public static class BetResolutionException extends RuntimeException {
-        public BetResolutionException(String message) {
-            super(message);
-        }
-    }
 }

@@ -2,6 +2,7 @@ package com.circlebet.service.group;
 
 import com.circlebet.entity.group.Group;
 import com.circlebet.entity.user.User;
+import com.circlebet.exception.group.GroupPermissionException;
 import com.circlebet.repository.group.GroupMembershipRepository;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -165,9 +166,4 @@ public class GroupPermissionService {
         VIEW_BETTING_HISTORY
     }
 
-    public static class GroupPermissionException extends RuntimeException {
-        public GroupPermissionException(String message) {
-            super(message);
-        }
-    }
 }

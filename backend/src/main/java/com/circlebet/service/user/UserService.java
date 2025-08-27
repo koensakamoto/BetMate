@@ -1,6 +1,7 @@
 package com.circlebet.service.user;
 
 import com.circlebet.entity.user.User;
+import com.circlebet.exception.user.UserNotFoundException;
 import com.circlebet.repository.user.UserRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -124,9 +125,4 @@ public class UserService {
     }
 
 
-    public static class UserNotFoundException extends RuntimeException {
-        public UserNotFoundException(String message) {
-            super(message);
-        }
-    }
 }

@@ -7,6 +7,7 @@ import com.circlebet.dto.store.response.UserLoadoutResponseDto;
 import com.circlebet.entity.store.StoreItem;
 import com.circlebet.entity.user.User;
 import com.circlebet.entity.user.UserInventory;
+import com.circlebet.exception.user.UserInventoryException;
 import com.circlebet.mapper.InventoryMapper;
 import com.circlebet.repository.user.UserInventoryRepository;
 import jakarta.validation.constraints.NotNull;
@@ -49,7 +50,7 @@ public class UserInventoryService {
      */
     public UserInventory getInventoryItemById(@NotNull Long inventoryId) {
         return inventoryRepository.findById(inventoryId)
-            .orElseThrow(() -> new InventoryItemNotFoundException("Inventory item not found: " + inventoryId));
+            .orElseThrow(() -> new UserInventoryException("Inventory item not found: " + inventoryId));
     }
 
     /**
@@ -296,9 +297,4 @@ public class UserInventoryService {
     // EXCEPTIONS
     // ==========================================
 
-    public static class InventoryItemNotFoundException extends RuntimeException {
-        public InventoryItemNotFoundException(String message) {
-            super(message);
-        }
-    }
 }

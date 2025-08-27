@@ -1,6 +1,8 @@
 package com.circlebet.service.user;
 
 import com.circlebet.entity.user.User;
+import com.circlebet.exception.user.InsufficientCreditsException;
+import com.circlebet.exception.user.InsufficientFrozenCreditsException;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import org.slf4j.Logger;
@@ -296,21 +298,4 @@ public class UserCreditService {
         BigDecimal availableCredits
     ) {}
 
-    /**
-     * Exception thrown when user has insufficient credits for an operation.
-     */
-    public static class InsufficientCreditsException extends RuntimeException {
-        public InsufficientCreditsException(String message) {
-            super(message);
-        }
-    }
-
-    /**
-     * Exception thrown when user has insufficient frozen credits for unfreezing.
-     */
-    public static class InsufficientFrozenCreditsException extends RuntimeException {
-        public InsufficientFrozenCreditsException(String message) {
-            super(message);
-        }
-    }
 }

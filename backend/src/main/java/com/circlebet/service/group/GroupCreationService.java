@@ -104,9 +104,4 @@ public class GroupCreationService {
         }
     }
 
-    public static class GroupCreationException extends RuntimeException {
-        public GroupCreationException(String message) {
-            super(message);
-        }
-    }
 }

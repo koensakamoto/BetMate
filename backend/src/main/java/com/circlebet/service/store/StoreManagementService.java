@@ -2,6 +2,7 @@ package com.circlebet.service.store;
 
 import com.circlebet.entity.store.StoreItem;
 import com.circlebet.entity.user.UserInventory;
+import com.circlebet.exception.store.StoreManagementException;
 import com.circlebet.repository.store.StoreItemRepository;
 import com.circlebet.repository.user.UserInventoryRepository;
 import jakarta.validation.constraints.NotNull;
@@ -315,9 +316,4 @@ public class StoreManagementService {
     // EXCEPTIONS
     // ==========================================
 
-    public static class StoreManagementException extends RuntimeException {
-        public StoreManagementException(String message) {
-            super(message);
-        }
-    }
 }
