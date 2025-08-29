@@ -1,5 +1,5 @@
 import { Text, View, Image, TouchableOpacity } from "react-native";
-import icon from "../../assets/images/icon.png";
+const icon = require("../../assets/images/icon.png");
 
 export default function Profile() {
   return (
