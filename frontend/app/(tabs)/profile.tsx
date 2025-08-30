@@ -33,7 +33,9 @@ export default function Profile() {
           gap: 16 
         }}>
           {/* Notifications Icon */}
-          <TouchableOpacity style={{
+          <TouchableOpacity 
+            onPress={() => router.push('/notifications')}
+            style={{
             width: 40,
             height: 40,
             borderRadius: 20,

@@ -148,7 +148,7 @@ export default function Settings() {
           marginBottom: 32
         }}>
           <TouchableOpacity 
-            onPress={() => router.back()}
+            onPress={() => router.push('/(tabs)/profile')}
             style={{
               width: 40,
               height: 40,
