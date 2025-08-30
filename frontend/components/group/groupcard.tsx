@@ -19,7 +19,9 @@ const GroupCard: React.FC<GroupCardProps> = ({
     memberCount, 
     memberAvatars, 
     isJoined = false,
-    groupId 
+    groupId
+
+
 }) => {
     const handlePress = () => {
         if (groupId) {

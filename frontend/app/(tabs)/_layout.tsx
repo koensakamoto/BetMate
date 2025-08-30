@@ -1,7 +1,7 @@
 import { Header } from "@react-navigation/elements";
 import { Tabs } from "expo-router";
 import { View } from "react-native";
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 
 
 export default function TabsLayout() {
@@ -31,12 +31,6 @@ export default function TabsLayout() {
                 tabBarIcon: ({ color }) => (
                     <MaterialIcons name="group" size={24} color={color} />
                 )
-            }}
-        />
-        <Tabs.Screen
-            name="group/[groupId]"
-            options={{
-                href: null,
             }}
         />
         <Tabs.Screen
