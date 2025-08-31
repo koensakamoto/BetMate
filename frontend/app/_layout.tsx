@@ -12,15 +12,17 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="settings"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="group/[groupId]"
-          options={{ headerShown: false }}
+          options={{ 
+            headerShown: false,
+            presentation: 'modal'
+          }}
         />
         <Stack.Screen
           name="notifications"
-          options={{ headerShown: false }}
+          options={{ 
+            headerShown: false,
+            presentation: 'modal'
+          }}
         />
       </Stack>
     </>

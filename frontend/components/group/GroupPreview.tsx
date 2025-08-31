@@ -35,7 +35,7 @@ const GroupPreview: React.FC<GroupPreviewProps> = ({ groupData }) => {
         }}>
           {/* Back Button */}
           <TouchableOpacity 
-            onPress={() => router.push('/(tabs)/group')}
+            onPress={() => router.back()}
             style={{
               width: 40,
               height: 40,

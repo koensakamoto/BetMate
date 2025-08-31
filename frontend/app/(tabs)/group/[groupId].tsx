@@ -1,9 +1,9 @@
 import React from "react";
 import { useLocalSearchParams } from 'expo-router';
-import GroupMemberView from '../../components/group/GroupMemberView';
-import GroupPreview from '../../components/group/GroupPreview';
+import GroupMemberView from '../../../components/group/GroupMemberView';
+import GroupPreview from '../../../components/group/GroupPreview';
 
-const icon = require("../../assets/images/icon.png");
+const icon = require("../../../assets/images/icon.png");
 
 export default function GroupDetails() {
   const { groupId } = useLocalSearchParams();

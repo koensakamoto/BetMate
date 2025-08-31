@@ -53,6 +53,13 @@ export default function TabsLayout() {
             }}
         />
         <Tabs.Screen
+            name="group/[groupId]"
+            options={{
+                href: null,
+                tabBarStyle: { display: 'none' }
+            }}
+        />
+        <Tabs.Screen
             name="profile"
             options={{
                 title: "Profile",
