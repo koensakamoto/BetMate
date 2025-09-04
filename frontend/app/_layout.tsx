@@ -24,6 +24,27 @@ export default function RootLayout() {
             presentation: 'modal'
           }}
         />
+        <Stack.Screen
+          name="followers"
+          options={{ 
+            headerShown: false,
+            presentation: 'modal'
+          }}
+        />
+        <Stack.Screen
+          name="edit-profile"
+          options={{ 
+            headerShown: false,
+            presentation: 'modal'
+          }}
+        />
+        <Stack.Screen
+          name="create-bet"
+          options={{ 
+            headerShown: false,
+            presentation: 'modal'
+          }}
+        />
       </Stack>
     </>
   );

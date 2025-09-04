@@ -21,7 +21,7 @@ export default function Profile() {
       
       <ScrollView 
         style={{ flex: 1 }} 
-        contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 20 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Header Icons */}
@@ -29,7 +29,7 @@ export default function Profile() {
           flexDirection: 'row', 
           justifyContent: 'flex-end', 
           paddingHorizontal: 20, 
-          marginBottom: 12,
+          marginBottom: 8,
           gap: 16 
         }}>
           {/* Notifications Icon */}
@@ -82,10 +82,10 @@ export default function Profile() {
         </View>
 
         {/* Sleek Header */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+        <View style={{ paddingHorizontal: 20, marginBottom: 12 }}>
           {/* Avatar & Basic Info */}
-          <View style={{ alignItems: 'center', marginBottom: 24 }}>
-            <View style={{ position: 'relative', marginBottom: 16 }}>
+          <View style={{ alignItems: 'center', marginBottom: 20 }}>
+            <View style={{ position: 'relative', marginBottom: 12 }}>
               <Image 
                 source={icon}
                 style={{ 
@@ -115,7 +115,7 @@ export default function Profile() {
             <Text style={{ 
               fontSize: 14, 
               color: 'rgba(255, 255, 255, 0.5)',
-              marginBottom: 20
+              marginBottom: 16
             }}>
               @johnbets2024
             </Text>
@@ -127,7 +127,11 @@ export default function Profile() {
               gap: 24,
               marginBottom: 20
             }}>
-              <View style={{ alignItems: 'center' }}>
+              <TouchableOpacity 
+                style={{ alignItems: 'center' }}
+                onPress={() => router.push('/followers')}
+                activeOpacity={0.7}
+              >
                 <Text style={{ 
                   fontSize: 18, 
                   fontWeight: '600', 
@@ -144,7 +148,7 @@ export default function Profile() {
                 }}>
                   Followers
                 </Text>
-              </View>
+              </TouchableOpacity>
               
               <View style={{
                 width: 1,
@@ -152,7 +156,11 @@ export default function Profile() {
                 backgroundColor: 'rgba(255, 255, 255, 0.1)'
               }} />
               
-              <View style={{ alignItems: 'center' }}>
+              <TouchableOpacity 
+                style={{ alignItems: 'center' }}
+                onPress={() => router.push('/followers?tab=following')}
+                activeOpacity={0.7}
+              >
                 <Text style={{ 
                   fontSize: 18, 
                   fontWeight: '600', 
@@ -169,7 +177,7 @@ export default function Profile() {
                 }}>
                   Following
                 </Text>
-              </View>
+              </TouchableOpacity>
               
               <View style={{
                 width: 1,
@@ -197,15 +205,30 @@ export default function Profile() {
               </View>
             </View>
 
-            {/* Sleek Edit Button */}
-            <TouchableOpacity style={{ 
-              backgroundColor: 'rgba(255, 255, 255, 0.06)',
-              paddingVertical: 10,
-              paddingHorizontal: 24,
-              borderRadius: 20,
-              borderWidth: 0.5,
-              borderColor: 'rgba(255, 255, 255, 0.1)'
+            {/* Bio Section */}
+            <Text style={{
+              fontSize: 14,
+              color: 'rgba(255, 255, 255, 0.8)',
+              textAlign: 'center',
+              lineHeight: 20,
+              marginBottom: 20,
+              paddingHorizontal: 20
             }}>
+              Professional sports bettor | 85% win rate | Follow for winning tips 🏆
+            </Text>
+
+            {/* Sleek Edit Button */}
+            <TouchableOpacity 
+              onPress={() => router.push('/edit-profile')}
+              style={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                paddingVertical: 10,
+                paddingHorizontal: 24,
+                borderRadius: 20,
+                borderWidth: 0.5,
+                borderColor: 'rgba(255, 255, 255, 0.1)'
+              }}
+            >
               <Text style={{ 
                 color: '#ffffff', 
                 fontSize: 14, 

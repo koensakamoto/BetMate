@@ -63,19 +63,6 @@ export default function TabsLayout() {
             name="profile"
             options={{
                 title: "Profile",
-
-                headerRight: () => (
-                    <View style={{ paddingRight: 16 }}>
-                        <MaterialIcons name="settings" size={30} color="black" />
-                    </View>
-                ),
-
-                headerLeft: () => (
-                    <View style={{ paddingLeft: 16 }}>
-                    <MaterialIcons name="account-circle" size={30} color="black" />
-                    </View>
-                ),
-
                 tabBarIcon: ({ color }) => (
                     <MaterialIcons name="person" size={24} color={color} />
                 )
