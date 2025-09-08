@@ -1,15 +1,28 @@
-import { Text, View, Image, TouchableOpacity, ScrollView, StatusBar } from "react-native";
+import { Text, View, Image, TouchableOpacity, ScrollView, StatusBar, Alert } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useAuth } from '../../contexts/AuthContext';
 
 const icon = require("../../assets/images/icon.png");
 
 export default function Profile() {
   const insets = useSafeAreaInsets();
+  const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
   const tabs = ['Activity', 'Stats', 'Achievements'];
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign Out', style: 'destructive', onPress: logout }
+      ]
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
@@ -77,6 +90,27 @@ export default function Profile() {
               name="settings" 
               size={20} 
               color="#ffffff" 
+            />
+          </TouchableOpacity>
+
+          {/* Logout Icon */}
+          <TouchableOpacity 
+            onPress={handleLogout}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              borderWidth: 1,
+              borderColor: 'rgba(239, 68, 68, 0.2)',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}
+          >
+            <MaterialIcons 
+              name="logout" 
+              size={18} 
+              color="#EF4444" 
             />
           </TouchableOpacity>
         </View>

@@ -1,6 +1,4 @@
-import { Header } from "@react-navigation/elements";
 import { Tabs } from "expo-router";
-import { View } from "react-native";
 import { MaterialIcons } from '@expo/vector-icons';
 
 
