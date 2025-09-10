@@ -10,10 +10,11 @@ import AuthButton from '../../components/auth/AuthButton';
 
 export default function Signup() {
   const insets = useSafeAreaInsets();
-  const { signup, isLoading } = useAuth();
+  const { signup, isLoading, error, clearError } = useAuth();
   
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     username: '',
     email: '',
     password: '',
@@ -49,10 +50,16 @@ export default function Signup() {
   const validateForm = (): boolean => {
     const newErrors: {[key: string]: string} = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Display name is required';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Display name must be at least 2 characters';
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    } else if (formData.firstName.trim().length < 2) {
+      newErrors.firstName = 'First name must be at least 2 characters';
+    }
+
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
+    } else if (formData.lastName.trim().length < 2) {
+      newErrors.lastName = 'Last name must be at least 2 characters';
     }
 
     if (!formData.username.trim()) {
@@ -95,7 +102,8 @@ export default function Signup() {
 
     try {
       await signup({
-        name: formData.name.trim(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
         username: formData.username.trim(),
         email: formData.email.trim(),
         password: formData.password
@@ -124,6 +132,10 @@ export default function Signup() {
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+    // Clear auth error when user starts typing
+    if (error) {
+      clearError();
     }
   };
 
@@ -170,13 +182,24 @@ export default function Signup() {
           {/* Signup Form */}
           <View style={{ marginBottom: 24 }}>
             <AuthInput
-              label="Display Name"
-              value={formData.name}
-              onChangeText={(text) => updateField('name', text)}
-              placeholder="Enter your display name"
+              label="First Name"
+              value={formData.firstName}
+              onChangeText={(text) => updateField('firstName', text)}
+              placeholder="Enter your first name"
               autoCapitalize="words"
-              error={errors.name}
-              isValid={formData.name.trim().length >= 2}
+              error={errors.firstName}
+              isValid={formData.firstName.trim().length >= 2}
+              maxLength={50}
+            />
+
+            <AuthInput
+              label="Last Name"
+              value={formData.lastName}
+              onChangeText={(text) => updateField('lastName', text)}
+              placeholder="Enter your last name"
+              autoCapitalize="words"
+              error={errors.lastName}
+              isValid={formData.lastName.trim().length >= 2}
               maxLength={50}
             />
 
