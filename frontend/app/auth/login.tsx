@@ -12,7 +12,7 @@ const icon = require("../../assets/images/icon.png");
 
 export default function Login() {
   const insets = useSafeAreaInsets();
-  const { login, isLoading } = useAuth();
+  const { login, isLoading, error, clearError } = useAuth();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -78,6 +78,10 @@ export default function Login() {
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+    // Clear auth error when user starts typing
+    if (error) {
+      clearError();
     }
   };
 
