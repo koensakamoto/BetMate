@@ -15,7 +15,7 @@ import com.circlebet.entity.messaging.Message;
  * Groups allow users to create communities for shared betting activities.
  */
 @Entity
-@Table(name = "groups", indexes = {
+@Table(name = "`groups`", indexes = {
     @Index(name = "idx_group_name", columnList = "groupName"),
     @Index(name = "idx_group_creator", columnList = "creator_id"),
     @Index(name = "idx_group_privacy", columnList = "privacy"),

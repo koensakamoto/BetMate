@@ -22,7 +22,7 @@ public interface GroupRewardActionRepository extends JpaRepository<GroupRewardAc
     // Status-based queries
     List<GroupRewardAction> findByStatus(GroupRewardAction.ActionStatus status);
     List<GroupRewardAction> findByGroupAndStatus(Group group, GroupRewardAction.ActionStatus status);
-    List<GroupRewardAction> findByIsActive();
+    List<GroupRewardAction> findByIsActive(Boolean isActive);
     
     // Action type queries
     List<GroupRewardAction> findByActionType(GroupRewardAction.ActionType actionType);

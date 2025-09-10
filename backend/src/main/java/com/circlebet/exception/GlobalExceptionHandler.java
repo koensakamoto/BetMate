@@ -108,6 +108,14 @@ public class GlobalExceptionHandler {
         log.warn("Validation failed for request {}: {} validation errors", 
                 request.getRequestURI(), ex.getBindingResult().getErrorCount());
         
+        // Debug log each validation error
+        ex.getBindingResult().getFieldErrors().forEach(fieldError -> {
+            log.warn("Field validation error - Field: {}, Message: {}, Rejected Value: {}", 
+                    fieldError.getField(), 
+                    fieldError.getDefaultMessage(),
+                    fieldError.getRejectedValue());
+        });
+        
         Map<String, Object> errors = ex.getBindingResult().getFieldErrors().stream()
             .collect(Collectors.toMap(
                 FieldError::getField,

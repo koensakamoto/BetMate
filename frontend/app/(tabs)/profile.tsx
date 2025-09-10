@@ -1,28 +1,105 @@
-import { Text, View, Image, TouchableOpacity, ScrollView, StatusBar, Alert } from "react-native";
+import { Text, View, Image, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { userService, UserProfileResponse, UserStatistics } from '../../services/user/userService';
+import { debugLog, errorLog } from '../../config/env';
 
 const icon = require("../../assets/images/icon.png");
 
 export default function Profile() {
   const insets = useSafeAreaInsets();
-  const { logout } = useAuth();
+  const { user: authUser } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
+  const [userProfile, setUserProfile] = useState<UserProfileResponse | null>(null);
+  const [userStats, setUserStats] = useState<UserStatistics | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const tabs = ['Activity', 'Stats', 'Achievements'];
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: logout }
-      ]
-    );
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Load user profile
+      const profile = await userService.getCurrentUserProfile();
+      setUserProfile(profile);
+      debugLog('User profile loaded:', profile);
+      
+      // Load user statistics
+      const stats = await userService.getCurrentUserStatistics();
+      setUserStats(stats);
+      debugLog('User stats loaded:', stats);
+      
+    } catch (err: any) {
+      errorLog('Failed to load user data:', err);
+      setError(err.message || 'Failed to load profile data');
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handleEditProfile = () => {
+    router.push('/edit-profile');
+  };
+
+  const formatNumber = (num?: number): string => {
+    if (num === undefined || num === null) return '0';
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+  };
+
+  const formatPercentage = (percentage?: number): string => {
+    if (percentage === undefined || percentage === null) return '0%';
+    return Math.round(percentage) + '%';
+  };
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#00D4AA" />
+        <Text style={{ color: '#ffffff', marginTop: 16, fontSize: 16 }}>Loading profile...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
+        <MaterialIcons name="error-outline" size={48} color="#EF4444" />
+        <Text style={{ color: '#ffffff', marginTop: 16, fontSize: 18, textAlign: 'center' }}>Failed to load profile</Text>
+        <Text style={{ color: 'rgba(255, 255, 255, 0.6)', marginTop: 8, fontSize: 14, textAlign: 'center' }}>{error}</Text>
+        <TouchableOpacity 
+          onPress={loadUserData}
+          style={{
+            backgroundColor: '#00D4AA',
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            borderRadius: 8,
+            marginTop: 20
+          }}
+        >
+          <Text style={{ color: '#000000', fontWeight: '600', fontSize: 16 }}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const displayName = userProfile?.firstName && userProfile?.lastName 
+    ? `${userProfile.firstName} ${userProfile.lastName}`
+    : userProfile?.username || 'Unknown User';
+  
+  const username = userProfile?.username || '';
+
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
@@ -93,26 +170,6 @@ export default function Profile() {
             />
           </TouchableOpacity>
 
-          {/* Logout Icon */}
-          <TouchableOpacity 
-            onPress={handleLogout}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              borderWidth: 1,
-              borderColor: 'rgba(239, 68, 68, 0.2)',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}
-          >
-            <MaterialIcons 
-              name="logout" 
-              size={18} 
-              color="#EF4444" 
-            />
-          </TouchableOpacity>
         </View>
 
         {/* Sleek Header */}
@@ -138,21 +195,44 @@ export default function Profile() {
               }} />
             </View>
             
-            <Text style={{ 
-              fontSize: 20, 
-              fontWeight: '500', 
-              color: '#ffffff',
-              marginBottom: 4
-            }}>
-              John Doe
-            </Text>
-            <Text style={{ 
-              fontSize: 14, 
-              color: 'rgba(255, 255, 255, 0.5)',
-              marginBottom: 16
-            }}>
-              @johnbets2024
-            </Text>
+            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ 
+                fontSize: 20, 
+                fontWeight: '500', 
+                color: '#ffffff',
+                marginBottom: 4
+              }}>
+                {displayName}
+              </Text>
+              <Text style={{ 
+                fontSize: 14, 
+                color: 'rgba(255, 255, 255, 0.5)',
+                marginBottom: 8
+              }}>
+                @{username}
+              </Text>
+              
+              {/* Edit Profile Button */}
+              <TouchableOpacity
+                onPress={handleEditProfile}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.2)',
+                  borderRadius: 6,
+                  marginTop: 4
+                }}
+              >
+                <Text style={{
+                  color: '#ffffff',
+                  fontSize: 13,
+                  fontWeight: '500'
+                }}>
+                  Edit Profile
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Inline Stats */}
             <View style={{ 
@@ -161,18 +241,14 @@ export default function Profile() {
               gap: 24,
               marginBottom: 20
             }}>
-              <TouchableOpacity 
-                style={{ alignItems: 'center' }}
-                onPress={() => router.push('/followers')}
-                activeOpacity={0.7}
-              >
+              <View style={{ alignItems: 'center' }}>
                 <Text style={{ 
                   fontSize: 18, 
                   fontWeight: '600', 
                   color: '#ffffff',
                   marginBottom: 2
                 }}>
-                  1.2K
+                  {formatNumber(userStats?.totalCredits)}
                 </Text>
                 <Text style={{ 
                   fontSize: 11, 
@@ -180,9 +256,9 @@ export default function Profile() {
                   textTransform: 'uppercase',
                   letterSpacing: 0.5
                 }}>
-                  Followers
+                  Credits
                 </Text>
-              </TouchableOpacity>
+              </View>
               
               <View style={{
                 width: 1,
@@ -190,18 +266,14 @@ export default function Profile() {
                 backgroundColor: 'rgba(255, 255, 255, 0.1)'
               }} />
               
-              <TouchableOpacity 
-                style={{ alignItems: 'center' }}
-                onPress={() => router.push('/followers?tab=following')}
-                activeOpacity={0.7}
-              >
+              <View style={{ alignItems: 'center' }}>
                 <Text style={{ 
                   fontSize: 18, 
                   fontWeight: '600', 
                   color: '#ffffff',
                   marginBottom: 2
                 }}>
-                  120
+                  {formatNumber(userStats?.totalWins)}
                 </Text>
                 <Text style={{ 
                   fontSize: 11, 
@@ -209,9 +281,9 @@ export default function Profile() {
                   textTransform: 'uppercase',
                   letterSpacing: 0.5
                 }}>
-                  Following
+                  Wins
                 </Text>
-              </TouchableOpacity>
+              </View>
               
               <View style={{
                 width: 1,
@@ -226,7 +298,7 @@ export default function Profile() {
                   color: '#00D4AA',
                   marginBottom: 2
                 }}>
-                  85%
+                  {formatPercentage(userStats?.winRate)}
                 </Text>
                 <Text style={{ 
                   fontSize: 11, 

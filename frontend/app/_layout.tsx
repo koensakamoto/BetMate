@@ -2,13 +2,13 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
-import LoadingScreen from '../components/auth/LoadingScreen';
+import AuthLoadingScreen from '../components/auth/AuthLoadingScreen';
 
 function RootLayoutNav() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <LoadingScreen />;
+    return <AuthLoadingScreen message="Checking authentication..." />;
   }
 
   return (

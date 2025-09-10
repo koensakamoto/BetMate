@@ -46,7 +46,6 @@ public interface UserInventoryRepository extends JpaRepository<UserInventory, Lo
     
     // Usage tracking
     List<UserInventory> findByUserAndLastUsedAtAfter(User user, LocalDateTime since);
-    List<UserInventory> findByUserAndUsageCountGreaterThan(User user, Long minUsage);
     
     // Item collections
     @Query("SELECT ui FROM UserInventory ui WHERE ui.user = :user AND ui.storeItem.itemType IN :itemTypes AND ui.isActive = true")
