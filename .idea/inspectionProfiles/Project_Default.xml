@@ -1,9 +1,0 @@
-&lt;component name="InspectionProjectProfileManager"&gt;
-  &lt;profile version="1.0"&gt;
-    &lt;option name="myName" value="Project Default" /&gt;
-    &lt;inspection_tool class="SpringJavaInjectionPointsAutowiringInspection" enabled="false" level="ERROR" enabled_by_default="false" /&gt;
-    &lt;inspection_tool class="SpringBootApplicationProperties" enabled="true" level="WEAK WARNING" enabled_by_default="true" /&gt;
-    &lt;inspection_tool class="SpringComponentScan" enabled="true" level="WARNING" enabled_by_default="true" /&gt;
-    &lt;inspection_tool class="SpringRequestMappingMethod" enabled="true" level="WARNING" enabled_by_default="true" /&gt;
-  &lt;/profile&gt;
-&lt;/component&gt;
