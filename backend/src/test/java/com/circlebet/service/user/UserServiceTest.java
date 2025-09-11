@@ -321,7 +321,7 @@ class UserServiceTest {
         when(userRepository.save(testUser)).thenReturn(testUser);
         
         // When
-        User result = userService.updateProfile(TEST_USER_ID, newFirstName, newLastName);
+        User result = userService.updateProfile(TEST_USER_ID, newFirstName, newLastName, "Test bio");
         
         // Then
         assertThat(result.getFirstName()).isEqualTo(newFirstName);
@@ -337,7 +337,7 @@ class UserServiceTest {
         when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.empty());
         
         // When & Then
-        assertThatThrownBy(() -> userService.updateProfile(TEST_USER_ID, "New", "Name"))
+        assertThatThrownBy(() -> userService.updateProfile(TEST_USER_ID, "New", "Name", "Test bio"))
             .isInstanceOf(com.circlebet.exception.user.UserNotFoundException.class)
             .hasMessageContaining("User not found: " + TEST_USER_ID);
         

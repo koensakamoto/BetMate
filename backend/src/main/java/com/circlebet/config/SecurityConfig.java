@@ -56,6 +56,11 @@ public class SecurityConfig {
         "/v3/api-docs/**"
     };
     
+    private static final String[] PUBLIC_GROUP_ENDPOINTS = {
+        "/api/groups/public",
+        "/api/groups/search"
+    };
+    
     // BCrypt strength - explicitly set to 12 for stronger hashing
     private static final int BCRYPT_STRENGTH = 12;
 
@@ -66,9 +71,9 @@ public class SecurityConfig {
         this.jwtAuthFilter = jwtAuthFilter;
         log.info("SecurityConfig initialized with JWT authentication filter");
         log.info("BCrypt password encoder strength set to: {}", BCRYPT_STRENGTH);
-        log.debug("Public endpoints configured: Auth={}, User={}, Health={}, Docs={}", 
+        log.debug("Public endpoints configured: Auth={}, User={}, Health={}, Docs={}, Groups={}", 
                  PUBLIC_AUTH_ENDPOINTS.length, PUBLIC_USER_ENDPOINTS.length, 
-                 PUBLIC_HEALTH_ENDPOINTS.length, PUBLIC_DOCS_ENDPOINTS.length);
+                 PUBLIC_HEALTH_ENDPOINTS.length, PUBLIC_DOCS_ENDPOINTS.length, PUBLIC_GROUP_ENDPOINTS.length);
     }
 
     @Bean
@@ -86,6 +91,7 @@ public class SecurityConfig {
                 .requestMatchers(PUBLIC_USER_ENDPOINTS).permitAll()
                 .requestMatchers(PUBLIC_HEALTH_ENDPOINTS).permitAll()
                 .requestMatchers(PUBLIC_DOCS_ENDPOINTS).permitAll()
+                .requestMatchers(PUBLIC_GROUP_ENDPOINTS).permitAll()
                 
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
@@ -153,7 +159,7 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         SecurityFilterChain filterChain = http.build();
-        log.info("SecurityFilterChain successfully configured with {} public endpoint groups", 4);
+        log.info("SecurityFilterChain successfully configured with {} public endpoint groups", 5);
         log.info("Security headers configured: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy");
         log.debug("JWT filter added before UsernamePasswordAuthenticationFilter");
         return filterChain;

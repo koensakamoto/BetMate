@@ -5,5 +5,6 @@ package com.circlebet.dto.user.request;
  */
 public record UserProfileUpdateRequestDto(
     String firstName,
-    String lastName
+    String lastName,
+    String bio
 ) {}

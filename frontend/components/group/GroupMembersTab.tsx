@@ -1,113 +1,104 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { groupService, type GroupMemberResponse } from '../../services/group/groupService';
+import { debugLog, errorLog } from '../../config/env';
 
 interface GroupMembersTabProps {
   groupData: {
+    id: string | string[];
     memberCount: number;
   };
 }
 
 const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
   const [activeFilter, setActiveFilter] = useState('All');
+  const [members, setMembers] = useState<GroupMemberResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const memberFilters = ['All', 'Admins', 'Active', 'Recent'];
 
-  // Mock member data
-  const allMembers = [
-    {
-      id: 1,
-      name: 'Alex Chen',
-      username: '@alex_chen',
-      role: 'Admin',
-      joinDate: '2 months ago',
-      lastActive: 'Online',
-      isOnline: true,
-      avatar: 'A'
-    },
-    {
-      id: 2,
-      name: 'Sarah Johnson',
-      username: '@sarah_j',
-      role: 'Admin',
-      joinDate: '2 months ago',
-      lastActive: '5 min ago',
-      isOnline: true,
-      avatar: 'S'
-    },
-    {
-      id: 3,
-      name: 'Mike Wilson',
-      username: '@mike_w',
-      role: 'Member',
-      joinDate: '3 weeks ago',
-      lastActive: '2 hours ago',
-      isOnline: false,
-      avatar: 'M'
-    },
-    {
-      id: 4,
-      name: 'Emma Davis',
-      username: '@emma_d',
-      role: 'Member',
-      joinDate: '1 week ago',
-      lastActive: 'Yesterday',
-      isOnline: false,
-      avatar: 'E'
-    },
-    {
-      id: 5,
-      name: 'James Brown',
-      username: '@james_b',
-      role: 'Member',
-      joinDate: '5 days ago',
-      lastActive: '3 days ago',
-      isOnline: false,
-      avatar: 'J'
-    },
-    {
-      id: 6,
-      name: 'Lisa Garcia',
-      username: '@lisa_g',
-      role: 'Member',
-      joinDate: '3 days ago',
-      lastActive: '1 day ago',
-      isOnline: false,
-      avatar: 'L'
-    },
-    {
-      id: 7,
-      name: 'David Kim',
-      username: '@david_k',
-      role: 'Member',
-      joinDate: '2 days ago',
-      lastActive: 'Online',
-      isOnline: true,
-      avatar: 'D'
-    },
-    {
-      id: 8,
-      name: 'Anna Martinez',
-      username: '@anna_m',
-      role: 'Member',
-      joinDate: '1 day ago',
-      lastActive: '4 hours ago',
-      isOnline: false,
-      avatar: 'A'
+  // Fetch group members
+  useEffect(() => {
+    const fetchMembers = async () => {
+      setIsLoading(true);
+      try {
+        const groupId = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
+        const membersData = await groupService.getGroupMembers(Number(groupId));
+        setMembers(membersData);
+        debugLog('Group members fetched:', membersData);
+      } catch (error) {
+        errorLog('Error fetching group members:', error);
+        setMembers([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (groupData.id) {
+      fetchMembers();
     }
-  ];
+  }, [groupData.id]);
 
   const getFilteredMembers = () => {
     switch (activeFilter) {
       case 'Admins':
-        return allMembers.filter(member => member.role === 'Admin');
+        return members.filter(member => member.role === 'ADMIN' || member.role === 'MODERATOR');
       case 'Active':
-        return allMembers.filter(member => member.isOnline);
+        return members.filter(member => isOnline(member));
       case 'Recent':
-        return allMembers.filter(member => 
-          member.joinDate.includes('day') || member.joinDate.includes('week')
-        );
+        return members.filter(member => {
+          const joinDate = new Date(member.joinedAt);
+          const now = new Date();
+          const daysDiff = (now.getTime() - joinDate.getTime()) / (1000 * 60 * 60 * 24);
+          return daysDiff <= 7; // Joined within last 7 days
+        });
       default:
-        return allMembers;
+        return members;
     }
+  };
+
+  // Helper function to check if member is online
+  const isOnline = (member: GroupMemberResponse): boolean => {
+    if (!member.lastActivityAt) return false;
+    const lastActivity = new Date(member.lastActivityAt);
+    const now = new Date();
+    const minutesDiff = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
+    return minutesDiff <= 5; // Active within last 5 minutes
+  };
+
+  // Helper function to get display name
+  const getDisplayName = (member: GroupMemberResponse): string => {
+    return member.displayName || member.username;
+  };
+
+  // Helper function to format join date
+  const formatJoinDate = (dateString: string): string => {
+    const joinDate = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - joinDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.ceil(diffDays / 7)} week${Math.ceil(diffDays / 7) > 1 ? 's' : ''} ago`;
+    return `${Math.ceil(diffDays / 30)} month${Math.ceil(diffDays / 30) > 1 ? 's' : ''} ago`;
+  };
+
+  // Helper function to format last activity
+  const formatLastActivity = (member: GroupMemberResponse): string => {
+    if (isOnline(member)) return 'Online';
+    if (!member.lastActivityAt) return 'Never';
+    
+    const lastActivity = new Date(member.lastActivityAt);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - lastActivity.getTime());
+    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffMinutes < 60) return `${diffMinutes} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays === 1) return 'Yesterday';
+    return `${diffDays} days ago`;
   };
 
   return (
@@ -185,8 +176,19 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
         </ScrollView>
       </View>
 
-      {/* Members List */}
-      {getFilteredMembers().map((member, index) => (
+      {/* Loading State */}
+      {isLoading ? (
+        <Text style={{
+          color: 'rgba(255, 255, 255, 0.6)',
+          textAlign: 'center',
+          marginTop: 20
+        }}>
+          Loading members...
+        </Text>
+      ) : (
+        <>
+          {/* Members List */}
+          {getFilteredMembers().map((member, index) => (
         <View key={member.id} style={{
           backgroundColor: 'rgba(255, 255, 255, 0.02)',
           borderWidth: 0.5,
@@ -202,7 +204,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
             width: 48,
             height: 48,
             borderRadius: 24,
-            backgroundColor: member.isOnline ? 'rgba(0, 212, 170, 0.2)' : 'rgba(255, 255, 255, 0.12)',
+            backgroundColor: isOnline(member) ? 'rgba(0, 212, 170, 0.2)' : 'rgba(255, 255, 255, 0.12)',
             justifyContent: 'center',
             alignItems: 'center',
             marginRight: 16,
@@ -211,13 +213,13 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
             <Text style={{
               fontSize: 18,
               fontWeight: '700',
-              color: member.isOnline ? '#00D4AA' : '#ffffff'
+              color: isOnline(member) ? '#00D4AA' : '#ffffff'
             }}>
-              {member.avatar}
+              {getDisplayName(member).charAt(0).toUpperCase()}
             </Text>
             
             {/* Online Indicator */}
-            {member.isOnline && (
+            {isOnline(member) && (
               <View style={{
                 position: 'absolute',
                 bottom: 2,
@@ -245,10 +247,10 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
                 color: '#ffffff',
                 marginRight: 8
               }}>
-                {member.name}
+                {getDisplayName(member)}
               </Text>
               
-              {member.role === 'Admin' && (
+              {(member.role === 'ADMIN' || member.role === 'MODERATOR') && (
                 <View style={{
                   backgroundColor: 'rgba(255, 215, 0, 0.2)',
                   paddingHorizontal: 6,
@@ -260,7 +262,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
                     fontWeight: '600',
                     color: '#FFD700'
                   }}>
-                    ADMIN
+                    {member.role}
                   </Text>
                 </View>
               )}
@@ -271,7 +273,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
               color: 'rgba(255, 255, 255, 0.6)',
               marginBottom: 2
             }}>
-              {member.username}
+              @{member.username}
             </Text>
 
             <View style={{
@@ -283,15 +285,15 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
                 fontSize: 12,
                 color: 'rgba(255, 255, 255, 0.5)'
               }}>
-                Joined {member.joinDate}
+                Joined {formatJoinDate(member.joinedAt)}
               </Text>
               
               <Text style={{
                 fontSize: 12,
-                color: member.isOnline ? '#00D4AA' : 'rgba(255, 255, 255, 0.5)',
-                fontWeight: member.isOnline ? '600' : '400'
+                color: isOnline(member) ? '#00D4AA' : 'rgba(255, 255, 255, 0.5)',
+                fontWeight: isOnline(member) ? '600' : '400'
               }}>
-                {member.lastActive}
+                {formatLastActivity(member)}
               </Text>
             </View>
           </View>
@@ -313,27 +315,40 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
             </Text>
           </TouchableOpacity>
         </View>
-      ))}
+          ))}
+          
+          {/* Empty State */}
+          {getFilteredMembers().length === 0 && (
+            <Text style={{
+              color: 'rgba(255, 255, 255, 0.6)',
+              textAlign: 'center',
+              marginTop: 20
+            }}>
+              {activeFilter === 'All' ? 'No members found.' : `No ${activeFilter.toLowerCase()} members found.`}
+            </Text>
+          )}
 
-      {/* Show More Button */}
-      {getFilteredMembers().length < groupData.memberCount && (
-        <TouchableOpacity style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.05)',
-          paddingVertical: 14,
-          borderRadius: 8,
-          marginTop: 8,
-          alignItems: 'center',
-          borderWidth: 0.5,
-          borderColor: 'rgba(255, 255, 255, 0.1)'
-        }}>
-          <Text style={{
-            color: 'rgba(255, 255, 255, 0.8)',
-            fontSize: 14,
-            fontWeight: '600'
-          }}>
-            Show More Members
-          </Text>
-        </TouchableOpacity>
+          {/* Show More Button */}
+          {getFilteredMembers().length < groupData.memberCount && (
+            <TouchableOpacity style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              paddingVertical: 14,
+              borderRadius: 8,
+              marginTop: 8,
+              alignItems: 'center',
+              borderWidth: 0.5,
+              borderColor: 'rgba(255, 255, 255, 0.1)'
+            }}>
+              <Text style={{
+                color: 'rgba(255, 255, 255, 0.8)',
+                fontSize: 14,
+                fontWeight: '600'
+              }}>
+                Show More Members
+              </Text>
+            </TouchableOpacity>
+          )}
+        </>
       )}
     </View>
   );

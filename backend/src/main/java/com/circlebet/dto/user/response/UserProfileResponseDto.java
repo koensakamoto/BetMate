@@ -12,6 +12,7 @@ public class UserProfileResponseDto {
     private String email;
     private String firstName;
     private String lastName;
+    private String bio;
     private String displayName;
     private boolean emailVerified;
     private boolean isActive;
@@ -24,6 +25,7 @@ public class UserProfileResponseDto {
         response.email = user.getEmail();
         response.firstName = user.getFirstName();
         response.lastName = user.getLastName();
+        response.bio = user.getBio();
         response.displayName = user.getEffectiveDisplayName();
         response.emailVerified = user.getEmailVerified();
         response.isActive = user.getIsActive();
@@ -37,6 +39,7 @@ public class UserProfileResponseDto {
     public String getEmail() { return email; }
     public String getFirstName() { return firstName; }
     public String getLastName() { return lastName; }
+    public String getBio() { return bio; }
     public String getDisplayName() { return displayName; }
     public boolean isEmailVerified() { return emailVerified; }
     public boolean isActive() { return isActive; }

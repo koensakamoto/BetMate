@@ -15,7 +15,7 @@ export abstract class BaseApiService {
     config?: AxiosRequestConfig
   ): Promise<T> {
     return retryRequest(async () => {
-      const response = await apiClient.get<ApiResponse<T>>(
+      const response = await apiClient.get<ApiResponse<T> | T>(
         `${this.baseEndpoint}${endpoint}`,
         config
       );
@@ -30,7 +30,7 @@ export abstract class BaseApiService {
     config?: AxiosRequestConfig
   ): Promise<T> {
     return retryRequest(async () => {
-      const response = await apiClient.post<ApiResponse<T>>(
+      const response = await apiClient.post<ApiResponse<T> | T>(
         `${this.baseEndpoint}${endpoint}`,
         data,
         config
@@ -46,7 +46,7 @@ export abstract class BaseApiService {
     config?: AxiosRequestConfig
   ): Promise<T> {
     return retryRequest(async () => {
-      const response = await apiClient.put<ApiResponse<T>>(
+      const response = await apiClient.put<ApiResponse<T> | T>(
         `${this.baseEndpoint}${endpoint}`,
         data,
         config
@@ -62,7 +62,7 @@ export abstract class BaseApiService {
     config?: AxiosRequestConfig
   ): Promise<T> {
     return retryRequest(async () => {
-      const response = await apiClient.patch<ApiResponse<T>>(
+      const response = await apiClient.patch<ApiResponse<T> | T>(
         `${this.baseEndpoint}${endpoint}`,
         data,
         config
@@ -77,7 +77,7 @@ export abstract class BaseApiService {
     config?: AxiosRequestConfig
   ): Promise<T> {
     return retryRequest(async () => {
-      const response = await apiClient.delete<ApiResponse<T>>(
+      const response = await apiClient.delete<ApiResponse<T> | T>(
         `${this.baseEndpoint}${endpoint}`,
         config
       );
@@ -98,7 +98,7 @@ export abstract class BaseApiService {
     config?: AxiosRequestConfig
   ): Promise<PagedResponse<T>> {
     return retryRequest(async () => {
-      const response = await apiClient.get<ApiResponse<PagedResponse<T>>>(
+      const response = await apiClient.get<ApiResponse<PagedResponse<T>> | PagedResponse<T>>(
         `${this.baseEndpoint}${endpoint}`,
         {
           ...config,
@@ -132,7 +132,7 @@ export abstract class BaseApiService {
     }
 
     return retryRequest(async () => {
-      const response = await apiClient.post<ApiResponse<T>>(
+      const response = await apiClient.post<ApiResponse<T> | T>(
         `${this.baseEndpoint}${endpoint}`,
         formData,
         {

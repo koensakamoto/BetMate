@@ -6,6 +6,7 @@ import { ApiResponse } from '../../types/api';
 export interface UserProfileUpdateRequest {
   firstName: string;
   lastName: string;
+  bio?: string;
 }
 
 export interface UserProfileResponse {
@@ -14,6 +15,7 @@ export interface UserProfileResponse {
   email: string;
   firstName?: string;
   lastName?: string;
+  bio?: string;
   profileImageUrl?: string;
   createdAt: string;
   lastLoginAt?: string;
@@ -35,16 +37,13 @@ export interface UserSearchResult {
 }
 
 export interface UserStatistics {
-  userId: number;
-  totalCredits: number;
-  totalWins: number;
-  totalLosses: number;
-  winRate: number;
-  totalBets: number;
+  winCount: number;
+  lossCount: number;
+  currentStreak: number;
+  longestStreak: number;
   activeBets: number;
-  groupMembershipCount: number;
-  rank?: number;
-  achievements?: string[];
+  winRate: number;
+  totalGames: number;
 }
 
 export class UserService extends BaseApiService {

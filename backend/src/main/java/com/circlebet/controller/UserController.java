@@ -149,6 +149,11 @@ public class UserController {
     @PutMapping("/profile")
     public ResponseEntity<UserProfileResponseDto> updateCurrentUserProfile(@Valid @RequestBody UserProfileUpdateRequestDto request) {
         try {
+            System.out.println("=== PROFILE UPDATE DEBUG ===");
+            System.out.println("firstName: " + request.firstName());
+            System.out.println("lastName: " + request.lastName());
+            System.out.println("bio: " + request.bio());
+            
             UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
             if (userPrincipal == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -157,9 +162,11 @@ public class UserController {
             User updatedUser = userService.updateProfile(
                 userPrincipal.getUserId(),
                 request.firstName(),
-                request.lastName()
+                request.lastName(),
+                request.bio()
             );
             
+            System.out.println("Updated user bio: " + updatedUser.getBio());
             return ResponseEntity.ok(UserProfileResponseDto.fromUser(updatedUser));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

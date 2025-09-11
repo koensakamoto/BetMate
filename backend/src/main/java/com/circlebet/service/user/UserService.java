@@ -83,10 +83,11 @@ public class UserService {
      * Updates user profile information.
      */
     @Transactional
-    public User updateProfile(@NotNull Long userId, String firstName, String lastName) {
+    public User updateProfile(@NotNull Long userId, String firstName, String lastName, String bio) {
         User user = getUserById(userId);
         user.setFirstName(firstName);
         user.setLastName(lastName);
+        user.setBio(bio);
         return userRepository.save(user);
     }
 

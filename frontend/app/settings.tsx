@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Text, View, TouchableOpacity, ScrollView, StatusBar, Switch } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, StatusBar, Switch, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { authService } from '../services/auth/authService';
+import { debugLog, errorLog } from '../config/env';
 
 export default function Settings() {
   const insets = useSafeAreaInsets();
@@ -10,6 +12,46 @@ export default function Settings() {
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [privateProfile, setPrivateProfile] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsSigningOut(true);
+              debugLog('Starting sign out process...');
+              
+              await authService.logout();
+              debugLog('Successfully signed out');
+              
+              // Navigate to login screen
+              router.replace('/auth/login');
+              
+            } catch (error) {
+              errorLog('Sign out error:', error);
+              Alert.alert(
+                'Error',
+                'Failed to sign out. Please try again.',
+                [{ text: 'OK' }]
+              );
+            } finally {
+              setIsSigningOut(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const SettingSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <View style={{
@@ -276,17 +318,21 @@ export default function Settings() {
         </SettingSection>
 
         {/* Sign Out */}
-        <TouchableOpacity style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.03)',
-          borderRadius: 16,
-          padding: 16,
-          marginBottom: 16,
-          borderWidth: 0.5,
-          borderColor: 'rgba(255, 255, 255, 0.08)',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
+        <TouchableOpacity 
+          onPress={handleSignOut}
+          disabled={isSigningOut}
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+            borderRadius: 16,
+            padding: 16,
+            marginBottom: 16,
+            borderWidth: 0.5,
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            opacity: isSigningOut ? 0.6 : 1
+          }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{
               width: 24,
@@ -306,7 +352,7 @@ export default function Settings() {
               fontWeight: '500',
               color: '#EF4444'
             }}>
-              Sign Out
+              {isSigningOut ? 'Signing Out...' : 'Sign Out'}
             </Text>
           </View>
           <MaterialIcons 

@@ -1,15 +1,112 @@
 import { Text, View, TouchableOpacity, ScrollView, Image, StatusBar, TextInput } from "react-native";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { router } from 'expo-router';
 import GroupCard from "../../../components/group/groupcard";
+import { groupService, type GroupSummaryResponse } from '../../../services/group/groupService';
+import { debugLog, errorLog } from '../../../config/env';
 const icon = require("../../../assets/images/icon.png");
 
 
 export default function Group() {
   const [activeTab, setActiveTab] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [myGroups, setMyGroups] = useState<GroupSummaryResponse[]>([]);
+  const [publicGroups, setPublicGroups] = useState<GroupSummaryResponse[]>([]);
+  const [searchResults, setSearchResults] = useState<GroupSummaryResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const tabs = ['My Groups', 'Discover'];
   const insets = useSafeAreaInsets();
+
+  // Refresh both groups lists
+  const refreshGroups = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Fetch both groups lists in parallel
+      const [myGroupsData, publicGroupsData] = await Promise.all([
+        groupService.getMyGroups(),
+        groupService.getPublicGroups()
+      ]);
+      
+      setMyGroups(myGroupsData);
+      setPublicGroups(publicGroupsData);
+      debugLog('Groups refreshed - My groups:', myGroupsData, 'Public groups:', publicGroupsData);
+    } catch (error) {
+      errorLog('Error refreshing groups:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Refresh groups when page gains focus (e.g., returning from create-group)
+  useFocusEffect(
+    useCallback(() => {
+      refreshGroups();
+    }, [refreshGroups])
+  );
+
+  // Fetch data based on active tab (for tab switching only - useFocusEffect handles initial load)
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        if (activeTab === 0) {
+          // Fetch my groups if not already loaded
+          if (myGroups.length === 0) {
+            const groups = await groupService.getMyGroups();
+            setMyGroups(groups);
+            debugLog('My groups fetched:', groups);
+          }
+        } else {
+          // Fetch public groups if not already loaded
+          if (publicGroups.length === 0) {
+            const groups = await groupService.getPublicGroups();
+            setPublicGroups(groups);
+            debugLog('Public groups fetched:', groups);
+          }
+        }
+      } catch (error) {
+        errorLog('Error fetching groups:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Only fetch if we already have some data loaded (to avoid double fetching with useFocusEffect)
+    if (myGroups.length > 0 || publicGroups.length > 0) {
+      fetchData();
+    }
+  }, [activeTab, myGroups.length, publicGroups.length]);
+
+  // Handle search
+  useEffect(() => {
+    const handleSearch = async () => {
+      if (searchQuery.trim().length > 0) {
+        try {
+          const results = await groupService.searchGroups(searchQuery.trim());
+          setSearchResults(results);
+          debugLog('Search results:', results);
+        } catch (error) {
+          errorLog('Error searching groups:', error);
+          setSearchResults([]);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    };
+
+    const timeoutId = setTimeout(handleSearch, 300); // Debounce search
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
+  // Get groups to display based on current state
+  const getGroupsToDisplay = (): GroupSummaryResponse[] => {
+    if (searchQuery.trim().length > 0) {
+      return searchResults;
+    }
+    return activeTab === 0 ? myGroups : publicGroups;
+  };
 
   return (
      <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
@@ -133,15 +230,17 @@ export default function Group() {
           /* My Groups Section */
           <View>
             {/* Horizontal Create Group Banner */}
-            <TouchableOpacity style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingVertical: 12,
-              paddingHorizontal: 0,
-              marginBottom: 24,
-              borderBottomWidth: 1,
-              borderBottomColor: 'rgba(255, 255, 255, 0.1)'
-            }}>
+            <TouchableOpacity
+              onPress={() => router.push('/create-group')}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: 12,
+                paddingHorizontal: 0,
+                marginBottom: 24,
+                borderBottomWidth: 1,
+                borderBottomColor: 'rgba(255, 255, 255, 0.1)'
+              }}>
               <Text style={{
                 fontSize: 20,
                 color: 'rgba(255, 255, 255, 0.4)',
@@ -163,141 +262,83 @@ export default function Group() {
             </TouchableOpacity>
 
             {/* My Groups Grid - 2 Columns */}
-            <View style={{
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              justifyContent: 'space-between'
-            }}>
-              <View style={{ width: '48%' }}>
-                <GroupCard 
-                  name="Elite Squad"
-                  img={icon}
-                  description="Your main gaming crew"
-                  memberCount={12}
-                  memberAvatars={[icon, icon, icon, icon, icon, icon]}
-                  isJoined={true}
-                  groupId="1"
-                />
+            {isLoading ? (
+              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', textAlign: 'center', marginTop: 20 }}>
+                Loading groups...
+              </Text>
+            ) : (
+              <View style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between'
+              }}>
+                {getGroupsToDisplay().length === 0 ? (
+                  <Text style={{ 
+                    color: 'rgba(255, 255, 255, 0.6)', 
+                    textAlign: 'center', 
+                    width: '100%',
+                    marginTop: 20 
+                  }}>
+                    {searchQuery.trim().length > 0 ? 'No groups found matching your search.' : 'You haven\'t joined any groups yet. Create one or discover groups below!'}
+                  </Text>
+                ) : (
+                  getGroupsToDisplay().map((group, index) => (
+                    <View key={group.id} style={{ width: '48%', marginBottom: 16 }}>
+                      <GroupCard 
+                        name={group.groupName}
+                        img={group.groupPictureUrl ? { uri: group.groupPictureUrl } : icon}
+                        description={group.description || 'No description available'}
+                        memberCount={group.memberCount}
+                        memberAvatars={[icon, icon, icon]} // TODO: Replace with actual member avatars when available
+                        isJoined={group.isUserMember}
+                        groupId={group.id.toString()}
+                      />
+                    </View>
+                  ))
+                )}
               </View>
-              
-              <View style={{ width: '48%' }}>
-                <GroupCard 
-                  name="Weekend Warriors"
-                  img={icon}
-                  description="Casual weekend gaming sessions"
-                  memberCount={8}
-                  memberAvatars={[icon, icon, icon]}
-                  isJoined={true}
-                  groupId="2"
-                />
-              </View>
-              
-              <View style={{ width: '48%' }}>
-                <GroupCard 
-                  name="Strategy Masters"
-                  img={icon}
-                  description="Advanced tactics and competitive play"
-                  memberCount={15}
-                  memberAvatars={[icon, icon, icon, icon, icon, icon, icon]}
-                  isJoined={true}
-                  groupId="3"
-                />
-              </View>
-              
-              <View style={{ width: '48%' }}>
-                <GroupCard 
-                  name="Night Owls"
-                  img={icon}
-                  description="Late night gaming sessions"
-                  memberCount={6}
-                  memberAvatars={[icon, icon]}
-                  isJoined={true}
-                  groupId="4"
-                />
-              </View>
-            </View>
+            )}
           </View>
         ) : (
           /* Discover Section */
           <View>
             {/* Public Groups Grid - 2 Columns */}
-            <View style={{
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              justifyContent: 'space-between'
-            }}>
-              <View style={{ width: '48%' }}>
-                <GroupCard 
-                  name="Gaming Legends"
-                  img={icon}
-                  description="Elite gamers unite for epic battles"
-                  memberCount={1247}
-                  memberAvatars={[icon, icon, icon, icon, icon]}
-                  isJoined={false}
-                  groupId="5"
-                />
+            {isLoading ? (
+              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', textAlign: 'center', marginTop: 20 }}>
+                Loading groups...
+              </Text>
+            ) : (
+              <View style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between'
+              }}>
+                {getGroupsToDisplay().length === 0 ? (
+                  <Text style={{ 
+                    color: 'rgba(255, 255, 255, 0.6)', 
+                    textAlign: 'center', 
+                    width: '100%',
+                    marginTop: 20 
+                  }}>
+                    {searchQuery.trim().length > 0 ? 'No groups found matching your search.' : 'No public groups available yet. Be the first to create one!'}
+                  </Text>
+                ) : (
+                  getGroupsToDisplay().map((group, index) => (
+                    <View key={group.id} style={{ width: '48%', marginBottom: 16 }}>
+                      <GroupCard 
+                        name={group.groupName}
+                        img={group.groupPictureUrl ? { uri: group.groupPictureUrl } : icon}
+                        description={group.description || 'No description available'}
+                        memberCount={group.memberCount}
+                        memberAvatars={[icon, icon, icon]} // TODO: Replace with actual member avatars when available
+                        isJoined={group.isUserMember}
+                        groupId={group.id.toString()}
+                      />
+                    </View>
+                  ))
+                )}
               </View>
-              
-              <View style={{ width: '48%' }}>
-                <GroupCard 
-                  name="Casual Players"
-                  img={icon}
-                  description="Friendly community for casual gaming"
-                  memberCount={589}
-                  memberAvatars={[icon, icon, icon]}
-                  isJoined={false}
-                  groupId="6"
-                />
-              </View>
-              
-              <View style={{ width: '48%' }}>
-                <GroupCard 
-                  name="Speedrun Central"
-                  img={icon}
-                  description="Breaking records and sharing techniques"
-                  memberCount={892}
-                  memberAvatars={[icon, icon, icon, icon]}
-                  isJoined={false}
-                  groupId="7"
-                />
-              </View>
-              
-              <View style={{ width: '48%' }}>
-                <GroupCard 
-                  name="Retro Gamers"
-                  img={icon}
-                  description="Classic games, timeless fun"
-                  memberCount={334}
-                  memberAvatars={[icon, icon]}
-                  isJoined={false}
-                  groupId="8"
-                />
-              </View>
-              
-              <View style={{ width: '48%' }}>
-                <GroupCard 
-                  name="Mobile Masters"
-                  img={icon}
-                  description="Mobile gaming enthusiasts"
-                  memberCount={445}
-                  memberAvatars={[icon, icon, icon]}
-                  isJoined={false}
-                  groupId="9"
-                />
-              </View>
-              
-              <View style={{ width: '48%' }}>
-                <GroupCard 
-                  name="Puzzle Pros"
-                  img={icon}
-                  description="Brain teasers and strategy"
-                  memberCount={278}
-                  memberAvatars={[icon, icon]}
-                  isJoined={false}
-                  groupId="10"
-                />
-              </View>
-            </View>
+            )}
           </View>
         )}
 

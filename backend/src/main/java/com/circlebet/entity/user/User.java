@@ -61,6 +61,9 @@ public class User {
     @Column(length = 50)
     private String lastName;
 
+    @Column(length = 500)
+    private String bio;
+
     // ==========================================
     // SECURITY & AUTHENTICATION
     // ==========================================
@@ -179,6 +182,9 @@ public class User {
 
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
 
     public Boolean getEmailVerified() { return emailVerified; }
     public void setEmailVerified(Boolean emailVerified) { this.emailVerified = emailVerified; }

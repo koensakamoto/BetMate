@@ -1,8 +1,9 @@
 import { Text, View, Image, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { userService, UserProfileResponse, UserStatistics } from '../../services/user/userService';
 import { debugLog, errorLog } from '../../config/env';
@@ -11,7 +12,7 @@ const icon = require("../../assets/images/icon.png");
 
 export default function Profile() {
   const insets = useSafeAreaInsets();
-  const { user: authUser } = useAuth();
+  const { user: authUser, isAuthenticated, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
   const [userProfile, setUserProfile] = useState<UserProfileResponse | null>(null);
   const [userStats, setUserStats] = useState<UserStatistics | null>(null);
@@ -20,8 +21,24 @@ export default function Profile() {
   const tabs = ['Activity', 'Stats', 'Achievements'];
 
   useEffect(() => {
-    loadUserData();
-  }, []);
+    if (!authLoading) {
+      if (isAuthenticated) {
+        loadUserData();
+      } else {
+        // User is not authenticated, redirect to login
+        router.replace('/auth/login');
+      }
+    }
+  }, [authLoading, isAuthenticated]);
+
+  // Reload data when screen comes into focus (e.g., returning from edit profile)
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated && !authLoading) {
+        loadUserData();
+      }
+    }, [isAuthenticated, authLoading])
+  );
 
   const loadUserData = async () => {
     try {
@@ -63,13 +80,21 @@ export default function Profile() {
     return Math.round(percentage) + '%';
   };
 
-  if (isLoading) {
+  // Show loading while checking authentication or loading profile data
+  if (authLoading || isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#00D4AA" />
-        <Text style={{ color: '#ffffff', marginTop: 16, fontSize: 16 }}>Loading profile...</Text>
+        <Text style={{ color: '#ffffff', marginTop: 16, fontSize: 16 }}>
+          {authLoading ? 'Checking authentication...' : 'Loading profile...'}
+        </Text>
       </View>
     );
+  }
+
+  // If not authenticated, don't render anything (will redirect)
+  if (!isAuthenticated) {
+    return null;
   }
 
   if (error) {
@@ -211,30 +236,9 @@ export default function Profile() {
               }}>
                 @{username}
               </Text>
-              
-              {/* Edit Profile Button */}
-              <TouchableOpacity
-                onPress={handleEditProfile}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderWidth: 1,
-                  borderColor: 'rgba(255, 255, 255, 0.2)',
-                  borderRadius: 6,
-                  marginTop: 4
-                }}
-              >
-                <Text style={{
-                  color: '#ffffff',
-                  fontSize: 13,
-                  fontWeight: '500'
-                }}>
-                  Edit Profile
-                </Text>
-              </TouchableOpacity>
             </View>
 
-            {/* Inline Stats */}
+            {/* Social Stats */}
             <View style={{ 
               flexDirection: 'row', 
               alignItems: 'center',
@@ -248,7 +252,7 @@ export default function Profile() {
                   color: '#ffffff',
                   marginBottom: 2
                 }}>
-                  {formatNumber(userStats?.totalCredits)}
+                  {formatNumber(0)} {/* TODO: Add followers count from backend */}
                 </Text>
                 <Text style={{ 
                   fontSize: 11, 
@@ -256,7 +260,7 @@ export default function Profile() {
                   textTransform: 'uppercase',
                   letterSpacing: 0.5
                 }}>
-                  Credits
+                  Followers
                 </Text>
               </View>
               
@@ -273,7 +277,7 @@ export default function Profile() {
                   color: '#ffffff',
                   marginBottom: 2
                 }}>
-                  {formatNumber(userStats?.totalWins)}
+                  {formatNumber(0)} {/* TODO: Add following count from backend */}
                 </Text>
                 <Text style={{ 
                   fontSize: 11, 
@@ -281,7 +285,7 @@ export default function Profile() {
                   textTransform: 'uppercase',
                   letterSpacing: 0.5
                 }}>
-                  Wins
+                  Following
                 </Text>
               </View>
               
@@ -298,7 +302,7 @@ export default function Profile() {
                   color: '#00D4AA',
                   marginBottom: 2
                 }}>
-                  {formatPercentage(userStats?.winRate)}
+                  {formatNumber(userStats?.totalGames || 0)}
                 </Text>
                 <Text style={{ 
                   fontSize: 11, 
@@ -306,7 +310,7 @@ export default function Profile() {
                   textTransform: 'uppercase',
                   letterSpacing: 0.5
                 }}>
-                  Win Rate
+                  Bets
                 </Text>
               </View>
             </View>
@@ -320,7 +324,7 @@ export default function Profile() {
               marginBottom: 20,
               paddingHorizontal: 20
             }}>
-              Professional sports bettor | 85% win rate | Follow for winning tips 🏆
+              {userProfile?.bio || "No bio yet. Tap edit to add one!"}
             </Text>
 
             {/* Sleek Edit Button */}
@@ -508,10 +512,10 @@ export default function Profile() {
                 color: '#ffffff',
                 marginBottom: 16
               }}>
-                Performance Stats
+                Betting Performance
               </Text>
               
-              {/* Performance Cards */}
+              {/* Performance Overview Cards */}
               <View style={{
                 flexDirection: 'row',
                 marginBottom: 20,
@@ -531,13 +535,13 @@ export default function Profile() {
                     color: '#00D4AA',
                     marginBottom: 4
                   }}>
-                    $2,450
+                    {formatPercentage(userStats?.winRate ? userStats.winRate * 100 : 0)}
                   </Text>
                   <Text style={{
                     fontSize: 13,
                     color: 'rgba(255, 255, 255, 0.7)'
                   }}>
-                    Total Profit
+                    Win Rate
                   </Text>
                 </View>
                 
@@ -553,13 +557,66 @@ export default function Profile() {
                     color: '#ffffff',
                     marginBottom: 4
                   }}>
-                    247
+                    {formatNumber(userStats?.totalGames)}
                   </Text>
                   <Text style={{
                     fontSize: 13,
                     color: 'rgba(255, 255, 255, 0.7)'
                   }}>
                     Total Bets
+                  </Text>
+                </View>
+              </View>
+              
+              {/* Win/Loss Summary */}
+              <View style={{
+                flexDirection: 'row',
+                marginBottom: 20,
+                gap: 12
+              }}>
+                <View style={{
+                  flex: 1,
+                  backgroundColor: 'rgba(0, 212, 170, 0.05)',
+                  padding: 16,
+                  borderRadius: 12,
+                  alignItems: 'center'
+                }}>
+                  <Text style={{
+                    fontSize: 24,
+                    fontWeight: '700',
+                    color: '#00D4AA',
+                    marginBottom: 4
+                  }}>
+                    {formatNumber(userStats?.winCount)}
+                  </Text>
+                  <Text style={{
+                    fontSize: 13,
+                    color: 'rgba(255, 255, 255, 0.7)'
+                  }}>
+                    Wins
+                  </Text>
+                </View>
+                
+                <View style={{
+                  flex: 1,
+                  backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                  padding: 16,
+                  borderRadius: 12,
+                  alignItems: 'center'
+                }}>
+                  <Text style={{
+                    fontSize: 24,
+                    fontWeight: '700',
+                    color: '#EF4444',
+                    marginBottom: 4
+                  }}>
+                    {formatNumber(userStats?.lossCount)}
+                  </Text>
+                  <Text style={{
+                    fontSize: 13,
+                    color: 'rgba(255, 255, 255, 0.7)'
+                  }}>
+                    Losses
                   </Text>
                 </View>
               </View>
@@ -577,16 +634,16 @@ export default function Profile() {
                   color: '#ffffff',
                   marginBottom: 16
                 }}>
-                  This Month
+                  Detailed Statistics
                 </Text>
                 
                 {[
-                  { label: 'Wins', value: '34', color: '#00D4AA' },
-                  { label: 'Losses', value: '12', color: '#EF4444' },
-                  { label: 'Win Rate', value: '74%', color: '#00D4AA' },
-                  { label: 'Avg Bet', value: '$85', color: '#ffffff' },
-                  { label: 'Best Win', value: '$450', color: '#00D4AA' },
-                  { label: 'Current Streak', value: '5W', color: '#FFB800' }
+                  { label: 'Wins', value: formatNumber(userStats?.winCount), color: '#00D4AA' },
+                  { label: 'Losses', value: formatNumber(userStats?.lossCount), color: '#EF4444' },
+                  { label: 'Win Rate', value: formatPercentage(userStats?.winRate * 100), color: '#00D4AA' },
+                  { label: 'Total Games', value: formatNumber(userStats?.totalGames), color: '#ffffff' },
+                  { label: 'Longest Streak', value: formatNumber(userStats?.longestStreak), color: '#00D4AA' },
+                  { label: 'Current Streak', value: formatNumber(userStats?.currentStreak), color: '#FFB800' }
                 ].map((stat, index) => (
                   <View key={index} style={{
                     flexDirection: 'row',

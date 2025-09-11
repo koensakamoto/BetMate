@@ -31,20 +31,9 @@ const getApiBaseUrl = (): string => {
   
   switch (env) {
     case 'development':
-      // TEMPORARY: Using localhost for backend testing
-      return 'http://localhost:8080';
-      
-      // Original auto-detection code (commented out for testing):
-      // const { manifest } = Constants;
-      // const debuggerHost = manifest?.debuggerHost?.split(':').shift();
-      // 
-      // if (debuggerHost) {
-      //   // Running on device/simulator - use the development machine's IP
-      //   return `http://${debuggerHost}:8080`;
-      // } else {
-      //   // Running on web or when debuggerHost is not available
-      //   return 'http://localhost:8080';
-      // }
+      // TEMPORARY FIX: Use working IP directly to isolate the issue
+      console.log(`[DEVELOPMENT] 🔧 Using hardcoded working IP for debugging`);
+      return 'http://192.168.1.231:8080';
       
     case 'staging':
       return 'https://api-staging.groupreels.com';
@@ -64,6 +53,11 @@ const getWebSocketUrl = (apiUrl: string): string => {
 const createEnvConfig = (): EnvConfig => {
   const env = getEnvironment();
   const apiBaseUrl = getApiBaseUrl();
+  
+  // Debug logging for development
+  if (env === 'development') {
+    console.log(`[${env.toUpperCase()}] 🔧 API Base URL: ${apiBaseUrl}`);
+  }
   
   return {
     API_BASE_URL: apiBaseUrl,

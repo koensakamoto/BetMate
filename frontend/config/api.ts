@@ -33,8 +33,13 @@ export const API_ENDPOINTS = {
   
   // Groups
   GROUPS: '/groups',
+  GROUP_CREATE: '/groups',
   GROUP_BY_ID: (id: number) => `/groups/${id}`,
-  CHECK_GROUP_NAME: '/groups/check-name',
+  GROUP_MEMBERS: (id: number) => `/groups/${id}/members`,
+  GROUP_PUBLIC: '/groups/public',
+  GROUP_MY_GROUPS: '/groups/my-groups',
+  GROUP_SEARCH: '/groups/search',
+  GROUP_CHECK_NAME: '/groups/check-name',
   
   // Bets
   BETS: '/bets',
