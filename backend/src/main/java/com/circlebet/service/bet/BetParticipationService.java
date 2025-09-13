@@ -159,12 +159,14 @@ public class BetParticipationService {
     }
 
     /**
-     * Checks if user has participated in a bet.
+     * Checks if user has an ACTIVE participation in a bet.
      */
     @Transactional(readOnly = true)
     public boolean hasUserParticipated(@NotNull User user, @NotNull Long betId) {
         Bet bet = betService.getBetById(betId);
-        return participationRepository.existsByUserAndBet(user, bet);
+        // Only check for ACTIVE participations - cancelled/resolved participations don't count as "joined"
+        Optional<BetParticipation> participation = participationRepository.findByUserAndBet(user, bet);
+        return participation.isPresent() && participation.get().getStatus() == ParticipationStatus.ACTIVE;
     }
 
     private void validateBetForParticipation(Bet bet, User user, BigDecimal betAmount) {

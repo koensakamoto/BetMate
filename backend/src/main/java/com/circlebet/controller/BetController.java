@@ -1,6 +1,7 @@
 package com.circlebet.controller;
 
 import com.circlebet.dto.betting.request.BetCreationRequestDto;
+import java.math.BigDecimal;
 import com.circlebet.dto.betting.request.PlaceBetRequestDto;
 import com.circlebet.dto.betting.request.ResolveBetRequestDto;
 import com.circlebet.dto.betting.response.BetResponseDto;
@@ -10,6 +11,9 @@ import com.circlebet.entity.betting.Bet;
 import com.circlebet.entity.group.Group;
 import com.circlebet.entity.user.User;
 import com.circlebet.service.bet.BetService;
+import com.circlebet.service.bet.BetCreationService;
+import com.circlebet.service.bet.BetParticipationService;
+import com.circlebet.entity.betting.BetParticipation;
 import com.circlebet.service.group.GroupService;
 import com.circlebet.service.user.UserService;
 import jakarta.validation.Valid;
@@ -33,16 +37,74 @@ import java.util.List;
 public class BetController {
 
     private final BetService betService;
+    private final BetCreationService betCreationService;
+    private final BetParticipationService betParticipationService;
     private final GroupService groupService;
     private final UserService userService;
 
     @Autowired
     public BetController(BetService betService,
+                        BetCreationService betCreationService,
+                        BetParticipationService betParticipationService,
                         GroupService groupService,
                         UserService userService) {
         this.betService = betService;
+        this.betCreationService = betCreationService;
+        this.betParticipationService = betParticipationService;
         this.groupService = groupService;
         this.userService = userService;
+    }
+
+    /**
+     * Create a new bet.
+     */
+    @PostMapping
+    public ResponseEntity<BetResponseDto> createBet(
+            @Valid @RequestBody BetCreationRequestDto request,
+            Authentication authentication) {
+        
+        try {
+            System.out.println("DEBUG: Received bet creation request: " + request.getTitle());
+            System.out.println("DEBUG: Group ID: " + request.getGroupId());
+            System.out.println("DEBUG: Bet Type: " + request.getBetType());
+            
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+            System.out.println("DEBUG: Current user: " + currentUser.getUsername());
+            
+            Group group = groupService.getGroupById(request.getGroupId());
+            System.out.println("DEBUG: Group found: " + group.getGroupName());
+            
+            // Convert DTO to creation request
+            BetCreationService.BetCreationRequest creationRequest = new BetCreationService.BetCreationRequest(
+                request.getTitle(),
+                request.getDescription(),
+                request.getBetType(),
+                request.getResolutionMethod(),
+                request.getOptions() != null && request.getOptions().length > 0 ? request.getOptions()[0] : "Yes",
+                request.getOptions() != null && request.getOptions().length > 1 ? request.getOptions()[1] : "No",
+                request.getOptions() != null && request.getOptions().length > 2 ? request.getOptions()[2] : null,
+                request.getOptions() != null && request.getOptions().length > 3 ? request.getOptions()[3] : null,
+                request.getMinimumBet() != null ? BigDecimal.valueOf(request.getMinimumBet()) : null,
+                request.getMaximumBet() != null ? BigDecimal.valueOf(request.getMaximumBet()) : null,
+                request.getBettingDeadline(),
+                request.getResolveDate(),
+                request.getMinimumVotesRequired(),
+                request.getAllowCreatorVote()
+            );
+            
+            System.out.println("DEBUG: About to call betCreationService");
+            Bet bet = betCreationService.createBet(currentUser, group, creationRequest);
+            System.out.println("DEBUG: Bet created with ID: " + bet.getId());
+            
+            BetResponseDto response = convertToDetailedResponse(bet, currentUser);
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (Exception e) {
+            System.err.println("ERROR creating bet: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     /**
@@ -84,10 +146,43 @@ public class BetController {
     }
 
     /**
-     * Get bets created by current user.
+     * Get bets where current user has participated.
      */
     @GetMapping("/my")
     public ResponseEntity<List<BetSummaryResponseDto>> getMyBets(
+            Authentication authentication) {
+        
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        // Get user's ACTIVE participations and extract the bets
+        List<BetParticipation> participations = betParticipationService.getUserParticipations(currentUser);
+        System.out.println("DEBUG: User " + currentUser.getUsername() + " has " + participations.size() + " total participations");
+        
+        // Filter to only ACTIVE participations for "My Bets" 
+        List<Bet> bets = participations.stream()
+            .filter(p -> p.getStatus() == BetParticipation.ParticipationStatus.ACTIVE)
+            .map(BetParticipation::getBet)
+            .distinct()
+            .toList();
+        System.out.println("DEBUG: Found " + bets.size() + " unique bets from participations");
+        
+        for (Bet bet : bets) {
+            System.out.println("DEBUG: Bet ID=" + bet.getId() + ", Title=" + bet.getTitle() + ", Creator=" + bet.getCreator().getUsername());
+        }
+            
+        List<BetSummaryResponseDto> response = bets.stream()
+            .map(bet -> convertToSummaryResponse(bet, currentUser))
+            .toList();
+        
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get bets created by current user.
+     */
+    @GetMapping("/created")
+    public ResponseEntity<List<BetSummaryResponseDto>> getCreatedBets(
             Authentication authentication) {
         
         User currentUser = userService.getUserByUsername(authentication.getName())
@@ -144,8 +239,9 @@ public class BetController {
         response.setCreatedAt(bet.getCreatedAt());
         response.setUpdatedAt(bet.getUpdatedAt());
         
-        // Set user context - we'll enhance this later when we have participation service methods
-        response.setHasUserParticipated(false); // TODO: implement when participation service is complete
+        // Set user context
+        boolean hasParticipated = betParticipationService.hasUserParticipated(currentUser, bet.getId());
+        response.setHasUserParticipated(hasParticipated);
         response.setCanUserResolve(bet.getCreator().getId().equals(currentUser.getId()));
         
         return response;
@@ -167,8 +263,9 @@ public class BetController {
         response.setTotalParticipants(bet.getTotalParticipants());
         response.setCreatedAt(bet.getCreatedAt());
         
-        // Set user context
-        response.setHasUserParticipated(false); // TODO: implement when participation service is complete
+        // Set user context - check if current user has participated in this bet
+        boolean hasParticipated = betParticipationService.hasUserParticipated(currentUser, bet.getId());
+        response.setHasUserParticipated(hasParticipated);
         
         return response;
     }

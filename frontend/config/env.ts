@@ -31,8 +31,8 @@ const getApiBaseUrl = (): string => {
   
   switch (env) {
     case 'development':
-      // TEMPORARY FIX: Use working IP directly to isolate the issue
-      console.log(`[DEVELOPMENT] 🔧 Using hardcoded working IP for debugging`);
+      // Use laptop IP for mobile device testing
+      console.log(`[DEVELOPMENT] 🔧 Using laptop IP for mobile device testing`);
       return 'http://192.168.1.231:8080';
       
     case 'staging':

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import BetCard from '../../components/bet/BetCard';
+import { betService, BetSummaryResponse } from '../../services/bet/betService';
 
 const icon = require("../../assets/images/icon.png");
 
@@ -12,84 +13,66 @@ export default function Bet() {
   const [activeTab, setActiveTab] = useState(0);
   const tabs = ['My Bets', 'Discover'];
   const [searchQuery, setSearchQuery] = useState('');
+  const [myBets, setMyBets] = useState<BetSummaryResponse[]>([]);
+  const [discoverBets, setDiscoverBets] = useState<BetSummaryResponse[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const myBets = [
-    {
-      id: '1',
-      title: 'Chiefs will beat Bills by 7+ points',
-      description: 'Kansas City has been dominant at home this season and their offense is clicking',
-      category: 'NFL',
-      categoryIcon: '🏈',
-      timeRemaining: '2d 14h',
-      participantCount: 8,
-      participantAvatars: [icon, icon, icon, icon, icon],
-      stakeAmount: 25,
-      yourPosition: 'Chiefs -7',
-      status: 'active' as const,
-      isJoined: true,
-      creatorName: 'You'
-    },
-    {
-      id: '2', 
-      title: 'Lakers vs Warriors total points over 225',
-      description: 'Both teams have been scoring heavily lately, expect a high-scoring game',
-      category: 'NBA',
-      categoryIcon: '🏀',
-      timeRemaining: '6h 30m',
-      participantCount: 12,
-      participantAvatars: [icon, icon, icon, icon],
-      stakeAmount: 50,
-      yourPosition: 'Over 225.5',
-      status: 'open' as const,
-      isJoined: true,
-      creatorName: 'You'
-    }
-  ];
+  // Load bets data
+  useEffect(() => {
+    loadBets();
+  }, []);
 
-  const discoverBets = [
-    {
-      id: '3',
-      title: 'Will it rain in NYC tomorrow?',
-      description: 'Weather forecast shows 60% chance, but I think it will be sunny all day',
-      category: 'Weather',
-      categoryIcon: '🌦️',
-      timeRemaining: '18h',
-      participantCount: 15,
-      participantAvatars: [icon, icon, icon, icon, icon, icon],
-      stakeAmount: 10,
-      status: 'open' as const,
-      isJoined: false,
-      creatorName: 'WeatherBet'
-    },
-    {
-      id: '4',
-      title: 'Bitcoin will hit $50K this week',
-      description: 'Technical analysis shows strong support levels and bullish momentum building',
-      category: 'Crypto',
-      categoryIcon: '₿',
-      timeRemaining: '4d 2h',
-      participantCount: 23,
-      participantAvatars: [icon, icon, icon, icon, icon],
-      stakeAmount: 100,
-      status: 'open' as const,
-      isJoined: false,
-      creatorName: 'CryptoPro'
-    },
-    {
-      id: '5',
-      title: 'Taylor Swift surprise album announcement',
-      description: 'She has been dropping hints on social media, I think announcement coming soon',
-      category: 'Entertainment',
-      categoryIcon: '🎵',
-      timeRemaining: '1d 8h',
-      participantCount: 34,
-      participantAvatars: [icon, icon, icon, icon, icon, icon, icon],
-      stakeAmount: 15,
-      status: 'active' as const,
-      isJoined: false,
-      creatorName: 'SwiftFan13'
+  const loadBets = async () => {
+    setLoading(true);
+    try {
+      // Load my bets
+      const myBetsData = await betService.getMyBets();
+      setMyBets(myBetsData);
+
+      // Load discover bets (all open bets excluding user's own)
+      const openBets = await betService.getBetsByStatus('OPEN');
+      setDiscoverBets(openBets);
+      
+    } catch (error) {
+      console.error('Failed to load bets:', error);
+      Alert.alert('Error', 'Failed to load bets. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  // Transform backend bet data to frontend format
+  const transformBetData = (bet: BetSummaryResponse) => ({
+    id: bet.id.toString(),
+    title: bet.title,
+    description: '',  // Description not in summary, would need full bet details
+    category: bet.betType,
+    categoryIcon: '🎯',  // Default icon
+    timeRemaining: calculateTimeRemaining(bet.bettingDeadline),
+    participantCount: bet.totalParticipants,
+    participantAvatars: [icon, icon, icon],  // Placeholder avatars
+    stakeAmount: Math.round(bet.totalPool / Math.max(bet.totalParticipants, 1)),
+    status: bet.status.toLowerCase() as 'open' | 'active' | 'closed',
+    isJoined: bet.hasUserParticipated,
+    creatorName: bet.creatorUsername
+  });
+
+  // Calculate time remaining until deadline
+  const calculateTimeRemaining = (deadline: string): string => {
+    const now = new Date();
+    const deadlineDate = new Date(deadline);
+    const diff = deadlineDate.getTime() - now.getTime();
+    
+    if (diff <= 0) return 'Ended';
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  };
 
   const betHistory = [
     { id: '1', game: 'Chiefs vs Bills', bet: 'Chiefs -2.5', amount: 100, odds: -110, status: 'won', payout: 190.91, date: '2 days ago' },
@@ -305,11 +288,27 @@ export default function Bet() {
                 </TouchableOpacity>
 
                 {/* My Bets Feed */}
-                {myBets.length > 0 ? (
+                {loading ? (
+                  <View style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                    borderRadius: 8,
+                    padding: 24,
+                    alignItems: 'center',
+                    marginBottom: 32
+                  }}>
+                    <Text style={{
+                      fontSize: 16,
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      textAlign: 'center'
+                    }}>
+                      Loading bets...
+                    </Text>
+                  </View>
+                ) : myBets.length > 0 ? (
                   myBets.map((bet) => (
                     <BetCard
                       key={bet.id}
-                      {...bet}
+                      {...transformBetData(bet)}
                     />
                   ))
                 ) : (
@@ -355,11 +354,27 @@ export default function Bet() {
               /* Discover Section */
               <>
                 {/* Discover Bets Feed */}
-                {discoverBets.length > 0 ? (
+                {loading ? (
+                  <View style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                    borderRadius: 8,
+                    padding: 24,
+                    alignItems: 'center',
+                    marginBottom: 32
+                  }}>
+                    <Text style={{
+                      fontSize: 16,
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      textAlign: 'center'
+                    }}>
+                      Loading bets...
+                    </Text>
+                  </View>
+                ) : discoverBets.length > 0 ? (
                   discoverBets.map((bet) => (
                     <BetCard
                       key={bet.id}
-                      {...bet}
+                      {...transformBetData(bet)}
                     />
                   ))
                 ) : (

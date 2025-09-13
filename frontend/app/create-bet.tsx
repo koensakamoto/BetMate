@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Text, View, TouchableOpacity, ScrollView, StatusBar, TextInput, Alert, Image, Modal } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Text, View, TouchableOpacity, ScrollView, StatusBar, TextInput, Alert, Image, Modal, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { betService, CreateBetRequest } from '../services/bet/betService';
 
 const icon = require("../assets/images/icon.png");
 
@@ -26,15 +27,41 @@ export default function CreateBet() {
   const [exactValueTarget, setExactValueTarget] = useState('');
   const [overUnderLine, setOverUnderLine] = useState('');
 
+  // Progress tracking
+  const [completionPercentage, setCompletionPercentage] = useState(0);
+  const progressAnim = new Animated.Value(0);
+
   const sports = [
-    { id: 'nfl', name: 'NFL', icon: '🏈' },
-    { id: 'nba', name: 'NBA', icon: '🏀' },
-    { id: 'mlb', name: 'MLB', icon: '⚾' },
-    { id: 'nhl', name: 'NHL', icon: '🏒' },
-    { id: 'soccer', name: 'Soccer', icon: '⚽' },
-    { id: 'tennis', name: 'Tennis', icon: '🎾' },
-    { id: 'other', name: 'Other', icon: '🎲' }
+    { id: 'sports', name: 'Sports', icon: '⚽', color: '#4CAF50' },
+    { id: 'crypto', name: 'Crypto', icon: '₿', color: '#FF9500' },
+    { id: 'stocks', name: 'Stocks', icon: '📈', color: '#007AFF' },
+    { id: 'politics', name: 'Politics', icon: '🗳️', color: '#8B5CF6' },
+    { id: 'entertainment', name: 'Entertainment', icon: '🎬', color: '#FF69B4' },
+    { id: 'weather', name: 'Weather', icon: '🌤️', color: '#34D399' },
+    { id: 'gaming', name: 'Gaming', icon: '🎮', color: '#F59E0B' },
+    { id: 'other', name: 'Other', icon: '🎲', color: '#64748B' }
   ];
+
+  // Calculate completion percentage
+  useEffect(() => {
+    const fields = [
+      betTitle.trim(),
+      selectedSport,
+      stakeAmount.trim(),
+      betType === 'multiple_choice' ? multipleChoiceOptions.some(opt => opt.trim()) : 
+      betType === 'exact_value' ? exactValueTarget.trim() : overUnderLine.trim()
+    ];
+    
+    const completed = fields.filter(Boolean).length;
+    const percentage = (completed / fields.length) * 100;
+    setCompletionPercentage(percentage);
+    
+    Animated.timing(progressAnim, {
+      toValue: percentage / 100,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [betTitle, selectedSport, stakeAmount, multipleChoiceOptions, exactValueTarget, overUnderLine, betType]);
 
   const friends = [
     { id: '1', username: 'mikeJohnson', name: 'Mike Johnson' },
@@ -44,7 +71,7 @@ export default function CreateBet() {
     { id: '5', username: 'chrisPlay', name: 'Chris Wilson' }
   ];
 
-  const handleCreateBet = () => {
+  const handleCreateBet = async () => {
     if (!betTitle.trim() || !selectedSport || !stakeAmount) {
       Alert.alert('Missing Information', 'Please fill in all required fields.');
       return;
@@ -72,9 +99,35 @@ export default function CreateBet() {
         { text: 'Cancel', style: 'cancel' },
         { 
           text: 'Create', 
-          onPress: () => {
-            Alert.alert('Bet Created!', 'Your bet has been created successfully.');
-            router.back();
+          onPress: async () => {
+            try {
+              const createBetRequest: CreateBetRequest = {
+                groupId: 1, // TODO: Get actual group ID from context/route params
+                title: betTitle,
+                description: betDescription || undefined,
+                betType: betType === 'multiple_choice' ? 'MULTIPLE_CHOICE' : 
+                         betType === 'exact_value' ? 'EXACT_VALUE' : 'OVER_UNDER',
+                resolutionMethod: resolver === 'self' ? 'CREATOR_ONLY' : 
+                                 resolver === 'specific' ? 'ASSIGNED_RESOLVER' : 'CONSENSUS_VOTING',
+                bettingDeadline: betEndTime.toISOString(),
+                resolveDate: eventResolutionDate.toISOString(),
+                minimumBet: parseFloat(stakeAmount),
+                maximumBet: undefined, // TODO: Add max bet option to UI if needed
+                minimumVotesRequired: resolver === 'multiple' ? selectedResolvers.length : undefined,
+                allowCreatorVote: true, // TODO: Add this option to UI if needed
+                options: betType === 'multiple_choice' ? multipleChoiceOptions.filter(opt => opt.trim()) :
+                        betType === 'exact_value' ? [exactValueTarget] :
+                        betType === 'over_under' ? ['Over', 'Under'] : undefined
+              };
+
+              const response = await betService.createBet(createBetRequest);
+              Alert.alert('Success!', 'Your bet has been created successfully.', [
+                { text: 'OK', onPress: () => router.back() }
+              ]);
+            } catch (error) {
+              console.error('Failed to create bet:', error);
+              Alert.alert('Error', 'Failed to create bet. Please try again.');
+            }
           }
         }
       ]
@@ -217,65 +270,98 @@ export default function CreateBet() {
       />
       
       <View style={{ flex: 1 }}>
-        {/* Header */}
+        {/* Header with Progress */}
         <View style={{
           paddingTop: insets.top + 20,
           paddingHorizontal: 20,
           paddingBottom: 16,
           borderBottomWidth: 0.5,
           borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between'
         }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity 
-              onPress={() => router.back()}
+          {/* Header Row */}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 12
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity 
+                onPress={() => router.back()}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: 16
+                }}
+              >
+                <MaterialIcons name="close" size={18} color="#ffffff" />
+              </TouchableOpacity>
+              
+              <View>
+                <Text style={{
+                  fontSize: 24,
+                  fontWeight: '700',
+                  color: '#ffffff'
+                }}>
+                  Create Bet
+                </Text>
+                <Text style={{
+                  fontSize: 13,
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  marginTop: 2
+                }}>
+                  {Math.round(completionPercentage)}% complete
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={handleCreateBet}
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginRight: 16
+                backgroundColor: (betTitle.trim() && selectedSport && stakeAmount) ? '#00D4AA' : 'rgba(255, 255, 255, 0.08)',
+                paddingHorizontal: 20,
+                paddingVertical: 10,
+                borderRadius: 25,
+                opacity: (betTitle.trim() && selectedSport && stakeAmount) ? 1 : 0.5,
+                shadowColor: (betTitle.trim() && selectedSport && stakeAmount) ? '#00D4AA' : 'transparent',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 4,
               }}
+              disabled={!(betTitle.trim() && selectedSport && stakeAmount)}
             >
-              <MaterialIcons 
-                name="close" 
-                size={18} 
-                color="#ffffff" 
-              />
+              <Text style={{
+                fontSize: 16,
+                fontWeight: '600',
+                color: (betTitle.trim() && selectedSport && stakeAmount) ? '#000000' : 'rgba(255, 255, 255, 0.6)'
+              }}>
+                Create
+              </Text>
             </TouchableOpacity>
-            
-            <Text style={{
-              fontSize: 24,
-              fontWeight: '600',
-              color: '#ffffff'
-            }}>
-              Create Bet
-            </Text>
           </View>
 
-          <TouchableOpacity
-            onPress={handleCreateBet}
-            style={{
-              backgroundColor: (betTitle.trim() && selectedSport && stakeAmount) ? '#00D4AA' : 'rgba(255, 255, 255, 0.08)',
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: 20,
-              opacity: (betTitle.trim() && selectedSport && stakeAmount) ? 1 : 0.5
-            }}
-            disabled={!(betTitle.trim() && selectedSport && stakeAmount)}
-          >
-            <Text style={{
-              fontSize: 14,
-              fontWeight: '600',
-              color: (betTitle.trim() && selectedSport && stakeAmount) ? '#000000' : 'rgba(255, 255, 255, 0.6)'
-            }}>
-              Create
-            </Text>
-          </TouchableOpacity>
+          {/* Progress Bar */}
+          <View style={{
+            height: 3,
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: 2,
+            overflow: 'hidden'
+          }}>
+            <Animated.View style={{
+              height: '100%',
+              backgroundColor: '#00D4AA',
+              borderRadius: 2,
+              width: progressAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0%', '100%']
+              })
+            }} />
+          </View>
         </View>
 
         <ScrollView 
@@ -286,155 +372,190 @@ export default function CreateBet() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Bet Type Selection */}
-          <Text style={{
-            fontSize: 18,
-            fontWeight: '600',
-            color: '#ffffff',
-            marginBottom: 16
-          }}>
-            Bet Type
-          </Text>
-          
-          <BetTypeCard 
-            type="multiple_choice"
-            title="Multiple Choice"
-            description="Participants choose from predefined options (e.g., Team A wins, Team B wins, Draw)"
-            icon="📝"
-          />
-          
-          <BetTypeCard 
-            type="exact_value"
-            title="Exact Value"
-            description="Predict a specific number or outcome (e.g., final score will be 3-1)"
-            icon="🎯"
-          />
-          
-          <BetTypeCard 
-            type="over_under"
-            title="Over/Under"
-            description="Bet whether a value will be over or under a specific line (e.g., total goals > 2.5)"
-            icon="⚖️"
-          />
-
-          {/* Bet Details */}
-          <Text style={{
-            fontSize: 18,
-            fontWeight: '600',
-            color: '#ffffff',
-            marginBottom: 16,
-            marginTop: 24
-          }}>
-            Bet Details
-          </Text>
-
-          {/* Title */}
-          <Text style={{
-            fontSize: 13,
-            fontWeight: '500',
-            color: 'rgba(255, 255, 255, 0.8)',
-            marginBottom: 6
-          }}>
-            Title *
-          </Text>
+          {/* Basic Information Section */}
           <View style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            borderRadius: 8,
-            borderWidth: 0.5,
-            borderColor: 'rgba(255, 255, 255, 0.15)',
-            paddingHorizontal: 12,
-            paddingVertical: 12,
-            marginBottom: 16
+            backgroundColor: 'rgba(255, 255, 255, 0.02)',
+            borderRadius: 16,
+            padding: 20,
+            marginBottom: 20,
+            borderWidth: 1,
+            borderColor: (betTitle.trim() && selectedSport) ? 'rgba(0, 212, 170, 0.3)' : 'rgba(255, 255, 255, 0.06)'
           }}>
-            <TextInput
-              style={{
-                fontSize: 15,
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '700',
                 color: '#ffffff',
-                fontWeight: '400'
-              }}
-              value={betTitle}
-              onChangeText={setBetTitle}
-              placeholder="What are you betting on?"
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
-              maxLength={100}
-            />
-          </View>
+                flex: 1
+              }}>
+                Basic Information
+              </Text>
+              {(betTitle.trim() && selectedSport) && (
+                <MaterialIcons name="check-circle" size={20} color="#00D4AA" />
+              )}
+            </View>
 
-          {/* Description */}
-          <Text style={{
-            fontSize: 13,
-            fontWeight: '500',
-            color: 'rgba(255, 255, 255, 0.8)',
-            marginBottom: 6
-          }}>
-            Description (Optional)
-          </Text>
-          <View style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            borderRadius: 8,
-            borderWidth: 0.5,
-            borderColor: 'rgba(255, 255, 255, 0.15)',
-            paddingHorizontal: 12,
-            paddingVertical: 10,
-            marginBottom: 16
-          }}>
-            <TextInput
-              style={{
-                fontSize: 15,
-                color: '#ffffff',
-                fontWeight: '400',
-                minHeight: 60,
-                textAlignVertical: 'top'
-              }}
-              value={betDescription}
-              onChangeText={setBetDescription}
-              placeholder="Add more details about your bet..."
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
-              multiline={true}
-              maxLength={200}
-            />
-          </View>
-
-          {/* Sport Selection */}
-          <Text style={{
-            fontSize: 13,
-            fontWeight: '500',
-            color: 'rgba(255, 255, 255, 0.8)',
-            marginBottom: 12
-          }}>
-            Category *
-          </Text>
-          <ScrollView 
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ marginBottom: 20 }}
-            contentContainerStyle={{ paddingRight: 20 }}
-          >
-            {sports.map((sport) => (
-              <TouchableOpacity
-                key={sport.id}
-                onPress={() => setSelectedSport(sport.id)}
+            {/* Title */}
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '600',
+              color: 'rgba(255, 255, 255, 0.9)',
+              marginBottom: 8
+            }}>
+              Bet Title <Text style={{ color: '#FF4757' }}>*</Text>
+            </Text>
+            <View style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.04)',
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: betTitle.trim() ? '#00D4AA' : 'rgba(255, 255, 255, 0.1)',
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              marginBottom: 16,
+              flexDirection: 'row',
+              alignItems: 'center'
+            }}>
+              <TextInput
                 style={{
-                  backgroundColor: selectedSport === sport.id ? '#00D4AA' : 'rgba(255, 255, 255, 0.08)',
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  borderRadius: 20,
-                  marginRight: 12,
-                  flexDirection: 'row',
-                  alignItems: 'center'
+                  flex: 1,
+                  fontSize: 16,
+                  color: '#ffffff',
+                  fontWeight: '400'
                 }}
-              >
-                <Text style={{ fontSize: 16, marginRight: 6 }}>{sport.icon}</Text>
-                <Text style={{
-                  fontSize: 14,
-                  fontWeight: '600',
-                  color: selectedSport === sport.id ? '#000000' : '#ffffff'
-                }}>
-                  {sport.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                value={betTitle}
+                onChangeText={setBetTitle}
+                placeholder="What are you betting on?"
+                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                maxLength={100}
+              />
+              <Text style={{
+                fontSize: 12,
+                color: 'rgba(255, 255, 255, 0.4)',
+                marginLeft: 8
+              }}>
+                {betTitle.length}/100
+              </Text>
+            </View>
+
+            {/* Description */}
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '600',
+              color: 'rgba(255, 255, 255, 0.9)',
+              marginBottom: 8
+            }}>
+              Description
+            </Text>
+            <View style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.04)',
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: betDescription.trim() ? '#00D4AA' : 'rgba(255, 255, 255, 0.1)',
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              marginBottom: 16
+            }}>
+              <TextInput
+                style={{
+                  fontSize: 16,
+                  color: '#ffffff',
+                  fontWeight: '400',
+                  minHeight: 60,
+                  textAlignVertical: 'top'
+                }}
+                value={betDescription}
+                onChangeText={setBetDescription}
+                placeholder="Add more details about your bet..."
+                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                multiline={true}
+                maxLength={200}
+              />
+            </View>
+
+            {/* Category Selection */}
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '600',
+              color: 'rgba(255, 255, 255, 0.9)',
+              marginBottom: 12
+            }}>
+              Category <Text style={{ color: '#FF4757' }}>*</Text>
+            </Text>
+            
+            <View style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              marginBottom: 4
+            }}>
+              {sports.map((sport) => (
+                <TouchableOpacity
+                  key={sport.id}
+                  onPress={() => setSelectedSport(sport.id)}
+                  style={{
+                    backgroundColor: selectedSport === sport.id ? sport.color + '20' : 'rgba(255, 255, 255, 0.05)',
+                    borderWidth: selectedSport === sport.id ? 1.5 : 0.5,
+                    borderColor: selectedSport === sport.id ? sport.color : 'rgba(255, 255, 255, 0.1)',
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    marginRight: 8,
+                    marginBottom: 8,
+                    flexDirection: 'row',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Text style={{ fontSize: 14, marginRight: 6 }}>{sport.icon}</Text>
+                  <Text style={{
+                    fontSize: 13,
+                    fontWeight: '600',
+                    color: selectedSport === sport.id ? sport.color : '#ffffff'
+                  }}>
+                    {sport.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Bet Type Selection */}
+          <View style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.02)',
+            borderRadius: 16,
+            padding: 20,
+            marginBottom: 20,
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.06)'
+          }}>
+            <Text style={{
+              fontSize: 18,
+              fontWeight: '700',
+              color: '#ffffff',
+              marginBottom: 16
+            }}>
+              Bet Type & Options
+            </Text>
+            
+            <BetTypeCard 
+              type="multiple_choice"
+              title="Multiple Choice"
+              description="Participants choose from predefined options (e.g., Team A wins, Team B wins, Draw)"
+              icon="📝"
+            />
+            
+            <BetTypeCard 
+              type="exact_value"
+              title="Exact Value"
+              description="Predict a specific number or outcome (e.g., final score will be 3-1)"
+              icon="🎯"
+            />
+            
+            <BetTypeCard 
+              type="over_under"
+              title="Over/Under"
+              description="Bet whether a value will be over or under a specific line (e.g., total goals > 2.5)"
+              icon="⚖️"
+            />
+          </View>
 
           {/* Bet Type Specific Fields */}
           {betType === 'multiple_choice' && (
@@ -565,46 +686,68 @@ export default function CreateBet() {
             </>
           )}
 
-          {/* Stake Amount */}
-          <Text style={{
-            fontSize: 13,
-            fontWeight: '500',
-            color: 'rgba(255, 255, 255, 0.8)',
-            marginBottom: 6
-          }}>
-            Stake Amount *
-          </Text>
+          {/* Betting Parameters */}
           <View style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            borderRadius: 8,
-            borderWidth: 0.5,
-            borderColor: 'rgba(255, 255, 255, 0.15)',
-            paddingHorizontal: 12,
-            paddingVertical: 12,
-            marginBottom: 16,
-            flexDirection: 'row',
-            alignItems: 'center'
+            backgroundColor: 'rgba(255, 255, 255, 0.02)',
+            borderRadius: 16,
+            padding: 20,
+            marginBottom: 20,
+            borderWidth: 1,
+            borderColor: stakeAmount.trim() ? 'rgba(0, 212, 170, 0.3)' : 'rgba(255, 255, 255, 0.06)'
           }}>
-            <Text style={{
-              fontSize: 15,
-              color: 'rgba(255, 255, 255, 0.6)',
-              marginRight: 8
-            }}>
-              $
-            </Text>
-            <TextInput
-              style={{
-                flex: 1,
-                fontSize: 15,
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '700',
                 color: '#ffffff',
-                fontWeight: '400'
-              }}
-              value={stakeAmount}
-              onChangeText={setStakeAmount}
-              placeholder="How much each participant bets"
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
-              keyboardType="numeric"
-            />
+                flex: 1
+              }}>
+                Betting Parameters
+              </Text>
+              {stakeAmount.trim() && (
+                <MaterialIcons name="check-circle" size={20} color="#00D4AA" />
+              )}
+            </View>
+
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '600',
+              color: 'rgba(255, 255, 255, 0.9)',
+              marginBottom: 8
+            }}>
+              Stake Amount <Text style={{ color: '#FF4757' }}>*</Text>
+            </Text>
+            <View style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.04)',
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: stakeAmount.trim() ? '#00D4AA' : 'rgba(255, 255, 255, 0.1)',
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              flexDirection: 'row',
+              alignItems: 'center'
+            }}>
+              <Text style={{
+                fontSize: 16,
+                color: 'rgba(255, 255, 255, 0.6)',
+                marginRight: 8
+              }}>
+                $
+              </Text>
+              <TextInput
+                style={{
+                  flex: 1,
+                  fontSize: 16,
+                  color: '#ffffff',
+                  fontWeight: '400'
+                }}
+                value={stakeAmount}
+                onChangeText={setStakeAmount}
+                placeholder="How much each participant bets"
+                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                keyboardType="numeric"
+              />
+            </View>
           </View>
 
           {/* Bet Timing */}

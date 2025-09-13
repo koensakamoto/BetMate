@@ -69,12 +69,7 @@ public class BetCreationService {
             throw new BetCreationException("Maximum bet must be greater than minimum bet");
         }
         
-        // Validate bet type and options
-        if (request.betType() == Bet.BetType.MULTIPLE_CHOICE) {
-            if (request.option3() == null || request.option3().trim().isEmpty()) {
-                throw new BetCreationException("Multiple choice bets must have at least 3 options");
-            }
-        }
+        // Validate bet type and options - multiple choice can have 2-4 options
     }
 
     private Bet createBetFromRequest(User creator, Group group, BetCreationRequest request) {
@@ -86,6 +81,7 @@ public class BetCreationService {
         bet.setTitle(request.title());
         bet.setDescription(request.description());
         bet.setBetType(request.betType());
+        bet.setResolutionMethod(request.resolutionMethod());
         
         // Options
         bet.setOption1(request.option1());
@@ -105,6 +101,14 @@ public class BetCreationService {
         bet.setBettingDeadline(request.bettingDeadline());
         bet.setResolveDate(request.resolveDate());
         
+        // Resolution settings
+        if (request.minimumVotesRequired() != null) {
+            bet.setMinimumVotesRequired(request.minimumVotesRequired());
+        }
+        if (request.allowCreatorVote() != null) {
+            bet.setAllowCreatorVote(request.allowCreatorVote());
+        }
+        
         // Defaults
         bet.setStatus(Bet.BetStatus.OPEN);
         bet.setIsActive(true);
@@ -121,7 +125,7 @@ public class BetCreationService {
     // Bet creation request DTO
     public record BetCreationRequest(
         @NotBlank 
-        @Size(min = 10, max = 200, message = "Bet title must be between 10 and 200 characters")
+        @Size(min = 3, max = 200, message = "Bet title must be between 3 and 200 characters")
         String title,
         
         @Size(max = 2000, message = "Description cannot exceed 2000 characters")
@@ -129,6 +133,9 @@ public class BetCreationService {
         
         @NotNull
         Bet.BetType betType,
+        
+        @NotNull
+        Bet.BetResolutionMethod resolutionMethod,
         
         @NotBlank 
         @Size(min = 1, max = 100, message = "Option 1 must be between 1 and 100 characters")
@@ -154,7 +161,12 @@ public class BetCreationService {
         @Future(message = "Betting deadline must be in the future")
         LocalDateTime bettingDeadline,
         
-        LocalDateTime resolveDate
+        LocalDateTime resolveDate,
+        
+        @Min(value = 1, message = "Minimum votes required must be at least 1")
+        Integer minimumVotesRequired,
+        
+        Boolean allowCreatorVote
     ) {}
 
 }

@@ -142,43 +142,14 @@ export default function Profile() {
         {/* Header Icons */}
         <View style={{ 
           flexDirection: 'row', 
-          justifyContent: 'flex-end', 
+          justifyContent: 'space-between', 
           paddingHorizontal: 20, 
           marginBottom: 8,
-          gap: 16 
+          alignItems: 'center'
         }}>
-          {/* Notifications Icon */}
+          {/* Find Friends Icon */}
           <TouchableOpacity 
-            onPress={() => router.push('/notifications')}
-            style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative'
-          }}>
-            <MaterialIcons 
-              name="notifications-none" 
-              size={20} 
-              color="#ffffff" 
-            />
-            {/* Notification badge */}
-            <View style={{
-              position: 'absolute',
-              top: 8,
-              right: 8,
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: '#EF4444'
-            }} />
-          </TouchableOpacity>
-
-          {/* Settings Icon */}
-          <TouchableOpacity 
-            onPress={() => router.push('/settings')}
+            onPress={() => router.push('/find-friends')}
             style={{
               width: 40,
               height: 40,
@@ -189,12 +160,64 @@ export default function Profile() {
             }}
           >
             <MaterialIcons 
-              name="settings" 
+              name="person-add" 
               size={20} 
               color="#ffffff" 
             />
           </TouchableOpacity>
 
+          <View style={{ 
+            flexDirection: 'row', 
+            gap: 16 
+          }}>
+            {/* Notifications Icon */}
+            <TouchableOpacity 
+              onPress={() => router.push('/notifications')}
+              style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              position: 'relative'
+            }}>
+              <MaterialIcons 
+                name="notifications-none" 
+                size={20} 
+                color="#ffffff" 
+              />
+              {/* Notification badge */}
+              <View style={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: '#EF4444'
+              }} />
+            </TouchableOpacity>
+
+            {/* Settings Icon */}
+            <TouchableOpacity 
+              onPress={() => router.push('/settings')}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
+            >
+              <MaterialIcons 
+                name="settings" 
+                size={20} 
+                color="#ffffff" 
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Sleek Header */}

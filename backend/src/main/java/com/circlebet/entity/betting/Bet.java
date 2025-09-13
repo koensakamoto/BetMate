@@ -53,7 +53,7 @@ public class Bet {
     // ==========================================
     
     @Column(nullable = false, length = 200)
-    @Size(min = 10, max = 200, message = "Bet title must be between 10 and 200 characters")
+    @Size(min = 3, max = 200, message = "Bet title must be between 3 and 200 characters")
     private String title;
 
     @Column(length = 2000)

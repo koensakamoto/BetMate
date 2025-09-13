@@ -15,7 +15,7 @@ public class BetCreationRequestDto {
     private Long groupId;
     
     @NotBlank(message = "Bet title is required")
-    @Size(min = 10, max = 200, message = "Bet title must be between 10 and 200 characters")
+    @Size(min = 3, max = 200, message = "Bet title must be between 3 and 200 characters")
     private String title;
     
     @Size(max = 2000, message = "Description cannot exceed 2000 characters")
@@ -31,16 +31,15 @@ public class BetCreationRequestDto {
     @Future(message = "Betting deadline must be in the future")
     private LocalDateTime bettingDeadline;
     
-    @NotNull(message = "Resolve date is required")
     @Future(message = "Resolve date must be in the future")
     private LocalDateTime resolveDate;
     
     @NotNull(message = "Minimum bet amount is required")
     @DecimalMin(value = "0.01", message = "Minimum bet amount must be at least 0.01")
-    private BigDecimal minimumBet;
+    private Double minimumBet;
     
     @DecimalMin(value = "0.01", message = "Maximum bet amount must be at least 0.01")
-    private BigDecimal maximumBet;
+    private Double maximumBet;
     
     @Min(value = 1, message = "Minimum votes required must be at least 1")
     private Integer minimumVotesRequired;
@@ -111,19 +110,19 @@ public class BetCreationRequestDto {
         this.resolveDate = resolveDate;
     }
 
-    public BigDecimal getMinimumBet() {
+    public Double getMinimumBet() {
         return minimumBet;
     }
 
-    public void setMinimumBet(BigDecimal minimumBet) {
+    public void setMinimumBet(Double minimumBet) {
         this.minimumBet = minimumBet;
     }
 
-    public BigDecimal getMaximumBet() {
+    public Double getMaximumBet() {
         return maximumBet;
     }
 
-    public void setMaximumBet(BigDecimal maximumBet) {
+    public void setMaximumBet(Double maximumBet) {
         this.maximumBet = maximumBet;
     }
 

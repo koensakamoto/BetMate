@@ -1,5 +1,6 @@
-import React from 'react';
-import { Text, View, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { Text, View, TouchableOpacity, Switch, Alert } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface GroupSettingsTabProps {
   groupData: {
@@ -10,389 +11,272 @@ interface GroupSettingsTabProps {
 }
 
 const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData }) => {
-  return (
-    <View>
-      {/* Group Settings Header */}
+  const [autoApprove, setAutoApprove] = useState(true);
+  const [publicGroup, setPublicGroup] = useState(true);
+
+  const SettingSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <View style={{
+      backgroundColor: 'rgba(255, 255, 255, 0.03)',
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 16,
+      borderWidth: 0.5,
+      borderColor: 'rgba(255, 255, 255, 0.08)'
+    }}>
       <Text style={{
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '600',
         color: '#ffffff',
-        marginBottom: 20
+        marginBottom: 16
       }}>
-        Group Settings
+        {title}
       </Text>
+      {children}
+    </View>
+  );
 
-      {/* Basic Settings Section */}
-      <View style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 16,
-        borderWidth: 0.5,
-        borderColor: 'rgba(255, 255, 255, 0.08)'
-      }}>
-        <Text style={{
-          fontSize: 16,
-          fontWeight: '600',
-          color: '#ffffff',
-          marginBottom: 16
-        }}>
-          Basic Information
-        </Text>
-
-        {/* Group Name */}
-        <View style={{ marginBottom: 16 }}>
+  const SettingItem = ({ 
+    title, 
+    description, 
+    onPress, 
+    showSwitch = false, 
+    switchValue = false, 
+    onSwitchChange,
+    materialIcon,
+    iconColor = 'rgba(255, 255, 255, 0.8)'
+  }: {
+    title: string;
+    description: string;
+    onPress?: () => void;
+    showSwitch?: boolean;
+    switchValue?: boolean;
+    onSwitchChange?: (value: boolean) => void;
+    materialIcon?: string;
+    iconColor?: string;
+  }) => (
+    <TouchableOpacity 
+      onPress={onPress}
+      disabled={showSwitch}
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 0.5,
+        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+        marginBottom: 8
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+        {materialIcon && (
+          <View style={{
+            width: 24,
+            height: 24,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 12
+          }}>
+            <MaterialIcons 
+              name={materialIcon as any} 
+              size={18} 
+              color={iconColor} 
+            />
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
           <Text style={{
-            fontSize: 14,
-            color: 'rgba(255, 255, 255, 0.7)',
-            marginBottom: 6
+            fontSize: 15,
+            color: '#ffffff',
+            marginBottom: 2
           }}>
-            Group Name
+            {title}
           </Text>
-          <TouchableOpacity style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            borderRadius: 8,
-            borderWidth: 0.5,
-            borderColor: 'rgba(255, 255, 255, 0.1)',
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <Text style={{
-              color: '#ffffff',
-              fontSize: 15
-            }}>
-              {groupData.name}
-            </Text>
-            <Text style={{
-              color: 'rgba(255, 255, 255, 0.5)',
-              fontSize: 14
-            }}>
-              ›
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Group Description */}
-        <View style={{ marginBottom: 16 }}>
           <Text style={{
-            fontSize: 14,
-            color: 'rgba(255, 255, 255, 0.7)',
-            marginBottom: 6
+            fontSize: 13,
+            color: 'rgba(255, 255, 255, 0.6)'
           }}>
-            Description
+            {description}
           </Text>
-          <TouchableOpacity style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            borderRadius: 8,
-            borderWidth: 0.5,
-            borderColor: 'rgba(255, 255, 255, 0.1)',
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <Text style={{
-              color: '#ffffff',
-              fontSize: 15,
-              flex: 1
-            }}>
-              {groupData.description}
-            </Text>
-            <Text style={{
-              color: 'rgba(255, 255, 255, 0.5)',
-              fontSize: 14
-            }}>
-              ›
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Group Image */}
-        <View>
-          <Text style={{
-            fontSize: 14,
-            color: 'rgba(255, 255, 255, 0.7)',
-            marginBottom: 6
-          }}>
-            Group Image
-          </Text>
-          <TouchableOpacity style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            borderRadius: 8,
-            borderWidth: 0.5,
-            borderColor: 'rgba(255, 255, 255, 0.1)',
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <Text style={{
-              color: '#ffffff',
-              fontSize: 15
-            }}>
-              Change Group Photo
-            </Text>
-            <Text style={{
-              color: 'rgba(255, 255, 255, 0.5)',
-              fontSize: 14
-            }}>
-              ›
-            </Text>
-          </TouchableOpacity>
         </View>
       </View>
+      
+      {showSwitch ? (
+        <Switch
+          value={switchValue}
+          onValueChange={onSwitchChange}
+          trackColor={{ false: 'rgba(255, 255, 255, 0.2)', true: '#00D4AA' }}
+          thumbColor={switchValue ? '#ffffff' : '#ffffff'}
+          ios_backgroundColor="rgba(255, 255, 255, 0.2)"
+        />
+      ) : (
+        <MaterialIcons 
+          name="chevron-right" 
+          size={20} 
+          color="rgba(255, 255, 255, 0.4)" 
+        />
+      )}
+    </TouchableOpacity>
+  );
 
-      {/* Privacy Settings */}
-      <View style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 16,
-        borderWidth: 0.5,
-        borderColor: 'rgba(255, 255, 255, 0.08)'
-      }}>
-        <Text style={{
-          fontSize: 16,
-          fontWeight: '600',
-          color: '#ffffff',
-          marginBottom: 16
-        }}>
-          Privacy & Access
-        </Text>
+  const handleDeleteGroup = () => {
+    Alert.alert(
+      'Delete Group',
+      'Are you sure you want to permanently delete this group? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            // Handle group deletion
+          },
+        },
+      ]
+    );
+  };
 
-        {/* Group Privacy */}
-        <View style={{ marginBottom: 16 }}>
-          <TouchableOpacity style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingVertical: 12
-          }}>
-            <View>
-              <Text style={{
-                color: '#ffffff',
-                fontSize: 15,
-                marginBottom: 2
-              }}>
-                Group Privacy
-              </Text>
-              <Text style={{
-                color: 'rgba(255, 255, 255, 0.6)',
-                fontSize: 13
-              }}>
-                Public • Anyone can find and join
-              </Text>
-            </View>
-            <Text style={{
-              color: 'rgba(255, 255, 255, 0.5)',
-              fontSize: 14
-            }}>
-              ›
-            </Text>
-          </TouchableOpacity>
-        </View>
+  return (
+    <View>
+      {/* Group Information */}
+      <SettingSection title="Group Information">
+        <SettingItem
+          materialIcon="edit"
+          title="Group Name"
+          description={groupData.name}
+          onPress={() => {}}
+        />
+        <SettingItem
+          materialIcon="description"
+          title="Description"
+          description={groupData.description}
+          onPress={() => {}}
+        />
+        <SettingItem
+          materialIcon="photo-camera"
+          title="Group Photo"
+          description="Change group profile picture"
+          onPress={() => {}}
+        />
+      </SettingSection>
 
-        {/* Join Approval */}
-        <View style={{ marginBottom: 16 }}>
-          <TouchableOpacity style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingVertical: 12
-          }}>
-            <View>
-              <Text style={{
-                color: '#ffffff',
-                fontSize: 15,
-                marginBottom: 2
-              }}>
-                Join Requests
-              </Text>
-              <Text style={{
-                color: 'rgba(255, 255, 255, 0.6)',
-                fontSize: 13
-              }}>
-                Auto-approve new members
-              </Text>
-            </View>
-            <Text style={{
-              color: 'rgba(255, 255, 255, 0.5)',
-              fontSize: 14
-            }}>
-              ›
-            </Text>
-          </TouchableOpacity>
-        </View>
+      {/* Privacy & Access */}
+      <SettingSection title="Privacy & Access">
+        <SettingItem
+          materialIcon="public"
+          title="Public Group"
+          description="Anyone can find and view this group"
+          showSwitch={true}
+          switchValue={publicGroup}
+          onSwitchChange={setPublicGroup}
+        />
+        <SettingItem
+          materialIcon="how-to-reg"
+          title="Auto-approve Members"
+          description="Automatically approve join requests"
+          showSwitch={true}
+          switchValue={autoApprove}
+          onSwitchChange={setAutoApprove}
+        />
+        <SettingItem
+          materialIcon="link"
+          title="Invite Link"
+          description="Create and share invite links"
+          onPress={() => {}}
+        />
+      </SettingSection>
 
-        {/* Invite Link */}
-        <View>
-          <TouchableOpacity style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingVertical: 12
-          }}>
-            <View>
-              <Text style={{
-                color: '#ffffff',
-                fontSize: 15,
-                marginBottom: 2
-              }}>
-                Invite Link
-              </Text>
-              <Text style={{
-                color: 'rgba(255, 255, 255, 0.6)',
-                fontSize: 13
-              }}>
-                Share link to invite members
-              </Text>
-            </View>
-            <Text style={{
-              color: 'rgba(255, 255, 255, 0.5)',
-              fontSize: 14
-            }}>
-              ›
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* Member Management */}
+      <SettingSection title="Member Management">
+        <SettingItem
+          materialIcon="people"
+          title="View All Members"
+          description={`Manage ${groupData.memberCount} group members`}
+          onPress={() => {}}
+        />
+        <SettingItem
+          materialIcon="admin-panel-settings"
+          title="Group Admins"
+          description="Manage admin roles and permissions"
+          onPress={() => {}}
+        />
+        <SettingItem
+          materialIcon="person-add"
+          title="Pending Requests"
+          description="Review join requests"
+          onPress={() => {}}
+        />
+      </SettingSection>
 
-      {/* Members Management */}
-      <View style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 16,
-        borderWidth: 0.5,
-        borderColor: 'rgba(255, 255, 255, 0.08)'
-      }}>
-        <Text style={{
-          fontSize: 16,
-          fontWeight: '600',
-          color: '#ffffff',
-          marginBottom: 16
-        }}>
-          Member Management
-        </Text>
+      {/* Notifications */}
+      <SettingSection title="Notifications">
+        <SettingItem
+          materialIcon="notifications"
+          title="Group Notifications"
+          description="Manage notification preferences"
+          onPress={() => {}}
+        />
+        <SettingItem
+          materialIcon="volume-up"
+          title="Chat Sounds"
+          description="Enable sounds for group messages"
+          onPress={() => {}}
+        />
+      </SettingSection>
 
-        {/* View Members */}
-        <View style={{ marginBottom: 16 }}>
-          <TouchableOpacity style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingVertical: 12
-          }}>
-            <View>
-              <Text style={{
-                color: '#ffffff',
-                fontSize: 15,
-                marginBottom: 2
-              }}>
-                View All Members
-              </Text>
-              <Text style={{
-                color: 'rgba(255, 255, 255, 0.6)',
-                fontSize: 13
-              }}>
-                {groupData.memberCount} members
-              </Text>
-            </View>
-            <Text style={{
-              color: 'rgba(255, 255, 255, 0.5)',
-              fontSize: 14
-            }}>
-              ›
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Admins */}
-        <View>
-          <TouchableOpacity style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingVertical: 12
-          }}>
-            <View>
-              <Text style={{
-                color: '#ffffff',
-                fontSize: 15,
-                marginBottom: 2
-              }}>
-                Group Admins
-              </Text>
-              <Text style={{
-                color: 'rgba(255, 255, 255, 0.6)',
-                fontSize: 13
-              }}>
-                Manage admin permissions
-              </Text>
-            </View>
-            <Text style={{
-              color: 'rgba(255, 255, 255, 0.5)',
-              fontSize: 14
-            }}>
-              ›
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Dangerous Actions */}
-      <View style={{
-        backgroundColor: 'rgba(239, 68, 68, 0.05)',
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 16,
-        borderWidth: 0.5,
-        borderColor: 'rgba(239, 68, 68, 0.2)'
-      }}>
-        <Text style={{
-          fontSize: 16,
-          fontWeight: '600',
-          color: '#EF4444',
-          marginBottom: 16
-        }}>
-          Danger Zone
-        </Text>
-
-        {/* Delete Group */}
-        <TouchableOpacity style={{
+      {/* Danger Zone */}
+      <TouchableOpacity 
+        onPress={handleDeleteGroup}
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.03)',
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 16,
+          borderWidth: 0.5,
+          borderColor: 'rgba(239, 68, 68, 0.2)',
           flexDirection: 'row',
-          justifyContent: 'space-between',
           alignItems: 'center',
-          paddingVertical: 12
+          justifyContent: 'space-between'
         }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{
+            width: 24,
+            height: 24,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 12
+          }}>
+            <MaterialIcons 
+              name="delete-forever" 
+              size={18} 
+              color="#EF4444" 
+            />
+          </View>
           <View>
             <Text style={{
-              color: '#EF4444',
               fontSize: 15,
+              fontWeight: '500',
+              color: '#EF4444',
               marginBottom: 2
             }}>
               Delete Group
             </Text>
             <Text style={{
-              color: 'rgba(239, 68, 68, 0.7)',
-              fontSize: 13
+              fontSize: 13,
+              color: 'rgba(239, 68, 68, 0.7)'
             }}>
               Permanently delete this group
             </Text>
           </View>
-          <Text style={{
-            color: 'rgba(239, 68, 68, 0.7)',
-            fontSize: 14
-          }}>
-            ›
-          </Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+        <MaterialIcons 
+          name="chevron-right" 
+          size={20} 
+          color="rgba(239, 68, 68, 0.6)" 
+        />
+      </TouchableOpacity>
     </View>
   );
 };
