@@ -19,6 +19,7 @@ public class GroupSummaryResponseDto {
     private Integer memberCount;
     private Integer maxMembers;
     private Boolean isActive;
+    private Boolean autoApproveMembers;
     private Long totalMessages;
     private LocalDateTime lastMessageAt;
     private LocalDateTime createdAt;
@@ -142,6 +143,14 @@ public class GroupSummaryResponseDto {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Boolean getAutoApproveMembers() {
+        return autoApproveMembers;
+    }
+
+    public void setAutoApproveMembers(Boolean autoApproveMembers) {
+        this.autoApproveMembers = autoApproveMembers;
     }
 
     public Boolean getIsUserMember() {

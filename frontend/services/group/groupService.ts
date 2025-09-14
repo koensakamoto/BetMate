@@ -14,6 +14,7 @@ export interface GroupUpdateRequest {
   description?: string;
   privacy?: 'PUBLIC' | 'PRIVATE' | 'INVITE_ONLY';
   maxMembers?: number;
+  autoApproveMembers?: boolean;
 }
 
 export interface GroupSummaryResponse {
@@ -26,6 +27,7 @@ export interface GroupSummaryResponse {
   memberCount: number;
   maxMembers?: number;
   isActive: boolean;
+  autoApproveMembers?: boolean;
   totalMessages: number;
   lastMessageAt?: string;
   createdAt: string;

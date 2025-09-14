@@ -19,6 +19,7 @@ public class GroupResponseDto {
     private Integer memberCount;
     private Integer maxMembers;
     private Boolean isActive;
+    private Boolean autoApproveMembers;
     private Long totalMessages;
     private LocalDateTime lastMessageAt;
     private UserProfileResponseDto lastMessageUser;
@@ -124,6 +125,14 @@ public class GroupResponseDto {
 
     public void setIsActive(Boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public Boolean getAutoApproveMembers() {
+        return autoApproveMembers;
+    }
+
+    public void setAutoApproveMembers(Boolean autoApproveMembers) {
+        this.autoApproveMembers = autoApproveMembers;
     }
 
     public Long getTotalMessages() {

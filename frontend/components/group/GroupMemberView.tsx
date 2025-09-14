@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Text, View, ScrollView, Image, TouchableOpacity, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -23,10 +23,32 @@ interface GroupMemberViewProps {
   };
 }
 
-const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData }) => {
+const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGroupData }) => {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState(0);
+  const [groupData, setGroupData] = useState(initialGroupData);
   const tabs = ['Chat', 'Bets', 'Stats', 'People', 'Config'];
+
+  const handleGroupUpdated = useCallback((updatedGroup: any) => {
+    // Merge the updated settings back into our group data
+    setGroupData(prev => ({
+      ...prev,
+      name: updatedGroup.groupName || updatedGroup.name || prev.name,
+      description: updatedGroup.description || prev.description,
+      privacy: updatedGroup.privacy,
+      autoApproveMembers: updatedGroup.autoApproveMembers
+    }));
+  }, []);
+
+  // Transform data for GroupSettingsTab
+  const settingsGroupData = {
+    id: typeof groupData.id === 'string' ? parseInt(groupData.id) : parseInt(groupData.id[0]),
+    name: groupData.name,
+    description: groupData.description,
+    memberCount: groupData.memberCount,
+    privacy: (groupData as any).privacy || 'PRIVATE' as 'PUBLIC' | 'PRIVATE' | 'INVITE_ONLY',
+    autoApproveMembers: (groupData as any).autoApproveMembers || false
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
@@ -267,7 +289,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData }) => {
             {activeTab === 1 && <GroupBetsTab groupData={groupData} />}
             {activeTab === 2 && <GroupStatsTab groupData={groupData} />}
             {activeTab === 3 && <GroupMembersTab groupData={groupData} />}
-            {activeTab === 4 && <GroupSettingsTab groupData={groupData} />}
+            {activeTab === 4 && <GroupSettingsTab groupData={settingsGroupData} onGroupUpdated={handleGroupUpdated} />}
 
             {/* Additional spacing for scroll */}
             <View style={{ height: 60 }} />

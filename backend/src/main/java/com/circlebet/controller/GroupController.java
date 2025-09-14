@@ -1,6 +1,7 @@
 package com.circlebet.controller;
 
 import com.circlebet.dto.group.request.GroupCreationRequestDto;
+import com.circlebet.dto.group.request.GroupUpdateRequestDto;
 import com.circlebet.dto.group.response.GroupResponseDto;
 import com.circlebet.dto.group.response.GroupSummaryResponseDto;
 import com.circlebet.dto.group.response.GroupMemberResponseDto;
@@ -169,6 +170,33 @@ public class GroupController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Update group information.
+     */
+    @PutMapping("/{groupId}")
+    public ResponseEntity<GroupResponseDto> updateGroup(
+            @PathVariable Long groupId,
+            @Valid @RequestBody GroupUpdateRequestDto request,
+            Authentication authentication) {
+        
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        Group group = groupService.getGroupById(groupId);
+        
+        // Check if user is authorized to update the group (creator or admin)
+        boolean isCreator = group.getCreator().getId().equals(currentUser.getId());
+        boolean isAdmin = groupMembershipService.isAdmin(currentUser, group);
+        
+        if (!isCreator && !isAdmin) {
+            throw new RuntimeException("Access denied - insufficient permissions to update this group");
+        }
+        
+        Group updatedGroup = groupService.updateGroup(group, request);
+        GroupResponseDto response = convertToDetailedResponse(updatedGroup, currentUser);
+        
+        return ResponseEntity.ok(response);
+    }
+
     // Helper methods for DTO conversion
     private GroupResponseDto convertToDetailedResponse(Group group, User currentUser) {
         GroupResponseDto response = new GroupResponseDto();
@@ -180,6 +208,7 @@ public class GroupController {
         response.setMemberCount(group.getMemberCount());
         response.setMaxMembers(group.getMaxMembers());
         response.setIsActive(group.getIsActive());
+        response.setAutoApproveMembers(group.getAutoApproveMembers());
         response.setTotalMessages(group.getTotalMessages());
         response.setLastMessageAt(group.getLastMessageAt());
         response.setCreatedAt(group.getCreatedAt());
@@ -203,6 +232,7 @@ public class GroupController {
         response.setMemberCount(group.getMemberCount());
         response.setMaxMembers(group.getMaxMembers());
         response.setIsActive(group.getIsActive());
+        response.setAutoApproveMembers(group.getAutoApproveMembers());
         response.setTotalMessages(group.getTotalMessages());
         response.setLastMessageAt(group.getLastMessageAt());
         response.setCreatedAt(group.getCreatedAt());

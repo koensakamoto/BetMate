@@ -68,6 +68,9 @@ public class Group {
     @Column(nullable = false)
     private Boolean isActive = true;
 
+    @Column(nullable = false)
+    private Boolean autoApproveMembers = true;
+
     // ==========================================
     // CHAT METADATA
     // ==========================================
@@ -198,6 +201,14 @@ public class Group {
     
     public void setIsActive(Boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public Boolean getAutoApproveMembers() {
+        return autoApproveMembers;
+    }
+    
+    public void setAutoApproveMembers(Boolean autoApproveMembers) {
+        this.autoApproveMembers = autoApproveMembers;
     }
 
     // System Fields

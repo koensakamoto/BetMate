@@ -9,8 +9,6 @@ import { debugLog, errorLog } from '../config/env';
 export default function Settings() {
   const insets = useSafeAreaInsets();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(false);
-  const [pushNotifications, setPushNotifications] = useState(true);
   const [privateProfile, setPrivateProfile] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -237,57 +235,20 @@ export default function Settings() {
             materialIcon="security"
             title="Account Security"
             description="Password, two-factor authentication"
-            onPress={() => {}}
+            onPress={() => router.push('/account-security')}
           />
         </SettingSection>
 
         {/* Notifications */}
         <SettingSection title="Notifications">
           <SettingItem
-            materialIcon="notifications"
-            title="Push Notifications"
-            description="Receive notifications on your device"
-            showSwitch={true}
-            switchValue={pushNotifications}
-            onSwitchChange={setPushNotifications}
-          />
-          <SettingItem
-            materialIcon="email"
-            title="Email Notifications"
-            description="Get updates via email"
-            showSwitch={true}
-            switchValue={emailNotifications}
-            onSwitchChange={setEmailNotifications}
-          />
-          <SettingItem
             materialIcon="tune"
             title="Notification Preferences"
             description="Choose what notifications to receive"
-            onPress={() => {}}
+            onPress={() => router.push('/notification-preferences')}
           />
         </SettingSection>
 
-        {/* App Settings */}
-        <SettingSection title="App Settings">
-          <SettingItem
-            materialIcon="palette"
-            title="Appearance"
-            description="Theme and display options"
-            onPress={() => {}}
-          />
-          <SettingItem
-            materialIcon="language"
-            title="Language"
-            description="English"
-            onPress={() => {}}
-          />
-          <SettingItem
-            materialIcon="storage"
-            title="Data & Storage"
-            description="Manage app data usage"
-            onPress={() => {}}
-          />
-        </SettingSection>
 
         {/* Support & Info */}
         <SettingSection title="Support & Info">
@@ -295,25 +256,25 @@ export default function Settings() {
             materialIcon="help"
             title="Help & Support"
             description="Get help with using the app"
-            onPress={() => {}}
+            onPress={() => router.push('/help-support')}
           />
           <SettingItem
             materialIcon="description"
             title="Terms of Service"
             description="Read our terms and conditions"
-            onPress={() => {}}
+            onPress={() => router.push('/terms-of-service')}
           />
           <SettingItem
             materialIcon="privacy-tip"
             title="Privacy Policy"
             description="Learn about data protection"
-            onPress={() => {}}
+            onPress={() => router.push('/privacy-policy')}
           />
           <SettingItem
             materialIcon="info"
             title="About"
             description="App version 1.0.0"
-            onPress={() => {}}
+            onPress={() => router.push('/about')}
           />
         </SettingSection>
 

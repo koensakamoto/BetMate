@@ -81,7 +81,7 @@ public class MessageWebSocketController {
     }
 
     /**
-     * Handle typing indicators for real-time feedback.
+     * Handle typing indicators for reanow l-time feedback.
      */
     @MessageMapping("/group/{groupId}/typing")
     public void handleTyping(@DestinationVariable Long groupId,

@@ -23,17 +23,20 @@ public class GroupUpdateRequestDto {
     @Min(value = 2, message = "Maximum members must be at least 2")
     @Max(value = 1000, message = "Maximum members cannot exceed 1000")
     private Integer maxMembers;
+    
+    private Boolean autoApproveMembers;
 
     // Constructors
     public GroupUpdateRequestDto() {}
 
     public GroupUpdateRequestDto(String groupName, String description, String groupPictureUrl, 
-                               Group.Privacy privacy, Integer maxMembers) {
+                               Group.Privacy privacy, Integer maxMembers, Boolean autoApproveMembers) {
         this.groupName = groupName;
         this.description = description;
         this.groupPictureUrl = groupPictureUrl;
         this.privacy = privacy;
         this.maxMembers = maxMembers;
+        this.autoApproveMembers = autoApproveMembers;
     }
 
     // Getters and setters
@@ -75,5 +78,13 @@ public class GroupUpdateRequestDto {
 
     public void setMaxMembers(Integer maxMembers) {
         this.maxMembers = maxMembers;
+    }
+
+    public Boolean getAutoApproveMembers() {
+        return autoApproveMembers;
+    }
+
+    public void setAutoApproveMembers(Boolean autoApproveMembers) {
+        this.autoApproveMembers = autoApproveMembers;
     }
 }

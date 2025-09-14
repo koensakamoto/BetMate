@@ -111,6 +111,9 @@ public class GroupService {
             group.setPrivacy(request.getPrivacy());
         }
         
+        if (request.getAutoApproveMembers() != null) {
+            group.setAutoApproveMembers(request.getAutoApproveMembers());
+        }
         
         return groupRepository.save(group);
     }
