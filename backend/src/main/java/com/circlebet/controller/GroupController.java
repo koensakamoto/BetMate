@@ -73,12 +73,24 @@ public class GroupController {
 
     /**
      * Get public groups for discovery.
+     * Excludes groups that the current user is already a member of.
      */
     @GetMapping("/public")
-    public ResponseEntity<List<GroupSummaryResponseDto>> getPublicGroups() {
-        List<Group> groups = groupService.getPublicGroups();
-        List<GroupSummaryResponseDto> response = groups.stream()
-            .map(this::convertToSummaryResponse)
+    public ResponseEntity<List<GroupSummaryResponseDto>> getPublicGroups(Authentication authentication) {
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+            
+        List<Group> allPublicGroups = groupService.getPublicGroups();
+        List<Group> userGroups = groupMembershipService.getUserGroups(currentUser);
+        
+        // Filter out groups the user is already a member of
+        List<Group> filteredGroups = allPublicGroups.stream()
+            .filter(group -> userGroups.stream()
+                .noneMatch(userGroup -> userGroup.getId().equals(group.getId())))
+            .toList();
+            
+        List<GroupSummaryResponseDto> response = filteredGroups.stream()
+            .map(group -> convertToSummaryResponse(group, currentUser))
             .toList();
         return ResponseEntity.ok(response);
     }
@@ -93,11 +105,7 @@ public class GroupController {
             
         List<Group> userGroups = groupMembershipService.getUserGroups(currentUser);
         List<GroupSummaryResponseDto> response = userGroups.stream()
-            .map(group -> {
-                GroupSummaryResponseDto dto = convertToSummaryResponse(group);
-                dto.setIsUserMember(true); // User is definitely a member of their own groups
-                return dto;
-            })
+            .map(group -> convertToSummaryResponse(group, currentUser))
             .toList();
             
         return ResponseEntity.ok(response);
@@ -108,10 +116,13 @@ public class GroupController {
      */
     @GetMapping("/search")
     public ResponseEntity<List<GroupSummaryResponseDto>> searchGroups(
-            @RequestParam String q) {
+            @RequestParam String q, Authentication authentication) {
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+            
         List<Group> groups = groupService.searchGroups(q);
         List<GroupSummaryResponseDto> response = groups.stream()
-            .map(this::convertToSummaryResponse)
+            .map(group -> convertToSummaryResponse(group, currentUser))
             .toList();
         return ResponseEntity.ok(response);
     }
@@ -181,7 +192,7 @@ public class GroupController {
         return response;
     }
 
-    private GroupSummaryResponseDto convertToSummaryResponse(Group group) {
+    private GroupSummaryResponseDto convertToSummaryResponse(Group group, User currentUser) {
         GroupSummaryResponseDto response = new GroupSummaryResponseDto();
         response.setId(group.getId());
         response.setGroupName(group.getGroupName());
@@ -195,7 +206,10 @@ public class GroupController {
         response.setTotalMessages(group.getTotalMessages());
         response.setLastMessageAt(group.getLastMessageAt());
         response.setCreatedAt(group.getCreatedAt());
-        response.setIsUserMember(false); // TODO: implement when membership service is complete
+        
+        // Check if current user is a member of this group
+        boolean isUserMember = groupMembershipService.isMember(currentUser, group);
+        response.setIsUserMember(isUserMember);
         
         return response;
     }

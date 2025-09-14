@@ -40,8 +40,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // Register STOMP endpoint for WebSocket connections
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*") // Configure for your frontend domain in production
-                .withSockJS(); // Enable SockJS fallback options
+                .setAllowedOriginPatterns("*"); // Configure for your frontend domain in production
+                // Remove SockJS for now to use pure WebSocket
     }
 
     @Override

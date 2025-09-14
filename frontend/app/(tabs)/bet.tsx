@@ -29,9 +29,11 @@ export default function Bet() {
       const myBetsData = await betService.getMyBets();
       setMyBets(myBetsData);
 
-      // Load discover bets (all open bets excluding user's own)
+      // Load discover bets (all open bets excluding user's own and participated bets)
       const openBets = await betService.getBetsByStatus('OPEN');
-      setDiscoverBets(openBets);
+      // Filter out bets the user has already participated in
+      const discoverableBets = openBets.filter(bet => !bet.hasUserParticipated);
+      setDiscoverBets(discoverableBets);
       
     } catch (error) {
       console.error('Failed to load bets:', error);

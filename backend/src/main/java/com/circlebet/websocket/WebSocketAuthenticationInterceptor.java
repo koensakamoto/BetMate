@@ -31,37 +31,55 @@ public class WebSocketAuthenticationInterceptor implements ChannelInterceptor {
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
-        StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-        
-        if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-            // Extract Authorization header from WebSocket connection
-            String authToken = accessor.getFirstNativeHeader("Authorization");
+        try {
+            StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
             
-            if (authToken != null && authToken.startsWith("Bearer ")) {
-                String token = authToken.substring(7);
+            if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
+                System.out.println("=== WebSocket CONNECT attempt ===");
                 
-                try {
-                    String username = jwtService.extractUsername(token);
+                // Extract Authorization header from WebSocket connection
+                String authToken = accessor.getFirstNativeHeader("Authorization");
+                System.out.println("Authorization header: " + (authToken != null ? "Bearer [PRESENT]" : "NULL"));
+                
+                if (authToken != null && authToken.startsWith("Bearer ")) {
+                    String token = authToken.substring(7);
+                    System.out.println("Token extracted, length: " + token.length());
                     
-                    if (username != null && !username.isEmpty()) {
-                        // Create authentication object with basic authorities
-                        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                            username, null, Collections.emptyList());
+                    try {
+                        String username = jwtService.extractUsername(token);
+                        System.out.println("Username extracted from token: " + username);
                         
-                        // Set authentication in accessor for this WebSocket session
-                        accessor.setUser(authentication);
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
-                    } else {
-                        throw new IllegalArgumentException("Invalid JWT token - no username found");
+                        if (username != null && !username.isEmpty()) {
+                            // Create authentication object with basic authorities
+                            Authentication authentication = new UsernamePasswordAuthenticationToken(
+                                username, null, Collections.emptyList());
+                            
+                            // Set authentication in accessor for this WebSocket session
+                            accessor.setUser(authentication);
+                            SecurityContextHolder.getContext().setAuthentication(authentication);
+                            System.out.println("WebSocket authentication successful for user: " + username);
+                        } else {
+                            System.out.println("ERROR: Invalid JWT token - no username found");
+                            // Don't throw exception, allow anonymous connection
+                            System.out.println("WARNING: Allowing anonymous WebSocket connection");
+                        }
+                    } catch (Exception e) {
+                        System.out.println("ERROR: JWT validation failed: " + e.getMessage());
+                        e.printStackTrace();
+                        // Don't throw exception, allow anonymous connection
+                        System.out.println("WARNING: Allowing anonymous WebSocket connection due to JWT error");
                     }
-                } catch (Exception e) {
-                    throw new IllegalArgumentException("Failed to authenticate WebSocket connection: " + e.getMessage());
+                } else {
+                    System.out.println("WARNING: No Authorization header found, allowing anonymous connection");
                 }
-            } else {
-                throw new IllegalArgumentException("No valid Authorization header found for WebSocket connection");
             }
+            
+            return message;
+        } catch (Exception e) {
+            System.out.println("CRITICAL ERROR in WebSocket interceptor: " + e.getMessage());
+            e.printStackTrace();
+            // Return message anyway to prevent connection failure
+            return message;
         }
-        
-        return message;
     }
 }

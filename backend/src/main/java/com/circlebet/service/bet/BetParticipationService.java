@@ -2,6 +2,7 @@ package com.circlebet.service.bet;
 
 import com.circlebet.entity.betting.Bet;
 import com.circlebet.entity.betting.BetParticipation;
+import com.circlebet.entity.betting.BetParticipation.ParticipationStatus;
 import com.circlebet.entity.user.User;
 import com.circlebet.exception.betting.BetParticipationException;
 import com.circlebet.repository.betting.BetParticipationRepository;

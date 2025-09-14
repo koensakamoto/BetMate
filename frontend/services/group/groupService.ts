@@ -9,6 +9,13 @@ export interface GroupCreationRequest {
   maxMembers?: number;
 }
 
+export interface GroupUpdateRequest {
+  groupName?: string;
+  description?: string;
+  privacy?: 'PUBLIC' | 'PRIVATE' | 'INVITE_ONLY';
+  maxMembers?: number;
+}
+
 export interface GroupSummaryResponse {
   id: number;
   groupName: string;
@@ -94,6 +101,13 @@ export class GroupService extends BaseApiService {
     return this.get<boolean>(API_ENDPOINTS.GROUP_CHECK_NAME, {
       params: { groupName }
     });
+  }
+
+  /**
+   * Update group information
+   */
+  async updateGroup(groupId: number, updateData: GroupUpdateRequest): Promise<GroupDetailResponse> {
+    return this.put<GroupDetailResponse>(API_ENDPOINTS.GROUP_UPDATE(groupId), updateData);
   }
 
   /**

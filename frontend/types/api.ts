@@ -140,3 +140,121 @@ export interface PagedResponse<T> {
   first: boolean;
   last: boolean;
 }
+
+// ==========================================
+// MESSAGING TYPES
+// ==========================================
+
+// Message types matching backend DTOs
+export interface MessageResponse {
+  id: number;
+  groupId: number;
+  groupName: string;
+  senderId: number | null;
+  senderUsername: string;
+  senderDisplayName: string;
+  content: string;
+  messageType: MessageType;
+  attachmentUrl?: string;
+  attachmentType?: string;
+  isEdited: boolean;
+  editedAt?: string; // ISO string
+  replyCount: number;
+  parentMessageId?: number;
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+  canEdit: boolean;
+  canDelete: boolean;
+  canReply: boolean;
+}
+
+export interface MessageThreadResponse {
+  parentMessage: MessageResponse;
+  replies: MessageResponse[];
+}
+
+export interface SendMessageRequest {
+  groupId: number;
+  content: string;
+  messageType?: MessageType;
+  parentMessageId?: number;
+  attachmentUrl?: string;
+  attachmentType?: string;
+}
+
+export interface EditMessageRequest {
+  content: string;
+}
+
+export interface MessageStatsResponse {
+  totalMessages: number;
+  totalActiveMessages: number;
+  totalReplies: number;
+  totalSenders: number;
+  messagesLast24Hours: number;
+  mostActiveUser?: string;
+}
+
+// Message search parameters
+export interface MessageSearchParams {
+  query: string;
+  groupId: number;
+  messageType?: MessageType;
+  senderId?: number;
+  fromDate?: string;
+  toDate?: string;
+}
+
+// Message enums
+export enum MessageType {
+  TEXT = 'TEXT',
+  IMAGE = 'IMAGE',
+  FILE = 'FILE',
+  SYSTEM = 'SYSTEM',
+  BET_REFERENCE = 'BET_REFERENCE',
+  ANNOUNCEMENT = 'ANNOUNCEMENT'
+}
+
+// ==========================================
+// WEBSOCKET TYPES
+// ==========================================
+
+// WebSocket message types
+export interface TypingIndicator {
+  username: string;
+  isTyping: boolean;
+  groupId: number;
+}
+
+export interface UserPresence {
+  username: string;
+  status: PresenceStatus;
+  lastSeen?: string;
+}
+
+export interface WebSocketError {
+  error: string;
+  timestamp: number;
+}
+
+export enum PresenceStatus {
+  ONLINE = 'ONLINE',
+  AWAY = 'AWAY',
+  OFFLINE = 'OFFLINE'
+}
+
+// WebSocket event types
+export interface WebSocketMessage<T = any> {
+  type: WebSocketMessageType;
+  payload: T;
+  timestamp: number;
+}
+
+export enum WebSocketMessageType {
+  MESSAGE = 'MESSAGE',
+  MESSAGE_EDIT = 'MESSAGE_EDIT',
+  MESSAGE_DELETE = 'MESSAGE_DELETE',
+  TYPING_INDICATOR = 'TYPING_INDICATOR',
+  USER_PRESENCE = 'USER_PRESENCE',
+  ERROR = 'ERROR'
+}

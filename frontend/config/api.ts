@@ -35,6 +35,7 @@ export const API_ENDPOINTS = {
   GROUPS: '/groups',
   GROUP_CREATE: '/groups',
   GROUP_BY_ID: (id: number) => `/groups/${id}`,
+  GROUP_UPDATE: (id: number) => `/groups/${id}`,
   GROUP_MEMBERS: (id: number) => `/groups/${id}/members`,
   GROUP_PUBLIC: '/groups/public',
   GROUP_MY_GROUPS: '/groups/my-groups',

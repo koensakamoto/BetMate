@@ -5,6 +5,7 @@ import com.circlebet.entity.group.GroupMembership;
 import com.circlebet.entity.user.User;
 import com.circlebet.exception.group.GroupMembershipException;
 import com.circlebet.repository.group.GroupMembershipRepository;
+import com.circlebet.service.user.UserService;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,14 +28,17 @@ public class GroupMembershipService {
     private final GroupMembershipRepository membershipRepository;
     private final GroupService groupService;
     private final GroupPermissionService permissionService;
+    private final UserService userService;
 
     @Autowired
     public GroupMembershipService(GroupMembershipRepository membershipRepository, 
                                   GroupService groupService,
-                                  GroupPermissionService permissionService) {
+                                  GroupPermissionService permissionService,
+                                  UserService userService) {
         this.membershipRepository = membershipRepository;
         this.groupService = groupService;
         this.permissionService = permissionService;
+        this.userService = userService;
     }
 
     /**
@@ -233,6 +237,30 @@ public class GroupMembershipService {
     }
 
     /**
+     * Checks if user is a member of the group - for @PreAuthorize expressions.
+     * @param groupId the group ID
+     * @param username the username
+     * @return true if user is a member of the group
+     */
+    @Transactional(readOnly = true)
+    public boolean isMember(@NotNull Long groupId, @NotNull String username) {
+        try {
+            Group group = groupService.getGroupById(groupId);
+            Optional<User> userOpt = userService.getUserByUsername(username);
+            
+            if (userOpt.isEmpty() || group == null) {
+                return false;
+            }
+            
+            User user = userOpt.get();
+            return membershipRepository.existsByUserAndGroupAndIsActiveTrue(user, group);
+        } catch (Exception e) {
+            // If any error occurs (group not found, user not found, etc), deny access
+            return false;
+        }
+    }
+
+    /**
      * Checks if user is admin or moderator of the group.
      */
     @Transactional(readOnly = true)
@@ -246,6 +274,17 @@ public class GroupMembershipService {
     @Transactional(readOnly = true)
     public boolean isAdmin(@NotNull User user, @NotNull Group group) {
         return membershipRepository.isUserGroupAdmin(user, group);
+    }
+
+    /**
+     * Checks if user is an active member of the group - for @PreAuthorize expressions.
+     * @param groupId the group ID
+     * @param username the username
+     * @return true if user is an active member of the group
+     */
+    @Transactional(readOnly = true)
+    public boolean isActiveMember(@NotNull Long groupId, @NotNull String username) {
+        return isMember(groupId, username); // Reuse existing method
     }
 
     /**

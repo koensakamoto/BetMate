@@ -1,18 +1,26 @@
 import React, { useState } from 'react';
-import { Text, View, TouchableOpacity, Switch, Alert } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Text, View, TouchableOpacity, Switch, Alert, TextInput, Modal, Animated } from 'react-native';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { groupService } from '../../services/group/groupService';
 
 interface GroupSettingsTabProps {
   groupData: {
+    id: number;
     name: string;
     description: string;
     memberCount: number;
   };
+  onGroupUpdated?: (updatedGroup: any) => void;
 }
 
-const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData }) => {
+const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupUpdated }) => {
   const [autoApprove, setAutoApprove] = useState(true);
   const [publicGroup, setPublicGroup] = useState(true);
+  const [showEditNameModal, setShowEditNameModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState(groupData.name);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const SettingSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <View style={{
@@ -118,6 +126,38 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData }) => {
     </TouchableOpacity>
   );
 
+  const handleEditGroupName = () => {
+    setNewGroupName(groupData.name);
+    setShowEditNameModal(true);
+  };
+
+  const handleSaveGroupName = async () => {
+    if (!newGroupName.trim() || newGroupName.trim() === groupData.name) {
+      setShowEditNameModal(false);
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const updatedGroup = await groupService.updateGroup(groupData.id, {
+        groupName: newGroupName.trim()
+      });
+      
+      // Call the callback to update parent component
+      if (onGroupUpdated) {
+        onGroupUpdated(updatedGroup);
+      }
+      
+      setShowEditNameModal(false);
+      Alert.alert('Success', 'Group name updated successfully!');
+    } catch (error) {
+      console.error('Failed to update group name:', error);
+      Alert.alert('Error', 'Failed to update group name. Please try again.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleDeleteGroup = () => {
     Alert.alert(
       'Delete Group',
@@ -146,7 +186,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData }) => {
           materialIcon="edit"
           title="Group Name"
           description={groupData.name}
-          onPress={() => {}}
+          onPress={handleEditGroupName}
         />
         <SettingItem
           materialIcon="description"
@@ -277,6 +317,113 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData }) => {
           color="rgba(239, 68, 68, 0.6)" 
         />
       </TouchableOpacity>
+
+      {/* Edit Group Name Modal */}
+      <Modal
+        visible={showEditNameModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowEditNameModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingHorizontal: 20
+        }}>
+          <View style={{
+            backgroundColor: '#1a1a1f',
+            borderRadius: 16,
+            padding: 24,
+            width: '100%',
+            maxWidth: 400,
+            borderWidth: 0.5,
+            borderColor: 'rgba(255, 255, 255, 0.1)'
+          }}>
+            <Text style={{
+              fontSize: 20,
+              fontWeight: '600',
+              color: '#ffffff',
+              marginBottom: 16,
+              textAlign: 'center'
+            }}>
+              Edit Group Name
+            </Text>
+            
+            <TextInput
+              value={newGroupName}
+              onChangeText={setNewGroupName}
+              placeholder="Enter new group name"
+              placeholderTextColor="rgba(255, 255, 255, 0.5)"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                fontSize: 16,
+                color: '#ffffff',
+                marginBottom: 20
+              }}
+              maxLength={50}
+              editable={!isUpdating}
+              autoFocus={true}
+            />
+            
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              gap: 12
+            }}>
+              <TouchableOpacity
+                onPress={() => setShowEditNameModal(false)}
+                disabled={isUpdating}
+                style={{
+                  flex: 1,
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: 12,
+                  paddingVertical: 14,
+                  alignItems: 'center',
+                  opacity: isUpdating ? 0.5 : 1
+                }}
+              >
+                <Text style={{
+                  color: '#ffffff',
+                  fontSize: 16,
+                  fontWeight: '600'
+                }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={handleSaveGroupName}
+                disabled={isUpdating || !newGroupName.trim() || newGroupName.trim() === groupData.name}
+                style={{
+                  flex: 1,
+                  backgroundColor: !newGroupName.trim() || newGroupName.trim() === groupData.name 
+                    ? 'rgba(255, 255, 255, 0.1)' 
+                    : '#00D4AA',
+                  borderRadius: 12,
+                  paddingVertical: 14,
+                  alignItems: 'center',
+                  opacity: isUpdating ? 0.7 : 1
+                }}
+              >
+                <Text style={{
+                  color: '#ffffff',
+                  fontSize: 16,
+                  fontWeight: '600'
+                }}>
+                  {isUpdating ? 'Saving...' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

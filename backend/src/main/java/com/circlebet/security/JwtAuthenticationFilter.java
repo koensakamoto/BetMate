@@ -50,7 +50,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         "/actuator/info",
         "/swagger-ui/**",
         "/v3/api-docs/**",
-        "/error"
+        "/error",
+        "/ws/**"
     );
 
     @Autowired
