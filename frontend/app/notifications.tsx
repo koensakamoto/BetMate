@@ -20,8 +20,8 @@ export default function Notifications() {
     },
     {
       id: '2',
-      title: 'New follower',
-      subtitle: 'Mike Johnson started following you',
+      title: 'New friend request',
+      subtitle: 'Mike Johnson sent you a friend request',
       timestamp: new Date(Date.now() - 60 * 60 * 1000),
       read: false,
       type: 'social'

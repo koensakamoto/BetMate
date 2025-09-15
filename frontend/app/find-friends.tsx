@@ -12,7 +12,7 @@ export default function FindFriends() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [followingUsers, setFollowingUsers] = useState<Set<number>>(new Set());
+  const [friendStatuses, setFriendStatuses] = useState<Map<number, 'none' | 'pending_sent' | 'pending_received' | 'friends'>>(new Map());
 
   // Handle search with debouncing
   useEffect(() => {
@@ -40,27 +40,27 @@ export default function FindFriends() {
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-  const handleFollowPress = async (userId: number) => {
+  const handleFriendPress = async (userId: number) => {
     try {
-      // TODO: Implement follow/unfollow API calls when backend is ready
-      const isCurrentlyFollowing = followingUsers.has(userId);
-      
-      if (isCurrentlyFollowing) {
-        // Unfollow user
-        setFollowingUsers(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(userId);
-          return newSet;
-        });
-        debugLog(`Unfollowed user ${userId}`);
-      } else {
-        // Follow user
-        setFollowingUsers(prev => new Set(prev).add(userId));
-        debugLog(`Followed user ${userId}`);
+      // TODO: Implement friend request API calls when backend is ready
+      const currentStatus = friendStatuses.get(userId) || 'none';
+
+      if (currentStatus === 'none') {
+        // Send friend request
+        setFriendStatuses(prev => new Map(prev).set(userId, 'pending_sent'));
+        debugLog(`Sent friend request to user ${userId}`);
+      } else if (currentStatus === 'pending_received') {
+        // Accept friend request
+        setFriendStatuses(prev => new Map(prev).set(userId, 'friends'));
+        debugLog(`Accepted friend request from user ${userId}`);
+      } else if (currentStatus === 'friends') {
+        // Remove friend
+        setFriendStatuses(prev => new Map(prev).set(userId, 'none'));
+        debugLog(`Removed friend ${userId}`);
       }
     } catch (error) {
-      errorLog('Error toggling follow status:', error);
-      Alert.alert('Error', 'Failed to update follow status. Please try again.');
+      errorLog('Error updating friend status:', error);
+      Alert.alert('Error', 'Failed to update friend status. Please try again.');
     }
   };
 
@@ -270,8 +270,8 @@ export default function FindFriends() {
                   lastName={user.lastName}
                   profileImageUrl={user.profileImageUrl}
                   isActive={user.isActive}
-                  onFollowPress={handleFollowPress}
-                  isFollowing={followingUsers.has(user.id)}
+                  onFriendPress={handleFriendPress}
+                  friendRequestStatus={friendStatuses.get(user.id) || 'none'}
                   showFollowButton={true}
                 />
               ))}

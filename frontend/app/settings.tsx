@@ -9,7 +9,6 @@ import { debugLog, errorLog } from '../config/env';
 export default function Settings() {
   const insets = useSafeAreaInsets();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [privateProfile, setPrivateProfile] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
@@ -221,15 +220,7 @@ export default function Settings() {
             materialIcon="person"
             title="Profile Settings"
             description="Edit your profile information"
-            onPress={() => {}}
-          />
-          <SettingItem
-            materialIcon="lock"
-            title="Privacy"
-            description="Control who can see your profile"
-            showSwitch={true}
-            switchValue={privateProfile}
-            onSwitchChange={setPrivateProfile}
+            onPress={() => router.push('/profile-settings')}
           />
           <SettingItem
             materialIcon="security"

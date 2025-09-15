@@ -10,8 +10,9 @@ export interface UserCardProps {
   lastName?: string;
   profileImageUrl?: string;
   isActive: boolean;
-  onFollowPress?: (userId: number) => void;
-  isFollowing?: boolean;
+  onFriendPress?: (userId: number) => void;
+  isFriend?: boolean;
+  friendRequestStatus?: 'none' | 'pending_sent' | 'pending_received' | 'friends';
   showFollowButton?: boolean;
 }
 
@@ -22,8 +23,9 @@ const UserCard: React.FC<UserCardProps> = ({
   lastName,
   profileImageUrl,
   isActive,
-  onFollowPress,
-  isFollowing = false,
+  onFriendPress,
+  isFriend = false,
+  friendRequestStatus = 'none',
   showFollowButton = true
 }) => {
   const displayName = firstName && lastName 
@@ -35,9 +37,9 @@ const UserCard: React.FC<UserCardProps> = ({
     console.log(`Navigate to user ${id} profile`);
   };
 
-  const handleFollowPress = () => {
-    if (onFollowPress) {
-      onFollowPress(id);
+  const handleFriendPress = () => {
+    if (onFriendPress) {
+      onFriendPress(id);
     }
   };
 
@@ -99,25 +101,37 @@ const UserCard: React.FC<UserCardProps> = ({
         </Text>
       </View>
 
-      {/* Follow Button */}
+      {/* Friend Button */}
       {showFollowButton && (
         <TouchableOpacity
-          onPress={handleFollowPress}
+          onPress={handleFriendPress}
           style={{
-            backgroundColor: isFollowing ? 'rgba(255, 255, 255, 0.1)' : '#00D4AA',
+            backgroundColor:
+              friendRequestStatus === 'friends' ? 'rgba(255, 255, 255, 0.1)' :
+              friendRequestStatus === 'pending_sent' ? 'rgba(255, 255, 255, 0.1)' :
+              friendRequestStatus === 'pending_received' ? '#00D4AA' :
+              '#00D4AA',
             paddingHorizontal: 16,
             paddingVertical: 8,
             borderRadius: 20,
-            borderWidth: isFollowing ? 1 : 0,
-            borderColor: isFollowing ? 'rgba(255, 255, 255, 0.3)' : 'transparent'
+            borderWidth:
+              friendRequestStatus === 'friends' || friendRequestStatus === 'pending_sent' ? 1 : 0,
+            borderColor:
+              friendRequestStatus === 'friends' || friendRequestStatus === 'pending_sent' ?
+              'rgba(255, 255, 255, 0.3)' : 'transparent'
           }}
         >
           <Text style={{
             fontSize: 13,
             fontWeight: '600',
-            color: isFollowing ? '#ffffff' : '#000000'
+            color:
+              friendRequestStatus === 'friends' || friendRequestStatus === 'pending_sent' ?
+              '#ffffff' : '#000000'
           }}>
-            {isFollowing ? 'Following' : 'Follow'}
+            {friendRequestStatus === 'friends' ? 'Friends' :
+             friendRequestStatus === 'pending_sent' ? 'Pending' :
+             friendRequestStatus === 'pending_received' ? 'Accept' :
+             'Add Friend'}
           </Text>
         </TouchableOpacity>
       )}

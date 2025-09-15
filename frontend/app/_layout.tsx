@@ -41,7 +41,7 @@ function RootLayoutNav() {
             }}
           />
           <Stack.Screen
-            name="followers"
+            name="friends"
             options={{ 
               headerShown: false,
               presentation: 'modal'
@@ -70,7 +70,7 @@ function RootLayoutNav() {
           <Stack.Screen name="(tabs)" options={{ href: null }} />
           <Stack.Screen name="settings" options={{ href: null }} />
           <Stack.Screen name="notifications" options={{ href: null }} />
-          <Stack.Screen name="followers" options={{ href: null }} />
+          <Stack.Screen name="friends" options={{ href: null }} />
           <Stack.Screen name="edit-profile" options={{ href: null }} />
           <Stack.Screen name="create-bet" options={{ href: null }} />
           <Stack.Screen

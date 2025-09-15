@@ -1,31 +1,33 @@
 import React, { useState } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert } from 'react-native';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 
 export default function AccountSecurity() {
   const insets = useSafeAreaInsets();
-  const [isLoading, setIsLoading] = useState(false);
+  const [privateProfile, setPrivateProfile] = useState(false);
+  const [hideOnlineStatus, setHideOnlineStatus] = useState(false);
 
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <View style={{
-      backgroundColor: 'rgba(255, 255, 255, 0.03)',
-      borderRadius: 16,
-      padding: 20,
-      marginBottom: 16,
-      borderWidth: 0.5,
-      borderColor: 'rgba(255, 255, 255, 0.08)'
-    }}>
+    <View style={{ marginBottom: 32 }}>
       <Text style={{
         fontSize: 16,
         fontWeight: '600',
         color: '#ffffff',
-        marginBottom: 16
+        marginBottom: 16,
+        marginLeft: 4
       }}>
         {title}
       </Text>
-      {children}
+      <View style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        borderRadius: 12,
+        borderWidth: 0.5,
+        borderColor: 'rgba(255, 255, 255, 0.08)'
+      }}>
+        {children}
+      </View>
     </View>
   );
 
@@ -36,7 +38,8 @@ export default function AccountSecurity() {
     icon,
     showStatus = false,
     status = '',
-    statusColor = '#00D4AA'
+    statusColor = '#00D4AA',
+    isLast = false
   }: {
     title: string;
     description: string;
@@ -45,6 +48,7 @@ export default function AccountSecurity() {
     showStatus?: boolean;
     status?: string;
     statusColor?: string;
+    isLast?: boolean;
   }) => (
     <TouchableOpacity 
       onPress={onPress}
@@ -52,10 +56,10 @@ export default function AccountSecurity() {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 12,
-        borderBottomWidth: 0.5,
-        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-        marginBottom: 8
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        borderBottomWidth: isLast ? 0 : 0.5,
+        borderBottomColor: 'rgba(255, 255, 255, 0.08)'
       }}
       activeOpacity={0.7}
     >
@@ -70,14 +74,14 @@ export default function AccountSecurity() {
           <MaterialIcons 
             name={icon as any} 
             size={18} 
-            color="rgba(255, 255, 255, 0.8)" 
+            color="rgba(255, 255, 255, 0.7)" 
           />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{
             fontSize: 15,
             color: '#ffffff',
-            marginBottom: 2
+            marginBottom: showStatus ? 4 : 2
           }}>
             {title}
           </Text>
@@ -102,8 +106,8 @@ export default function AccountSecurity() {
       
       <MaterialIcons 
         name="chevron-right" 
-        size={20} 
-        color="rgba(255, 255, 255, 0.4)" 
+        size={18} 
+        color="rgba(255, 255, 255, 0.3)" 
       />
     </TouchableOpacity>
   );
@@ -181,7 +185,7 @@ export default function AccountSecurity() {
         style={{ flex: 1 }}
         contentContainerStyle={{ 
           paddingTop: insets.top + 16,
-          paddingBottom: insets.bottom + 60,
+          paddingBottom: insets.bottom + 40,
           paddingHorizontal: 24
         }}
         showsVerticalScrollIndicator={false}
@@ -190,7 +194,7 @@ export default function AccountSecurity() {
         <View style={{
           flexDirection: 'row',
           alignItems: 'center',
-          marginBottom: 48,
+          marginBottom: 40,
           paddingVertical: 8
         }}>
           <TouchableOpacity 
@@ -250,6 +254,7 @@ export default function AccountSecurity() {
             showStatus={true}
             status="Not enabled"
             statusColor="#EF4444"
+            isLast={true}
           />
         </Section>
 
@@ -269,7 +274,107 @@ export default function AccountSecurity() {
             showStatus={true}
             status="Email verified"
             statusColor="#00D4AA"
+            isLast={true}
           />
+        </Section>
+
+        {/* Privacy Controls */}
+        <Section title="Privacy">
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 16,
+              borderBottomWidth: 0.5,
+              borderBottomColor: 'rgba(255, 255, 255, 0.08)'
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <View style={{
+                  width: 24,
+                  height: 24,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: 12
+                }}>
+                  <MaterialIcons 
+                    name="lock" 
+                    size={18} 
+                    color="rgba(255, 255, 255, 0.7)" 
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontSize: 15,
+                    color: '#ffffff',
+                    marginBottom: 2
+                  }}>
+                    Private Profile
+                  </Text>
+                  <Text style={{
+                    fontSize: 13,
+                    color: 'rgba(255, 255, 255, 0.6)'
+                  }}>
+                    Only friends can see your profile
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={privateProfile}
+                onValueChange={setPrivateProfile}
+                trackColor={{ false: 'rgba(255, 255, 255, 0.2)', true: '#00D4AA' }}
+                thumbColor={privateProfile ? '#ffffff' : '#ffffff'}
+                ios_backgroundColor="rgba(255, 255, 255, 0.2)"
+              />
+            </View>
+
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 16,
+              borderBottomWidth: 0.5,
+              borderBottomColor: 'rgba(255, 255, 255, 0.08)'
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <View style={{
+                  width: 24,
+                  height: 24,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: 12
+                }}>
+                  <MaterialIcons 
+                    name="visibility-off" 
+                    size={18} 
+                    color="rgba(255, 255, 255, 0.7)" 
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontSize: 15,
+                    color: '#ffffff',
+                    marginBottom: 2
+                  }}>
+                    Hide Online Status
+                  </Text>
+                  <Text style={{
+                    fontSize: 13,
+                    color: 'rgba(255, 255, 255, 0.6)'
+                  }}>
+                    Don't show when you're active
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={hideOnlineStatus}
+                onValueChange={setHideOnlineStatus}
+                trackColor={{ false: 'rgba(255, 255, 255, 0.2)', true: '#00D4AA' }}
+                thumbColor={hideOnlineStatus ? '#ffffff' : '#ffffff'}
+                ios_backgroundColor="rgba(255, 255, 255, 0.2)"
+              />
+            </View>
         </Section>
 
         {/* Data & Privacy */}
@@ -279,108 +384,55 @@ export default function AccountSecurity() {
             description="Get a copy of your account information"
             onPress={handleDataDownload}
             icon="download"
-          />
-          <SecurityItem
-            title="Privacy Settings"
-            description="Control who can see your profile"
-            onPress={() => router.back()}
-            icon="privacy-tip"
+            isLast={true}
           />
         </Section>
 
-        {/* Danger Zone */}
-        <Section title="Danger Zone">
-          <TouchableOpacity 
-            onPress={handleDeleteAccount}
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingVertical: 12,
-              borderBottomWidth: 0.5,
-              borderBottomColor: 'rgba(239, 68, 68, 0.2)',
-              marginBottom: 8
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-              <View style={{
-                width: 24,
-                height: 24,
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginRight: 12
-              }}>
-                <MaterialIcons 
-                  name="delete-forever" 
-                  size={18} 
-                  color="#EF4444" 
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{
-                  fontSize: 15,
-                  color: '#EF4444',
-                  marginBottom: 2
-                }}>
-                  Delete Account
-                </Text>
-                <Text style={{
-                  fontSize: 13,
-                  color: 'rgba(239, 68, 68, 0.7)'
-                }}>
-                  Permanently delete your account and data
-                </Text>
-              </View>
-            </View>
-            
-            <MaterialIcons 
-              name="chevron-right" 
-              size={20} 
-              color="rgba(239, 68, 68, 0.6)" 
-            />
-          </TouchableOpacity>
-        </Section>
-
-        {/* Security Tips */}
-        <View style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.02)',
-          borderRadius: 12,
-          padding: 20,
-          marginTop: 20,
-          borderWidth: 1,
-          borderColor: 'rgba(255, 255, 255, 0.05)'
-        }}>
-          <View style={{
+        {/* Delete Account */}
+        <TouchableOpacity 
+          onPress={handleDeleteAccount}
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+            borderRadius: 16,
+            padding: 16,
+            marginTop: 24,
+            borderWidth: 0.5,
+            borderColor: 'rgba(255, 255, 255, 0.08)',
             flexDirection: 'row',
             alignItems: 'center',
-            marginBottom: 12
-          }}>
-            <MaterialIcons 
-              name="security" 
-              size={18} 
-              color="rgba(255, 255, 255, 0.7)" 
-            />
+            justifyContent: 'space-between'
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{
+              width: 24,
+              height: 24,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginRight: 12
+            }}>
+              <MaterialIcons 
+                name="delete-forever" 
+                size={18} 
+                color="#EF4444" 
+              />
+            </View>
             <Text style={{
               fontSize: 15,
-              fontWeight: '600',
-              color: '#ffffff',
-              marginLeft: 8
+              fontWeight: '500',
+              color: '#EF4444'
             }}>
-              Security Tips
+              Delete Account
             </Text>
           </View>
-          <Text style={{
-            fontSize: 14,
-            color: 'rgba(255, 255, 255, 0.7)',
-            lineHeight: 20
-          }}>
-            • Use a strong, unique password for your account{'\n'}
-            • Enable two-factor authentication for extra security{'\n'}
-            • Never share your login credentials with others{'\n'}
-            • Log out from shared or public devices
-          </Text>
-        </View>
+          <MaterialIcons 
+            name="chevron-right" 
+            size={20} 
+            color="rgba(239, 68, 68, 0.6)" 
+          />
+        </TouchableOpacity>
+
       </ScrollView>
     </View>
   );

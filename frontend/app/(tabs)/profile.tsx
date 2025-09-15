@@ -275,40 +275,15 @@ export default function Profile() {
                   color: '#ffffff',
                   marginBottom: 2
                 }}>
-                  {formatNumber(0)} {/* TODO: Add followers count from backend */}
+                  {formatNumber(0)} {/* TODO: Add friends count from backend */}
                 </Text>
-                <Text style={{ 
-                  fontSize: 11, 
+                <Text style={{
+                  fontSize: 11,
                   color: 'rgba(255, 255, 255, 0.4)',
                   textTransform: 'uppercase',
                   letterSpacing: 0.5
                 }}>
-                  Followers
-                </Text>
-              </View>
-              
-              <View style={{
-                width: 1,
-                height: 20,
-                backgroundColor: 'rgba(255, 255, 255, 0.1)'
-              }} />
-              
-              <View style={{ alignItems: 'center' }}>
-                <Text style={{ 
-                  fontSize: 18, 
-                  fontWeight: '600', 
-                  color: '#ffffff',
-                  marginBottom: 2
-                }}>
-                  {formatNumber(0)} {/* TODO: Add following count from backend */}
-                </Text>
-                <Text style={{ 
-                  fontSize: 11, 
-                  color: 'rgba(255, 255, 255, 0.4)',
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5
-                }}>
-                  Following
+                  Friends
                 </Text>
               </View>
               
@@ -716,7 +691,7 @@ export default function Profile() {
                   { title: 'First Win', desc: 'Won your first bet', color: '#FFD700' },
                   { title: 'Hot Streak', desc: '5 wins in a row', color: '#FF6B6B' },
                   { title: 'Big Winner', desc: 'Won $1000+ in a bet', color: '#4ECDC4' },
-                  { title: 'Social Star', desc: '100+ followers', color: '#45B7D1' }
+                  { title: 'Social Star', desc: '100+ friends', color: '#45B7D1' }
                 ].map((achievement, index) => (
                   <View key={index} style={{
                     backgroundColor: 'rgba(255, 255, 255, 0.03)',
