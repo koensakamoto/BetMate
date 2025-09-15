@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 
 const icon = require("../../assets/images/icon.png");
 
@@ -14,6 +14,7 @@ export interface UserCardProps {
   isFriend?: boolean;
   friendRequestStatus?: 'none' | 'pending_sent' | 'pending_received' | 'friends';
   showFollowButton?: boolean;
+  isLoading?: boolean;
 }
 
 const UserCard: React.FC<UserCardProps> = ({
@@ -26,7 +27,8 @@ const UserCard: React.FC<UserCardProps> = ({
   onFriendPress,
   isFriend = false,
   friendRequestStatus = 'none',
-  showFollowButton = true
+  showFollowButton = true,
+  isLoading = false
 }) => {
   const displayName = firstName && lastName 
     ? `${firstName} ${lastName}` 
@@ -105,6 +107,7 @@ const UserCard: React.FC<UserCardProps> = ({
       {showFollowButton && (
         <TouchableOpacity
           onPress={handleFriendPress}
+          disabled={isLoading}
           style={{
             backgroundColor:
               friendRequestStatus === 'friends' ? 'rgba(255, 255, 255, 0.1)' :
@@ -118,21 +121,33 @@ const UserCard: React.FC<UserCardProps> = ({
               friendRequestStatus === 'friends' || friendRequestStatus === 'pending_sent' ? 1 : 0,
             borderColor:
               friendRequestStatus === 'friends' || friendRequestStatus === 'pending_sent' ?
-              'rgba(255, 255, 255, 0.3)' : 'transparent'
+              'rgba(255, 255, 255, 0.3)' : 'transparent',
+            opacity: isLoading ? 0.7 : 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: 80
           }}
         >
-          <Text style={{
-            fontSize: 13,
-            fontWeight: '600',
-            color:
-              friendRequestStatus === 'friends' || friendRequestStatus === 'pending_sent' ?
-              '#ffffff' : '#000000'
-          }}>
-            {friendRequestStatus === 'friends' ? 'Friends' :
-             friendRequestStatus === 'pending_sent' ? 'Pending' :
-             friendRequestStatus === 'pending_received' ? 'Accept' :
-             'Add Friend'}
-          </Text>
+          {isLoading ? (
+            <ActivityIndicator
+              size="small"
+              color={friendRequestStatus === 'friends' || friendRequestStatus === 'pending_sent' ? '#ffffff' : '#000000'}
+            />
+          ) : (
+            <Text style={{
+              fontSize: 13,
+              fontWeight: '600',
+              color:
+                friendRequestStatus === 'friends' || friendRequestStatus === 'pending_sent' ?
+                '#ffffff' : '#000000'
+            }}>
+              {friendRequestStatus === 'friends' ? 'Friends' :
+               friendRequestStatus === 'pending_sent' ? 'Pending' :
+               friendRequestStatus === 'pending_received' ? 'Accept' :
+               'Add Friend'}
+            </Text>
+          )}
         </TouchableOpacity>
       )}
     </TouchableOpacity>

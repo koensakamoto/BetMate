@@ -75,7 +75,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
             toValue: 0.98,
             tension: 100,
             friction: 8,
-            useNativeDriver: true,
+            useNativeDriver: false,
           })
         ]).start();
       }
@@ -96,7 +96,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
             toValue: 1,
             tension: 120,
             friction: 9,
-            useNativeDriver: true,
+            useNativeDriver: false,
           })
         ]).start();
       }

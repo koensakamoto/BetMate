@@ -1,36 +1,77 @@
-import React, { useState } from 'react';
-import { Text, View, TouchableOpacity, ScrollView, StatusBar, Image, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Text, View, TouchableOpacity, ScrollView, StatusBar, Image, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useCallback } from 'react';
+import { friendshipService } from '../services/user/friendshipService';
+import { UserSearchResult } from '../services/user/userService';
+import { debugLog, errorLog } from '../config/env';
 
 const icon = require("../assets/images/icon.png");
 
 export default function Friends() {
   const insets = useSafeAreaInsets();
-  // Single friends view - no tabs needed
   const [searchQuery, setSearchQuery] = useState('');
-  
-  const friends = [
-    { id: '1', username: 'mikeJohnson', name: 'Mike Johnson', isFriend: true },
-    { id: '2', username: 'sarahGamer', name: 'Sarah Chen', isFriend: true },
-    { id: '3', username: 'alexBets', name: 'Alex Rodriguez', isFriend: true },
-    { id: '4', username: 'emilyWins', name: 'Emily Davis', isFriend: true },
-    { id: '5', username: 'chrisPlay', name: 'Chris Wilson', isFriend: true },
-    { id: '6', username: 'jessicaLuck', name: 'Jessica Brown', isFriend: true },
-    { id: '7', username: 'davidCards', name: 'David Martinez', isFriend: true },
-    { id: '8', username: 'lisaWinner', name: 'Lisa Anderson', isFriend: true },
-    { id: '9', username: 'gameMaster', name: 'Ryan Garcia', isFriend: true },
-    { id: '10', username: 'betQueen', name: 'Amanda White', isFriend: true },
-  ];
+  const [friends, setFriends] = useState<UserSearchResult[]>([]);
+  const [filteredFriends, setFilteredFriends] = useState<UserSearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [friendsCount, setFriendsCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  // Load friends data
+  const loadFriends = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-  const currentList = friends;
-  const filteredList = currentList.filter(user => 
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.username.toLowerCase().includes(searchQuery.toLowerCase())
+      const [friendsData, countData] = await Promise.all([
+        friendshipService.getFriends(),
+        friendshipService.getFriendsCount()
+      ]);
+
+      setFriends(friendsData);
+      setFriendsCount(countData.friendsCount);
+      debugLog('Loaded friends:', friendsData);
+    } catch (error) {
+      errorLog('Error loading friends:', error);
+      setError('Failed to load friends');
+      Alert.alert('Error', 'Failed to load friends. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load friends on component mount
+  useEffect(() => {
+    loadFriends();
+  }, []);
+
+  // Reload friends when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadFriends();
+    }, [])
   );
 
-  const UserItem = ({ user }: { user: any }) => (
+  // Filter friends based on search query
+  useEffect(() => {
+    if (searchQuery.trim().length === 0) {
+      setFilteredFriends(friends);
+    } else {
+      const filtered = friends.filter(user => {
+        const displayName = user.firstName && user.lastName
+          ? `${user.firstName} ${user.lastName}`
+          : user.username;
+        return (
+          displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          user.username.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      });
+      setFilteredFriends(filtered);
+    }
+  }, [friends, searchQuery]);
+
+  const UserItem = ({ user }: { user: UserSearchResult }) => (
     <TouchableOpacity 
       style={{
         flexDirection: 'row',
@@ -163,7 +204,7 @@ export default function Friends() {
               fontWeight: '600',
               color: '#ffffff'
             }}>
-              {friends.length} friends
+              {friendsCount} friends
             </Text>
           </View>
 
@@ -213,11 +254,66 @@ export default function Friends() {
           showsVerticalScrollIndicator={false}
           contentInsetAdjustmentBehavior="automatic"
         >
-          {filteredList.length > 0 ? (
-            filteredList.map((user, index) => (
+          {isLoading ? (
+            <View style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingVertical: 60
+            }}>
+              <ActivityIndicator size="large" color="#00D4AA" />
+              <Text style={{
+                fontSize: 16,
+                color: 'rgba(255, 255, 255, 0.6)',
+                textAlign: 'center',
+                marginTop: 16
+              }}>
+                Loading friends...
+              </Text>
+            </View>
+          ) : error ? (
+            <View style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingVertical: 60
+            }}>
+              <MaterialIcons
+                name="error-outline"
+                size={48}
+                color="rgba(255, 255, 255, 0.3)"
+                style={{ marginBottom: 16 }}
+              />
+              <Text style={{
+                fontSize: 16,
+                color: 'rgba(255, 255, 255, 0.4)',
+                textAlign: 'center',
+                marginBottom: 16
+              }}>
+                {error}
+              </Text>
+              <TouchableOpacity
+                onPress={loadFriends}
+                style={{
+                  backgroundColor: '#00D4AA',
+                  paddingHorizontal: 20,
+                  paddingVertical: 10,
+                  borderRadius: 8
+                }}
+              >
+                <Text style={{
+                  color: '#000000',
+                  fontWeight: '600'
+                }}>
+                  Try Again
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : filteredFriends.length > 0 ? (
+            filteredFriends.map((user, index) => (
               <View key={user.id}>
                 <UserItem user={user} />
-                {index < filteredList.length - 1 && (
+                {index < filteredFriends.length - 1 && (
                   <View style={{
                     height: 0.5,
                     backgroundColor: 'rgba(255, 255, 255, 0.06)',
@@ -226,6 +322,35 @@ export default function Friends() {
                 )}
               </View>
             ))
+          ) : friends.length === 0 ? (
+            <View style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingVertical: 60
+            }}>
+              <MaterialIcons
+                name="people-outline"
+                size={48}
+                color="rgba(255, 255, 255, 0.3)"
+                style={{ marginBottom: 16 }}
+              />
+              <Text style={{
+                fontSize: 16,
+                color: 'rgba(255, 255, 255, 0.4)',
+                textAlign: 'center',
+                marginBottom: 4
+              }}>
+                No friends yet
+              </Text>
+              <Text style={{
+                fontSize: 14,
+                color: 'rgba(255, 255, 255, 0.3)',
+                textAlign: 'center'
+              }}>
+                Find friends to add them to your network
+              </Text>
+            </View>
           ) : (
             <View style={{
               flex: 1,
@@ -233,9 +358,9 @@ export default function Friends() {
               alignItems: 'center',
               paddingVertical: 60
             }}>
-              <MaterialIcons 
-                name="search-off" 
-                size={48} 
+              <MaterialIcons
+                name="search-off"
+                size={48}
                 color="rgba(255, 255, 255, 0.3)"
                 style={{ marginBottom: 16 }}
               />
@@ -244,7 +369,7 @@ export default function Friends() {
                 color: 'rgba(255, 255, 255, 0.4)',
                 textAlign: 'center'
               }}>
-                No users found
+                No friends found
               </Text>
             </View>
           )}

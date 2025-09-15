@@ -220,7 +220,7 @@ public class FriendshipService {
             .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId1));
         User user2 = userRepository.findById(userId2)
             .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId2));
-        return friendshipRepository.countMutualFriends(user1, user2);
+        return friendshipRepository.countMutualFriends(userId1, userId2);
     }
 
     // ==========================================

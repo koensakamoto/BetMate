@@ -6,12 +6,11 @@ import com.circlebet.entity.user.Friendship.FriendshipStatus;
 import com.circlebet.entity.user.User;
 import com.circlebet.service.user.FriendshipService;
 import com.circlebet.service.user.UserService;
+import com.circlebet.util.SecurityContextUtil;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -312,7 +311,12 @@ public class FriendshipController {
                 "hasPendingRequest", hasPendingRequest
             ));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            e.printStackTrace(); // Add logging to see the actual error
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "success", false,
+                "message", "Failed to get friendship status: " + e.getMessage(),
+                "error", e.getClass().getSimpleName()
+            ));
         }
     }
 
@@ -321,8 +325,8 @@ public class FriendshipController {
     // ==========================================
 
     private Long getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return Long.parseLong(authentication.getName());
+        return SecurityContextUtil.getCurrentUserId()
+            .orElseThrow(() -> new IllegalStateException("User not authenticated"));
     }
 
     private UserSearchResultResponseDto mapUserToSearchResult(User user) {

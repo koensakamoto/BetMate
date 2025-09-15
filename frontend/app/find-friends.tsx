@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import UserCard from '../components/user/UserCard';
 import { userService, UserSearchResult } from '../services/user/userService';
+import { friendshipService, FriendshipService, FriendshipStatus } from '../services/user/friendshipService';
 import { debugLog, errorLog } from '../config/env';
 
 export default function FindFriends() {
@@ -13,6 +14,7 @@ export default function FindFriends() {
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [friendStatuses, setFriendStatuses] = useState<Map<number, 'none' | 'pending_sent' | 'pending_received' | 'friends'>>(new Map());
+  const [loadingFriendStatus, setLoadingFriendStatus] = useState<Set<number>>(new Set());
 
   // Handle search with debouncing
   useEffect(() => {
@@ -23,6 +25,11 @@ export default function FindFriends() {
           const results = await userService.searchUsers(searchQuery.trim());
           setSearchResults(results);
           debugLog('User search results:', results);
+
+          // Load friendship statuses for all search results
+          if (results.length > 0) {
+            loadFriendshipStatuses(results.map(user => user.id));
+          }
         } catch (error) {
           errorLog('Error searching users:', error);
           setSearchResults([]);
@@ -32,6 +39,7 @@ export default function FindFriends() {
         }
       } else {
         setSearchResults([]);
+        setFriendStatuses(new Map());
         setIsLoading(false);
       }
     };
@@ -40,27 +48,105 @@ export default function FindFriends() {
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-  const handleFriendPress = async (userId: number) => {
+  // Load friendship statuses for multiple users
+  const loadFriendshipStatuses = async (userIds: number[]) => {
     try {
-      // TODO: Implement friend request API calls when backend is ready
-      const currentStatus = friendStatuses.get(userId) || 'none';
+      const statusMap = await friendshipService.getMultipleFriendshipStatuses(userIds);
+      const simplifiedStatusMap = new Map<number, 'none' | 'pending_sent' | 'pending_received' | 'friends'>();
 
+      statusMap.forEach((status, userId) => {
+        const simpleStatus = FriendshipService.getFriendRequestStatus(status);
+        simplifiedStatusMap.set(userId, simpleStatus);
+      });
+
+      setFriendStatuses(prev => {
+        const newMap = new Map(prev);
+        simplifiedStatusMap.forEach((status, userId) => {
+          newMap.set(userId, status);
+        });
+        return newMap;
+      });
+    } catch (error) {
+      errorLog('Error loading friendship statuses:', error);
+    }
+  };
+
+  const handleFriendPress = async (userId: number) => {
+    const currentStatus = friendStatuses.get(userId) || 'none';
+
+    // Prevent multiple clicks
+    if (loadingFriendStatus.has(userId)) {
+      return;
+    }
+
+    setLoadingFriendStatus(prev => new Set(prev).add(userId));
+
+    try {
       if (currentStatus === 'none') {
         // Send friend request
-        setFriendStatuses(prev => new Map(prev).set(userId, 'pending_sent'));
-        debugLog(`Sent friend request to user ${userId}`);
+        const response = await friendshipService.sendFriendRequest(userId);
+        if (response.success) {
+          setFriendStatuses(prev => new Map(prev).set(userId, 'pending_sent'));
+          debugLog(`Sent friend request to user ${userId}`);
+        } else {
+          Alert.alert('Error', response.message || 'Failed to send friend request');
+        }
       } else if (currentStatus === 'pending_received') {
-        // Accept friend request
-        setFriendStatuses(prev => new Map(prev).set(userId, 'friends'));
-        debugLog(`Accepted friend request from user ${userId}`);
+        // Accept friend request - we'd need the friendship ID for this
+        // For now, let's reload the status to get the correct state
+        const status = await friendshipService.getFriendshipStatus(userId);
+        const simpleStatus = FriendshipService.getFriendRequestStatus(status);
+        setFriendStatuses(prev => new Map(prev).set(userId, simpleStatus));
+
+        if (simpleStatus === 'pending_received') {
+          Alert.alert('Info', 'Please accept the friend request from your notifications.');
+        }
       } else if (currentStatus === 'friends') {
         // Remove friend
-        setFriendStatuses(prev => new Map(prev).set(userId, 'none'));
-        debugLog(`Removed friend ${userId}`);
+        Alert.alert(
+          'Remove Friend',
+          'Are you sure you want to remove this friend?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Remove',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  const response = await friendshipService.removeFriend(userId);
+                  if (response.success) {
+                    setFriendStatuses(prev => new Map(prev).set(userId, 'none'));
+                    debugLog(`Removed friend ${userId}`);
+                  } else {
+                    Alert.alert('Error', response.message || 'Failed to remove friend');
+                  }
+                } catch (error) {
+                  errorLog('Error removing friend:', error);
+                  Alert.alert('Error', 'Failed to remove friend. Please try again.');
+                }
+              }
+            }
+          ]
+        );
       }
     } catch (error) {
       errorLog('Error updating friend status:', error);
       Alert.alert('Error', 'Failed to update friend status. Please try again.');
+
+      // Reload the current status on error
+      try {
+        const status = await friendshipService.getFriendshipStatus(userId);
+        const simpleStatus = FriendshipService.getFriendRequestStatus(status);
+        setFriendStatuses(prev => new Map(prev).set(userId, simpleStatus));
+      } catch (reloadError) {
+        errorLog('Error reloading friend status:', reloadError);
+      }
+    } finally {
+      setLoadingFriendStatus(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(userId);
+        return newSet;
+      });
     }
   };
 
@@ -273,6 +359,7 @@ export default function FindFriends() {
                   onFriendPress={handleFriendPress}
                   friendRequestStatus={friendStatuses.get(user.id) || 'none'}
                   showFollowButton={true}
+                  isLoading={loadingFriendStatus.has(user.id)}
                 />
               ))}
             </View>
