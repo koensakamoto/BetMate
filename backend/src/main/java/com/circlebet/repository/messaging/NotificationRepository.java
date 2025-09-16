@@ -20,20 +20,20 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findByUserOrderByCreatedAtDesc(User user);
 
     // User notifications by userId with pagination
-    @Query("SELECT n FROM Notification n WHERE n.userId = :userId AND n.deletedAt IS NULL ORDER BY n.createdAt DESC")
+    @Query("SELECT n FROM Notification n WHERE n.user.id = :userId AND n.deletedAt IS NULL ORDER BY n.createdAt DESC")
     Page<Notification> findByUserId(@Param("userId") Long userId, Pageable pageable);
 
-    @Query("SELECT n FROM Notification n WHERE n.userId = :userId AND n.isRead = false AND n.deletedAt IS NULL ORDER BY n.createdAt DESC")
-    Page<Notification> findByUserIdAndIsReadFalse(@Param("userId") Long userId, Pageable pageable);
+    @Query("SELECT n FROM Notification n WHERE n.user.id = :userId AND n.isRead = false AND n.deletedAt IS NULL ORDER BY n.createdAt DESC")
+    Page<Notification> findUnreadByUserId(@Param("userId") Long userId, Pageable pageable);
 
     // Count methods by userId
-    @Query("SELECT COUNT(n) FROM Notification n WHERE n.userId = :userId AND n.deletedAt IS NULL")
+    @Query("SELECT COUNT(n) FROM Notification n WHERE n.user.id = :userId AND n.deletedAt IS NULL")
     Long countByUserId(@Param("userId") Long userId);
 
-    @Query("SELECT COUNT(n) FROM Notification n WHERE n.userId = :userId AND n.isRead = false AND n.deletedAt IS NULL")
+    @Query("SELECT COUNT(n) FROM Notification n WHERE n.user.id = :userId AND n.isRead = false AND n.deletedAt IS NULL")
     Long countUnreadByUserId(@Param("userId") Long userId);
 
-    @Query("SELECT COUNT(n) FROM Notification n WHERE n.userId = :userId AND n.createdAt >= :todayStart AND n.deletedAt IS NULL")
+    @Query("SELECT COUNT(n) FROM Notification n WHERE n.user.id = :userId AND n.createdAt >= :todayStart AND n.deletedAt IS NULL")
     Long countTodayNotificationsByUserId(@Param("userId") Long userId, @Param("todayStart") LocalDateTime todayStart);
     
     @Query("SELECT n FROM Notification n WHERE n.user = :user AND n.deletedAt IS NULL ORDER BY n.createdAt DESC")

@@ -363,6 +363,15 @@ public class User {
         return getAvailableCredits().compareTo(amount) >= 0;
     }
 
+    /**
+     * Gets the user's display name for UI purposes.
+     *
+     * @return display name (full name or username)
+     */
+    public String getDisplayName() {
+        return getFullName();
+    }
+
     public enum AuthProvider {
         LOCAL, GOOGLE
     }

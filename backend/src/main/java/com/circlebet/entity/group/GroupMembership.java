@@ -163,6 +163,15 @@ public class GroupMembership {
         return leftAt != null;
     }
 
+    /**
+     * Gets the user ID associated with this membership.
+     *
+     * @return user ID
+     */
+    public Long getUserId() {
+        return user != null ? user.getId() : null;
+    }
+
     public enum MembershipStatus {
         PENDING, APPROVED, REJECTED, BANNED, LEFT
     }

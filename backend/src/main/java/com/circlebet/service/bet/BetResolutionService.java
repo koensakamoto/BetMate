@@ -376,12 +376,12 @@ public class BetResolutionService {
             List<BetParticipation> participations = betParticipationRepository.findByBetId(bet.getId());
 
             List<Long> winnerIds = participations.stream()
-                .filter(p -> bet.getOutcome() == p.getPrediction())
+                .filter(BetParticipation::isWinner)
                 .map(BetParticipation::getUserId)
                 .toList();
 
             List<Long> loserIds = participations.stream()
-                .filter(p -> bet.getOutcome() != p.getPrediction())
+                .filter(p -> !p.isWinner())
                 .map(BetParticipation::getUserId)
                 .toList();
 

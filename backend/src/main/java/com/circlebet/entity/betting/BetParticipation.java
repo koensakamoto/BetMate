@@ -314,6 +314,24 @@ public class BetParticipation {
                chosenOption <= 4;
     }
 
+    /**
+     * Gets the user ID associated with this participation.
+     *
+     * @return user ID
+     */
+    public Long getUserId() {
+        return user != null ? user.getId() : null;
+    }
+
+    /**
+     * Gets the user's prediction (chosen option).
+     *
+     * @return chosen option as prediction
+     */
+    public Integer getPrediction() {
+        return chosenOption;
+    }
+
     // ==========================================
     // ENUMS
     // ==========================================

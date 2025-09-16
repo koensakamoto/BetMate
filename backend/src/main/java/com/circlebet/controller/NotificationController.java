@@ -59,7 +59,7 @@ public class NotificationController {
 
         Page<Notification> notifications;
         if (unreadOnly) {
-            notifications = notificationRepository.findByUserIdAndIsReadFalse(user.getId(), pageable);
+            notifications = notificationRepository.findUnreadByUserId(user.getId(), pageable);
         } else {
             notifications = notificationRepository.findByUserId(user.getId(), pageable);
         }

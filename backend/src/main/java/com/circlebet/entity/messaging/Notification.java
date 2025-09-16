@@ -415,6 +415,24 @@ public class Notification {
         };
     }
 
+    /**
+     * Gets the notification type.
+     *
+     * @return notification type
+     */
+    public NotificationType getType() {
+        return notificationType;
+    }
+
+    /**
+     * Gets the notification content (message).
+     *
+     * @return notification content
+     */
+    public String getContent() {
+        return message;
+    }
+
     // ==========================================
     // ENUMS
     // ==========================================

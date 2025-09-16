@@ -366,6 +366,15 @@ public class Group {
         this.lastMessageUser = lastMessageUser;
     }
 
+    /**
+     * Gets the group name.
+     *
+     * @return group name
+     */
+    public String getName() {
+        return groupName;
+    }
+
     // ==========================================
     // ENUMS
     // ==========================================

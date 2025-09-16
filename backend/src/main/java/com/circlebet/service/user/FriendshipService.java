@@ -6,6 +6,7 @@ import com.circlebet.entity.user.User;
 import com.circlebet.exception.user.UserNotFoundException;
 import com.circlebet.repository.user.FriendshipRepository;
 import com.circlebet.repository.user.UserRepository;
+import com.circlebet.service.notification.NotificationService;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,11 +30,13 @@ public class FriendshipService {
 
     private final FriendshipRepository friendshipRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Autowired
-    public FriendshipService(FriendshipRepository friendshipRepository, UserRepository userRepository) {
+    public FriendshipService(FriendshipRepository friendshipRepository, UserRepository userRepository, NotificationService notificationService) {
         this.friendshipRepository = friendshipRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     // ==========================================
@@ -72,12 +75,22 @@ public class FriendshipService {
                 case REJECTED:
                     // Allow new request after rejection
                     existing.setStatus(FriendshipStatus.PENDING);
-                    return friendshipRepository.save(existing);
+                    Friendship reactivatedFriendship = friendshipRepository.save(existing);
+
+                    // Create notification for the reactivated friend request
+                    notificationService.createFriendRequestNotification(requester, accepter);
+
+                    return reactivatedFriendship;
             }
         }
 
         Friendship friendship = new Friendship(requester, accepter);
-        return friendshipRepository.save(friendship);
+        Friendship savedFriendship = friendshipRepository.save(friendship);
+
+        // Create notification for friend request
+        notificationService.createFriendRequestNotification(requester, accepter);
+
+        return savedFriendship;
     }
 
     /**
@@ -344,4 +357,5 @@ public class FriendshipService {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(daysOld);
         friendshipRepository.deleteRejectedFriendshipsOlderThan(cutoff);
     }
+
 }

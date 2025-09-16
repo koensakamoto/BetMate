@@ -98,7 +98,35 @@ export class NotificationService extends BaseApiService {
   async testMessageNotifications(): Promise<{ message: string }> {
     return this.post<{ message: string }>('/test-message');
   }
+
+  /**
+   * Sends a custom test notification (development only)
+   */
+  async sendTestNotification(notification: {
+    type: string;
+    title: string;
+    content: string;
+    actionUrl?: string;
+    priority: string;
+  }): Promise<{ message: string }> {
+    return this.post<{ message: string }>('/test', {
+      type: notification.type,
+      title: notification.title,
+      content: notification.content,
+      actionUrl: notification.actionUrl,
+      priority: notification.priority
+    });
+  }
 }
 
 // Export singleton instance
 export const notificationService = new NotificationService();
+
+// Export convenience function
+export const sendTestNotification = (notification: {
+  type: string;
+  title: string;
+  content: string;
+  actionUrl?: string;
+  priority: string;
+}) => notificationService.sendTestNotification(notification);
