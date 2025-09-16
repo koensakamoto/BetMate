@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { NotificationProvider } from '../contexts/NotificationContext';
 import AuthLoadingScreen from '../components/auth/AuthLoadingScreen';
 
 function RootLayoutNav() {
@@ -87,8 +88,10 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <StatusBar style="light" />
-        <RootLayoutNav />
+        <NotificationProvider>
+          <StatusBar style="light" />
+          <RootLayoutNav />
+        </NotificationProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

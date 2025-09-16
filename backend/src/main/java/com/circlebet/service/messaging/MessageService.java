@@ -3,12 +3,14 @@ package com.circlebet.service.messaging;
 import com.circlebet.entity.group.Group;
 import com.circlebet.entity.messaging.Message;
 import com.circlebet.entity.user.User;
+import com.circlebet.event.messaging.MessageCreatedEvent;
 import com.circlebet.repository.messaging.MessageRepository;
 import com.circlebet.service.group.GroupService;
 import com.circlebet.exception.messaging.MessageNotFoundException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +22,8 @@ import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Core message management service handling chat operations and message data.
@@ -32,11 +36,17 @@ public class MessageService {
 
     private final MessageRepository messageRepository;
     private final GroupService groupService;
+    private final ApplicationEventPublisher eventPublisher;
+
+    // Pattern to match @username mentions in messages
+    private static final Pattern MENTION_PATTERN = Pattern.compile("@(\\w+)");
 
     @Autowired
-    public MessageService(MessageRepository messageRepository, GroupService groupService) {
+    public MessageService(MessageRepository messageRepository, GroupService groupService,
+                         ApplicationEventPublisher eventPublisher) {
         this.messageRepository = messageRepository;
         this.groupService = groupService;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -131,6 +141,9 @@ public class MessageService {
 
         // Update group chat metadata
         groupService.updateChatMetadata(group.getId(), sender);
+
+        // Publish message created event for notifications
+        publishMessageCreatedEvent(savedMessage);
 
         return savedMessage;
     }
@@ -273,6 +286,49 @@ public class MessageService {
         // This would be implemented by checking GroupMembership roles
         // For now, we'll assume only the message sender can delete
         return false;
+    }
+
+    /**
+     * Publishes a message created event for notification processing.
+     */
+    private void publishMessageCreatedEvent(Message message) {
+        try {
+            // Extract mentions from message content
+            List<String> mentionedUsernames = extractMentionsFromMessage(message.getContent());
+
+            MessageCreatedEvent event = new MessageCreatedEvent(
+                message.getId(),
+                message.getContent(),
+                message.getSender().getId(),
+                message.getSender().getDisplayName(),
+                message.getSender().getUsername(),
+                message.getGroup().getId(),
+                message.getGroup().getName(),
+                null, // recipientId - not used for group messages
+                false, // isDirectMessage - this is for group messages
+                mentionedUsernames
+            );
+
+            eventPublisher.publishEvent(event);
+        } catch (Exception e) {
+            // Don't fail message creation if event publishing fails
+            System.err.println("Failed to publish message created event for message " + message.getId() + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Extracts @username mentions from a message.
+     */
+    private List<String> extractMentionsFromMessage(String messageContent) {
+        if (messageContent == null || messageContent.trim().isEmpty()) {
+            return List.of();
+        }
+
+        Matcher matcher = MENTION_PATTERN.matcher(messageContent);
+        return matcher.results()
+            .map(matchResult -> matchResult.group(1)) // Extract just the username part
+            .distinct() // Remove duplicates if someone is mentioned multiple times
+            .toList();
     }
 
     // ==========================================

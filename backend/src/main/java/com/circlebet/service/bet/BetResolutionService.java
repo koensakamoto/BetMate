@@ -1,19 +1,24 @@
 package com.circlebet.service.bet;
 
 import com.circlebet.entity.betting.Bet;
+import com.circlebet.entity.betting.BetParticipation;
 import com.circlebet.entity.betting.BetResolver;
 import com.circlebet.entity.betting.BetResolutionVote;
 import com.circlebet.entity.user.User;
+import com.circlebet.event.betting.BetResolvedEvent;
 import com.circlebet.exception.betting.BetResolutionException;
+import com.circlebet.repository.betting.BetParticipationRepository;
 import com.circlebet.repository.betting.BetRepository;
 import com.circlebet.repository.betting.BetResolverRepository;
 import com.circlebet.repository.betting.BetResolutionVoteRepository;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -33,15 +38,21 @@ public class BetResolutionService {
     private final BetRepository betRepository;
     private final BetResolverRepository betResolverRepository;
     private final BetResolutionVoteRepository betResolutionVoteRepository;
+    private final BetParticipationRepository betParticipationRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
     public BetResolutionService(
             BetRepository betRepository,
             BetResolverRepository betResolverRepository,
-            BetResolutionVoteRepository betResolutionVoteRepository) {
+            BetResolutionVoteRepository betResolutionVoteRepository,
+            BetParticipationRepository betParticipationRepository,
+            ApplicationEventPublisher eventPublisher) {
         this.betRepository = betRepository;
         this.betResolverRepository = betResolverRepository;
         this.betResolutionVoteRepository = betResolutionVoteRepository;
+        this.betParticipationRepository = betParticipationRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     // ==========================================
@@ -78,7 +89,12 @@ public class BetResolutionService {
         }
         
         bet.resolve(outcome);
-        return betRepository.save(bet);
+        bet = betRepository.save(bet);
+
+        // Publish bet resolved event for notifications
+        publishBetResolvedEvent(bet);
+
+        return bet;
     }
 
     /**
@@ -94,7 +110,12 @@ public class BetResolutionService {
         }
         
         bet.resolve(outcome);
-        return betRepository.save(bet);
+        bet = betRepository.save(bet);
+
+        // Publish bet resolved event for notifications
+        publishBetResolvedEvent(bet);
+
+        return bet;
     }
 
     // ==========================================
@@ -339,7 +360,61 @@ public class BetResolutionService {
         // Check if majority (more than half of total votes)
         if (winningVotes > totalVotes / 2) {
             bet.resolve(winningOutcome);
-            betRepository.save(bet);
+            bet = betRepository.save(bet);
+
+            // Publish bet resolved event for notifications
+            publishBetResolvedEvent(bet);
+        }
+    }
+
+    /**
+     * Publishes a bet resolved event for notification processing.
+     */
+    private void publishBetResolvedEvent(Bet bet) {
+        try {
+            // Get all bet participations to determine winners and payouts
+            List<BetParticipation> participations = betParticipationRepository.findByBetId(bet.getId());
+
+            List<Long> winnerIds = participations.stream()
+                .filter(p -> bet.getOutcome() == p.getPrediction())
+                .map(BetParticipation::getUserId)
+                .toList();
+
+            List<Long> loserIds = participations.stream()
+                .filter(p -> bet.getOutcome() != p.getPrediction())
+                .map(BetParticipation::getUserId)
+                .toList();
+
+            // Calculate payouts for winners
+            Map<Long, BigDecimal> payouts = participations.stream()
+                .filter(p -> winnerIds.contains(p.getUserId()))
+                .collect(Collectors.toMap(
+                    BetParticipation::getUserId,
+                    p -> p.getPotentialWinnings() != null ? p.getPotentialWinnings() : BigDecimal.ZERO
+                ));
+
+            // Add negative amounts for losers
+            participations.stream()
+                .filter(p -> loserIds.contains(p.getUserId()))
+                .forEach(p -> payouts.put(p.getUserId(), p.getBetAmount().negate()));
+
+            String resolution = bet.getOutcome() != null ? bet.getOutcome().name() : "Unknown";
+
+            BetResolvedEvent event = new BetResolvedEvent(
+                bet.getId(),
+                bet.getTitle(),
+                bet.getGroup().getId(),
+                bet.getGroup().getName(),
+                winnerIds,
+                loserIds,
+                payouts,
+                resolution
+            );
+
+            eventPublisher.publishEvent(event);
+        } catch (Exception e) {
+            // Don't fail bet resolution if event publishing fails
+            System.err.println("Failed to publish bet resolved event for bet " + bet.getId() + ": " + e.getMessage());
         }
     }
 

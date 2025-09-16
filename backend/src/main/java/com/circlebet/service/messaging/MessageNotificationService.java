@@ -3,12 +3,17 @@ package com.circlebet.service.messaging;
 import com.circlebet.dto.messaging.response.MessageResponseDto;
 import com.circlebet.entity.group.Group;
 import com.circlebet.entity.messaging.Message;
+import com.circlebet.entity.messaging.Notification;
 import com.circlebet.entity.user.User;
+import com.circlebet.repository.user.UserRepository;
 import com.circlebet.service.group.GroupMembershipService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -18,8 +23,13 @@ import java.util.List;
 @Service
 public class MessageNotificationService {
 
+    private static final Logger logger = LoggerFactory.getLogger(MessageNotificationService.class);
+
     private final SimpMessageSendingOperations messagingTemplate;
     private final GroupMembershipService groupMembershipService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     public MessageNotificationService(SimpMessageSendingOperations messagingTemplate,
@@ -106,6 +116,42 @@ public class MessageNotificationService {
             );
             
             sendPrivateNotification(username, mention);
+        }
+    }
+
+    /**
+     * Sends a notification to a specific user via WebSocket.
+     * Used by the NotificationService for real-time notification delivery.
+     */
+    public void sendNotificationToUser(Long userId, Notification notification) {
+        try {
+            // Find user by ID to get username for WebSocket routing
+            User user = userRepository.findById(userId).orElse(null);
+            if (user != null) {
+                NotificationWebSocketDto notificationDto = new NotificationWebSocketDto(
+                    notification.getId(),
+                    notification.getType().name(),
+                    notification.getTitle(),
+                    notification.getContent(),
+                    notification.getActionUrl(),
+                    notification.getPriority().name(),
+                    notification.getCreatedAt()
+                );
+
+                messagingTemplate.convertAndSendToUser(
+                    user.getUsername(),
+                    "/queue/notifications",
+                    notificationDto
+                );
+
+                logger.debug("Sent notification {} to user {} via WebSocket",
+                            notification.getId(), user.getUsername());
+            } else {
+                logger.warn("User with ID {} not found for notification delivery", userId);
+            }
+        } catch (Exception e) {
+            logger.error("Failed to send notification {} to user {} via WebSocket: {}",
+                        notification.getId(), userId, e.getMessage());
         }
     }
 
@@ -329,5 +375,93 @@ public class MessageNotificationService {
 
     public enum PresenceStatus {
         ONLINE, AWAY, OFFLINE
+    }
+
+    public static class NotificationWebSocketDto {
+        private Long id;
+        private String type;
+        private String title;
+        private String content;
+        private String actionUrl;
+        private String priority;
+        private LocalDateTime createdAt;
+        private long timestamp;
+
+        public NotificationWebSocketDto(Long id, String type, String title, String content,
+                                       String actionUrl, String priority, LocalDateTime createdAt) {
+            this.id = id;
+            this.type = type;
+            this.title = title;
+            this.content = content;
+            this.actionUrl = actionUrl;
+            this.priority = priority;
+            this.createdAt = createdAt;
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        // Getters and setters
+        public Long getId() {
+            return id;
+        }
+
+        public void setId(Long id) {
+            this.id = id;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public void setContent(String content) {
+            this.content = content;
+        }
+
+        public String getActionUrl() {
+            return actionUrl;
+        }
+
+        public void setActionUrl(String actionUrl) {
+            this.actionUrl = actionUrl;
+        }
+
+        public String getPriority() {
+            return priority;
+        }
+
+        public void setPriority(String priority) {
+            this.priority = priority;
+        }
+
+        public LocalDateTime getCreatedAt() {
+            return createdAt;
+        }
+
+        public void setCreatedAt(LocalDateTime createdAt) {
+            this.createdAt = createdAt;
+        }
+
+        public long getTimestamp() {
+            return timestamp;
+        }
+
+        public void setTimestamp(long timestamp) {
+            this.timestamp = timestamp;
+        }
     }
 }

@@ -3,11 +3,13 @@ package com.circlebet.service.bet;
 import com.circlebet.entity.betting.Bet;
 import com.circlebet.entity.group.Group;
 import com.circlebet.entity.user.User;
+import com.circlebet.event.betting.BetCreatedEvent;
 import com.circlebet.exception.betting.BetCreationException;
 import com.circlebet.service.group.GroupPermissionService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -26,11 +28,14 @@ public class BetCreationService {
 
     private final BetService betService;
     private final GroupPermissionService permissionService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
-    public BetCreationService(BetService betService, GroupPermissionService permissionService) {
+    public BetCreationService(BetService betService, GroupPermissionService permissionService,
+                             ApplicationEventPublisher eventPublisher) {
         this.betService = betService;
         this.permissionService = permissionService;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -45,7 +50,12 @@ public class BetCreationService {
         
         // Create bet
         Bet bet = createBetFromRequest(creator, group, request);
-        return betService.saveBet(bet);
+        bet = betService.saveBet(bet);
+
+        // Publish bet created event for notifications
+        publishBetCreatedEvent(bet);
+
+        return bet;
     }
 
     private void validateBetCreationRequest(BetCreationRequest request) {
@@ -120,6 +130,32 @@ public class BetCreationService {
         bet.setPoolForOption2(BigDecimal.ZERO);
         
         return bet;
+    }
+
+    /**
+     * Publishes a bet created event for notification processing.
+     */
+    private void publishBetCreatedEvent(Bet bet) {
+        try {
+            BetCreatedEvent event = new BetCreatedEvent(
+                bet.getId(),
+                bet.getTitle(),
+                bet.getDescription(),
+                bet.getGroup().getId(),
+                bet.getGroup().getName(),
+                bet.getCreator().getId(),
+                bet.getCreator().getDisplayName(),
+                bet.getMinimumBet(),
+                bet.getBettingDeadline(),
+                bet.getResolveDate()
+            );
+
+            eventPublisher.publishEvent(event);
+        } catch (Exception e) {
+            // Don't fail bet creation if event publishing fails
+            // Just log the error and continue
+            System.err.println("Failed to publish bet created event for bet " + bet.getId() + ": " + e.getMessage());
+        }
     }
 
     // Bet creation request DTO

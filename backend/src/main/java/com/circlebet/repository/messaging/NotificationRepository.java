@@ -2,6 +2,8 @@ package com.circlebet.repository.messaging;
 
 import com.circlebet.entity.messaging.Notification;
 import com.circlebet.entity.user.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,10 +14,27 @@ import java.util.List;
 
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
-    
+
     // User notifications
     List<Notification> findByUser(User user);
     List<Notification> findByUserOrderByCreatedAtDesc(User user);
+
+    // User notifications by userId with pagination
+    @Query("SELECT n FROM Notification n WHERE n.userId = :userId AND n.deletedAt IS NULL ORDER BY n.createdAt DESC")
+    Page<Notification> findByUserId(@Param("userId") Long userId, Pageable pageable);
+
+    @Query("SELECT n FROM Notification n WHERE n.userId = :userId AND n.isRead = false AND n.deletedAt IS NULL ORDER BY n.createdAt DESC")
+    Page<Notification> findByUserIdAndIsReadFalse(@Param("userId") Long userId, Pageable pageable);
+
+    // Count methods by userId
+    @Query("SELECT COUNT(n) FROM Notification n WHERE n.userId = :userId AND n.deletedAt IS NULL")
+    Long countByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(n) FROM Notification n WHERE n.userId = :userId AND n.isRead = false AND n.deletedAt IS NULL")
+    Long countUnreadByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(n) FROM Notification n WHERE n.userId = :userId AND n.createdAt >= :todayStart AND n.deletedAt IS NULL")
+    Long countTodayNotificationsByUserId(@Param("userId") Long userId, @Param("todayStart") LocalDateTime todayStart);
     
     @Query("SELECT n FROM Notification n WHERE n.user = :user AND n.deletedAt IS NULL ORDER BY n.createdAt DESC")
     List<Notification> findActiveNotificationsByUser(@Param("user") User user);

@@ -256,5 +256,94 @@ export enum WebSocketMessageType {
   MESSAGE_DELETE = 'MESSAGE_DELETE',
   TYPING_INDICATOR = 'TYPING_INDICATOR',
   USER_PRESENCE = 'USER_PRESENCE',
+  NOTIFICATION = 'NOTIFICATION',
   ERROR = 'ERROR'
+}
+
+// ==========================================
+// NOTIFICATION TYPES
+// ==========================================
+
+export interface NotificationResponse {
+  id: number;
+  userId: number;
+  type: NotificationType;
+  title: string;
+  content: string;
+  actionUrl?: string;
+  priority: NotificationPriority;
+  isRead: boolean;
+  isDelivered: boolean;
+  createdAt: string; // ISO string
+  readAt?: string; // ISO string
+  deliveredAt?: string; // ISO string
+}
+
+export interface NotificationStats {
+  totalNotifications: number;
+  unreadNotifications: number;
+  todayNotifications: number;
+}
+
+export interface NotificationCountResponse {
+  unreadCount: number;
+}
+
+// Notification enums matching backend
+export enum NotificationType {
+  // Betting notifications
+  BET_RESULT = 'BET_RESULT',
+  BET_CREATED = 'BET_CREATED',
+  BET_DEADLINE = 'BET_DEADLINE',
+  BET_CANCELLED = 'BET_CANCELLED',
+
+  // Financial notifications
+  CREDITS_RECEIVED = 'CREDITS_RECEIVED',
+  CREDITS_SPENT = 'CREDITS_SPENT',
+  DAILY_BONUS = 'DAILY_BONUS',
+
+  // Group notifications
+  GROUP_INVITE = 'GROUP_INVITE',
+  GROUP_MEMBER_JOINED = 'GROUP_MEMBER_JOINED',
+  GROUP_MEMBER_LEFT = 'GROUP_MEMBER_LEFT',
+  GROUP_ROLE_CHANGED = 'GROUP_ROLE_CHANGED',
+
+  // Social notifications
+  FRIEND_REQUEST = 'FRIEND_REQUEST',
+  FRIEND_REQUEST_ACCEPTED = 'FRIEND_REQUEST_ACCEPTED',
+  FRIEND_ACTIVITY = 'FRIEND_ACTIVITY',
+
+  // Message notifications
+  NEW_MESSAGE = 'NEW_MESSAGE',
+  MESSAGE_MENTION = 'MESSAGE_MENTION',
+  MESSAGE_REPLY = 'MESSAGE_REPLY',
+
+  // Achievement notifications
+  ACHIEVEMENT_UNLOCKED = 'ACHIEVEMENT_UNLOCKED',
+  STREAK_MILESTONE = 'STREAK_MILESTONE',
+  LEVEL_UP = 'LEVEL_UP',
+
+  // System notifications
+  SYSTEM_ANNOUNCEMENT = 'SYSTEM_ANNOUNCEMENT',
+  MAINTENANCE = 'MAINTENANCE',
+  ACCOUNT_WARNING = 'ACCOUNT_WARNING',
+  WELCOME = 'WELCOME'
+}
+
+export enum NotificationPriority {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  URGENT = 'URGENT'
+}
+
+// WebSocket notification payload
+export interface NotificationWebSocketPayload {
+  id: number;
+  type: string;
+  title: string;
+  content: string;
+  actionUrl?: string;
+  priority: string;
+  createdAt: string;
 }
