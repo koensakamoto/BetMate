@@ -1,5 +1,6 @@
 package com.circlebet.controller;
 
+import com.circlebet.dto.NotificationDTO;
 import com.circlebet.entity.messaging.Notification;
 import com.circlebet.entity.messaging.Notification.NotificationType;
 import com.circlebet.entity.messaging.Notification.NotificationPriority;
@@ -13,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
@@ -46,7 +48,7 @@ public class NotificationController {
     @GetMapping
     @Operation(summary = "Get user notifications",
                description = "Retrieves paginated notifications for the authenticated user")
-    public ResponseEntity<Page<Notification>> getUserNotifications(
+    public ResponseEntity<Page<NotificationDTO>> getUserNotifications(
             Authentication authentication,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -64,7 +66,12 @@ public class NotificationController {
             notifications = notificationRepository.findByUserId(user.getId(), pageable);
         }
 
-        return ResponseEntity.ok(notifications);
+        // Convert to DTOs to prevent circular reference
+        List<NotificationDTO> dtos = notifications.getContent().stream()
+            .map(NotificationDTO::new)
+            .collect(java.util.stream.Collectors.toList());
+
+        return ResponseEntity.ok(new PageImpl<>(dtos, pageable, notifications.getTotalElements()));
     }
 
     /**

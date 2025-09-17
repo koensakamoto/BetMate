@@ -79,8 +79,7 @@ public class FriendshipController {
 
             return ResponseEntity.ok(Map.of(
                 "success", true,
-                "message", "Friend request accepted successfully",
-                "friendship", friendship
+                "message", "Friend request accepted successfully"
             ));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of(

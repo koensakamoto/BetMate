@@ -267,13 +267,17 @@ export enum WebSocketMessageType {
 export interface NotificationResponse {
   id: number;
   userId: number;
-  type: NotificationType;
+  type?: NotificationType; // Frontend field
+  notificationType?: string; // Backend field - actual data comes here
   title: string;
-  content: string;
+  content?: string; // Frontend field for compatibility
+  message?: string; // Backend field - actual data comes here
   actionUrl?: string;
   priority: NotificationPriority;
   isRead: boolean;
-  isDelivered: boolean;
+  isDelivered?: boolean;
+  relatedEntityId?: number;
+  relatedEntityType?: string;
   createdAt: string; // ISO string
   readAt?: string; // ISO string
   deliveredAt?: string; // ISO string

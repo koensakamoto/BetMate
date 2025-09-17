@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, TouchableOpacity, ScrollView, StatusBar, RefreshControl, Alert } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, StatusBar, RefreshControl, Alert, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNotifications, useNotificationWebSocket } from '../services/notification';
 import { NotificationResponse, NotificationType, NotificationPriority } from '../types/api';
+import { friendshipService } from '../services/user/friendshipService';
 
 export default function Notifications() {
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [processingRequests, setProcessingRequests] = useState<Set<number>>(new Set());
 
   const {
     notifications,
@@ -39,18 +41,24 @@ export default function Notifications() {
     setUnreadOnly(filter === 'unread');
   }, [filter, setUnreadOnly]);
 
-  const getTypeIcon = (type: NotificationType): string => {
+  const getTypeIcon = (type: NotificationType | string | undefined): string => {
     switch (type) {
       case NotificationType.BET_RESULT:
+      case 'BET_RESULT':
         return 'trending-up';
       case NotificationType.BET_CREATED:
+      case 'BET_CREATED':
         return 'sports-esports';
       case NotificationType.BET_DEADLINE:
+      case 'BET_DEADLINE':
         return 'schedule';
       case NotificationType.BET_CANCELLED:
+      case 'BET_CANCELLED':
         return 'cancel';
       case NotificationType.FRIEND_REQUEST:
+      case 'FRIEND_REQUEST':
       case NotificationType.FRIEND_REQUEST_ACCEPTED:
+      case 'FRIEND_REQUEST_ACCEPTED':
         return 'person-add';
       case NotificationType.GROUP_INVITE:
       case NotificationType.GROUP_MEMBER_JOINED:
@@ -76,25 +84,34 @@ export default function Notifications() {
     }
   };
 
-  const getTypeColor = (type: NotificationType, priority: NotificationPriority): string => {
+  const getTypeColor = (type: NotificationType | string | undefined, priority: NotificationPriority): string => {
     if (priority === NotificationPriority.HIGH || priority === NotificationPriority.URGENT) {
       return '#EF4444';
     }
 
     switch (type) {
       case NotificationType.BET_RESULT:
+      case 'BET_RESULT':
       case NotificationType.CREDITS_RECEIVED:
+      case 'CREDITS_RECEIVED':
         return '#00D4AA';
       case NotificationType.BET_CANCELLED:
+      case 'BET_CANCELLED':
         return '#EF4444';
       case NotificationType.ACHIEVEMENT_UNLOCKED:
+      case 'ACHIEVEMENT_UNLOCKED':
       case NotificationType.STREAK_MILESTONE:
+      case 'STREAK_MILESTONE':
       case NotificationType.LEVEL_UP:
+      case 'LEVEL_UP':
         return '#FFB800';
       case NotificationType.FRIEND_REQUEST:
+      case 'FRIEND_REQUEST':
       case NotificationType.FRIEND_REQUEST_ACCEPTED:
+      case 'FRIEND_REQUEST_ACCEPTED':
         return '#8B5CF6';
       case NotificationType.GROUP_INVITE:
+      case 'GROUP_INVITE':
         return '#06B6D4';
       default:
         return 'rgba(255, 255, 255, 0.6)';
@@ -194,101 +211,310 @@ export default function Notifications() {
     );
   };
 
-  const NotificationItem = ({ notification }: { notification: NotificationResponse }) => (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={() => handleNotificationPress(notification)}
-      style={{
+  const handleAcceptFriendRequest = async (notification: NotificationResponse) => {
+    if (!notification.relatedEntityId) return;
+
+    setProcessingRequests(prev => new Set([...prev, notification.id]));
+
+    try {
+      // The relatedEntityId contains the friendship ID directly
+      const friendshipId = notification.relatedEntityId;
+
+      await friendshipService.acceptFriendRequest(friendshipId);
+      await markAsRead(notification.id);
+
+      // Refresh the notifications list to remove this notification
+      await refresh();
+
+      Alert.alert('Success', 'Friend request accepted!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to accept friend request');
+      console.error('Error accepting friend request:', error);
+    } finally {
+      setProcessingRequests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(notification.id);
+        return newSet;
+      });
+    }
+  };
+
+  const handleRejectFriendRequest = async (notification: NotificationResponse) => {
+    if (!notification.relatedEntityId) return;
+
+    setProcessingRequests(prev => new Set([...prev, notification.id]));
+
+    try {
+      // The relatedEntityId contains the friendship ID directly
+      const friendshipId = notification.relatedEntityId;
+
+      await friendshipService.rejectFriendRequest(friendshipId);
+      await markAsRead(notification.id);
+
+      // Refresh the notifications list to remove this notification
+      await refresh();
+
+      Alert.alert('Success', 'Friend request declined');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to decline friend request');
+      console.error('Error rejecting friend request:', error);
+    } finally {
+      setProcessingRequests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(notification.id);
+        return newSet;
+      });
+    }
+  };
+
+  const handleViewProfile = (userId: number) => {
+    // Navigate to user profile
+    router.push(`/profile/${userId}` as any);
+  };
+
+  const NotificationItem = ({ notification }: { notification: NotificationResponse }) => {
+    // Check both type and notificationType fields since backend sends notificationType
+    const notificationType = notification.type || notification.notificationType;
+    const isFriendRequest = notificationType === 'FRIEND_REQUEST';
+    const showFriendRequestActions = isFriendRequest && !notification.isRead;
+    const isProcessing = processingRequests.has(notification.id);
+
+    // Debug logging
+    console.log('Notification:', {
+      id: notification.id,
+      type: notification.type,
+      notificationType: notification.notificationType,
+      isFriendRequest,
+      showFriendRequestActions,
+      isRead: notification.isRead,
+      message: notification.message,
+      relatedEntityId: notification.relatedEntityId
+    });
+
+    // Extract username from message for friend requests
+    const extractUsername = (message: string) => {
+      const match = message?.match(/(.+?) wants to be your friend/);
+      return match ? match[1] : null;
+    };
+
+    const username = isFriendRequest ? extractUsername(notification.message || '') : null;
+
+    return (
+      <View style={{
         paddingVertical: 16,
         paddingHorizontal: 20,
-        flexDirection: 'row',
-        alignItems: 'flex-start',
         backgroundColor: notification.isRead ? 'transparent' : 'rgba(255, 255, 255, 0.02)'
-      }}
-    >
-      <View style={{
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12
       }}>
-        <MaterialIcons
-          name={getTypeIcon(notification.type) as any}
-          size={18}
-          color={getTypeColor(notification.type, notification.priority)}
-        />
-      </View>
-
-      <View style={{ flex: 1, paddingTop: 1 }}>
-        <View style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: 4
-        }}>
-          <Text style={{
-            fontSize: 16,
-            fontWeight: notification.isRead ? '500' : '600',
-            color: notification.isRead ? 'rgba(255, 255, 255, 0.8)' : '#ffffff',
-            flex: 1,
-            marginRight: 8
-          }}>
-            {notification.title}
-          </Text>
-
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={{
-              fontSize: 14,
-              color: 'rgba(255, 255, 255, 0.5)',
-              marginBottom: 2
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => !showFriendRequestActions && handleNotificationPress(notification)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'flex-start'
+          }}
+        >
+          {!isFriendRequest && (
+            <View style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginRight: 12
             }}>
-              {formatTime(notification.createdAt)}
-            </Text>
-            {notification.priority === NotificationPriority.HIGH && (
+              <MaterialIcons
+                name={getTypeIcon(notificationType) as any}
+                size={18}
+                color={getTypeColor(notificationType, notification.priority)}
+              />
+            </View>
+          )}
+
+          <View style={{ flex: 1, paddingTop: 1 }}>
+            {!isFriendRequest && (
               <View style={{
-                backgroundColor: '#EF4444',
-                borderRadius: 8,
-                paddingHorizontal: 6,
-                paddingVertical: 2
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                marginBottom: 4
               }}>
                 <Text style={{
-                  fontSize: 10,
-                  fontWeight: '600',
-                  color: '#ffffff'
+                  fontSize: 16,
+                  fontWeight: notification.isRead ? '500' : '600',
+                  color: notification.isRead ? 'rgba(255, 255, 255, 0.8)' : '#ffffff',
+                  flex: 1,
+                  marginRight: 8
                 }}>
-                  HIGH
+                  {notification.title}
                 </Text>
+
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{
+                    fontSize: 14,
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    marginBottom: 2
+                  }}>
+                    {formatTime(notification.createdAt)}
+                  </Text>
+                  {notification.priority === NotificationPriority.HIGH && (
+                    <View style={{
+                      backgroundColor: '#EF4444',
+                      borderRadius: 8,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2
+                    }}>
+                      <Text style={{
+                        fontSize: 10,
+                        fontWeight: '600',
+                        color: '#ffffff'
+                      }}>
+                        HIGH
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </View>
             )}
+
+            {isFriendRequest ? (
+              <View style={{ marginTop: 4 }}>
+                {/* Single Compact Row */}
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center'
+                }}>
+                  {/* Profile Picture */}
+                  <TouchableOpacity
+                    onPress={() => notification.relatedEntityId && handleViewProfile(notification.relatedEntityId)}
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 19,
+                      backgroundColor: '#1a1a1f',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginRight: 10
+                    }}
+                  >
+                    <MaterialIcons name="person" size={18} color="#666" />
+                  </TouchableOpacity>
+
+                  {/* Username + Request Text */}
+                  <TouchableOpacity
+                    onPress={() => notification.relatedEntityId && handleViewProfile(notification.relatedEntityId)}
+                    style={{ flex: 1, marginRight: 10 }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                      <Text style={{
+                        fontSize: 15,
+                        color: '#ffffff',
+                        fontWeight: '600',
+                        marginRight: 8
+                      }}>
+                        {username || 'Someone'}
+                      </Text>
+                      <Text style={{
+                        fontSize: 13,
+                        color: 'rgba(255, 255, 255, 0.5)'
+                      }}>
+                        {formatTime(notification.createdAt)}
+                      </Text>
+                    </View>
+                    <Text style={{
+                      fontSize: 13,
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      fontWeight: '400'
+                    }}>
+                      New friend request
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Action Buttons */}
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8
+                  }}>
+                    <TouchableOpacity
+                      onPress={() => handleAcceptFriendRequest(notification)}
+                      disabled={isProcessing}
+                      style={{
+                        backgroundColor: '#ffffff',
+                        borderRadius: 6,
+                        paddingVertical: 8,
+                        paddingHorizontal: 14,
+                        opacity: isProcessing ? 0.7 : 1,
+                        minWidth: 75
+                      }}
+                    >
+                      {isProcessing ? (
+                        <ActivityIndicator size="small" color="#000000" />
+                      ) : (
+                        <Text style={{
+                          fontSize: 13,
+                          fontWeight: '600',
+                          color: '#000000',
+                          textAlign: 'center'
+                        }}>
+                          Accept
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => handleRejectFriendRequest(notification)}
+                      disabled={isProcessing}
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 17,
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        opacity: isProcessing ? 0.7 : 1
+                      }}
+                    >
+                      {isProcessing ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                      ) : (
+                        <MaterialIcons
+                          name="close"
+                          size={16}
+                          color="rgba(255, 255, 255, 0.8)"
+                        />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <Text style={{
+                fontSize: 15,
+                color: 'rgba(255, 255, 255, 0.6)',
+                lineHeight: 20,
+                letterSpacing: -0.2
+              }}>
+                {notification.message || notification.content || 'No message content'}
+              </Text>
+            )}
+
+            {!notification.isRead && (
+              <View style={{
+                position: 'absolute',
+                right: -8,
+                top: 6,
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: '#00D4AA'
+              }} />
+            )}
           </View>
-        </View>
-
-        <Text style={{
-          fontSize: 15,
-          color: 'rgba(255, 255, 255, 0.6)',
-          lineHeight: 20,
-          letterSpacing: -0.2
-        }}>
-          {notification.content}
-        </Text>
-
-        {!notification.isRead && (
-          <View style={{
-            position: 'absolute',
-            right: -8,
-            top: 6,
-            width: 8,
-            height: 8,
-            borderRadius: 4,
-            backgroundColor: '#00D4AA'
-          }} />
-        )}
+        </TouchableOpacity>
       </View>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>

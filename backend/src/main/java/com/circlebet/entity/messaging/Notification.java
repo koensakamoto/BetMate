@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
 
 import com.circlebet.entity.user.User;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
  * Notification entity representing notifications sent to users.
@@ -40,6 +41,7 @@ public class Notification {
     
     @ManyToOne(optional = false)
     @JoinColumn(name = "user_id")
+    @JsonIgnoreProperties({"notifications", "groupMemberships", "createdGroups", "passwordHash", "friendships", "bets", "messages", "achievements", "transactions"})
     private User user;
 
     // ==========================================
@@ -462,6 +464,7 @@ public class Notification {
         MESSAGE_MENTION,    // Mentioned in a group message
         MESSAGE_REPLY,      // Someone replied to your message
         FRIEND_REQUEST,     // Friend request received
+        FRIEND_ACCEPTED,    // Friend request was accepted
         FRIEND_ACTIVITY,    // Friend won a bet or achieved something
         
         // Achievements

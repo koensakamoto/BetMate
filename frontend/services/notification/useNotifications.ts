@@ -63,13 +63,28 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
       });
 
       // Handle case where response might not have expected structure
-      const content = response?.content || [];
+      let content = response?.content || [];
+
+      // Filter out any invalid notifications (missing required fields)
+      // Note: Backend sends 'message' field, not 'content'
+      content = content.filter(notification =>
+        notification &&
+        notification.id &&
+        (notification.title || notification.message || notification.content)
+      );
+
       const isLast = response?.last !== false; // default to true if undefined
 
       if (reset) {
         setNotifications(content);
       } else {
-        setNotifications(prev => [...(prev || []), ...content]);
+        setNotifications(prev => {
+          const existing = prev || [];
+          // Avoid duplicates when paginating
+          const existingIds = new Set(existing.map(n => n.id));
+          const newNotifications = content.filter(n => !existingIds.has(n.id));
+          return [...existing, ...newNotifications];
+        });
       }
 
       setHasMore(!isLast);

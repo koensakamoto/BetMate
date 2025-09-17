@@ -119,9 +119,9 @@ public class NotificationService {
      * Creates a friend request notification.
      */
     @Transactional
-    public void createFriendRequestNotification(User requester, User accepter) {
+    public void createFriendRequestNotification(User requester, User accepter, Long friendshipId) {
         try {
-            System.out.println("DEBUG: Creating friend request notification from " + requester.getId() + " to " + accepter.getId());
+            System.out.println("DEBUG: Creating friend request notification from " + requester.getId() + " to " + accepter.getId() + " with friendshipId: " + friendshipId);
             Notification notification = createNotification(
                 accepter,
                 "👋 New Friend Request",
@@ -129,12 +129,37 @@ public class NotificationService {
                 NotificationType.FRIEND_REQUEST,
                 NotificationPriority.NORMAL,
                 "/friends/requests",
-                requester.getId(),
-                "USER"
+                friendshipId,
+                "FRIENDSHIP"
             );
-            System.out.println("DEBUG: Successfully created notification with ID: " + notification.getId());
+            System.out.println("DEBUG: Successfully created notification with ID: " + notification.getId() + ", relatedEntityId: " + notification.getRelatedEntityId() + ", relatedEntityType: " + notification.getRelatedEntityType());
         } catch (Exception e) {
             System.err.println("ERROR: Failed to create friend request notification: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    /**
+     * Creates a notification when a friend request is accepted.
+     */
+    @Transactional
+    public void createFriendRequestAcceptedNotification(User accepter, User requester) {
+        try {
+            System.out.println("DEBUG: Creating friend request accepted notification from " + accepter.getId() + " to " + requester.getId());
+            Notification notification = createNotification(
+                requester,
+                "🎉 Friend Request Accepted",
+                accepter.getDisplayName() + " accepted your friend request!",
+                NotificationType.FRIEND_ACCEPTED,
+                NotificationPriority.NORMAL,
+                "/friends",
+                accepter.getId(),
+                "USER"
+            );
+            System.out.println("DEBUG: Successfully created friend request accepted notification with ID: " + notification.getId());
+        } catch (Exception e) {
+            System.err.println("ERROR: Failed to create friend request accepted notification: " + e.getMessage());
             e.printStackTrace();
             throw e;
         }
