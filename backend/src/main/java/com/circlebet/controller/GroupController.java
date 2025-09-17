@@ -250,7 +250,7 @@ public class GroupController {
         
         response.setId(user.getId());
         response.setUsername(user.getUsername());
-        response.setDisplayName(user.getEffectiveDisplayName());
+        response.setDisplayName(user.getFullName()); // Use getFullName() to avoid lazy loading settings
         response.setEmail(user.getEmail());
         response.setProfilePictureUrl(null); // User entity doesn't have profile picture yet
         response.setRole(membership.getRole());

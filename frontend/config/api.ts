@@ -61,4 +61,19 @@ export const API_ENDPOINTS = {
   
   // Messages
   MESSAGES: '/messages',
+
+  // Friendships
+  FRIENDSHIPS: '/friendships',
+  FRIENDS_LIST: '/friendships/friends',
+  FRIENDS_COUNT: '/friendships/friends/count',
+  FRIEND_REQUEST: (accepterId: number) => `/friendships/request/${accepterId}`,
+  ACCEPT_FRIEND_REQUEST: (friendshipId: number) => `/friendships/${friendshipId}/accept`,
+  REJECT_FRIEND_REQUEST: (friendshipId: number) => `/friendships/${friendshipId}/reject`,
+  REMOVE_FRIEND: (friendId: number) => `/friendships/remove/${friendId}`,
+  FRIENDSHIP_STATUS: (userId: number) => `/friendships/status/${userId}`,
+  PENDING_REQUESTS_SENT: '/friendships/requests/sent',
+  PENDING_REQUESTS_RECEIVED: '/friendships/requests/received',
+  PENDING_REQUESTS_COUNT: '/friendships/requests/received/count',
+  MUTUAL_FRIENDS: (userId: number) => `/friendships/mutual/${userId}`,
+  MUTUAL_FRIENDS_COUNT: (userId: number) => `/friendships/mutual/${userId}/count`,
 } as const;

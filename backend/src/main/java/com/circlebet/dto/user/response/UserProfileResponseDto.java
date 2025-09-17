@@ -26,7 +26,7 @@ public class UserProfileResponseDto {
         response.firstName = user.getFirstName();
         response.lastName = user.getLastName();
         response.bio = user.getBio();
-        response.displayName = user.getEffectiveDisplayName();
+        response.displayName = user.getFullName(); // Use getFullName() to avoid lazy loading settings
         response.emailVerified = user.getEmailVerified();
         response.isActive = user.getIsActive();
         response.createdAt = user.getCreatedAt().toString();

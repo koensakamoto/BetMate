@@ -16,7 +16,7 @@ public class UserSearchResultResponseDto {
         UserSearchResultResponseDto result = new UserSearchResultResponseDto();
         result.id = user.getId();
         result.username = user.getUsername();
-        result.displayName = user.getEffectiveDisplayName();
+        result.displayName = user.getFullName(); // Use getFullName() to avoid lazy loading settings
         result.isActive = user.getIsActive();
         return result;
     }

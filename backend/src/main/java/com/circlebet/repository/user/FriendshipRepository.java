@@ -53,12 +53,27 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Long> {
     // ==========================================
 
     /**
-     * Get all accepted friends for a user.
+     * Get friends where user is the requester.
      */
-    @Query("SELECT CASE WHEN f.requester = :user THEN f.accepter ELSE f.requester END " +
-           "FROM Friendship f WHERE " +
-           "(f.requester = :user OR f.accepter = :user) AND f.status = 'ACCEPTED'")
-    List<User> findFriendsByUser(@Param("user") User user);
+    @Query("SELECT f.accepter FROM Friendship f WHERE f.requester = :user AND f.status = 'ACCEPTED'")
+    List<User> findAccepterFriendsByUser(@Param("user") User user);
+
+    /**
+     * Get friends where user is the accepter.
+     */
+    @Query("SELECT f.requester FROM Friendship f WHERE f.accepter = :user AND f.status = 'ACCEPTED'")
+    List<User> findRequesterFriendsByUser(@Param("user") User user);
+
+    /**
+     * Get all accepted friends for a user.
+     * Combines both scenarios where user can be requester or accepter.
+     */
+    default List<User> findFriendsByUser(User user) {
+        List<User> friends = new java.util.ArrayList<>();
+        friends.addAll(findAccepterFriendsByUser(user));
+        friends.addAll(findRequesterFriendsByUser(user));
+        return friends;
+    }
 
     /**
      * Get all accepted friendships for a user.
@@ -107,15 +122,33 @@ public interface FriendshipRepository extends JpaRepository<Friendship, Long> {
     // ==========================================
 
     /**
-     * Find friends by username or name pattern.
+     * Find friends by username or name pattern where user is requester.
      */
-    @Query("SELECT CASE WHEN f.requester = :user THEN f.accepter ELSE f.requester END " +
-           "FROM Friendship f WHERE " +
-           "(f.requester = :user OR f.accepter = :user) AND f.status = 'ACCEPTED' AND " +
-           "(LOWER(CASE WHEN f.requester = :user THEN f.accepter.username ELSE f.requester.username END) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "LOWER(CASE WHEN f.requester = :user THEN f.accepter.firstName ELSE f.requester.firstName END) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "LOWER(CASE WHEN f.requester = :user THEN f.accepter.lastName ELSE f.requester.lastName END) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
-    List<User> findFriendsByUserAndSearchTerm(@Param("user") User user, @Param("searchTerm") String searchTerm);
+    @Query("SELECT f.accepter FROM Friendship f WHERE f.requester = :user AND f.status = 'ACCEPTED' AND " +
+           "(LOWER(f.accepter.username) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(f.accepter.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(f.accepter.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    List<User> findAccepterFriendsByUserAndSearchTerm(@Param("user") User user, @Param("searchTerm") String searchTerm);
+
+    /**
+     * Find friends by username or name pattern where user is accepter.
+     */
+    @Query("SELECT f.requester FROM Friendship f WHERE f.accepter = :user AND f.status = 'ACCEPTED' AND " +
+           "(LOWER(f.requester.username) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(f.requester.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(f.requester.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    List<User> findRequesterFriendsByUserAndSearchTerm(@Param("user") User user, @Param("searchTerm") String searchTerm);
+
+    /**
+     * Find friends by username or name pattern.
+     * Combines both scenarios where user can be requester or accepter.
+     */
+    default List<User> findFriendsByUserAndSearchTerm(User user, String searchTerm) {
+        List<User> friends = new java.util.ArrayList<>();
+        friends.addAll(findAccepterFriendsByUserAndSearchTerm(user, searchTerm));
+        friends.addAll(findRequesterFriendsByUserAndSearchTerm(user, searchTerm));
+        return friends;
+    }
 
     /**
      * Get recent friendships (last 30 days).

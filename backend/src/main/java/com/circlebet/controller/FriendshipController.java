@@ -8,6 +8,8 @@ import com.circlebet.service.user.FriendshipService;
 import com.circlebet.service.user.UserService;
 import com.circlebet.util.SecurityContextUtil;
 import jakarta.validation.constraints.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +29,8 @@ import java.util.stream.Collectors;
 @Validated
 @CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000"})
 public class FriendshipController {
+
+    private static final Logger logger = LoggerFactory.getLogger(FriendshipController.class);
 
     private final FriendshipService friendshipService;
     private final UserService userService;
@@ -173,7 +177,9 @@ public class FriendshipController {
 
             return ResponseEntity.ok(friendDtos);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            logger.error("Error getting friends for user", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(List.of());
         }
     }
 
@@ -190,7 +196,9 @@ public class FriendshipController {
                 "friendsCount", count
             ));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            logger.error("Error getting friends count for user", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("friendsCount", 0));
         }
     }
 
@@ -310,11 +318,9 @@ public class FriendshipController {
                 "hasPendingRequest", hasPendingRequest
             ));
         } catch (Exception e) {
-            e.printStackTrace(); // Add logging to see the actual error
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 "success", false,
-                "message", "Failed to get friendship status: " + e.getMessage(),
-                "error", e.getClass().getSimpleName()
+                "message", "Failed to get friendship status"
             ));
         }
     }

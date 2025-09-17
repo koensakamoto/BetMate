@@ -260,7 +260,7 @@ public class MessageController {
         if (message.getSender() != null) {
             response.setSenderId(message.getSender().getId());
             response.setSenderUsername(message.getSender().getUsername());
-            response.setSenderDisplayName(message.getSender().getEffectiveDisplayName());
+            response.setSenderDisplayName(message.getSender().getFullName()); // Use getFullName() to avoid lazy loading settings
         } else {
             // System message
             response.setSenderId(null);

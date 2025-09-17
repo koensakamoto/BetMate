@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -72,6 +72,9 @@ export default function FindFriends() {
   };
 
   const handleFriendPress = async (userId: number) => {
+    // Dismiss keyboard to improve UX
+    Keyboard.dismiss();
+
     const currentStatus = friendStatuses.get(userId) || 'none';
 
     // Prevent multiple clicks
@@ -162,10 +165,12 @@ export default function FindFriends() {
         translucent={true}
       />
       
-      <ScrollView 
-        style={{ flex: 1 }} 
+      <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 20 }}
         showsVerticalScrollIndicator={false}
+        keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
       >
         <View style={{ flex: 1, paddingHorizontal: 20 }}>
           {/* Header */}

@@ -6,6 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { userService, UserProfileResponse, UserStatistics } from '../../services/user/userService';
+import { friendshipService } from '../../services/friendship/friendshipService';
 import { debugLog, errorLog } from '../../config/env';
 import { NotificationIconButton } from '../../components/ui/NotificationBadge';
 
@@ -17,6 +18,7 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState(0);
   const [userProfile, setUserProfile] = useState<UserProfileResponse | null>(null);
   const [userStats, setUserStats] = useState<UserStatistics | null>(null);
+  const [friendsCount, setFriendsCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const tabs = ['Activity', 'Stats', 'Achievements'];
@@ -55,6 +57,11 @@ export default function Profile() {
       const stats = await userService.getCurrentUserStatistics();
       setUserStats(stats);
       debugLog('User stats loaded:', stats);
+
+      // Load friends count
+      const count = await friendshipService.getFriendsCount();
+      setFriendsCount(count);
+      debugLog('Friends count loaded:', count);
       
     } catch (err: any) {
       errorLog('Failed to load user data:', err);
@@ -238,20 +245,23 @@ export default function Profile() {
             </View>
 
             {/* Social Stats */}
-            <View style={{ 
-              flexDirection: 'row', 
+            <View style={{
+              flexDirection: 'row',
               alignItems: 'center',
               gap: 24,
               marginBottom: 20
             }}>
-              <View style={{ alignItems: 'center' }}>
-                <Text style={{ 
-                  fontSize: 18, 
-                  fontWeight: '600', 
+              <TouchableOpacity
+                style={{ alignItems: 'center' }}
+                onPress={() => router.push('/friends-list')}
+              >
+                <Text style={{
+                  fontSize: 18,
+                  fontWeight: '600',
                   color: '#ffffff',
                   marginBottom: 2
                 }}>
-                  {formatNumber(0)} {/* TODO: Add friends count from backend */}
+                  {formatNumber(friendsCount)}
                 </Text>
                 <Text style={{
                   fontSize: 11,
@@ -261,7 +271,7 @@ export default function Profile() {
                 }}>
                   Friends
                 </Text>
-              </View>
+              </TouchableOpacity>
               
               <View style={{
                 width: 1,

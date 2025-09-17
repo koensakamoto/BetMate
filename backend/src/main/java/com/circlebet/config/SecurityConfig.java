@@ -64,6 +64,7 @@ public class SecurityConfig {
     private static final String[] PUBLIC_WEBSOCKET_ENDPOINTS = {
         "/ws/**"
     };
+
     
     // BCrypt strength - explicitly set to 12 for stronger hashing
     private static final int BCRYPT_STRENGTH = 12;
