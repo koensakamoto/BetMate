@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { router } from 'expo-router';
 
 const icon = require("../../assets/images/icon.png");
 
@@ -35,8 +36,8 @@ const UserCard: React.FC<UserCardProps> = ({
     : username;
 
   const handleUserPress = () => {
-    // Navigate to user profile page (to be implemented later)
-    console.log(`Navigate to user ${id} profile`);
+    // Navigate to user profile page
+    router.push(`/profile/${id}`);
   };
 
   const handleFriendPress = () => {
