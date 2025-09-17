@@ -8,8 +8,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { userService, UserProfileResponse, UserStatistics } from '../../services/user/userService';
 import { debugLog, errorLog } from '../../config/env';
 import { NotificationIconButton } from '../../components/ui/NotificationBadge';
-import { sendTestNotification } from '../../services/notification/notificationService';
-import { NotificationType, NotificationPriority } from '../../types/api';
 
 const icon = require("../../assets/images/icon.png");
 
@@ -70,148 +68,6 @@ export default function Profile() {
     router.push('/edit-profile');
   };
 
-  const handleTestNotification = async (type: NotificationType) => {
-    try {
-      const testNotifications: Record<NotificationType, { title: string; content: string; actionUrl?: string; priority: NotificationPriority }> = {
-        [NotificationType.BET_RESULT]: {
-          title: "🎉 Bet Won!",
-          content: "Your bet on Lakers vs Warriors was successful! You won $125.",
-          actionUrl: "/bets/123",
-          priority: NotificationPriority.NORMAL
-        },
-        [NotificationType.FRIEND_REQUEST]: {
-          title: "👋 New Friend Request",
-          content: "Alex wants to be your friend. Check out their profile!",
-          actionUrl: "/friends/requests",
-          priority: NotificationPriority.NORMAL
-        },
-        [NotificationType.GROUP_INVITE]: {
-          title: "🎯 Group Invitation",
-          content: "You've been invited to join 'NBA Betting Masters' group.",
-          actionUrl: "/groups/456",
-          priority: NotificationPriority.NORMAL
-        },
-        [NotificationType.ACHIEVEMENT_UNLOCKED]: {
-          title: "🏆 Achievement Unlocked!",
-          content: "You've unlocked 'Hot Streak' - 5 wins in a row!",
-          priority: NotificationPriority.NORMAL
-        },
-        [NotificationType.BET_CREATED]: {
-          title: "🎮 New Bet Created",
-          content: "Your friend created a new bet: Celtics vs Heat",
-          actionUrl: "/bets/789",
-          priority: NotificationPriority.LOW
-        },
-        [NotificationType.BET_DEADLINE]: {
-          title: "⏰ Bet Deadline Approaching",
-          content: "Your bet on Bulls vs Nets expires in 1 hour!",
-          actionUrl: "/bets/101",
-          priority: NotificationPriority.HIGH
-        },
-        [NotificationType.BET_CANCELLED]: {
-          title: "❌ Bet Cancelled",
-          content: "The bet on Knicks vs 76ers has been cancelled. Your credits have been refunded.",
-          priority: NotificationPriority.NORMAL
-        },
-        [NotificationType.FRIEND_REQUEST_ACCEPTED]: {
-          title: "✅ Friend Request Accepted",
-          content: "Sarah accepted your friend request!",
-          actionUrl: "/friends",
-          priority: NotificationPriority.LOW
-        },
-        [NotificationType.GROUP_MEMBER_JOINED]: {
-          title: "👥 New Group Member",
-          content: "Mike joined your group 'Weekend Warriors'",
-          actionUrl: "/groups/789",
-          priority: NotificationPriority.LOW
-        },
-        [NotificationType.GROUP_MEMBER_LEFT]: {
-          title: "👋 Member Left Group",
-          content: "John left the group 'Fantasy Football Pro'",
-          actionUrl: "/groups/321",
-          priority: NotificationPriority.LOW
-        },
-        [NotificationType.GROUP_ROLE_CHANGED]: {
-          title: "⭐ Role Updated",
-          content: "You've been promoted to Admin in 'NBA Betting Masters'",
-          actionUrl: "/groups/456",
-          priority: NotificationPriority.NORMAL
-        },
-        [NotificationType.NEW_MESSAGE]: {
-          title: "💬 New Message",
-          content: "Alex sent you a message",
-          actionUrl: "/messages/123",
-          priority: NotificationPriority.NORMAL
-        },
-        [NotificationType.MESSAGE_MENTION]: {
-          title: "@️⃣ You were mentioned",
-          content: "Sarah mentioned you in the group chat",
-          actionUrl: "/messages/456",
-          priority: NotificationPriority.HIGH
-        },
-        [NotificationType.MESSAGE_REPLY]: {
-          title: "↩️ Message Reply",
-          content: "Mike replied to your message",
-          actionUrl: "/messages/789",
-          priority: NotificationPriority.NORMAL
-        },
-        [NotificationType.STREAK_MILESTONE]: {
-          title: "🔥 Streak Milestone!",
-          content: "Amazing! You've reached a 10-game winning streak!",
-          priority: NotificationPriority.NORMAL
-        },
-        [NotificationType.LEVEL_UP]: {
-          title: "📈 Level Up!",
-          content: "Congratulations! You've reached Level 5 - Expert Bettor!",
-          priority: NotificationPriority.NORMAL
-        },
-        [NotificationType.CREDITS_RECEIVED]: {
-          title: "💰 Credits Received",
-          content: "You received 500 credits from your friend John!",
-          priority: NotificationPriority.NORMAL
-        },
-        [NotificationType.SYSTEM_ANNOUNCEMENT]: {
-          title: "📢 System Update",
-          content: "New features available! Check out the latest betting options.",
-          priority: NotificationPriority.LOW
-        },
-        [NotificationType.MAINTENANCE]: {
-          title: "🔧 Scheduled Maintenance",
-          content: "The app will be under maintenance tonight from 2-4 AM EST.",
-          priority: NotificationPriority.HIGH
-        },
-        [NotificationType.WELCOME]: {
-          title: "🎊 Welcome to GroupReels!",
-          content: "Thanks for joining! Start by creating your first bet or finding friends.",
-          priority: NotificationPriority.LOW
-        }
-      };
-
-      const notification = testNotifications[type];
-      if (notification) {
-        await sendTestNotification({
-          type,
-          title: notification.title,
-          content: notification.content,
-          actionUrl: notification.actionUrl,
-          priority: notification.priority
-        });
-
-        Alert.alert(
-          'Test Notification Sent',
-          `${notification.title} has been sent to your notifications inbox.`,
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error: any) {
-      errorLog('Failed to send test notification:', error);
-      Alert.alert(
-        'Error',
-        'Failed to send test notification. Please try again.',
-        [{ text: 'OK' }]
-      );
-    }
-  };
 
   const formatNumber = (num?: number): string => {
     if (num === undefined || num === null) return '0';
@@ -476,57 +332,6 @@ export default function Profile() {
               </TouchableOpacity>
             </View>
 
-            {/* Test Notification Buttons */}
-            <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: 12,
-              padding: 16,
-              marginBottom: 16
-            }}>
-              <Text style={{
-                fontSize: 14,
-                fontWeight: '600',
-                color: '#ffffff',
-                marginBottom: 12,
-                textAlign: 'center'
-              }}>
-                Test Notifications
-              </Text>
-
-              <View style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                gap: 8
-              }}>
-                {[
-                  { type: NotificationType.BET_RESULT, label: 'Bet Won', color: '#00D4AA' },
-                  { type: NotificationType.FRIEND_REQUEST, label: 'Friend Request', color: '#8B5CF6' },
-                  { type: NotificationType.GROUP_INVITE, label: 'Group Invite', color: '#06B6D4' },
-                  { type: NotificationType.ACHIEVEMENT_UNLOCKED, label: 'Achievement', color: '#FFB800' }
-                ].map((notif, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => handleTestNotification(notif.type)}
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 16,
-                      borderWidth: 1,
-                      borderColor: notif.color + '40'
-                    }}
-                  >
-                    <Text style={{
-                      color: notif.color,
-                      fontSize: 12,
-                      fontWeight: '500'
-                    }}>
-                      {notif.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
           </View>
         </View>
 
@@ -819,7 +624,7 @@ export default function Profile() {
                 {[
                   { label: 'Wins', value: formatNumber(userStats?.winCount), color: '#00D4AA' },
                   { label: 'Losses', value: formatNumber(userStats?.lossCount), color: '#EF4444' },
-                  { label: 'Win Rate', value: formatPercentage(userStats?.winRate * 100), color: '#00D4AA' },
+                  { label: 'Win Rate', value: formatPercentage(userStats?.winRate ? userStats.winRate * 100 : 0), color: '#00D4AA' },
                   { label: 'Total Games', value: formatNumber(userStats?.totalGames), color: '#ffffff' },
                   { label: 'Longest Streak', value: formatNumber(userStats?.longestStreak), color: '#00D4AA' },
                   { label: 'Current Streak', value: formatNumber(userStats?.currentStreak), color: '#FFB800' }

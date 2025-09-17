@@ -116,10 +116,12 @@ public class FriendshipService {
         friendship.accept();
         Friendship savedFriendship = friendshipRepository.save(friendship);
 
-        // TODO: Create notification for the original requester that their request was accepted
-        // Temporarily disabled due to database column length issue
-        // User requester = friendship.getRequester();
-        // notificationService.createFriendRequestAcceptedNotification(accepter, requester);
+        // Delete the friend request notification since it's been processed
+        notificationService.deleteFriendRequestNotification(friendshipId);
+
+        // Create notification for the original requester that their request was accepted
+        User requester = friendship.getRequester();
+        notificationService.createFriendRequestAcceptedNotification(accepter, requester);
 
         return savedFriendship;
     }
@@ -145,7 +147,12 @@ public class FriendshipService {
         }
 
         friendship.reject();
-        return friendshipRepository.save(friendship);
+        Friendship savedFriendship = friendshipRepository.save(friendship);
+
+        // Delete the friend request notification since it's been processed
+        notificationService.deleteFriendRequestNotification(friendshipId);
+
+        return savedFriendship;
     }
 
     /**

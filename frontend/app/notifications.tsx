@@ -223,9 +223,6 @@ export default function Notifications() {
       await friendshipService.acceptFriendRequest(friendshipId);
       await markAsRead(notification.id);
 
-      // Refresh the notifications list to remove this notification
-      await refresh();
-
       Alert.alert('Success', 'Friend request accepted!');
     } catch (error) {
       Alert.alert('Error', 'Failed to accept friend request');
@@ -250,9 +247,6 @@ export default function Notifications() {
 
       await friendshipService.rejectFriendRequest(friendshipId);
       await markAsRead(notification.id);
-
-      // Refresh the notifications list to remove this notification
-      await refresh();
 
       Alert.alert('Success', 'Friend request declined');
     } catch (error) {

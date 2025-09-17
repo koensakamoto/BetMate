@@ -60,6 +60,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     // Related entity notifications
     List<Notification> findByRelatedEntityTypeAndRelatedEntityId(String entityType, Long entityId);
     List<Notification> findByUserAndRelatedEntityTypeAndRelatedEntityId(User user, String entityType, Long entityId);
+    List<Notification> findByRelatedEntityIdAndRelatedEntityTypeAndNotificationType(Long relatedEntityId, String relatedEntityType, Notification.NotificationType notificationType);
     
     // Delivery tracking
     List<Notification> findByPushSent(Boolean pushSent);

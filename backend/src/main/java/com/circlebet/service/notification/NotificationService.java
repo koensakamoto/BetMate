@@ -164,4 +164,29 @@ public class NotificationService {
             throw e;
         }
     }
+
+    /**
+     * Deletes friend request notifications for a specific friendship.
+     */
+    @Transactional
+    public void deleteFriendRequestNotification(Long friendshipId) {
+        try {
+            System.out.println("DEBUG: Attempting to delete friend request notification for friendshipId: " + friendshipId);
+            List<Notification> notifications = notificationRepository
+                .findByRelatedEntityIdAndRelatedEntityTypeAndNotificationType(
+                    friendshipId, "FRIENDSHIP", NotificationType.FRIEND_REQUEST);
+
+            if (!notifications.isEmpty()) {
+                System.out.println("DEBUG: Found " + notifications.size() + " friend request notification(s) to delete");
+                notificationRepository.deleteAll(notifications);
+                System.out.println("DEBUG: Successfully deleted friend request notification(s) for friendshipId: " + friendshipId);
+            } else {
+                System.out.println("DEBUG: No friend request notifications found for friendshipId: " + friendshipId);
+            }
+        } catch (Exception e) {
+            System.err.println("ERROR: Failed to delete friend request notification for friendshipId " + friendshipId + ": " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
 }
