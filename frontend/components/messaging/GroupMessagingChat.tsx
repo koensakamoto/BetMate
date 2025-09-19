@@ -40,6 +40,9 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   const { user, isLoading: authLoading } = useAuth();
   const keyboardHeight = useRef(new Animated.Value(0)).current;
   const contentScale = useRef(new Animated.Value(1)).current;
+
+  // Generate unique component instance ID for isolation
+  const componentInstanceId = useRef(`comp_${groupId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`).current;
   
   // State
   const [messages, setMessages] = useState<MessageResponse[]>([]);
@@ -50,12 +53,35 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   const [editingMessage, setEditingMessage] = useState<MessageResponse | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('disconnected');
 
-  // Initialize when user becomes available
+  // Initialize when user becomes available or group changes
   useEffect(() => {
-    if (user && !authLoading) {
-      initializeChat();
-    }
-    return () => cleanup();
+    // Track the previous group ID for cleanup
+    let currentGroupId = groupId;
+    let isComponentMounted = true;
+
+    // DEFENSIVE CLEANUP: Immediately clear all state when groupId changes
+    setMessages([]);
+    setTypingUsers([]);
+    setReplyToMessage(null);
+    setEditingMessage(null);
+    setConnectionStatus('disconnected');
+
+    console.log(`[GroupChat ${groupId}] 🔄 Component effect triggered - clearing state and initializing for group ${groupId} (instance: ${componentInstanceId})`);
+
+    // Force a brief delay to ensure state clearing completes before WebSocket setup
+    const initTimeout = setTimeout(() => {
+      if (isComponentMounted && user && !authLoading) {
+        console.log(`[GroupChat ${groupId}] ✅ Initializing chat for group ${groupId}`);
+        initializeChat();
+      }
+    }, 50); // Small delay to ensure state is cleared
+
+    return () => {
+      isComponentMounted = false;
+      clearTimeout(initTimeout);
+      console.log(`[GroupChat ${currentGroupId}] 🧹 Cleaning up group ${currentGroupId}`);
+      cleanup(currentGroupId);
+    };
   }, [groupId, user, authLoading]);
 
   // Keyboard handling
@@ -130,17 +156,35 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
     }
   };
 
-  const cleanup = async () => {
+  const cleanup = async (cleanupGroupId: number) => {
     try {
-      console.log('Cleaning up messaging chat...');
-      
-      // Unsubscribe from WebSocket events
-      webSocketService.unsubscribeFromGroup(groupId);
-      
-      // Update presence to offline when leaving chat (non-critical)
+      console.log(`[GroupChat ${cleanupGroupId}] 🧹 Starting cleanup for group ${cleanupGroupId}...`);
+
+      // CLEANUP PHASE 1: WebSocket cleanup (most important for preventing cross-group bleeding)
+      // Remove group-specific event handlers FIRST to prevent any new messages
+      webSocketService.removeGroupEventHandlers(cleanupGroupId);
+      console.log(`[GroupChat ${cleanupGroupId}] ✅ Event handlers removed`);
+
+      // Unsubscribe from the specific group
+      webSocketService.unsubscribeFromGroup(cleanupGroupId);
+      console.log(`[GroupChat ${cleanupGroupId}] ✅ WebSocket subscriptions cleaned`);
+
+      // CLEANUP PHASE 2: Clear UI state (non-critical)
+      setTypingUsers([]);
+      setReplyToMessage(null);
+      setEditingMessage(null);
+      setConnectionStatus('disconnected');
+      console.log(`[GroupChat ${cleanupGroupId}] ✅ UI state cleared`);
+
+      // NOTE: We don't clear messages here because they are loaded via HTTP API
+      // and should persist until the new group loads its messages
+
+      // CLEANUP PHASE 3: Update presence to offline (non-critical)
       webSocketService.updatePresence('OFFLINE'); // Don't await this
+
+      console.log(`[GroupChat ${cleanupGroupId}] 🎯 Cleanup completed for group ${cleanupGroupId}`);
     } catch (error) {
-      console.warn('Error during cleanup (non-critical):', error);
+      console.warn(`[GroupChat ${cleanupGroupId}] ⚠️ Error during cleanup (non-critical):`, error);
     }
   };
 
@@ -186,10 +230,10 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   const setupWebSocket = async () => {
     try {
       setConnectionStatus('connecting');
-      console.log('Setting up WebSocket connection...');
-      
-      // Set event handlers
-      webSocketService.setEventHandlers({
+      console.log(`[GroupChat ${groupId}] Setting up WebSocket connection...`);
+
+      // Set group-specific event handlers with component instance tracking
+      webSocketService.setGroupEventHandlers(groupId, {
         onMessage: handleIncomingMessage,
         onMessageEdit: handleMessageEdit,
         onMessageDelete: handleMessageDelete,
@@ -198,29 +242,29 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
         onError: handleWebSocketError,
         onConnect: () => {
           setConnectionStatus('connected');
-          console.log('WebSocket connected successfully');
+          console.log(`[GroupChat ${groupId}] WebSocket connected successfully (instance: ${componentInstanceId})`);
         },
         onDisconnect: () => {
           setConnectionStatus('disconnected');
-          console.log('WebSocket disconnected');
+          console.log(`[GroupChat ${groupId}] WebSocket disconnected (instance: ${componentInstanceId})`);
         },
         onReconnect: () => {
           setConnectionStatus('connected');
-          console.log('WebSocket reconnected');
+          console.log(`[GroupChat ${groupId}] WebSocket reconnected (instance: ${componentInstanceId})`);
         }
-      });
+      }, componentInstanceId);
 
-      // Try to connect and subscribe to group channels
-      await webSocketService.subscribeToGroup(groupId);
-      console.log(`Subscribed to group ${groupId} channels`);
-      
+      // Try to connect and subscribe to group channels with component instance ID
+      await webSocketService.subscribeToGroup(groupId, componentInstanceId);
+      console.log(`[GroupChat ${groupId}] Subscribed to group ${groupId} channels`);
+
       // Update presence to online (this might fail if connection isn't ready)
       setTimeout(() => {
         webSocketService.updatePresence('ONLINE');
       }, 1000); // Delay presence update to allow connection to stabilize
-      
+
     } catch (error) {
-      console.warn('WebSocket setup failed, will use HTTP fallback:', error);
+      console.warn(`[GroupChat ${groupId}] WebSocket setup failed, will use HTTP fallback:`, error);
       setConnectionStatus('disconnected');
       // Don't throw error - the app should work with HTTP fallback
     }
@@ -231,20 +275,51 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   // ==========================================
 
   const handleIncomingMessage = useCallback((message: MessageResponse) => {
-    if (message.groupId === groupId) {
-      setMessages(prevMessages => {
-        // Check if message already exists to avoid duplicates
-        const exists = prevMessages.some(m => m.id === message.id);
-        if (exists) return prevMessages;
-        
-        return [...prevMessages, message];
-      });
-      
-      // Auto-scroll if user is near bottom
-      setTimeout(() => {
-        scrollToBottom();
-      }, 100);
+    console.log(`[GroupChat ${groupId}] 🔄 Received message for group ${message.groupId}: ${message.content?.substring(0, 50)}... (messageId: ${message.id}, instance: ${componentInstanceId})`);
+
+    // DEFENSIVE LAYER 1: Component-level group ID check
+    // This is a failsafe to ensure we're still processing the right group
+    const currentGroupId = groupId; // Capture current group ID in this scope
+    if (message.groupId !== currentGroupId) {
+      console.error(`[GroupChat ${currentGroupId}] ❌ COMPONENT SAFETY: Message is for group ${message.groupId} but component is for group ${currentGroupId} (instance: ${componentInstanceId}) - BLOCKING`);
+      return;
     }
+
+    // DEFENSIVE LAYER 2: Strict group ID validation
+    if (!message.groupId || typeof message.groupId !== 'number') {
+      console.error(`[GroupChat ${groupId}] ❌ DEFENSIVE FILTER: Invalid groupId in message:`, message.groupId);
+      return;
+    }
+
+    // DEFENSIVE LAYER 3: Exact group ID match (double-check)
+    if (message.groupId !== groupId) {
+      console.error(`[GroupChat ${groupId}] ❌ DEFENSIVE FILTER: Message groupId ${message.groupId} doesn't match current groupId ${groupId} - REJECTING`);
+      return;
+    }
+
+    // DEFENSIVE LAYER 4: Message validity checks
+    if (!message.id || !message.content || !message.senderUsername) {
+      console.error(`[GroupChat ${groupId}] ❌ DEFENSIVE FILTER: Invalid message structure:`, { id: message.id, hasContent: !!message.content, sender: message.senderUsername });
+      return;
+    }
+
+    console.log(`[GroupChat ${groupId}] ✅ All defensive filters passed - processing message`);
+    setMessages(prevMessages => {
+      // Check if message already exists to avoid duplicates
+      const exists = prevMessages.some(m => m.id === message.id);
+      if (exists) {
+        console.log(`[GroupChat ${groupId}] ⚠️ Duplicate message detected, ignoring (messageId: ${message.id})`);
+        return prevMessages;
+      }
+
+      console.log(`[GroupChat ${groupId}] ✅ Adding new message to state (messageId: ${message.id})`);
+      return [...prevMessages, message];
+    });
+
+    // Auto-scroll if user is near bottom
+    setTimeout(() => {
+      scrollToBottom();
+    }, 100);
   }, [groupId]);
 
   const handleMessageEdit = useCallback((editedMessage: MessageResponse) => {
@@ -292,6 +367,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   // ==========================================
 
   const handleSendMessage = async (request: SendMessageRequest) => {
+    console.log(`[GroupChat ${groupId}] 🔍 HANDLE SEND MESSAGE: Current groupId=${groupId}, request.groupId=${request.groupId}, content="${request.content}"`);
     try {
       if (editingMessage) {
         // Edit existing message

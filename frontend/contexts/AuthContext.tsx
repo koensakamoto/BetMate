@@ -141,26 +141,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
+      console.log(`🔍 [AuthContext] Starting auth status check...`);
       setIsLoading(true);
       setError(null);
 
       // Check if user is authenticated
       const isAuth = await authService.isAuthenticated();
-      
+      console.log(`🔍 [AuthContext] isAuthenticated result:`, isAuth);
+
       if (isAuth) {
+        console.log(`🔍 [AuthContext] User appears to be authenticated, fetching profile...`);
         // Validate session and get user profile
         const userProfile = await authService.getCurrentUser();
+        console.log(`✅ [AuthContext] User profile fetched:`, {
+          id: userProfile.id,
+          username: userProfile.username,
+          email: userProfile.email
+        });
         setUser(transformUser(userProfile));
         debugLog('Auth check successful - user logged in');
       } else {
+        console.log(`❌ [AuthContext] User is not authenticated`);
         setUser(null);
         debugLog('Auth check - no valid session');
       }
     } catch (error) {
+      console.error(`💥 [AuthContext] Auth status check failed:`, error);
       errorLog('Auth status check failed:', error);
       setUser(null);
       // Don't set error for initial auth check - user might just not be logged in
     } finally {
+      console.log(`🏁 [AuthContext] Auth check completed. Setting isLoading to false.`);
       setIsLoading(false);
     }
   };

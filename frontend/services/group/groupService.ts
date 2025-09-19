@@ -93,7 +93,20 @@ export class GroupService extends BaseApiService {
    * Get group details by ID
    */
   async getGroupById(id: number): Promise<GroupDetailResponse> {
-    return this.get<GroupDetailResponse>(API_ENDPOINTS.GROUP_BY_ID(id));
+    console.log(`🔍 [GroupService] Getting group by ID: ${id}`);
+    try {
+      const result = await this.get<GroupDetailResponse>(API_ENDPOINTS.GROUP_BY_ID(id));
+      console.log(`✅ [GroupService] Successfully fetched group ${id}:`, {
+        groupName: result.groupName,
+        memberCount: result.memberCount,
+        userRole: result.userRole,
+        isUserMember: result.isUserMember
+      });
+      return result;
+    } catch (error) {
+      console.error(`💥 [GroupService] Failed to fetch group ${id}:`, error);
+      throw error;
+    }
   }
 
   /**

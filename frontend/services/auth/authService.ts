@@ -174,7 +174,13 @@ export class AuthService extends BaseApiService {
    * Check if user is authenticated
    */
   async isAuthenticated(): Promise<boolean> {
+    console.log(`🔍 [AuthService] Checking if user is authenticated...`);
     const accessToken = await tokenStorage.getAccessToken();
+    console.log(`🔍 [AuthService] Access token check:`, {
+      hasToken: !!accessToken,
+      tokenLength: accessToken ? accessToken.length : 0,
+      tokenPreview: accessToken ? `${accessToken.substring(0, 20)}...` : 'null'
+    });
     return !!accessToken;
   }
 

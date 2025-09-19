@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Text, View, ScrollView, Image, TouchableOpacity, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -28,6 +28,17 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
   const [activeTab, setActiveTab] = useState(0);
   const [groupData, setGroupData] = useState(initialGroupData);
   const tabs = ['Chat', 'Bets', 'Stats', 'People', 'Config'];
+
+  // Sync local state with incoming props when they change
+  useEffect(() => {
+    console.log(`🔄 [GroupMemberView] Props updated:`, {
+      newName: initialGroupData.name,
+      newMemberCount: initialGroupData.memberCount,
+      currentName: groupData.name,
+      currentMemberCount: groupData.memberCount
+    });
+    setGroupData(initialGroupData);
+  }, [initialGroupData]);
 
   const handleGroupUpdated = useCallback((updatedGroup: any) => {
     // Merge the updated settings back into our group data

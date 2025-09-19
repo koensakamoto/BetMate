@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import BetCard from '../../components/bet/BetCard';
 import { betService, BetSummaryResponse } from '../../services/bet/betService';
 
@@ -10,17 +11,36 @@ const icon = require("../../assets/images/icon.png");
 
 export default function Bet() {
   const insets = useSafeAreaInsets();
+  const { refresh } = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState(0);
   const tabs = ['My Bets', 'Discover'];
   const [searchQuery, setSearchQuery] = useState('');
   const [myBets, setMyBets] = useState<BetSummaryResponse[]>([]);
   const [discoverBets, setDiscoverBets] = useState<BetSummaryResponse[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Load bets data
+  // Filter states for My Bets tab
+  const [myBetsFilter, setMyBetsFilter] = useState<'all' | 'active' | 'resolved'>('all');
+  const myBetsFilters = [
+    { key: 'all' as const, label: 'All' },
+    { key: 'active' as const, label: 'Active' },
+    { key: 'resolved' as const, label: 'Resolved' }
+  ];
+
+  // Load bets data when screen comes into focus (including initial load and returning from bet creation)
+  useFocusEffect(
+    useCallback(() => {
+      loadBets();
+    }, [refreshKey])
+  );
+
+  // Trigger refresh when URL refresh parameter changes (from bet creation)
   useEffect(() => {
-    loadBets();
-  }, []);
+    if (refresh) {
+      loadBets();
+    }
+  }, [refresh]);
 
   const loadBets = async () => {
     setLoading(true);
@@ -64,16 +84,31 @@ export default function Bet() {
     const now = new Date();
     const deadlineDate = new Date(deadline);
     const diff = deadlineDate.getTime() - now.getTime();
-    
+
     if (diff <= 0) return 'Ended';
-    
+
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (days > 0) return `${days}d ${hours}h`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
+  };
+
+  // Filter my bets based on selected filter
+  const getFilteredMyBets = (): BetSummaryResponse[] => {
+    return myBets.filter(bet => {
+      switch (myBetsFilter) {
+        case 'active':
+          return bet.status === 'OPEN' || bet.status === 'ACTIVE';
+        case 'resolved':
+          return bet.status === 'CLOSED' || bet.status === 'RESOLVED';
+        case 'all':
+        default:
+          return true;
+      }
+    });
   };
 
   const betHistory = [
@@ -242,6 +277,41 @@ export default function Bet() {
               })}
             </View>
 
+            {/* Filter Buttons for My Bets Tab */}
+            {activeTab === 0 && (
+              <View style={{
+                flexDirection: 'row',
+                marginBottom: 24,
+                gap: 8
+              }}>
+                {myBetsFilters.map((filter) => {
+                  const isActive = filter.key === myBetsFilter;
+                  return (
+                    <TouchableOpacity
+                      key={filter.key}
+                      onPress={() => setMyBetsFilter(filter.key)}
+                      style={{
+                        backgroundColor: isActive ? 'rgba(0, 212, 170, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: 20,
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        borderWidth: isActive ? 1 : 0,
+                        borderColor: isActive ? 'rgba(0, 212, 170, 0.3)' : 'transparent'
+                      }}
+                    >
+                      <Text style={{
+                        fontSize: 14,
+                        fontWeight: isActive ? '600' : '500',
+                        color: isActive ? '#00D4AA' : 'rgba(255, 255, 255, 0.7)'
+                      }}>
+                        {filter.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
             {/* Search Results Info */}
             {searchQuery.length > 0 && (
               <View style={{ marginBottom: 16 }}>
@@ -306,14 +376,16 @@ export default function Bet() {
                       Loading bets...
                     </Text>
                   </View>
-                ) : myBets.length > 0 ? (
-                  myBets.map((bet) => (
-                    <BetCard
-                      key={bet.id}
-                      {...transformBetData(bet)}
-                    />
-                  ))
-                ) : (
+                ) : (() => {
+                  const filteredBets = getFilteredMyBets();
+                  return filteredBets.length > 0 ? (
+                    filteredBets.map((bet) => (
+                      <BetCard
+                        key={bet.id}
+                        {...transformBetData(bet)}
+                      />
+                    ))
+                  ) : (
                   <View style={{
                     backgroundColor: 'rgba(255, 255, 255, 0.02)',
                     borderRadius: 8,
@@ -347,10 +419,13 @@ export default function Bet() {
                       color: 'rgba(255, 255, 255, 0.4)',
                       textAlign: 'center'
                     }}>
-                      Create your first bet to get started
+                      {myBetsFilter === 'active' ? 'No active bets' :
+                       myBetsFilter === 'resolved' ? 'No resolved bets' :
+                       'Create your first bet to get started'}
                     </Text>
                   </View>
-                )}
+                  );
+                })()}
               </>
             ) : (
               /* Discover Section */

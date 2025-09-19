@@ -58,7 +58,7 @@ public class NotificationTestService {
                               NotificationType.ACHIEVEMENT_UNLOCKED, NotificationPriority.HIGH, "/achievements", null, null);
 
         createTestNotification(user, "📈 Level Up!", "Congratulations! You've reached level 5!",
-                              NotificationType.LEVEL_UP, NotificationPriority.HIGH, "/profile", null, null);
+                              NotificationType.ACHIEVEMENT_UNLOCKED, NotificationPriority.HIGH, "/profile", null, null);
 
         // Financial notifications
         createTestNotification(user, "💰 Credits Received", "You received 50 credits as a daily bonus!",
@@ -66,7 +66,7 @@ public class NotificationTestService {
 
         // Message notifications
         createTestNotification(user, "💬 Mentioned in Message", "Alex mentioned you in Basketball Fans",
-                              NotificationType.MESSAGE_MENTION, NotificationPriority.NORMAL, "/groups/789/messages", 999L, "MESSAGE");
+                              NotificationType.MESSAGE, NotificationPriority.NORMAL, "/groups/789/messages", 999L, "MESSAGE");
 
         // System notifications
         createTestNotification(user, "📢 System Update", "New features available! Check out the updated betting interface.",

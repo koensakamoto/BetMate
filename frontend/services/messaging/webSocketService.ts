@@ -5,6 +5,7 @@ import {
   MessageResponse,
   TypingIndicator,
   UserPresence,
+  PresenceStatus,
   WebSocketError,
   WebSocketMessage,
   WebSocketMessageType,
@@ -26,7 +27,12 @@ export interface WebSocketEventHandlers {
 export class WebSocketMessagingService {
   private client: Client;
   private subscriptions: Map<string, StompSubscription> = new Map();
-  private eventHandlers: WebSocketEventHandlers = {};
+  private groupEventHandlers: Map<number, WebSocketEventHandlers> = new Map(); // Group-specific handlers
+  private globalEventHandlers: WebSocketEventHandlers = {}; // For presence, errors, etc.
+  private activeGroupId: number | null = null; // Track currently active group
+  private subscriptionLock: Map<number, boolean> = new Map(); // Prevent concurrent subscriptions
+  private componentInstances: Map<number, string> = new Map(); // Track component instances
+  private subscriptionTransition: boolean = false; // Track if subscription change is in progress
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000; // Start with 1 second
@@ -77,7 +83,7 @@ export class WebSocketMessagingService {
         this.isConnecting = false;
         this.reconnectAttempts = 0;
         debugLog('WebSocket connected successfully');
-        this.eventHandlers.onConnect?.();
+        this.globalEventHandlers.onConnect?.();
         resolve();
       };
 
@@ -85,7 +91,7 @@ export class WebSocketMessagingService {
         clearTimeout(connectTimeout);
         this.isConnecting = false;
         debugLog('WebSocket disconnected');
-        this.eventHandlers.onDisconnect?.();
+        this.globalEventHandlers.onDisconnect?.();
       };
 
       this.client.onWebSocketError = (error) => {
@@ -140,16 +146,91 @@ export class WebSocketMessagingService {
   // ==========================================
 
   /**
-   * Set event handlers for WebSocket events
+   * Set event handlers for a specific group with component instance tracking
    */
-  setEventHandlers(handlers: WebSocketEventHandlers): void {
-    this.eventHandlers = { ...this.eventHandlers, ...handlers };
+  setGroupEventHandlers(groupId: number, handlers: WebSocketEventHandlers, componentInstanceId?: string): void {
+    debugLog(`[WS-HANDLERS] Setting event handlers for group ${groupId} (instance: ${componentInstanceId})`);
+    debugLog(`[WS-HANDLERS] Current registered groups: [${Array.from(this.groupEventHandlers.keys()).join(', ')}]`);
+    debugLog(`[WS-HANDLERS] Current active group: ${this.activeGroupId}`);
+    debugLog(`[WS-HANDLERS] Subscription transition in progress: ${this.subscriptionTransition}`);
+
+    // Generate component instance ID if not provided
+    const instanceId = componentInstanceId || `comp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Store component instance for this group
+    this.componentInstances.set(groupId, instanceId);
+
+    // Store group-specific handlers
+    this.groupEventHandlers.set(groupId, { ...handlers });
+
+    // CRITICAL: Only set as active group if no transition is in progress
+    if (!this.subscriptionTransition) {
+      this.activeGroupId = groupId;
+      debugLog(`[WS-HANDLERS] ✅ Active group set to: ${groupId} (instance: ${instanceId})`);
+    } else {
+      debugLog(`[WS-HANDLERS] ⏳ Deferring active group change - transition in progress`);
+    }
+
+    debugLog(`[WS-HANDLERS] Groups after registration: [${Array.from(this.groupEventHandlers.keys()).join(', ')}]`);
+
+    // Only update global handlers if this is the currently active group and no transition is in progress
+    if (this.activeGroupId === groupId && !this.subscriptionTransition) {
+      this.globalEventHandlers = {
+        ...this.globalEventHandlers,
+        onConnect: handlers.onConnect,
+        onDisconnect: handlers.onDisconnect,
+        onReconnect: handlers.onReconnect,
+        onError: handlers.onError,
+        onUserPresence: handlers.onUserPresence
+      };
+      debugLog(`[WS-HANDLERS] ✅ Global handlers updated for active group ${groupId}`);
+    } else {
+      debugLog(`[WS-HANDLERS] ⏭️  Skipping global handler update - group ${groupId} is not active (active: ${this.activeGroupId}) or transition in progress: ${this.subscriptionTransition}`);
+    }
+  }
+
+  /**
+   * Remove event handlers for a specific group with complete cleanup
+   */
+  removeGroupEventHandlers(groupId: number): void {
+    debugLog(`[WS-HANDLERS] Removing event handlers for group ${groupId}`);
+    debugLog(`[WS-HANDLERS] Groups before removal: [${Array.from(this.groupEventHandlers.keys()).join(', ')}]`);
+
+    const wasRemoved = this.groupEventHandlers.delete(groupId);
+    const instanceRemoved = this.componentInstances.delete(groupId);
+    const lockRemoved = this.subscriptionLock.delete(groupId);
+
+    // If this was the active group, clear active group
+    if (this.activeGroupId === groupId) {
+      this.activeGroupId = null;
+      debugLog(`[WS-HANDLERS] ✅ Cleared active group (was ${groupId})`);
+
+      // Clear global handlers for the removed group
+      this.globalEventHandlers = {
+        onConnect: undefined,
+        onDisconnect: undefined,
+        onReconnect: undefined,
+        onError: undefined,
+        onUserPresence: undefined
+      };
+      debugLog(`[WS-HANDLERS] ✅ Cleared global handlers for removed active group`);
+    }
+
+    debugLog(`[WS-HANDLERS] Cleanup results - Handler removed: ${wasRemoved}, Instance removed: ${instanceRemoved}, Lock removed: ${lockRemoved}`);
+    debugLog(`[WS-HANDLERS] Groups after removal: [${Array.from(this.groupEventHandlers.keys()).join(', ')}]`);
+  }
+
+  /**
+   * Get event handlers for a specific group
+   */
+  private getGroupEventHandlers(groupId: number): WebSocketEventHandlers | undefined {
+    return this.groupEventHandlers.get(groupId);
   }
 
   private setupEventHandlers(): void {
     this.client.onStompError = (frame) => {
       errorLog('STOMP error:', frame);
-      this.eventHandlers.onError?.({
+      this.globalEventHandlers.onError?.({
         error: `STOMP Error: ${frame.headers['message']}`,
         timestamp: Date.now()
       });
@@ -171,7 +252,7 @@ export class WebSocketMessagingService {
       setTimeout(async () => {
         try {
           await this.connect();
-          this.eventHandlers.onReconnect?.();
+          this.globalEventHandlers.onReconnect?.();
         } catch (error) {
           errorLog('Reconnection failed:', error);
         }
@@ -214,16 +295,50 @@ export class WebSocketMessagingService {
     const destination = `/topic/group/${groupId}/messages`;
     const subscriptionKey = `group-${groupId}-messages`;
 
-    if (this.subscriptions.has(subscriptionKey)) {
-      debugLog(`Already subscribed to group ${groupId} messages`);
-      return;
+    // First, unsubscribe from any existing subscription for this group
+    const existingSub = this.subscriptions.get(subscriptionKey);
+    if (existingSub) {
+      debugLog(`Unsubscribing from existing group ${groupId} messages subscription`);
+      existingSub.unsubscribe();
+      this.subscriptions.delete(subscriptionKey);
     }
 
     const subscription = this.client.subscribe(destination, (message: IMessage) => {
       try {
         const messageData: MessageResponse = JSON.parse(message.body);
-        debugLog(`Received message in group ${groupId}:`, messageData);
-        this.eventHandlers.onMessage?.(messageData);
+        debugLog(`[WS-MESSAGE] Received message via subscription for group ${groupId}: ${messageData.content?.substring(0, 50)}... (messageId: ${messageData.id}, actualGroupId: ${messageData.groupId})`);
+
+        // SAFETY LAYER 1: Check if subscription transition is in progress
+        if (this.subscriptionTransition) {
+          debugLog(`[WS-MESSAGE] ⏳ SAFETY: Subscription transition in progress - DROPPING MESSAGE for group ${groupId}`);
+          return;
+        }
+
+        // SAFETY LAYER 2: Check if this group subscription is for the currently active group
+        if (this.activeGroupId !== groupId) {
+          debugLog(`[WS-MESSAGE] ❌ SAFETY: Subscription for group ${groupId} received message but active group is ${this.activeGroupId} - DROPPING MESSAGE`);
+          return;
+        }
+
+        // SAFETY LAYER 3: Validate component instance exists for this group
+        const componentInstance = this.componentInstances.get(groupId);
+        if (!componentInstance) {
+          debugLog(`[WS-MESSAGE] ❌ SAFETY: No component instance found for group ${groupId} - DROPPING MESSAGE`);
+          return;
+        }
+
+        // SAFETY LAYER 4: Only call handler if message groupId matches subscription groupId
+        if (messageData.groupId === groupId) {
+          const groupHandlers = this.getGroupEventHandlers(groupId);
+          if (groupHandlers?.onMessage) {
+            debugLog(`[WS-MESSAGE] ✅ Calling onMessage handler for group ${groupId} (instance: ${componentInstance}) with message from group ${messageData.groupId}`);
+            groupHandlers.onMessage(messageData);
+          } else {
+            debugLog(`[WS-MESSAGE] ❌ No message handler found for group ${groupId}`);
+          }
+        } else {
+          debugLog(`[WS-MESSAGE] ❌ Message groupId ${messageData.groupId} doesn't match subscription groupId ${groupId} - DROPPING MESSAGE`);
+        }
       } catch (error) {
         errorLog('Error parsing group message:', error);
       }
@@ -244,15 +359,23 @@ export class WebSocketMessagingService {
     const destination = `/topic/group/${groupId}/typing`;
     const subscriptionKey = `group-${groupId}-typing`;
 
-    if (this.subscriptions.has(subscriptionKey)) {
-      return;
+    // First, unsubscribe from any existing subscription for this group
+    const existingSub = this.subscriptions.get(subscriptionKey);
+    if (existingSub) {
+      debugLog(`Unsubscribing from existing group ${groupId} typing subscription`);
+      existingSub.unsubscribe();
+      this.subscriptions.delete(subscriptionKey);
     }
 
     const subscription = this.client.subscribe(destination, (message: IMessage) => {
       try {
         const typingData: TypingIndicator = JSON.parse(message.body);
         debugLog(`Typing indicator in group ${groupId}:`, typingData);
-        this.eventHandlers.onTypingIndicator?.(typingData);
+        // Only call handler if it's for the current group
+        if (typingData.groupId === groupId) {
+          const groupHandlers = this.getGroupEventHandlers(groupId);
+          groupHandlers?.onTypingIndicator?.(typingData);
+        }
       } catch (error) {
         errorLog('Error parsing typing indicator:', error);
       }
@@ -281,7 +404,7 @@ export class WebSocketMessagingService {
       try {
         const presenceData: UserPresence = JSON.parse(message.body);
         debugLog('User presence update:', presenceData);
-        this.eventHandlers.onUserPresence?.(presenceData);
+        this.globalEventHandlers.onUserPresence?.(presenceData);
       } catch (error) {
         errorLog('Error parsing presence update:', error);
       }
@@ -310,7 +433,7 @@ export class WebSocketMessagingService {
       try {
         const errorData: WebSocketError = JSON.parse(message.body);
         debugLog('WebSocket error received:', errorData);
-        this.eventHandlers.onError?.(errorData);
+        this.globalEventHandlers.onError?.(errorData);
       } catch (error) {
         errorLog('Error parsing WebSocket error:', error);
       }
@@ -365,7 +488,7 @@ export class WebSocketMessagingService {
       });
       debugLog(`Typing indicator sent to group ${groupId}:`, isTyping);
     } catch (error) {
-      debugLog('Failed to send typing indicator (non-critical):', error.message);
+      debugLog('Failed to send typing indicator (non-critical):', error);
       // Don't throw - typing indicators are non-critical
     }
   }
@@ -382,7 +505,7 @@ export class WebSocketMessagingService {
 
     try {
       const presence: Omit<UserPresence, 'username'> = {
-        status,
+        status: status as PresenceStatus,
         lastSeen: new Date().toISOString()
       };
 
@@ -392,7 +515,7 @@ export class WebSocketMessagingService {
       });
       debugLog('Presence updated:', status);
     } catch (error) {
-      debugLog('Failed to update presence (non-critical):', error.message);
+      debugLog('Failed to update presence (non-critical):', error);
       // Don't throw error for presence updates as they're non-critical
     }
   }
@@ -405,6 +528,9 @@ export class WebSocketMessagingService {
    * Unsubscribe from a specific group's messages
    */
   unsubscribeFromGroup(groupId: number): void {
+    debugLog(`[UNSUBSCRIBE] Starting unsubscribe from group ${groupId}`);
+    debugLog(`[UNSUBSCRIBE] Current subscriptions: [${Array.from(this.subscriptions.keys()).join(', ')}]`);
+
     const messagesKey = `group-${groupId}-messages`;
     const typingKey = `group-${groupId}-typing`;
 
@@ -412,15 +538,72 @@ export class WebSocketMessagingService {
     if (messagesSub) {
       messagesSub.unsubscribe();
       this.subscriptions.delete(messagesKey);
+      debugLog(`[UNSUBSCRIBE] ✅ Unsubscribed from group ${groupId} messages`);
+    } else {
+      debugLog(`[UNSUBSCRIBE] ❌ No messages subscription found for group ${groupId}`);
     }
 
     const typingSub = this.subscriptions.get(typingKey);
     if (typingSub) {
       typingSub.unsubscribe();
       this.subscriptions.delete(typingKey);
+      debugLog(`[UNSUBSCRIBE] ✅ Unsubscribed from group ${groupId} typing`);
+    } else {
+      debugLog(`[UNSUBSCRIBE] ❌ No typing subscription found for group ${groupId}`);
     }
 
-    debugLog(`Unsubscribed from group ${groupId}`);
+    debugLog(`[UNSUBSCRIBE] ✅ Fully unsubscribed from group ${groupId}`);
+    debugLog(`[UNSUBSCRIBE] Remaining subscriptions: [${Array.from(this.subscriptions.keys()).join(', ')}]`);
+  }
+
+  /**
+   * Synchronously unsubscribe from all groups with immediate effect
+   */
+  private unsubscribeFromAllGroupsSynchronous(): void {
+    debugLog('[SYNC-UNSUB] Starting synchronous unsubscription from all groups...');
+    debugLog(`[SYNC-UNSUB] Current subscriptions: [${Array.from(this.subscriptions.keys()).join(', ')}]`);
+
+    // Mark transition as in progress
+    this.subscriptionTransition = true;
+
+    // Find and unsubscribe from all group-related subscriptions synchronously
+    const groupSubscriptions = Array.from(this.subscriptions.keys()).filter(key =>
+      key.startsWith('group-')
+    );
+
+    debugLog(`[SYNC-UNSUB] Found ${groupSubscriptions.length} group subscriptions to remove: [${groupSubscriptions.join(', ')}]`);
+
+    // Synchronously unsubscribe from all group subscriptions
+    groupSubscriptions.forEach(key => {
+      const subscription = this.subscriptions.get(key);
+      if (subscription) {
+        try {
+          subscription.unsubscribe();
+          this.subscriptions.delete(key);
+          debugLog(`[SYNC-UNSUB] ✅ Unsubscribed from ${key}`);
+        } catch (error) {
+          errorLog(`[SYNC-UNSUB] ❌ Error unsubscribing from ${key}:`, error);
+        }
+      }
+    });
+
+    // Clear all subscription locks
+    this.subscriptionLock.clear();
+    debugLog('[SYNC-UNSUB] ✅ Cleared all subscription locks');
+
+    // Reset active group during transition
+    const previousActiveGroup = this.activeGroupId;
+    this.activeGroupId = null;
+    debugLog(`[SYNC-UNSUB] ✅ Reset active group (was: ${previousActiveGroup})`);
+
+    debugLog(`[SYNC-UNSUB] ✅ Synchronous unsubscription complete. Remaining subscriptions: [${Array.from(this.subscriptions.keys()).join(', ')}]`);
+  }
+
+  /**
+   * Async wrapper for backward compatibility
+   */
+  unsubscribeFromAllGroups(): void {
+    this.unsubscribeFromAllGroupsSynchronous();
   }
 
   /**
@@ -435,15 +618,71 @@ export class WebSocketMessagingService {
   // ==========================================
 
   /**
-   * Subscribe to all necessary channels for a group
+   * Subscribe to all necessary channels for a group with bulletproof isolation
    */
-  async subscribeToGroup(groupId: number): Promise<void> {
-    await Promise.all([
-      this.subscribeToGroupMessages(groupId),
-      this.subscribeToGroupTyping(groupId),
-      this.subscribeToPresence(),
-      this.subscribeToErrors()
-    ]);
+  async subscribeToGroup(groupId: number, componentInstanceId?: string): Promise<void> {
+    debugLog(`[SUBSCRIPTION] Starting bulletproof subscription to group ${groupId} (instance: ${componentInstanceId})`);
+    debugLog(`[SUBSCRIPTION] Active subscriptions before: ${this.getActiveSubscriptions().join(', ')}`);
+    debugLog(`[SUBSCRIPTION] Current active group: ${this.activeGroupId}`);
+    debugLog(`[SUBSCRIPTION] Subscription locks: [${Array.from(this.subscriptionLock.entries()).map(([k, v]) => `${k}:${v}`).join(', ')}]`);
+
+    // Check if subscription is already in progress for this group
+    if (this.subscriptionLock.get(groupId)) {
+      debugLog(`[SUBSCRIPTION] ⏳ Subscription already in progress for group ${groupId} - waiting...`);
+      // Wait for existing subscription to complete
+      while (this.subscriptionLock.get(groupId)) {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      debugLog(`[SUBSCRIPTION] ✅ Previous subscription completed for group ${groupId}`);
+      return;
+    }
+
+    // Lock this group's subscription
+    this.subscriptionLock.set(groupId, true);
+    debugLog(`[SUBSCRIPTION] 🔒 Locked subscription for group ${groupId}`);
+
+    try {
+      // PHASE 1: SYNCHRONOUS CLEANUP - Block until all previous subscriptions are removed
+      this.unsubscribeFromAllGroupsSynchronous();
+      debugLog(`[SUBSCRIPTION] ✅ Phase 1 complete: Synchronous cleanup done`);
+
+      // PHASE 2: VALIDATE CLEAN STATE
+      const remainingGroupSubs = this.getActiveSubscriptions().filter(key => key.startsWith('group-'));
+      if (remainingGroupSubs.length > 0) {
+        errorLog(`[SUBSCRIPTION] ❌ CRITICAL: Clean state validation failed. Remaining group subscriptions: [${remainingGroupSubs.join(', ')}]`);
+        throw new Error('Failed to achieve clean subscription state');
+      }
+      debugLog(`[SUBSCRIPTION] ✅ Phase 2 complete: Clean state validated`);
+
+      // PHASE 3: SET NEW ACTIVE GROUP
+      this.activeGroupId = groupId;
+      this.subscriptionTransition = false; // Allow new subscriptions
+      debugLog(`[SUBSCRIPTION] ✅ Phase 3 complete: Set active group to ${groupId}`);
+
+      // PHASE 4: CREATE NEW SUBSCRIPTIONS
+      await Promise.all([
+        this.subscribeToGroupMessages(groupId),
+        this.subscribeToGroupTyping(groupId),
+        this.subscribeToPresence(),
+        this.subscribeToErrors()
+      ]);
+      debugLog(`[SUBSCRIPTION] ✅ Phase 4 complete: New subscriptions created`);
+
+      debugLog(`[SUBSCRIPTION] ✅ BULLETPROOF SUBSCRIPTION COMPLETE for group ${groupId}`);
+      debugLog(`[SUBSCRIPTION] Final active subscriptions: ${this.getActiveSubscriptions().join(', ')}`);
+      debugLog(`[SUBSCRIPTION] Final active group: ${this.activeGroupId}`);
+
+    } catch (error) {
+      errorLog(`[SUBSCRIPTION] ❌ CRITICAL ERROR during subscription to group ${groupId}:`, error);
+      // Reset state on error
+      this.subscriptionTransition = false;
+      this.activeGroupId = null;
+      throw error;
+    } finally {
+      // Always unlock the subscription
+      this.subscriptionLock.delete(groupId);
+      debugLog(`[SUBSCRIPTION] 🔓 Unlocked subscription for group ${groupId}`);
+    }
   }
 
   /**

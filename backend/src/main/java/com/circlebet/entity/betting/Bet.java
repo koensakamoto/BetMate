@@ -590,8 +590,8 @@ public class Bet {
     public enum BetType {
         BINARY,          // Simple yes/no or two-option bet
         MULTIPLE_CHOICE,  // Up to 4 options
+        PREDICTION,      // Users predict exact values/outcomes
         PARLAY,
-        PREDICTION,
         WEIGHTED,
         POOLED
     }

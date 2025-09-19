@@ -27,13 +27,16 @@ import java.time.LocalDateTime;
 public class BetCreationService {
 
     private final BetService betService;
+    private final BetParticipationService betParticipationService;
     private final GroupPermissionService permissionService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
-    public BetCreationService(BetService betService, GroupPermissionService permissionService,
+    public BetCreationService(BetService betService, BetParticipationService betParticipationService,
+                             GroupPermissionService permissionService,
                              ApplicationEventPublisher eventPublisher) {
         this.betService = betService;
+        this.betParticipationService = betParticipationService;
         this.permissionService = permissionService;
         this.eventPublisher = eventPublisher;
     }
@@ -51,6 +54,9 @@ public class BetCreationService {
         // Create bet
         Bet bet = createBetFromRequest(creator, group, request);
         bet = betService.saveBet(bet);
+
+        // Create creator participation so bet appears in "My Bets"
+        betParticipationService.createCreatorParticipation(creator, bet);
 
         // Publish bet created event for notifications
         publishBetCreatedEvent(bet);

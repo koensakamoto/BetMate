@@ -5,7 +5,7 @@ export interface CreateBetRequest {
   groupId: number;
   title: string;
   description?: string;
-  betType: 'BINARY' | 'MULTIPLE_CHOICE' | 'EXACT_VALUE' | 'OVER_UNDER';
+  betType: 'BINARY' | 'MULTIPLE_CHOICE' | 'PREDICTION' | 'OVER_UNDER';
   resolutionMethod: 'CREATOR_ONLY' | 'ASSIGNED_RESOLVER' | 'CONSENSUS_VOTING';
   bettingDeadline: string; // ISO string
   resolveDate?: string; // ISO string

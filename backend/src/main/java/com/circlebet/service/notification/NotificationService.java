@@ -47,7 +47,7 @@ public class NotificationService {
 
     /**
      * Gets count of unread notifications for a user.
-     */
+ */
     public long getUnreadCount(Long userId) {
         return notificationRepository.countUnreadByUserId(userId);
     }

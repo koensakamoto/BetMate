@@ -45,6 +45,8 @@ export default function BetDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [userBetAmount, setUserBetAmount] = useState('');
   const [isJoining, setIsJoining] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [customValue, setCustomValue] = useState('');
 
   useEffect(() => {
     loadBetDetails();
@@ -138,6 +140,7 @@ export default function BetDetails() {
   };
 
   const handleJoinBet = () => {
+    // Validate bet amount
     if (!betData?.isFixedAmount && !userBetAmount.trim()) {
       Alert.alert('Error', 'Please enter a bet amount');
       return;
@@ -149,11 +152,24 @@ export default function BetDetails() {
       return;
     }
 
+    // Validate bet option selection
+    if (!isValidBetSelection()) {
+      if (betData?.bettingType === 'MULTIPLE_CHOICE') {
+        Alert.alert('Error', 'Please select a betting option');
+      } else if (betData?.bettingType === 'YES_NO') {
+        Alert.alert('Error', 'Please select Yes or No');
+      } else if (betData?.bettingType === 'VALUE_ENTRY') {
+        Alert.alert('Error', 'Please enter your prediction value');
+      }
+      return;
+    }
+
     setIsJoining(true);
     // TODO: Implement join bet functionality
+    const selection = betData?.bettingType === 'VALUE_ENTRY' ? customValue : selectedOption;
     setTimeout(() => {
       setIsJoining(false);
-      Alert.alert('Coming Soon', `Bet joining functionality will be implemented next. Amount: $${amount}`);
+      Alert.alert('Coming Soon', `Bet joining functionality will be implemented next.\nAmount: $${amount}\nYour selection: ${selection}`);
     }, 1000);
   };
 
@@ -168,6 +184,24 @@ export default function BetDetails() {
     if (betData?.isFixedAmount) return true;
     const amount = parseFloat(userBetAmount);
     return !isNaN(amount) && amount > 0;
+  };
+
+  const isValidBetSelection = () => {
+    if (!betData) return false;
+
+    if (betData.bettingType === 'MULTIPLE_CHOICE' || betData.bettingType === 'YES_NO') {
+      return selectedOption !== null;
+    }
+
+    if (betData.bettingType === 'VALUE_ENTRY') {
+      return customValue.trim().length > 0;
+    }
+
+    return false;
+  };
+
+  const handleOptionSelect = (option: string) => {
+    setSelectedOption(option);
   };
 
   if (isLoading) {
@@ -199,7 +233,7 @@ export default function BetDetails() {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 20 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Header Section */}
@@ -339,36 +373,117 @@ export default function BetDetails() {
             color: '#ffffff',
             marginBottom: 16
           }}>
-            Betting Options
+            Your Selection
           </Text>
 
           {betData.bettingType === 'MULTIPLE_CHOICE' && betData.options ? (
             <View style={{ gap: 8 }}>
               {betData.options.map((option, index) => (
-                <View key={index} style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  borderRadius: 12,
-                  padding: 16,
-                  borderWidth: 1,
-                  borderColor: 'rgba(255, 255, 255, 0.06)'
-                }}>
-                  <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '500' }}>
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => handleOptionSelect(option)}
+                  style={{
+                    backgroundColor: selectedOption === option ? 'rgba(0, 212, 170, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                    borderRadius: 12,
+                    padding: 16,
+                    borderWidth: selectedOption === option ? 2 : 1,
+                    borderColor: selectedOption === option ? '#00D4AA' : 'rgba(255, 255, 255, 0.06)',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <Text style={{
+                    color: selectedOption === option ? '#00D4AA' : '#ffffff',
+                    fontSize: 14,
+                    fontWeight: selectedOption === option ? '600' : '500'
+                  }}>
                     {option}
                   </Text>
-                </View>
+                  {selectedOption === option && (
+                    <View style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      backgroundColor: '#00D4AA',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <MaterialIcons name="check" size={14} color="#000000" />
+                    </View>
+                  )}
+                </TouchableOpacity>
               ))}
             </View>
+          ) : betData.bettingType === 'YES_NO' ? (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => handleOptionSelect('Yes')}
+                style={{
+                  flex: 1,
+                  backgroundColor: selectedOption === 'Yes' ? 'rgba(0, 212, 170, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: 12,
+                  padding: 16,
+                  borderWidth: selectedOption === 'Yes' ? 2 : 1,
+                  borderColor: selectedOption === 'Yes' ? '#00D4AA' : 'rgba(255, 255, 255, 0.06)',
+                  alignItems: 'center'
+                }}
+              >
+                <Text style={{
+                  color: selectedOption === 'Yes' ? '#00D4AA' : '#ffffff',
+                  fontSize: 14,
+                  fontWeight: selectedOption === 'Yes' ? '600' : '500'
+                }}>
+                  Yes
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => handleOptionSelect('No')}
+                style={{
+                  flex: 1,
+                  backgroundColor: selectedOption === 'No' ? 'rgba(255, 59, 48, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: 12,
+                  padding: 16,
+                  borderWidth: selectedOption === 'No' ? 2 : 1,
+                  borderColor: selectedOption === 'No' ? '#FF3B30' : 'rgba(255, 255, 255, 0.06)',
+                  alignItems: 'center'
+                }}
+              >
+                <Text style={{
+                  color: selectedOption === 'No' ? '#FF3B30' : '#ffffff',
+                  fontSize: 14,
+                  fontWeight: selectedOption === 'No' ? '600' : '500'
+                }}>
+                  No
+                </Text>
+              </TouchableOpacity>
+            </View>
           ) : (
-            <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: 12,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.06)'
-            }}>
-              <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '500' }}>
-                {betData.bettingType === 'YES_NO' ? 'Yes or No' : 'Enter custom value'}
+            <View>
+              <Text style={{
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontSize: 12,
+                marginBottom: 8
+              }}>
+                Enter your prediction value
               </Text>
+              <TextInput
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  color: '#ffffff',
+                  fontSize: 14,
+                  borderWidth: customValue ? 1 : 0,
+                  borderColor: customValue ? 'rgba(0, 212, 170, 0.3)' : 'transparent'
+                }}
+                value={customValue}
+                onChangeText={setCustomValue}
+                placeholder="Enter your prediction"
+                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+              />
             </View>
           )}
         </View>
@@ -550,62 +665,55 @@ export default function BetDetails() {
             )}
           </View>
         </View>
-      </ScrollView>
 
-      {/* Action Button */}
-      {betData.status === 'OPEN' && (
-        <View style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: '#0a0a0f',
-          paddingHorizontal: 20,
-          paddingTop: 16,
-          paddingBottom: insets.bottom + 16,
-          borderTopWidth: 1,
-          borderTopColor: 'rgba(255, 255, 255, 0.08)'
-        }}>
-          <TouchableOpacity
-            onPress={handleJoinBet}
-            disabled={isJoining || (!betData.isFixedAmount && !isValidBetAmount())}
-            style={{
-              backgroundColor: (isJoining || (!betData.isFixedAmount && !isValidBetAmount())) ? 'rgba(0, 212, 170, 0.3)' : '#00D4AA',
-              borderRadius: 12,
-              paddingVertical: 16,
-              alignItems: 'center',
-              shadowColor: '#00D4AA',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: (isJoining || (!betData.isFixedAmount && !isValidBetAmount())) ? 0.1 : 0.3,
-              shadowRadius: 8,
-              elevation: 8,
-              flexDirection: 'row',
-              justifyContent: 'center'
-            }}
-          >
-            {isJoining ? (
-              <>
-                <ActivityIndicator size="small" color="#000000" style={{ marginRight: 8 }} />
+        {/* Action Button */}
+        {betData.status === 'OPEN' && (
+          <View style={{
+            marginHorizontal: 20,
+            marginTop: 20,
+            marginBottom: 40
+          }}>
+            <TouchableOpacity
+              onPress={handleJoinBet}
+              disabled={isJoining || (!betData.isFixedAmount && !isValidBetAmount()) || !isValidBetSelection()}
+              style={{
+                backgroundColor: (isJoining || (!betData.isFixedAmount && !isValidBetAmount()) || !isValidBetSelection()) ? 'rgba(0, 212, 170, 0.3)' : '#00D4AA',
+                borderRadius: 12,
+                paddingVertical: 16,
+                alignItems: 'center',
+                shadowColor: '#00D4AA',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: (isJoining || (!betData.isFixedAmount && !isValidBetAmount()) || !isValidBetSelection()) ? 0.1 : 0.3,
+                shadowRadius: 8,
+                elevation: 8,
+                flexDirection: 'row',
+                justifyContent: 'center'
+              }}
+            >
+              {isJoining ? (
+                <>
+                  <ActivityIndicator size="small" color="#000000" style={{ marginRight: 8 }} />
+                  <Text style={{
+                    color: '#000000',
+                    fontSize: 16,
+                    fontWeight: '700'
+                  }}>
+                    Joining...
+                  </Text>
+                </>
+              ) : (
                 <Text style={{
                   color: '#000000',
                   fontSize: 16,
                   fontWeight: '700'
                 }}>
-                  Joining...
+                  Join Bet
                 </Text>
-              </>
-            ) : (
-              <Text style={{
-                color: '#000000',
-                fontSize: 16,
-                fontWeight: '700'
-              }}>
-                Join Bet
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }

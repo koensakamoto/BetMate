@@ -3,9 +3,11 @@ package com.circlebet.service.bet;
 import com.circlebet.entity.betting.Bet;
 import com.circlebet.entity.betting.BetParticipation;
 import com.circlebet.entity.betting.BetParticipation.ParticipationStatus;
+import com.circlebet.entity.betting.BetPrediction;
 import com.circlebet.entity.user.User;
 import com.circlebet.exception.betting.BetParticipationException;
 import com.circlebet.repository.betting.BetParticipationRepository;
+import com.circlebet.repository.betting.BetPredictionRepository;
 import com.circlebet.service.user.UserCreditService;
 import com.circlebet.service.user.UserStatisticsService;
 import jakarta.validation.constraints.DecimalMin;
@@ -32,25 +34,71 @@ import java.util.Optional;
 public class BetParticipationService {
 
     private final BetParticipationRepository participationRepository;
+    private final BetPredictionRepository predictionRepository;
     private final BetService betService;
     private final UserCreditService creditService;
     private final UserStatisticsService statisticsService;
 
     @Autowired
-    public BetParticipationService(BetParticipationRepository participationRepository, 
+    public BetParticipationService(BetParticipationRepository participationRepository,
+                                 BetPredictionRepository predictionRepository,
                                  BetService betService,
                                  UserCreditService creditService,
                                  UserStatisticsService statisticsService) {
         this.participationRepository = participationRepository;
+        this.predictionRepository = predictionRepository;
         this.betService = betService;
         this.creditService = creditService;
         this.statisticsService = statisticsService;
     }
 
     /**
+     * Places a bet for a user with exact value prediction.
+     */
+    public BetParticipation placeBetWithPrediction(@NotNull User user, @NotNull Long betId,
+                                                 @NotNull @DecimalMin("0.01") BigDecimal betAmount,
+                                                 @NotNull String predictionValue) {
+        Bet bet = betService.getBetById(betId);
+
+        // Validate this is a prediction bet
+        if (bet.getBetType() != Bet.BetType.PREDICTION) {
+            throw new BetParticipationException("Predictions can only be placed on prediction bets");
+        }
+
+        // Validate bet can accept participations
+        validateBetForParticipation(bet, user, betAmount);
+
+        // Check if user already participated
+        if (participationRepository.existsByUserAndBet(user, bet)) {
+            throw new BetParticipationException("User has already placed a bet on this");
+        }
+
+        // Deduct credits from user
+        creditService.deductCredits(user.getId(), betAmount, "Bet placed on: " + bet.getTitle());
+
+        // Create participation (for prediction bets, chosenOption is always 1)
+        BetParticipation participation = createParticipation(user, bet, 1, betAmount);
+        BetParticipation savedParticipation = participationRepository.save(participation);
+
+        // Create prediction
+        BetPrediction prediction = new BetPrediction();
+        prediction.setParticipation(savedParticipation);
+        prediction.setPredictedValue(predictionValue);
+        predictionRepository.save(prediction);
+
+        // Update bet statistics (prediction bets use option 1)
+        updateBetStatistics(bet, 1, betAmount);
+
+        // Update user statistics
+        statisticsService.incrementActiveBets(user.getId());
+
+        return savedParticipation;
+    }
+
+    /**
      * Places a bet for a user.
      */
-    public BetParticipation placeBet(@NotNull User user, @NotNull Long betId, 
+    public BetParticipation placeBet(@NotNull User user, @NotNull Long betId,
                                    @Min(1) @Max(4) Integer chosenOption,
                                    @NotNull @DecimalMin("0.01") BigDecimal betAmount) {
         Bet bet = betService.getBetById(betId);
@@ -157,6 +205,22 @@ public class BetParticipationService {
     @Transactional(readOnly = true)
     public List<BetParticipation> getUserParticipations(@NotNull User user) {
         return participationRepository.findByUser(user);
+    }
+
+    /**
+     * Creates a creator participation record when a bet is created.
+     * This ensures the bet creator appears in "My Bets" without placing an actual bet.
+     */
+    public BetParticipation createCreatorParticipation(@NotNull User creator, @NotNull Bet bet) {
+        BetParticipation participation = new BetParticipation();
+        participation.setUser(creator);
+        participation.setBet(bet);
+        participation.setChosenOption(1);
+        participation.setBetAmount(BigDecimal.ZERO);
+        participation.setStatus(BetParticipation.ParticipationStatus.ACTIVE);
+        participation.setPotentialWinnings(BigDecimal.ZERO);
+
+        return participationRepository.save(participation);
     }
 
     /**

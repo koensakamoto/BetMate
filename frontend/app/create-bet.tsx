@@ -24,7 +24,6 @@ export default function CreateBet() {
   const [evidenceRequirements, setEvidenceRequirements] = useState('');
   const [showDatePicker, setShowDatePicker] = useState<'start' | 'end' | 'resolution' | null>(null);
   const [multipleChoiceOptions, setMultipleChoiceOptions] = useState(['', '']);
-  const [exactValueTarget, setExactValueTarget] = useState('');
   const [overUnderLine, setOverUnderLine] = useState('');
 
   // Progress tracking
@@ -49,7 +48,7 @@ export default function CreateBet() {
       selectedSport,
       stakeAmount.trim(),
       betType === 'multiple_choice' ? multipleChoiceOptions.some(opt => opt.trim()) : 
-      betType === 'exact_value' ? exactValueTarget.trim() : overUnderLine.trim()
+      betType === 'exact_value' ? 'exact_value_bet' : overUnderLine.trim()
     ];
     
     const completed = fields.filter(Boolean).length;
@@ -61,7 +60,7 @@ export default function CreateBet() {
       duration: 300,
       useNativeDriver: false,
     }).start();
-  }, [betTitle, selectedSport, stakeAmount, multipleChoiceOptions, exactValueTarget, overUnderLine, betType]);
+  }, [betTitle, selectedSport, stakeAmount, multipleChoiceOptions, overUnderLine, betType]);
 
   const friends = [
     { id: '1', username: 'mikeJohnson', name: 'Mike Johnson' },
@@ -82,10 +81,6 @@ export default function CreateBet() {
       return;
     }
 
-    if (betType === 'exact_value' && !exactValueTarget) {
-      Alert.alert('Missing Target', 'Please enter the exact value target.');
-      return;
-    }
 
     if (betType === 'over_under' && !overUnderLine) {
       Alert.alert('Missing Line', 'Please enter the over/under line.');
@@ -105,8 +100,8 @@ export default function CreateBet() {
                 groupId: 1, // TODO: Get actual group ID from context/route params
                 title: betTitle,
                 description: betDescription || undefined,
-                betType: betType === 'multiple_choice' ? 'MULTIPLE_CHOICE' : 
-                         betType === 'exact_value' ? 'EXACT_VALUE' : 'OVER_UNDER',
+                betType: betType === 'multiple_choice' ? 'MULTIPLE_CHOICE' :
+                         betType === 'exact_value' ? 'PREDICTION' : 'OVER_UNDER',
                 resolutionMethod: resolver === 'self' ? 'CREATOR_ONLY' : 
                                  resolver === 'specific' ? 'ASSIGNED_RESOLVER' : 'CONSENSUS_VOTING',
                 bettingDeadline: betEndTime.toISOString(),
@@ -116,13 +111,16 @@ export default function CreateBet() {
                 minimumVotesRequired: resolver === 'multiple' ? selectedResolvers.length : undefined,
                 allowCreatorVote: true, // TODO: Add this option to UI if needed
                 options: betType === 'multiple_choice' ? multipleChoiceOptions.filter(opt => opt.trim()) :
-                        betType === 'exact_value' ? [exactValueTarget] :
+                        betType === 'exact_value' ? ['Prediction'] :
                         betType === 'over_under' ? ['Over', 'Under'] : undefined
               };
 
               const response = await betService.createBet(createBetRequest);
               Alert.alert('Success!', 'Your bet has been created successfully.', [
-                { text: 'OK', onPress: () => router.back() }
+                { text: 'OK', onPress: () => {
+                  // Navigate to betting tab and trigger refresh with timestamp parameter
+                  router.replace(`/(tabs)/bet?refresh=${Date.now()}`);
+                }}
               ]);
             } catch (error) {
               console.error('Failed to create bet:', error);
@@ -625,29 +623,16 @@ export default function CreateBet() {
                 color: 'rgba(255, 255, 255, 0.8)',
                 marginBottom: 6
               }}>
-                Target Value *
+                Prediction Bet
               </Text>
-              <View style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                borderRadius: 8,
-                borderWidth: 0.5,
-                borderColor: 'rgba(255, 255, 255, 0.15)',
-                paddingHorizontal: 12,
-                paddingVertical: 12,
+              <Text style={{
+                fontSize: 12,
+                color: 'rgba(255, 255, 255, 0.6)',
+                lineHeight: 18,
                 marginBottom: 16
               }}>
-                <TextInput
-                  style={{
-                    fontSize: 15,
-                    color: '#ffffff',
-                    fontWeight: '400'
-                  }}
-                  value={exactValueTarget}
-                  onChangeText={setExactValueTarget}
-                  placeholder="e.g., 3, 2-1, John Smith"
-                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                />
-              </View>
+                Users will predict the exact outcome when they place their bets. Use the description above to clearly explain what they should predict (e.g., "final score", "winner's name", "exact number").
+              </Text>
             </>
           )}
 

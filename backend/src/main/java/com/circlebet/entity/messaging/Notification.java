@@ -448,6 +448,7 @@ public class Notification {
         BET_CREATED,        // New bet created in your group
         BET_DEADLINE,       // Bet deadline approaching
         BET_CANCELLED,      // Bet was cancelled
+        BET_UPDATED,
         
         // Financial
         CREDITS_RECEIVED,   // Credits added to account
@@ -459,18 +460,16 @@ public class Notification {
         GROUP_JOINED,       // Someone joined your group
         GROUP_LEFT,         // Someone left your group
         GROUP_ROLE_CHANGED, // Your role in group changed
+        GROUP_MESSAGE,      // Someone sent a message in the group
         
         // Social
-        MESSAGE_MENTION,    // Mentioned in a group message
-        MESSAGE_REPLY,      // Someone replied to your message
+        MESSAGE,
         FRIEND_REQUEST,     // Friend request received
         FRIEND_ACCEPTED,    // Friend request was accepted
-        FRIEND_ACTIVITY,    // Friend won a bet or achieved something
         
         // Achievements
         ACHIEVEMENT_UNLOCKED, // New achievement earned
         STREAK_MILESTONE,     // Win streak milestone reached
-        LEVEL_UP,            // User level increased
         
         // System
         SYSTEM_ANNOUNCEMENT, // Important system news
