@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Text, View, TouchableOpacity, Switch, Alert, TextInput, Modal, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { groupService } from '../../services/group/groupService';
 
 interface GroupSettingsTabProps {
@@ -479,12 +480,6 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
       {/* Member Management */}
       <SettingSection title="Member Management">
         <SettingItem
-          materialIcon="manage-accounts"
-          title="Manage Members"
-          description={`Manage members, roles, and permissions for ${groupData.memberCount} members`}
-          onPress={() => {}}
-        />
-        <SettingItem
           materialIcon="person-add"
           title="Pending Requests"
           description="Review join requests"
@@ -498,12 +493,6 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
           materialIcon="notifications"
           title="Group Notifications"
           description="Manage notification preferences"
-          onPress={() => {}}
-        />
-        <SettingItem
-          materialIcon="volume-up"
-          title="Chat Sounds"
-          description="Enable sounds for group messages"
           onPress={() => {}}
         />
       </SettingSection>

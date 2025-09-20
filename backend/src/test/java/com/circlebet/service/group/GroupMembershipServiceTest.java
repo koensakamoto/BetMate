@@ -221,14 +221,14 @@ class GroupMembershipServiceTest {
     @Test
     void changeRole_AdminChangingRegularMember_Success() {
         when(permissionService.canChangeRoles(adminUser, testGroup)).thenReturn(true);
-        when(membershipRepository.atomicChangeRole(testUser, testGroup, GroupMembership.MemberRole.MODERATOR)).thenReturn(1);
+        when(membershipRepository.atomicChangeRole(testUser, testGroup, GroupMembership.MemberRole.OFFICER)).thenReturn(1);
         when(membershipRepository.findByUserAndGroupAndIsActiveTrue(testUser, testGroup))
             .thenReturn(Optional.of(testMembership));
 
-        GroupMembership result = membershipService.changeRole(adminUser, testUser, testGroup, GroupMembership.MemberRole.MODERATOR);
+        GroupMembership result = membershipService.changeRole(adminUser, testUser, testGroup, GroupMembership.MemberRole.OFFICER);
 
         assertNotNull(result);
-        verify(membershipRepository).atomicChangeRole(testUser, testGroup, GroupMembership.MemberRole.MODERATOR);
+        verify(membershipRepository).atomicChangeRole(testUser, testGroup, GroupMembership.MemberRole.OFFICER);
     }
 
     @Test
@@ -257,7 +257,7 @@ class GroupMembershipServiceTest {
         when(membershipRepository.isUserAdminOrModerator(regularUser, testGroup)).thenReturn(false);
 
         assertThrows(GroupMembershipException.class, () -> 
-            membershipService.changeRole(regularUser, testUser, testGroup, GroupMembership.MemberRole.MODERATOR));
+            membershipService.changeRole(regularUser, testUser, testGroup, GroupMembership.MemberRole.OFFICER));
     }
 
     @Test

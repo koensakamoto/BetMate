@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { router } from 'expo-router';
 import { groupService, type GroupMemberResponse } from '../../services/group/groupService';
 import { debugLog, errorLog } from '../../config/env';
 
@@ -41,7 +42,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
   const getFilteredMembers = () => {
     switch (activeFilter) {
       case 'Admins':
-        return members.filter(member => member.role === 'ADMIN' || member.role === 'MODERATOR');
+        return members.filter(member => member.role === 'ADMIN' || member.role === 'OFFICER');
       case 'Active':
         return members.filter(member => isOnline(member));
       case 'Recent':
@@ -250,7 +251,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
                 {getDisplayName(member)}
               </Text>
               
-              {(member.role === 'ADMIN' || member.role === 'MODERATOR') && (
+              {(member.role === 'ADMIN' || member.role === 'OFFICER') && (
                 <View style={{
                   backgroundColor: 'rgba(255, 215, 0, 0.2)',
                   paddingHorizontal: 6,
@@ -299,19 +300,25 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
           </View>
 
           {/* Member Actions */}
-          <TouchableOpacity style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.08)',
-            paddingHorizontal: 12,
-            paddingVertical: 6,
-            borderRadius: 8,
-            marginLeft: 12
-          }}>
+          <TouchableOpacity
+            onPress={() => {
+              const groupId = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
+              router.push(`/group/${groupId}/member/${member.id}`);
+            }}
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 8,
+              marginLeft: 12
+            }}
+          >
             <Text style={{
               color: '#ffffff',
               fontSize: 12,
               fontWeight: '600'
             }}>
-              View
+              Manage
             </Text>
           </TouchableOpacity>
         </View>

@@ -2,6 +2,7 @@ package com.circlebet.controller;
 
 import com.circlebet.dto.group.request.GroupCreationRequestDto;
 import com.circlebet.dto.group.request.GroupUpdateRequestDto;
+import com.circlebet.dto.group.request.UpdateMemberRoleRequestDto;
 import com.circlebet.dto.group.response.GroupResponseDto;
 import com.circlebet.dto.group.response.GroupSummaryResponseDto;
 import com.circlebet.dto.group.response.GroupMemberResponseDto;
@@ -154,6 +155,36 @@ public class GroupController {
     }
 
     /**
+     * Update a member's role in the group.
+     */
+    @PutMapping("/{groupId}/members/{memberId}/role")
+    public ResponseEntity<GroupMemberResponseDto> updateMemberRole(
+            @PathVariable Long groupId,
+            @PathVariable Long memberId,
+            @Valid @RequestBody UpdateMemberRoleRequestDto request,
+            Authentication authentication) {
+
+        System.out.println("🔄 [DEBUG] Role update endpoint called - GroupId: " + groupId + ", MemberId: " + memberId + ", NewRole: " + request.getRole());
+
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        Group group = groupService.getGroupById(groupId);
+        User targetUser = userService.getUserById(memberId);
+
+        System.out.println("🔄 [DEBUG] Current user: " + currentUser.getUsername() + " (ID: " + currentUser.getId() + ")");
+        System.out.println("🔄 [DEBUG] Target user: " + targetUser.getUsername() + " (ID: " + targetUser.getId() + ")");
+        System.out.println("🔄 [DEBUG] Group: " + group.getGroupName() + " (ID: " + group.getId() + ")");
+
+        // Update the member's role
+        GroupMembership updatedMembership = groupMembershipService.updateMemberRole(
+            group, targetUser, request.getRole(), currentUser);
+
+        System.out.println("🔄 [DEBUG] Role update successful - New role: " + updatedMembership.getRole());
+
+        return ResponseEntity.ok(convertToMemberResponse(updatedMembership));
+    }
+
+    /**
      * Get group details by ID.
      * This endpoint must be LAST to avoid conflicts with specific endpoints.
      */
@@ -214,9 +245,21 @@ public class GroupController {
         response.setCreatedAt(group.getCreatedAt());
         response.setUpdatedAt(group.getUpdatedAt());
         
-        // Set basic user context - we'll enhance this later when we have membership service methods
-        response.setIsUserMember(false); // TODO: implement when membership service is complete
-        response.setUserRole(null);
+        // Set user context based on membership
+        boolean isUserMember = groupMembershipService.isMember(currentUser, group);
+        response.setIsUserMember(isUserMember);
+
+        if (isUserMember) {
+            // Get the user's role in the group
+            java.util.Optional<GroupMembership> membershipOpt = groupMembershipService.getUserMembership(currentUser, group);
+            if (membershipOpt.isPresent()) {
+                response.setUserRole(membershipOpt.get().getRole().name());
+            } else {
+                response.setUserRole(null);
+            }
+        } else {
+            response.setUserRole(null);
+        }
         
         return response;
     }

@@ -45,7 +45,7 @@ export interface GroupMemberResponse {
   displayName?: string;
   email: string;
   profilePictureUrl?: string;
-  role: 'MEMBER' | 'MODERATOR' | 'ADMIN';
+  role: 'MEMBER' | 'OFFICER' | 'ADMIN';
   isActive: boolean;
   joinedAt: string;
   lastActivityAt?: string;
@@ -130,6 +130,20 @@ export class GroupService extends BaseApiService {
    */
   async getGroupMembers(groupId: number): Promise<GroupMemberResponse[]> {
     return this.get<GroupMemberResponse[]>(API_ENDPOINTS.GROUP_MEMBERS(groupId));
+  }
+
+  /**
+   * Remove a member from the group
+   */
+  async removeMember(groupId: number, memberId: number): Promise<void> {
+    return this.delete(`/groups/${groupId}/members/${memberId}`);
+  }
+
+  /**
+   * Update a member's role in the group
+   */
+  async updateMemberRole(groupId: number, memberId: number, newRole: 'MEMBER' | 'OFFICER'): Promise<GroupMemberResponse> {
+    return this.put<GroupMemberResponse>(`/groups/${groupId}/members/${memberId}/role`, { role: newRole });
   }
 }
 

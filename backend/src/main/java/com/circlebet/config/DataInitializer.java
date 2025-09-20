@@ -65,11 +65,11 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private boolean shouldInitializeData() {
-        // Always initialize data for development
+        // Temporarily disabled to fix startup issues after enum changes
         long userCount = userRepository.count();
         long betCount = betRepository.count();
-        logger.info("Database contains {} users and {} bets. Proceeding with mock data initialization.", userCount, betCount);
-        return true;
+        logger.info("Database contains {} users and {} bets. Skipping mock data initialization.", userCount, betCount);
+        return false;
     }
 
     private void initializeUsers() {
@@ -166,7 +166,7 @@ public class DataInitializer implements CommandLineRunner {
                 
                 // Assign random role (most will be members)
                 if (random.nextInt(10) == 0) { // 10% chance of being moderator
-                    membership.setRole(GroupMembership.MemberRole.MODERATOR);
+                    membership.setRole(GroupMembership.MemberRole.OFFICER);
                 } else {
                     membership.setRole(GroupMembership.MemberRole.MEMBER);
                 }

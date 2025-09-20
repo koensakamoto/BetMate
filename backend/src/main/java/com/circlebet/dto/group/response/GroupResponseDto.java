@@ -28,7 +28,7 @@ public class GroupResponseDto {
     
     // Additional fields for user context
     private Boolean isUserMember;
-    private String userRole; // ADMIN, MODERATOR, MEMBER
+    private String userRole; // ADMIN, OFFICER, MEMBER
     
     // Constructors
     public GroupResponseDto() {}

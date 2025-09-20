@@ -122,7 +122,7 @@ public class GroupMembership {
     }
 
     public boolean hasAdminPrivileges() {
-        return role == MemberRole.ADMIN || role == MemberRole.MODERATOR;
+        return role == MemberRole.ADMIN || role == MemberRole.OFFICER;
     }
 
     public boolean canManageMembers() {
@@ -177,6 +177,6 @@ public class GroupMembership {
     }
 
     public enum MemberRole {
-        MEMBER, MODERATOR, ADMIN
+        MEMBER, OFFICER, ADMIN
     }
 }

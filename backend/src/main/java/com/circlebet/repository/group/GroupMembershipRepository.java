@@ -36,10 +36,10 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
     List<GroupMembership> findByUserAndRole(User user, GroupMembership.MemberRole role);
     
     // Admin/moderator queries
-    @Query("SELECT gm FROM GroupMembership gm WHERE gm.group = :group AND gm.role IN ('ADMIN', 'MODERATOR') AND gm.isActive = true")
+    @Query("SELECT gm FROM GroupMembership gm WHERE gm.group = :group AND gm.role IN ('ADMIN', 'OFFICER') AND gm.isActive = true")
     List<GroupMembership> findGroupAdminsAndModerators(@Param("group") Group group);
     
-    @Query("SELECT gm FROM GroupMembership gm WHERE gm.user = :user AND gm.role IN ('ADMIN', 'MODERATOR') AND gm.isActive = true")
+    @Query("SELECT gm FROM GroupMembership gm WHERE gm.user = :user AND gm.role IN ('ADMIN', 'OFFICER') AND gm.isActive = true")
     List<GroupMembership> findUserAdminMemberships(@Param("user") User user);
     
     // Membership status checks
@@ -71,7 +71,7 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
     
     // Permission checks
     @Query("SELECT CASE WHEN COUNT(gm) > 0 THEN true ELSE false END FROM GroupMembership gm " +
-           "WHERE gm.user = :user AND gm.group = :group AND gm.role IN ('ADMIN', 'MODERATOR') AND gm.isActive = true")
+           "WHERE gm.user = :user AND gm.group = :group AND gm.role IN ('ADMIN', 'OFFICER') AND gm.isActive = true")
     boolean isUserAdminOrModerator(@Param("user") User user, @Param("group") Group group);
     
     @Query("SELECT CASE WHEN COUNT(gm) > 0 THEN true ELSE false END FROM GroupMembership gm " +
