@@ -69,237 +69,126 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
         backgroundColor="#0a0a0f"
         translucent={true}
       />
-      
-      {activeTab === 0 ? (
-        /* Chat Tab - Full Screen Layout */
-        <View style={{ flex: 1 }}>
-          {/* Chat Header */}
-          <View style={{ paddingTop: insets.top + 16 }}>
-            {/* Header with Group Image */}
+
+      {/* Shared Compact Header - Used by All Tabs */}
+      <View style={{ paddingTop: insets.top + 8 }}>
+        {/* Header with Group Image */}
+        <View style={{
+          paddingHorizontal: 20,
+          marginBottom: 12
+        }}>
+          {/* Combined Header Row: Back Button + Group Info + Settings */}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center'
+          }}>
+            {/* Back Button */}
+            <TouchableOpacity
+              onPress={() => router.push('/(tabs)/group')}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
+            >
+              <MaterialIcons name="arrow-back" size={16} color="#ffffff" />
+            </TouchableOpacity>
+
+            {/* Centered Group Info */}
             <View style={{
-              paddingHorizontal: 20,
-              marginBottom: 24
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}>
-              {/* Back Button */}
-              <TouchableOpacity 
-                onPress={() => router.push('/(tabs)/group')}
+              <Image
+                source={groupData.image}
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  marginRight: 12
+                }}
+              />
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '700',
+                color: '#ffffff'
+              }}>
+                {groupData.name}
+              </Text>
+            </View>
+
+            {/* Settings Button (Admin Only) */}
+            {groupData.isAdmin ? (
+              <TouchableOpacity
+                onPress={() => {
+                  const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
+                  router.push(`/group/${currentGroupId}/config`);
+                }}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
                   backgroundColor: 'rgba(255, 255, 255, 0.08)',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  marginBottom: 16
+                  borderWidth: 0.5,
+                  borderColor: 'rgba(255, 255, 255, 0.15)'
                 }}
               >
-                <MaterialIcons name="arrow-back" size={18} color="#ffffff" />
+                <MaterialIcons name="settings" size={16} color="#ffffff" />
               </TouchableOpacity>
-
-              {/* Group Info with Image */}
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center'
-              }}>
-                <Image 
-                  source={groupData.image} 
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 12,
-                    marginRight: 16
-                  }}
-                />
-                
-                <View style={{ flex: 1 }}>
-                  <Text style={{
-                    fontSize: 20,
-                    fontWeight: '700',
-                    color: '#ffffff',
-                    marginBottom: 4
-                  }}>
-                    {groupData.name}
-                  </Text>
-                  
-                </View>
-
-                {/* Settings Button (Admin Only) */}
-                {groupData.isAdmin && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
-                      router.push(`/group/${currentGroupId}/config`);
-                    }}
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                      borderRadius: 8,
-                      borderWidth: 0.5,
-                      borderColor: 'rgba(255, 255, 255, 0.15)'
-                    }}
-                  >
-                    <Text style={{
-                      color: '#ffffff',
-                      fontSize: 13,
-                      fontWeight: '600'
-                    }}>
-                      Settings
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-
-            {/* Clean Tab Navigation */}
-            <View style={{
-              flexDirection: 'row',
-              marginBottom: 16,
-              paddingLeft: 4,
-              paddingRight: 12
-            }}>
-              {tabs.map((tab, index) => {
-                const isActive = index === activeTab;
-                return (
-                  <TouchableOpacity
-                    key={tab}
-                    onPress={() => setActiveTab(index)}
-                    style={{
-                      paddingBottom: 8,
-                      borderBottomWidth: isActive ? 2 : 0,
-                      borderBottomColor: '#ffffff',
-                      flex: 1,
-                      alignItems: 'center'
-                    }}
-                  >
-                    <Text style={{
-                      fontSize: 14,
-                      fontWeight: isActive ? '600' : '400',
-                      color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'
-                    }} numberOfLines={1}>
-                      {tab}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            ) : (
+              <View style={{ width: 36, height: 36 }} />
+            )}
           </View>
-
-          {/* Chat Tab Content */}
-          <GroupChatTab groupData={groupData} />
         </View>
-      ) : (
-        /* Other Tabs - Original ScrollView Layout */
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: insets.top + 16 }}>
-          {/* Header with Group Image */}
-          <View style={{
-            paddingHorizontal: 20,
-            marginBottom: 24
-          }}>
-            {/* Back Button */}
-            <TouchableOpacity 
-              onPress={() => router.push('/(tabs)/group')}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginBottom: 16
-              }}
-            >
-              <MaterialIcons name="arrow-back" size={18} color="#ffffff" />
-            </TouchableOpacity>
 
-            {/* Group Info with Image */}
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center'
-            }}>
-              <Image 
-                source={groupData.image} 
+        {/* Clean Tab Navigation */}
+        <View style={{
+          flexDirection: 'row',
+          marginBottom: 8,
+          paddingLeft: 4,
+          paddingRight: 12
+        }}>
+          {tabs.map((tab, index) => {
+            const isActive = index === activeTab;
+            return (
+              <TouchableOpacity
+                key={tab}
+                onPress={() => setActiveTab(index)}
                 style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 12,
-                  marginRight: 16
+                  paddingBottom: 8,
+                  borderBottomWidth: isActive ? 2 : 0,
+                  borderBottomColor: '#ffffff',
+                  flex: 1,
+                  alignItems: 'center'
                 }}
-              />
-              
-              <View style={{ flex: 1 }}>
+              >
                 <Text style={{
-                  fontSize: 20,
-                  fontWeight: '700',
-                  color: '#ffffff',
-                  marginBottom: 4
-                }}>
-                  {groupData.name}
+                  fontSize: 14,
+                  fontWeight: isActive ? '600' : '400',
+                  color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'
+                }} numberOfLines={1}>
+                  {tab}
                 </Text>
-                
-              </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
 
-              {/* Settings Button (Admin Only) */}
-              {groupData.isAdmin && (
-                <TouchableOpacity
-                  onPress={() => {
-                    const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
-                    router.push(`/group/${currentGroupId}/config`);
-                  }}
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 8,
-                    borderWidth: 0.5,
-                    borderColor: 'rgba(255, 255, 255, 0.15)'
-                  }}
-                >
-                  <Text style={{
-                    color: '#ffffff',
-                    fontSize: 13,
-                    fontWeight: '600'
-                  }}>
-                    Settings
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-
-          {/* Clean Tab Navigation */}
-          <View style={{
-            flexDirection: 'row',
-            marginBottom: 24,
-            paddingLeft: 4,
-            paddingRight: 12
-          }}>
-            {tabs.map((tab, index) => {
-              const isActive = index === activeTab;
-              return (
-                <TouchableOpacity
-                  key={tab}
-                  onPress={() => setActiveTab(index)}
-                  style={{
-                    paddingBottom: 8,
-                    borderBottomWidth: isActive ? 2 : 0,
-                    borderBottomColor: '#ffffff',
-                    flex: 1,
-                    alignItems: 'center'
-                  }}
-                >
-                  <Text style={{
-                    fontSize: 14,
-                    fontWeight: isActive ? '600' : '400',
-                    color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'
-                  }} numberOfLines={1}>
-                    {tab}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
+      {/* Tab Content */}
+      {activeTab === 0 ? (
+        /* Chat Tab Content */
+        <GroupChatTab groupData={groupData} />
+      ) : (
+        /* Other Tabs - ScrollView Layout */
+        <ScrollView style={{ flex: 1 }}>
           <View style={{ paddingHorizontal: 20 }}>
             {/* Tab Content */}
             {activeTab === 1 && <GroupBetsTab groupData={groupData} />}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View, TouchableOpacity, ScrollView } from 'react-native';
 import { router } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
 import { groupService, type GroupMemberResponse } from '../../services/group/groupService';
 import { debugLog, errorLog } from '../../config/env';
 
@@ -138,7 +139,8 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20
+        marginBottom: 20,
+        marginTop: 16
       }}>
         <Text style={{
           fontSize: 18,
@@ -150,17 +152,13 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
         
         <TouchableOpacity style={{
           backgroundColor: 'rgba(0, 212, 170, 0.15)',
-          paddingHorizontal: 12,
-          paddingVertical: 6,
-          borderRadius: 8
+          width: 36,
+          height: 36,
+          borderRadius: 8,
+          justifyContent: 'center',
+          alignItems: 'center'
         }}>
-          <Text style={{
-            color: '#00D4AA',
-            fontSize: 13,
-            fontWeight: '600'
-          }}>
-            Invite
-          </Text>
+          <MaterialIcons name="person-add" size={18} color="#00D4AA" />
         </TouchableOpacity>
       </View>
 

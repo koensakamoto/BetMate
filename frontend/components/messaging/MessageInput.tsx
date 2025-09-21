@@ -45,14 +45,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
-  const [inputHeight, setInputHeight] = useState(40);
+  const [inputHeight, setInputHeight] = useState(36);
   const inputRef = useRef<TextInput>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Animations
-  const sendButtonScale = useRef(new Animated.Value(0.8)).current;
+  // Animations - simplified
   const attachmentRotation = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Auto-focus when replying or editing
   useEffect(() => {
@@ -70,37 +68,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
   }, [editingMessage]);
 
-  // Animate send button based on message content
-  useEffect(() => {
-    Animated.spring(sendButtonScale, {
-      toValue: message.trim().length > 0 ? 1 : 0.8,
-      useNativeDriver: true,
-      tension: 300,
-      friction: 10,
-    }).start();
-  }, [message]);
-
-  // Pulsing animation for the send button when ready
-  useEffect(() => {
-    if (message.trim().length > 0) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [message]);
 
 
   const handleTextChange = (text: string) => {
@@ -134,24 +101,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     // Haptic feedback and animation
     setIsSending(true);
     
-    // Quick scale animation for send button
-    Animated.sequence([
-      Animated.timing(sendButtonScale, {
-        toValue: 0.8,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(sendButtonScale, {
-        toValue: 1.2,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(sendButtonScale, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
 
     try {
       const request: SendMessageRequest = {
@@ -167,7 +116,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       // Clear the input and reset states with animation
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setMessage('');
-      setInputHeight(40);
+      setInputHeight(36);
       if (onTyping) onTyping(false);
       if (replyToMessage && onCancelReply) onCancelReply();
       if (editingMessage && onCancelEdit) onCancelEdit();
@@ -210,8 +159,16 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   const handleContentSizeChange = (event: any) => {
     const { height } = event.nativeEvent.contentSize;
-    const newHeight = Math.min(Math.max(height, 40), 120);
+    const newHeight = Math.min(Math.max(height, 36), 100);
     setInputHeight(newHeight);
+  };
+
+  const handleFocus = () => {
+    // Simple focus handler
+  };
+
+  const handleBlur = () => {
+    // Simple blur handler
   };
 
   const canSend = message.trim().length > 0 && !isSending && !disabled;
@@ -228,9 +185,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
       backgroundColor: 'rgba(0, 0, 0, 0.95)',
       borderTopWidth: 0.5,
       borderTopColor: 'rgba(255, 255, 255, 0.1)',
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: Math.max(insets.bottom, 16)
+      paddingHorizontal: 12,
+      paddingTop: 8,
+      paddingBottom: 8
     }}>
       {/* Reply/Edit indicator */}
       {(isReplying || isEditing) && (
@@ -239,36 +196,36 @@ const MessageInput: React.FC<MessageInputProps> = ({
           alignItems: 'center',
           backgroundColor: 'rgba(255, 255, 255, 0.1)',
           borderRadius: 16,
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          marginBottom: 12,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          marginBottom: 8,
           borderLeftWidth: 3,
-          borderLeftColor: isEditing ? '#FFD700' : '#00D4FF',
+          borderLeftColor: isEditing ? '#FFD700' : '#00D4AA',
         }}>
           <View style={{
-            backgroundColor: isEditing ? 'rgba(255, 215, 0, 0.2)' : 'rgba(0, 212, 255, 0.2)',
-            borderRadius: 12,
-            padding: 6,
-            marginRight: 10
+            backgroundColor: isEditing ? 'rgba(255, 215, 0, 0.2)' : 'rgba(0, 212, 170, 0.2)',
+            borderRadius: 10,
+            padding: 4,
+            marginRight: 8
           }}>
-            <MaterialIcons 
-              name={isEditing ? 'edit' : 'reply'} 
-              size={16} 
-              color={isEditing ? '#FFD700' : '#00D4FF'} 
+            <MaterialIcons
+              name={isEditing ? 'edit' : 'reply'}
+              size={14}
+              color={isEditing ? '#FFD700' : '#00D4AA'}
             />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{
               color: 'rgba(255, 255, 255, 0.8)',
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: '600',
-              marginBottom: 2
+              marginBottom: 1
             }}>
               {isEditing ? 'Editing message' : `Replying to ${replyToMessage?.senderDisplayName}`}
             </Text>
             <Text style={{
               color: 'rgba(255, 255, 255, 0.6)',
-              fontSize: 14,
+              fontSize: 13,
             }} numberOfLines={1}>
               {isEditing ? editingMessage?.content : replyToMessage?.content}
             </Text>
@@ -277,11 +234,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
             onPress={isEditing ? onCancelEdit : onCancelReply}
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              borderRadius: 12,
-              padding: 8
+              borderRadius: 10,
+              padding: 6
             }}
           >
-            <MaterialIcons name="close" size={16} color="rgba(255, 255, 255, 0.8)" />
+            <MaterialIcons name="close" size={14} color="rgba(255, 255, 255, 0.8)" />
           </TouchableOpacity>
         </Animated.View>
       )}
@@ -291,21 +248,21 @@ const MessageInput: React.FC<MessageInputProps> = ({
         <Animated.View style={{
           flexDirection: 'row',
           justifyContent: 'space-around',
-          paddingVertical: 12,
-          marginBottom: 12
+          paddingVertical: 6,
+          marginBottom: 8
         }}>
           <TouchableOpacity
             onPress={handlePhotoAttachment}
             style={{
               alignItems: 'center',
               backgroundColor: 'rgba(255, 100, 150, 0.2)',
-              borderRadius: 20,
-              padding: 12,
-              minWidth: 60
+              borderRadius: 16,
+              padding: 8,
+              minWidth: 48
             }}
           >
-            <Ionicons name="camera" size={24} color="#FF6496" />
-            <Text style={{ color: '#FF6496', fontSize: 12, marginTop: 4, fontWeight: '600' }}>
+            <Ionicons name="camera" size={20} color="#FF6496" />
+            <Text style={{ color: '#FF6496', fontSize: 10, marginTop: 2, fontWeight: '600' }}>
               Camera
             </Text>
           </TouchableOpacity>
@@ -315,13 +272,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
             style={{
               alignItems: 'center',
               backgroundColor: 'rgba(100, 150, 255, 0.2)',
-              borderRadius: 20,
-              padding: 12,
-              minWidth: 60
+              borderRadius: 16,
+              padding: 8,
+              minWidth: 48
             }}
           >
-            <Ionicons name="document" size={24} color="#6496FF" />
-            <Text style={{ color: '#6496FF', fontSize: 12, marginTop: 4, fontWeight: '600' }}>
+            <Ionicons name="document" size={20} color="#6496FF" />
+            <Text style={{ color: '#6496FF', fontSize: 10, marginTop: 2, fontWeight: '600' }}>
               Files
             </Text>
           </TouchableOpacity>
@@ -329,25 +286,27 @@ const MessageInput: React.FC<MessageInputProps> = ({
       )}
 
       {/* Main input container */}
-      <View style={{
+      <Animated.View style={{
         flexDirection: 'row',
-        alignItems: 'flex-end',
+        alignItems: 'center',
         backgroundColor: 'rgba(255, 255, 255, 0.08)',
-        borderRadius: 25,
-        paddingHorizontal: 6,
-        paddingVertical: 6,
+        borderRadius: 20,
+        paddingHorizontal: 4,
+        paddingVertical: 4,
         borderWidth: 1,
-        borderColor: message.trim().length > 0 ? 'rgba(0, 212, 255, 0.5)' : 'rgba(255, 255, 255, 0.1)',
+        borderColor: message.trim().length > 0
+          ? 'rgba(0, 212, 170, 0.3)'
+          : 'rgba(255, 255, 255, 0.1)'
       }}>
         {/* Attachment button */}
         <TouchableOpacity
           onPress={handleAttachment}
           disabled={disabled}
           style={{
-            marginLeft: 8,
-            marginRight: 4,
+            marginLeft: 6,
+            marginRight: 2,
             opacity: disabled ? 0.5 : 1,
-            padding: 4
+            padding: 6
           }}
         >
           <Animated.View
@@ -355,10 +314,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
               transform: [{ rotate: rotateInterpolation }]
             }}
           >
-            <MaterialIcons 
-              name="add" 
-              size={24} 
-              color={showAttachmentOptions ? '#00D4FF' : 'rgba(255, 255, 255, 0.7)'} 
+            <MaterialIcons
+              name="add"
+              size={20}
+              color={showAttachmentOptions ? '#00D4AA' : 'rgba(255, 255, 255, 0.7)'}
             />
           </Animated.View>
         </TouchableOpacity>
@@ -369,21 +328,19 @@ const MessageInput: React.FC<MessageInputProps> = ({
           value={message}
           onChangeText={handleTextChange}
           onContentSizeChange={handleContentSizeChange}
-          onFocus={() => {
-            // Small delay to ensure keyboard animation starts
-            setTimeout(() => {
-              inputRef.current?.focus();
-            }, 100);
-          }}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           placeholder={placeholder}
           placeholderTextColor="rgba(255, 255, 255, 0.5)"
           style={{
             flex: 1,
             color: '#FFFFFF',
-            fontSize: 16,
-            lineHeight: 22,
+            fontSize: 15,
+            lineHeight: 20,
+            includeFontPadding: false,
+            textAlignVertical: 'center',
             height: inputHeight,
-            paddingHorizontal: 12,
+            paddingHorizontal: 10,
             paddingVertical: 8,
             textAlignVertical: 'center',
           }}
@@ -395,67 +352,37 @@ const MessageInput: React.FC<MessageInputProps> = ({
         />
 
         {/* Send button */}
-        <Animated.View
+        <TouchableOpacity
+          onPress={handleSend}
+          disabled={!canSend}
           style={{
-            transform: [
-              { scale: sendButtonScale },
-              { scale: canSend ? pulseAnim : 1 }
-            ]
+            marginRight: 2,
+            marginLeft: 2,
+            paddingVertical: 2
           }}
         >
-          <TouchableOpacity
-            onPress={handleSend}
-            disabled={!canSend}
+          <View
             style={{
-              marginRight: 4,
-              marginLeft: 4
+              borderRadius: 16,
+              width: 32,
+              height: 32,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: canSend ? '#00D4AA' : 'rgba(255, 255, 255, 0.2)',
             }}
           >
-            <LinearGradient
-              colors={
-                canSend 
-                  ? ['#FF6B6B', '#4ECDC4', '#45B7D1'] 
-                  : ['rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.1)']
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{
-                borderRadius: 20,
-                width: 40,
-                height: 40,
-                alignItems: 'center',
-                justifyContent: 'center',
-                shadowColor: canSend ? '#00D4FF' : 'transparent',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.3,
-                shadowRadius: 4,
-                elevation: canSend ? 5 : 0,
-              }}
-            >
-              {isSending ? (
-                <Animated.View
-                  style={{
-                    transform: [{
-                      rotate: pulseAnim.interpolate({
-                        inputRange: [1, 1.05],
-                        outputRange: ['0deg', '360deg']
-                      })
-                    }]
-                  }}
-                >
-                  <MaterialIcons name="hourglass-empty" size={20} color="#FFFFFF" />
-                </Animated.View>
-              ) : (
-                <MaterialIcons 
-                  name={isEditing ? "check" : "send"} 
-                  size={20} 
-                  color="#FFFFFF" 
-                />
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
+            {isSending ? (
+              <MaterialIcons name="hourglass-empty" size={16} color="#FFFFFF" />
+            ) : (
+              <MaterialIcons
+                name={isEditing ? "check" : "send"}
+                size={16}
+                color="#FFFFFF"
+              />
+            )}
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 };

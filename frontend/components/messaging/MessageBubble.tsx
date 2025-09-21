@@ -196,7 +196,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       <TouchableOpacity
         onLongPress={handleLongPress}
         style={{
-          backgroundColor: isOwnMessage ? '#6366f1' : '#1f2937',
+          backgroundColor: isOwnMessage ? '#00D4AA' : '#1f2937',
           borderRadius: 16,
           paddingHorizontal: 14,
           paddingVertical: 10,
