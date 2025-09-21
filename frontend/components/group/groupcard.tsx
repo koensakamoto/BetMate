@@ -25,7 +25,11 @@ const GroupCard: React.FC<GroupCardProps> = ({
 }) => {
     const handlePress = () => {
         if (groupId) {
-            router.push(`/group/${groupId}`);
+            if (isJoined) {
+                router.push(`/group/${groupId}`);
+            } else {
+                router.push(`/group/${groupId}/preview`);
+            }
         }
     };
     const renderMemberAvatars = () => {
