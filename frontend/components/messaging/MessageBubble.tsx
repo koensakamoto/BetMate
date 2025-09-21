@@ -21,7 +21,39 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   onDelete,
   isLastInSequence = true
 }) => {
-  const isOwnMessage = message.senderUsername === currentUsername;
+  // Improved message ownership logic with defensive checks
+  const isOwnMessage = (() => {
+    console.log(`[MessageBubble] DEBUG - Checking message ownership:`, {
+      messageId: message.id,
+      senderUsername: message.senderUsername,
+      currentUsername: currentUsername,
+      messageContent: message.content?.substring(0, 30) + '...'
+    });
+
+    // Validate inputs first
+    if (!message.senderUsername || !currentUsername) {
+      console.warn('[MessageBubble] Invalid username data:', {
+        senderUsername: message.senderUsername,
+        currentUsername: currentUsername
+      });
+      return false; // Default to left alignment when data is invalid
+    }
+
+    // Normalize usernames for comparison (trim whitespace, case-insensitive)
+    const normalizedSender = message.senderUsername.trim().toLowerCase();
+    const normalizedCurrent = currentUsername.trim().toLowerCase();
+
+    const isOwn = normalizedSender === normalizedCurrent;
+    console.log(`[MessageBubble] DEBUG - Ownership result:`, {
+      normalizedSender,
+      normalizedCurrent,
+      isOwn,
+      messageContent: message.content?.substring(0, 30) + '...'
+    });
+
+    return isOwn;
+  })();
+
   const isSystemMessage = messagingService.isSystemMessage(message);
   const hasAttachment = messagingService.hasAttachment(message);
 

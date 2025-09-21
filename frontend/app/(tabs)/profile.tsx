@@ -21,7 +21,7 @@ export default function Profile() {
   const [friendsCount, setFriendsCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const tabs = ['Activity', 'Stats', 'Achievements'];
+  const tabs = ['Stats', 'Achievements'];
 
   useEffect(() => {
     if (!authLoading) {
@@ -380,124 +380,6 @@ export default function Profile() {
         {/* Tab Content */}
         <View style={{ paddingHorizontal: 24, flex: 1 }}>
           {activeTab === 0 && (
-            /* Activity Tab - Combined betting activity with filters */
-            <View>
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: '#ffffff',
-                marginBottom: 16
-              }}>
-                Betting Activity
-              </Text>
-              
-              {/* Filter Buttons */}
-              <View style={{
-                flexDirection: 'row',
-                marginBottom: 20,
-                gap: 8
-              }}>
-                {['All', 'Won', 'Lost', 'Active'].map((filter) => (
-                  <TouchableOpacity
-                    key={filter}
-                    style={{
-                      backgroundColor: filter === 'All' ? '#00D4AA' : 'rgba(255, 255, 255, 0.08)',
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 16
-                    }}
-                  >
-                    <Text style={{
-                      color: filter === 'All' ? '#000000' : '#ffffff',
-                      fontSize: 13,
-                      fontWeight: '600'
-                    }}>
-                      {filter}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Activity Items */}
-              {[
-                { type: 'won', game: 'Lakers vs Warriors', amount: '+$125', time: '2 hours ago', status: 'completed' },
-                { type: 'active', game: 'Celtics vs Heat', amount: '$75', time: '1 day left', status: 'active' },
-                { type: 'lost', game: 'Bulls vs Nets', amount: '-$50', time: '3 hours ago', status: 'completed' },
-                { type: 'won', game: 'Knicks vs 76ers', amount: '+$200', time: '1 day ago', status: 'completed' },
-                { type: 'active', game: 'Clippers vs Nuggets', amount: '$100', time: '2 days left', status: 'active' }
-              ].map((item, index) => (
-                <View key={index} style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                  padding: 16,
-                  borderRadius: 8,
-                  marginBottom: 12,
-                  borderLeftWidth: 3,
-                  borderLeftColor: 
-                    item.type === 'won' ? '#00D4AA' : 
-                    item.type === 'lost' ? '#EF4444' : 
-                    '#FFB800'
-                }}>
-                  <View style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 8
-                  }}>
-                    <Text style={{
-                      fontSize: 15,
-                      fontWeight: '600',
-                      color: '#ffffff'
-                    }}>
-                      {item.game}
-                    </Text>
-                    <Text style={{
-                      fontSize: 14,
-                      fontWeight: '600',
-                      color: 
-                        item.type === 'won' ? '#00D4AA' : 
-                        item.type === 'lost' ? '#EF4444' : 
-                        '#ffffff'
-                    }}>
-                      {item.amount}
-                    </Text>
-                  </View>
-                  <View style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <Text style={{
-                      fontSize: 13,
-                      color: 'rgba(255, 255, 255, 0.5)'
-                    }}>
-                      {item.time}
-                    </Text>
-                    <View style={{
-                      backgroundColor: 
-                        item.status === 'active' ? 'rgba(255, 184, 0, 0.2)' : 
-                        'rgba(255, 255, 255, 0.1)',
-                      paddingHorizontal: 8,
-                      paddingVertical: 2,
-                      borderRadius: 4
-                    }}>
-                      <Text style={{
-                        fontSize: 11,
-                        fontWeight: '600',
-                        color: 
-                          item.status === 'active' ? '#FFB800' : 
-                          'rgba(255, 255, 255, 0.6)',
-                        textTransform: 'uppercase'
-                      }}>
-                        {item.status}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {activeTab === 1 && (
             /* Stats Tab - Comprehensive betting statistics */
             <View>
               <Text style={{
@@ -666,7 +548,7 @@ export default function Profile() {
             </View>
           )}
 
-          {activeTab === 2 && (
+          {activeTab === 1 && (
             /* Achievements Tab */
             <View>
               <Text style={{

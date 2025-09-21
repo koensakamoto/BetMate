@@ -433,13 +433,14 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   // ==========================================
 
   const renderMessage = ({ item, index }: { item: MessageResponse; index: number }) => {
-    const isLastInSequence = index === messages.length - 1 || 
+    const isLastInSequence = index === messages.length - 1 ||
       messages[index + 1]?.senderUsername !== item.senderUsername;
+
 
     return (
       <MessageBubble
         message={item}
-        currentUsername={user?.username || ''}
+        currentUsername={effectiveUsername}
         onReply={handleReply}
         onEdit={handleEdit}
         onDelete={handleDelete}
@@ -467,11 +468,11 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   // Show auth required state if no user
   if (!user) {
     return (
-      <View style={{ 
-        flex: 1, 
-        backgroundColor: '#0a0a0f', 
-        justifyContent: 'center', 
-        alignItems: 'center' 
+      <View style={{
+        flex: 1,
+        backgroundColor: '#0a0a0f',
+        justifyContent: 'center',
+        alignItems: 'center'
       }}>
         <Text style={{ color: '#8b8b8b', fontSize: 16, textAlign: 'center' }}>
           Please log in to access group chat
@@ -479,6 +480,49 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
       </View>
     );
   }
+
+  // Get effective username for message alignment - try multiple fallbacks
+  const getEffectiveUsername = (user: any): string => {
+    // Try username field first
+    if (user && user.username && typeof user.username === 'string' && user.username.trim() !== '') {
+      return user.username.trim();
+    }
+
+    // Fallback to name field
+    if (user && user.name && typeof user.name === 'string' && user.name.trim() !== '') {
+      return user.name.trim();
+    }
+
+    // Fallback to email prefix (before @)
+    if (user && user.email && typeof user.email === 'string' && user.email.includes('@')) {
+      return user.email.split('@')[0].trim();
+    }
+
+    // Last resort - use user ID
+    if (user && user.id) {
+      return `user_${user.id}`;
+    }
+
+    // DEVELOPMENT: For testing purposes when user is not authenticated
+    // Return a development username instead of blocking
+    return 'dev_user';
+  };
+
+  const effectiveUsername = getEffectiveUsername(user);
+
+  // Log authentication status for debugging
+  console.log('[GroupMessagingChat] Auth status:', {
+    hasUser: !!user,
+    isLoading: authLoading,
+    effectiveUsername,
+    userKeys: user ? Object.keys(user) : 'null',
+    userValues: user ? {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      name: user.name
+    } : 'null'
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>

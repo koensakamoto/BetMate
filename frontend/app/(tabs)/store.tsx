@@ -5,6 +5,7 @@ import StoreHeader from '../../components/store/StoreHeader';
 import StoreCategoryTabs, { StoreCategory } from '../../components/store/StoreCategoryTabs';
 import StoreItem, { StoreItemData } from '../../components/store/StoreItem';
 import EarnCreditsModal from '../../components/store/EarnCreditsModal';
+import TransactionHistoryModal, { Transaction } from '../../components/store/TransactionHistoryModal';
 import { storeItems, EarnCreditsOption } from '../../components/store/storeData';
 
 export default function Store() {
@@ -13,6 +14,61 @@ export default function Store() {
   const [activeCategory, setActiveCategory] = useState<StoreCategory>('featured');
   const [userCredits, setUserCredits] = useState(425); // Mock user credits
   const [earnCreditsModalVisible, setEarnCreditsModalVisible] = useState(false);
+  const [transactionHistoryVisible, setTransactionHistoryVisible] = useState(false);
+
+  // Mock transaction data - in real app this would come from API
+  const [transactions] = useState<Transaction[]>([
+    {
+      id: '1',
+      type: 'CREDIT',
+      amount: 500,
+      reason: 'Welcome bonus',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
+      balanceBefore: 0,
+      balanceAfter: 500,
+      correlationId: 'welcome-123'
+    },
+    {
+      id: '2',
+      type: 'DEBIT',
+      amount: 75,
+      reason: 'Premium Avatar Purchase',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
+      balanceBefore: 500,
+      balanceAfter: 425,
+      correlationId: 'purchase-456'
+    },
+    {
+      id: '3',
+      type: 'TRANSFER_IN',
+      amount: 100,
+      reason: 'Transfer from @johnsmith',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2 days ago
+      balanceBefore: 325,
+      balanceAfter: 425,
+      correlationId: 'transfer-789'
+    },
+    {
+      id: '4',
+      type: 'CREDIT',
+      amount: 25,
+      reason: 'Daily login bonus',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(), // 3 days ago
+      balanceBefore: 300,
+      balanceAfter: 325,
+      correlationId: 'daily-bonus-101'
+    },
+    {
+      id: '5',
+      type: 'DEBIT',
+      amount: 200,
+      reason: 'Bet participation: NFL Chiefs vs Ravens',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), // 5 days ago
+      balanceBefore: 500,
+      balanceAfter: 300,
+      correlationId: 'bet-123-456'
+    }
+  ]);
 
   const handlePurchase = (item: StoreItemData) => {
     if (userCredits >= item.price && !item.isOwned) {
@@ -52,11 +108,7 @@ export default function Store() {
   };
 
   const handleTransactionHistory = () => {
-    Alert.alert(
-      'Transaction History',
-      'This would show your purchase and earning history.',
-      [{ text: 'Close' }]
-    );
+    setTransactionHistoryVisible(true);
   };
 
   const currentItems = storeItems[activeCategory] || [];
@@ -145,6 +197,13 @@ export default function Store() {
         visible={earnCreditsModalVisible}
         onClose={() => setEarnCreditsModalVisible(false)}
         onEarnCredits={handleEarnCredits}
+      />
+
+      {/* Transaction History Modal */}
+      <TransactionHistoryModal
+        visible={transactionHistoryVisible}
+        onClose={() => setTransactionHistoryVisible(false)}
+        transactions={transactions}
       />
     </View>
   );

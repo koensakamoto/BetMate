@@ -156,9 +156,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log(`✅ [AuthContext] User profile fetched:`, {
           id: userProfile.id,
           username: userProfile.username,
-          email: userProfile.email
+          email: userProfile.email,
+          fullProfile: userProfile
         });
-        setUser(transformUser(userProfile));
+        const transformedUser = transformUser(userProfile);
+        console.log(`✅ [AuthContext] Transformed user:`, {
+          id: transformedUser.id,
+          username: transformedUser.username,
+          email: transformedUser.email,
+          name: transformedUser.name
+        });
+        setUser(transformedUser);
         debugLog('Auth check successful - user logged in');
       } else {
         console.log(`❌ [AuthContext] User is not authenticated`);

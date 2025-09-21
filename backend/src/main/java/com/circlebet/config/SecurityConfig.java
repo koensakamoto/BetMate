@@ -37,7 +37,11 @@ public class SecurityConfig {
 
     // Public endpoint constants for better maintainability
     private static final String[] PUBLIC_AUTH_ENDPOINTS = {
-        "/api/auth/**"
+        "/api/auth/login",
+        "/api/auth/refresh",
+        "/api/auth/change-password",
+        "/api/auth/logout"
+        // Note: /api/auth/me requires authentication and is NOT in this list
     };
     
     private static final String[] PUBLIC_USER_ENDPOINTS = {

@@ -15,20 +15,44 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
   const [activeFilter, setActiveFilter] = useState('All');
   const [members, setMembers] = useState<GroupMemberResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const memberFilters = ['All', 'Admins', 'Active', 'Recent'];
 
   // Fetch group members
   useEffect(() => {
     const fetchMembers = async () => {
       setIsLoading(true);
+      setError(null);
+
       try {
         const groupId = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
+        debugLog('Fetching members for group ID:', groupId);
         const membersData = await groupService.getGroupMembers(Number(groupId));
-        setMembers(membersData);
-        debugLog('Group members fetched:', membersData);
-      } catch (error) {
+
+        // Ensure we always set an array
+        if (Array.isArray(membersData)) {
+          setMembers(membersData);
+          setError(null);
+          debugLog('Group members fetched successfully:', membersData);
+        } else {
+          errorLog('API returned non-array data:', membersData);
+          setMembers([]);
+          setError('Invalid data received from server');
+        }
+      } catch (error: any) {
         errorLog('Error fetching group members:', error);
         setMembers([]);
+
+        // Set more specific error messages
+        if (error?.response?.status === 401) {
+          setError('Authentication required. Please log in again.');
+        } else if (error?.response?.status === 403) {
+          setError('You do not have permission to view members of this group.');
+        } else if (error?.response?.status === 404) {
+          setError('Group not found.');
+        } else {
+          setError('Failed to load group members. Please try again.');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -40,6 +64,11 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
   }, [groupData.id]);
 
   const getFilteredMembers = () => {
+    // Ensure members is always an array
+    if (!Array.isArray(members)) {
+      return [];
+    }
+
     switch (activeFilter) {
       case 'Admins':
         return members.filter(member => member.role === 'ADMIN' || member.role === 'OFFICER');
@@ -186,6 +215,64 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
         }}>
           Loading members...
         </Text>
+      ) : error ? (
+        <View style={{
+          backgroundColor: 'rgba(255, 0, 0, 0.1)',
+          borderWidth: 1,
+          borderColor: 'rgba(255, 0, 0, 0.3)',
+          borderRadius: 8,
+          padding: 16,
+          marginTop: 20
+        }}>
+          <Text style={{
+            color: '#ff6b6b',
+            textAlign: 'center',
+            fontSize: 14,
+            marginBottom: 8
+          }}>
+            {error}
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              const groupId = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
+              if (groupId) {
+                // Trigger a refetch by updating the dependency
+                setError(null);
+                setIsLoading(true);
+                groupService.getGroupMembers(Number(groupId))
+                  .then(data => {
+                    if (Array.isArray(data)) {
+                      setMembers(data);
+                      setError(null);
+                    } else {
+                      setMembers([]);
+                      setError('Invalid data received from server');
+                    }
+                  })
+                  .catch(err => {
+                    setMembers([]);
+                    setError('Failed to load group members. Please try again.');
+                  })
+                  .finally(() => setIsLoading(false));
+              }
+            }}
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              paddingVertical: 8,
+              paddingHorizontal: 16,
+              borderRadius: 6,
+              alignSelf: 'center'
+            }}
+          >
+            <Text style={{
+              color: '#ffffff',
+              fontSize: 12,
+              fontWeight: '600'
+            }}>
+              Retry
+            </Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <>
           {/* Members List */}

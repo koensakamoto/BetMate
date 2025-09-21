@@ -20,6 +20,7 @@ interface GroupMemberViewProps {
     totalBets: number;
     userPosition: number;
     groupAchievements: number;
+    isAdmin: boolean;
   };
 }
 
@@ -27,7 +28,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState(0);
   const [groupData, setGroupData] = useState(initialGroupData);
-  const tabs = ['Chat', 'Bets', 'Stats', 'People', 'Config'];
+  const tabs = ['Chat', 'Bets', 'Stats', 'People'];
 
   // Sync local state with incoming props when they change
   useEffect(() => {
@@ -120,31 +121,33 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                     {groupData.name}
                   </Text>
                   
-                  <Text style={{
-                    fontSize: 14,
-                    color: 'rgba(255, 255, 255, 0.6)'
-                  }}>
-                    {groupData.memberCount} members • {groupData.createdDate}
-                  </Text>
                 </View>
 
-                {/* Invite Button */}
-                <TouchableOpacity style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 8,
-                  borderWidth: 0.5,
-                  borderColor: 'rgba(255, 255, 255, 0.15)'
-                }}>
-                  <Text style={{
-                    color: '#ffffff',
-                    fontSize: 13,
-                    fontWeight: '600'
-                  }}>
-                    Invite
-                  </Text>
-                </TouchableOpacity>
+                {/* Settings Button (Admin Only) */}
+                {groupData.isAdmin && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
+                      router.push(`/group/${currentGroupId}/config`);
+                    }}
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 8,
+                      borderWidth: 0.5,
+                      borderColor: 'rgba(255, 255, 255, 0.15)'
+                    }}
+                  >
+                    <Text style={{
+                      color: '#ffffff',
+                      fontSize: 13,
+                      fontWeight: '600'
+                    }}>
+                      Settings
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
 
@@ -234,31 +237,33 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                   {groupData.name}
                 </Text>
                 
-                <Text style={{
-                  fontSize: 14,
-                  color: 'rgba(255, 255, 255, 0.6)'
-                }}>
-                  {groupData.memberCount} members • {groupData.createdDate}
-                </Text>
               </View>
 
-              {/* Invite Button */}
-              <TouchableOpacity style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 8,
-                borderWidth: 0.5,
-                borderColor: 'rgba(255, 255, 255, 0.15)'
-              }}>
-                <Text style={{
-                  color: '#ffffff',
-                  fontSize: 13,
-                  fontWeight: '600'
-                }}>
-                  Invite
-                </Text>
-              </TouchableOpacity>
+              {/* Settings Button (Admin Only) */}
+              {groupData.isAdmin && (
+                <TouchableOpacity
+                  onPress={() => {
+                    const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
+                    router.push(`/group/${currentGroupId}/config`);
+                  }}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 8,
+                    borderWidth: 0.5,
+                    borderColor: 'rgba(255, 255, 255, 0.15)'
+                  }}
+                >
+                  <Text style={{
+                    color: '#ffffff',
+                    fontSize: 13,
+                    fontWeight: '600'
+                  }}>
+                    Settings
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -300,7 +305,6 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
             {activeTab === 1 && <GroupBetsTab groupData={groupData} />}
             {activeTab === 2 && <GroupStatsTab groupData={groupData} />}
             {activeTab === 3 && <GroupMembersTab groupData={groupData} />}
-            {activeTab === 4 && <GroupSettingsTab groupData={settingsGroupData} onGroupUpdated={handleGroupUpdated} />}
 
             {/* Additional spacing for scroll */}
             <View style={{ height: 60 }} />

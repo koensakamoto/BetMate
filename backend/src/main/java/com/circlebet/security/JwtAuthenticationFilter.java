@@ -43,7 +43,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     
     // Public endpoints that don't require JWT authentication
     private static final List<String> PUBLIC_ENDPOINTS = Arrays.asList(
-        "/api/auth/**",
+        "/api/auth/login",
+        "/api/auth/refresh",
+        "/api/auth/change-password",
+        "/api/auth/logout",
+        // Note: /api/auth/me requires authentication and is NOT in this list
         "/api/users/register",
         "/api/users/availability/**",
         "/actuator/health",
