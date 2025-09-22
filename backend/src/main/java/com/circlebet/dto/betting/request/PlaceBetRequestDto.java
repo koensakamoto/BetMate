@@ -1,6 +1,5 @@
 package com.circlebet.dto.betting.request;
 
-import com.circlebet.entity.betting.Bet;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
@@ -9,33 +8,35 @@ import java.math.BigDecimal;
  * Request DTO for placing a bet.
  */
 public class PlaceBetRequestDto {
-    
-    @NotNull(message = "Bet outcome choice is required")
-    private Bet.BetOutcome choice;
-    
+
+    @NotNull(message = "Chosen option is required")
+    @Min(value = 1, message = "Chosen option must be between 1 and 4")
+    @Max(value = 4, message = "Chosen option must be between 1 and 4")
+    private Integer chosenOption;
+
     @NotNull(message = "Bet amount is required")
     @DecimalMin(value = "0.01", message = "Bet amount must be at least 0.01")
     private BigDecimal amount;
-    
+
     @Size(max = 500, message = "Comment cannot exceed 500 characters")
     private String comment;
 
     // Constructors
     public PlaceBetRequestDto() {}
 
-    public PlaceBetRequestDto(Bet.BetOutcome choice, BigDecimal amount, String comment) {
-        this.choice = choice;
+    public PlaceBetRequestDto(Integer chosenOption, BigDecimal amount, String comment) {
+        this.chosenOption = chosenOption;
         this.amount = amount;
         this.comment = comment;
     }
 
     // Getters and setters
-    public Bet.BetOutcome getChoice() {
-        return choice;
+    public Integer getChosenOption() {
+        return chosenOption;
     }
 
-    public void setChoice(Bet.BetOutcome choice) {
-        this.choice = choice;
+    public void setChosenOption(Integer chosenOption) {
+        this.chosenOption = chosenOption;
     }
 
     public BigDecimal getAmount() {

@@ -6,6 +6,7 @@ import com.circlebet.dto.betting.request.PlaceBetRequestDto;
 import com.circlebet.dto.betting.request.ResolveBetRequestDto;
 import com.circlebet.dto.betting.response.BetResponseDto;
 import com.circlebet.dto.betting.response.BetSummaryResponseDto;
+import com.circlebet.dto.user.response.UserProfileResponseDto;
 import com.circlebet.dto.common.PagedResponseDto;
 import com.circlebet.entity.betting.Bet;
 import com.circlebet.entity.group.Group;
@@ -26,6 +27,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -203,16 +205,53 @@ public class BetController {
     public ResponseEntity<List<BetSummaryResponseDto>> getBetsByStatus(
             @PathVariable Bet.BetStatus status,
             Authentication authentication) {
-        
+
         User currentUser = userService.getUserByUsername(authentication.getName())
             .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         List<Bet> bets = betService.getBetsByStatus(status);
         List<BetSummaryResponseDto> response = bets.stream()
             .map(bet -> convertToSummaryResponse(bet, currentUser))
             .toList();
-        
+
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Place a bet on an existing bet.
+     */
+    @PostMapping("/{betId}/participate")
+    public ResponseEntity<BetResponseDto> placeBet(
+            @PathVariable Long betId,
+            @Valid @RequestBody PlaceBetRequestDto request,
+            Authentication authentication) {
+
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+            System.out.println("DEBUG: Placing bet - User: " + currentUser.getUsername() +
+                             ", BetId: " + betId + ", Option: " + request.getChosenOption() +
+                             ", Amount: " + request.getAmount());
+
+            // Place the bet
+            BetParticipation participation = betParticipationService.placeBet(
+                currentUser,
+                betId,
+                request.getChosenOption(),
+                request.getAmount()
+            );
+
+            // Get updated bet details
+            Bet bet = betService.getBetById(betId);
+            BetResponseDto response = convertToDetailedResponse(bet, currentUser);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            System.err.println("ERROR placing bet: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     // Helper methods for DTO conversion
@@ -225,6 +264,7 @@ public class BetController {
         response.setStatus(bet.getStatus());
         response.setOutcome(bet.getOutcome());
         response.setResolutionMethod(bet.getResolutionMethod());
+        response.setCreator(UserProfileResponseDto.fromUser(bet.getCreator()));
         response.setGroupId(bet.getGroup().getId());
         response.setGroupName(bet.getGroup().getGroupName());
         response.setBettingDeadline(bet.getBettingDeadline());
@@ -238,12 +278,28 @@ public class BetController {
         response.setAllowCreatorVote(bet.getAllowCreatorVote());
         response.setCreatedAt(bet.getCreatedAt());
         response.setUpdatedAt(bet.getUpdatedAt());
-        
+
+        // Set bet options
+        List<String> options = new ArrayList<>();
+        if (bet.getOption1() != null && !bet.getOption1().trim().isEmpty()) {
+            options.add(bet.getOption1());
+        }
+        if (bet.getOption2() != null && !bet.getOption2().trim().isEmpty()) {
+            options.add(bet.getOption2());
+        }
+        if (bet.getOption3() != null && !bet.getOption3().trim().isEmpty()) {
+            options.add(bet.getOption3());
+        }
+        if (bet.getOption4() != null && !bet.getOption4().trim().isEmpty()) {
+            options.add(bet.getOption4());
+        }
+        response.setOptions(options.toArray(new String[0]));
+
         // Set user context
         boolean hasParticipated = betParticipationService.hasUserParticipated(currentUser, bet.getId());
         response.setHasUserParticipated(hasParticipated);
         response.setCanUserResolve(bet.getCreator().getId().equals(currentUser.getId()));
-        
+
         return response;
     }
 
