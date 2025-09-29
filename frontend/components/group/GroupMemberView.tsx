@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Text, View, ScrollView, Image, TouchableOpacity, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import GroupChatTab from './GroupChatTab';
 import GroupBetsTab from './GroupBetsTab';
@@ -26,9 +26,32 @@ interface GroupMemberViewProps {
 
 const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGroupData }) => {
   const insets = useSafeAreaInsets();
-  const [activeTab, setActiveTab] = useState(0);
+  const searchParams = useLocalSearchParams();
+
+  // Determine initial tab from URL parameter
+  const getInitialTab = () => {
+    const tabParam = searchParams.tab;
+    console.log('🎯 [GroupMemberView] DEBUG: Tab parameter check:', {
+      searchParams,
+      tabParam,
+      tabParamType: typeof tabParam,
+      allParams: JSON.stringify(searchParams)
+    });
+
+    if (tabParam && typeof tabParam === 'string') {
+      const tabIndex = parseInt(tabParam, 10);
+      console.log('🎯 [GroupMemberView] DEBUG: Parsed tab index:', { tabIndex, isValid: !isNaN(tabIndex) && tabIndex >= 0 && tabIndex <= 3 });
+      if (!isNaN(tabIndex) && tabIndex >= 0 && tabIndex <= 2) {
+        return tabIndex;
+      }
+    }
+    console.log('🎯 [GroupMemberView] DEBUG: Using default tab 0');
+    return 0; // Default to Chat tab
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [groupData, setGroupData] = useState(initialGroupData);
-  const tabs = ['Chat', 'Bets', 'Stats', 'People'];
+  const tabs = ['Chat', 'Bets', 'People'];
 
   // Sync local state with incoming props when they change
   useEffect(() => {
@@ -192,8 +215,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
           <View style={{ paddingHorizontal: 20 }}>
             {/* Tab Content */}
             {activeTab === 1 && <GroupBetsTab groupData={groupData} />}
-            {activeTab === 2 && <GroupStatsTab groupData={groupData} />}
-            {activeTab === 3 && <GroupMembersTab groupData={groupData} />}
+            {activeTab === 2 && <GroupMembersTab groupData={groupData} />}
 
             {/* Additional spacing for scroll */}
             <View style={{ height: 60 }} />

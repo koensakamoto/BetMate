@@ -4,6 +4,7 @@ import com.circlebet.dto.betting.request.BetCreationRequestDto;
 import java.math.BigDecimal;
 import com.circlebet.dto.betting.request.PlaceBetRequestDto;
 import com.circlebet.dto.betting.request.ResolveBetRequestDto;
+import com.circlebet.dto.betting.request.VoteOnResolutionRequestDto;
 import com.circlebet.dto.betting.response.BetResponseDto;
 import com.circlebet.dto.betting.response.BetSummaryResponseDto;
 import com.circlebet.dto.user.response.UserProfileResponseDto;
@@ -14,8 +15,10 @@ import com.circlebet.entity.user.User;
 import com.circlebet.service.bet.BetService;
 import com.circlebet.service.bet.BetCreationService;
 import com.circlebet.service.bet.BetParticipationService;
+import com.circlebet.service.bet.BetResolutionService;
 import com.circlebet.entity.betting.BetParticipation;
 import com.circlebet.service.group.GroupService;
+import com.circlebet.service.group.GroupMembershipService;
 import com.circlebet.service.user.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,19 +44,25 @@ public class BetController {
     private final BetService betService;
     private final BetCreationService betCreationService;
     private final BetParticipationService betParticipationService;
+    private final BetResolutionService betResolutionService;
     private final GroupService groupService;
+    private final GroupMembershipService groupMembershipService;
     private final UserService userService;
 
     @Autowired
     public BetController(BetService betService,
                         BetCreationService betCreationService,
                         BetParticipationService betParticipationService,
+                        BetResolutionService betResolutionService,
                         GroupService groupService,
+                        GroupMembershipService groupMembershipService,
                         UserService userService) {
         this.betService = betService;
         this.betCreationService = betCreationService;
         this.betParticipationService = betParticipationService;
+        this.betResolutionService = betResolutionService;
         this.groupService = groupService;
+        this.groupMembershipService = groupMembershipService;
         this.userService = userService;
     }
 
@@ -138,7 +147,12 @@ public class BetController {
         User currentUser = userService.getUserByUsername(authentication.getName())
             .orElseThrow(() -> new RuntimeException("User not found"));
         Group group = groupService.getGroupById(groupId);
-        
+
+        // Check if user is member of the group
+        if (!groupMembershipService.isMember(currentUser, group)) {
+            throw new RuntimeException("Access denied - not a member of this group");
+        }
+
         List<Bet> bets = betService.getBetsByGroup(group);
         List<BetSummaryResponseDto> response = bets.stream()
             .map(bet -> convertToSummaryResponse(bet, currentUser))
@@ -254,6 +268,85 @@ public class BetController {
         }
     }
 
+    /**
+     * Resolve a bet (for creators or assigned resolvers).
+     */
+    @PostMapping("/{betId}/resolve")
+    public ResponseEntity<BetResponseDto> resolveBet(
+            @PathVariable Long betId,
+            @Valid @RequestBody ResolveBetRequestDto request,
+            Authentication authentication) {
+
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+            System.out.println("DEBUG: Resolving bet - User: " + currentUser.getUsername() +
+                             ", BetId: " + betId + ", Outcome: " + request.getOutcome());
+
+            // Convert string outcome to BetOutcome enum
+            Bet.BetOutcome outcome = convertStringToOutcome(request.getOutcome());
+
+            // Resolve the bet
+            Bet resolvedBet = betResolutionService.resolveBet(
+                betId,
+                currentUser,
+                outcome,
+                request.getReasoning()
+            );
+
+            // Return updated bet details
+            BetResponseDto response = convertToDetailedResponse(resolvedBet, currentUser);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("ERROR resolving bet: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    /**
+     * Vote on bet resolution (for consensus voting).
+     */
+    @PostMapping("/{betId}/vote")
+    public ResponseEntity<BetResponseDto> voteOnResolution(
+            @PathVariable Long betId,
+            @Valid @RequestBody VoteOnResolutionRequestDto request,
+            Authentication authentication) {
+
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+            System.out.println("DEBUG: Voting on resolution - User: " + currentUser.getUsername() +
+                             ", BetId: " + betId + ", Vote: " + request.getOutcome());
+
+            // Convert string outcome to BetOutcome enum
+            Bet.BetOutcome outcome = convertStringToOutcome(request.getOutcome());
+
+            // Submit vote
+            betResolutionService.voteOnBetResolution(
+                betId,
+                currentUser,
+                outcome,
+                request.getReasoning()
+            );
+
+            // Get updated bet details
+            Bet bet = betService.getBetById(betId);
+
+            // Return updated bet details
+            BetResponseDto response = convertToDetailedResponse(bet, currentUser);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("ERROR voting on resolution: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
     // Helper methods for DTO conversion
     private BetResponseDto convertToDetailedResponse(Bet bet, User currentUser) {
         BetResponseDto response = new BetResponseDto();
@@ -281,18 +374,29 @@ public class BetController {
 
         // Set bet options
         List<String> options = new ArrayList<>();
+        System.out.println("DEBUG: Building options for bet " + bet.getId());
+        System.out.println("DEBUG: option1 = '" + bet.getOption1() + "'");
+        System.out.println("DEBUG: option2 = '" + bet.getOption2() + "'");
+        System.out.println("DEBUG: option3 = '" + bet.getOption3() + "'");
+        System.out.println("DEBUG: option4 = '" + bet.getOption4() + "'");
+
         if (bet.getOption1() != null && !bet.getOption1().trim().isEmpty()) {
             options.add(bet.getOption1());
+            System.out.println("DEBUG: Added option1: " + bet.getOption1());
         }
         if (bet.getOption2() != null && !bet.getOption2().trim().isEmpty()) {
             options.add(bet.getOption2());
+            System.out.println("DEBUG: Added option2: " + bet.getOption2());
         }
         if (bet.getOption3() != null && !bet.getOption3().trim().isEmpty()) {
             options.add(bet.getOption3());
+            System.out.println("DEBUG: Added option3: " + bet.getOption3());
         }
         if (bet.getOption4() != null && !bet.getOption4().trim().isEmpty()) {
             options.add(bet.getOption4());
+            System.out.println("DEBUG: Added option4: " + bet.getOption4());
         }
+        System.out.println("DEBUG: Final options list: " + options);
         response.setOptions(options.toArray(new String[0]));
 
         // Set user context
@@ -324,5 +428,37 @@ public class BetController {
         response.setHasUserParticipated(hasParticipated);
         
         return response;
+    }
+
+    /**
+     * Helper method to convert string outcomes to BetOutcome enum.
+     * Handles both simple option strings (OPTION_1, OPTION_2) and exact value predictions.
+     */
+    private Bet.BetOutcome convertStringToOutcome(String outcomeString) {
+        if (outcomeString == null || outcomeString.trim().isEmpty()) {
+            throw new IllegalArgumentException("Outcome string cannot be null or empty");
+        }
+
+        // Handle standard option outcomes
+        switch (outcomeString.toUpperCase()) {
+            case "OPTION_1":
+                return Bet.BetOutcome.OPTION_1;
+            case "OPTION_2":
+                return Bet.BetOutcome.OPTION_2;
+            case "OPTION_3":
+                return Bet.BetOutcome.OPTION_3;
+            case "OPTION_4":
+                return Bet.BetOutcome.OPTION_4;
+            case "DRAW":
+                return Bet.BetOutcome.DRAW;
+            case "CANCELLED":
+                return Bet.BetOutcome.CANCELLED;
+            default:
+                // For exact value bets, the outcome might be a JSON string with winners
+                // or a specific prediction value. For now, we'll treat these as OPTION_1
+                // The actual resolution logic will be handled by the service layer
+                System.out.println("DEBUG: Converting non-standard outcome: " + outcomeString + " -> OPTION_1");
+                return Bet.BetOutcome.OPTION_1;
+        }
     }
 }

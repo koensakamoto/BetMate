@@ -3,6 +3,10 @@ import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator,
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
+import { betService, BetResponse } from '../../services/bet/betService';
+import BetResolutionModal from '../../components/bet/BetResolutionModal';
+import { authService } from '../../services/auth/authService';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface BetDetailsData {
   id: number;
@@ -41,73 +45,49 @@ interface BetDetailsData {
 export default function BetDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const [betData, setBetData] = useState<BetDetailsData | null>(null);
+  const { user } = useAuth();
+  const [betData, setBetData] = useState<BetResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userBetAmount, setUserBetAmount] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [customValue, setCustomValue] = useState('');
+  const [showResolutionModal, setShowResolutionModal] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   useEffect(() => {
     loadBetDetails();
+    loadCurrentUser();
   }, [id]);
+
+  const loadCurrentUser = async () => {
+    try {
+      const userData = await authService.getCurrentUser();
+      if (userData?.id) {
+        setCurrentUserId(userData.id);
+      }
+    } catch (error) {
+      console.error('Error loading current user:', error);
+    }
+  };
 
   const loadBetDetails = async () => {
     try {
       setIsLoading(true);
 
-      // Mock data for demonstration
-      const mockBetData: BetDetailsData = {
-        id: parseInt(id || '1'),
-        title: "Who will win the NBA Finals 2024?",
-        description: "Place your bets on which team will take home the championship trophy this year. Must be decided by official NBA announcement.",
-        category: "Sports",
-        creator: {
-          id: 1,
-          username: "sportsking",
-          firstName: "Alex",
-          lastName: "Johnson",
-          profileImageUrl: undefined
-        },
-        createdAt: "2024-01-15T10:30:00Z",
-        joinDeadline: "2024-06-01T23:59:59Z",
-        betEndDate: "2024-06-20T23:59:59Z",
-        betAmount: 50,
-        isFixedAmount: false,
-        bettingType: 'MULTIPLE_CHOICE',
-        options: ["Lakers", "Celtics", "Warriors", "Heat"],
-        participants: [
-          {
-            id: 2,
-            username: "betmaster",
-            firstName: "Sarah",
-            lastName: "Davis",
-            profileImageUrl: undefined,
-            choice: "Lakers",
-            amount: 50
-          },
-          {
-            id: 3,
-            username: "hoopsfan",
-            firstName: "Mike",
-            lastName: "Wilson",
-            profileImageUrl: undefined,
-            choice: "Celtics",
-            amount: 50
-          }
-        ],
-        resolvedBy: 'CREATOR',
-        evidenceRequired: true,
-        evidenceDescription: "Official NBA championship announcement or verified sports news source",
-        status: 'OPEN'
-      };
+      if (!id) {
+        throw new Error('Bet ID is required');
+      }
 
-      // Simulate API delay
-      setTimeout(() => {
-        setBetData(mockBetData);
-        setIsLoading(false);
-      }, 800);
+      const betResponse = await betService.getBetById(parseInt(id));
+      setBetData(betResponse);
 
+      // Set default bet amount if it's a fixed amount bet
+      if (betResponse.minimumBet) {
+        setUserBetAmount(betResponse.minimumBet.toString());
+      }
+
+      setIsLoading(false);
     } catch (error) {
       console.error('Error loading bet details:', error);
       Alert.alert('Error', 'Failed to load bet details');
@@ -139,38 +119,168 @@ export default function BetDetails() {
     router.back();
   };
 
-  const handleJoinBet = () => {
-    // Validate bet amount
-    if (!betData?.isFixedAmount && !userBetAmount.trim()) {
-      Alert.alert('Error', 'Please enter a bet amount');
+  // Check if user can resolve the bet
+  const canUserResolve = () => {
+    if (!betData || !currentUserId) return false;
+
+    // Check if bet is in CLOSED status (ready for resolution)
+    if (betData.status !== 'CLOSED') return false;
+
+    // Check based on resolution method
+    if (betData.resolutionMethod === 'CREATOR_ONLY') {
+      // Only creator can resolve
+      return betData.creator?.id === currentUserId;
+    } else if (betData.resolutionMethod === 'ASSIGNED_RESOLVER') {
+      // Check if user is an assigned resolver (would need resolver list from backend)
+      // For now, allow creator and assume resolver check will be done on backend
+      return betData.creator?.id === currentUserId;
+    } else if (betData.resolutionMethod === 'CONSENSUS_VOTING') {
+      // Check if user has participated in the bet
+      return betData.hasUserParticipated;
+    }
+
+    return false;
+  };
+
+  const handleResolveBet = async (outcome: string, reasoning?: string) => {
+    try {
+      // Determine if this is a direct resolution or a vote
+      const resolutionType = betData?.resolutionMethod === 'CONSENSUS_VOTING' ? 'vote' : 'resolve';
+
+      if (resolutionType === 'resolve') {
+        await betService.resolveBet(parseInt(id), outcome, reasoning);
+        Alert.alert('Success', 'Bet has been resolved successfully!');
+      } else {
+        await betService.voteOnResolution(parseInt(id), outcome, reasoning);
+        Alert.alert('Success', 'Your vote has been submitted!');
+      }
+
+      // Reload bet details to show updated status
+      await loadBetDetails();
+    } catch (error) {
+      console.error('Error resolving bet:', error);
+      throw error;
+    }
+  };
+
+  const handleJoinBet = async () => {
+    if (!betData || !id) {
+      Alert.alert('Error', 'Invalid bet data');
       return;
     }
 
-    const amount = betData?.isFixedAmount ? betData.betAmount : parseFloat(userBetAmount);
+    // Validate bet amount
+    const amount = parseFloat(userBetAmount);
     if (isNaN(amount) || amount <= 0) {
       Alert.alert('Error', 'Please enter a valid bet amount');
       return;
     }
 
-    // Validate bet option selection
-    if (!isValidBetSelection()) {
-      if (betData?.bettingType === 'MULTIPLE_CHOICE') {
-        Alert.alert('Error', 'Please select a betting option');
-      } else if (betData?.bettingType === 'YES_NO') {
-        Alert.alert('Error', 'Please select Yes or No');
-      } else if (betData?.bettingType === 'VALUE_ENTRY') {
-        Alert.alert('Error', 'Please enter your prediction value');
-      }
+    // Validate minimum bet amount
+    if (amount < betData.minimumBet) {
+      Alert.alert('Error', `Minimum bet amount is $${betData.minimumBet}`);
       return;
     }
 
-    setIsJoining(true);
-    // TODO: Implement join bet functionality
-    const selection = betData?.bettingType === 'VALUE_ENTRY' ? customValue : selectedOption;
-    setTimeout(() => {
+    // Validate maximum bet amount if set
+    if (betData.maximumBet && amount > betData.maximumBet) {
+      Alert.alert('Error', `Maximum bet amount is $${betData.maximumBet}`);
+      return;
+    }
+
+    // Validate bet option selection
+    if (!selectedOption) {
+      Alert.alert('Error', 'Please select a betting option');
+      return;
+    }
+
+    try {
+      setIsJoining(true);
+
+      // Map string option to number based on bet type
+      let chosenOptionNumber = 1;
+      if (betData.betType === 'BINARY') {
+        chosenOptionNumber = selectedOption === 'Yes' ? 1 : 2;
+      } else {
+        // For other bet types, we need to map option text to number
+        const backendOptions = betData.options || [];
+        const displayedOptions = backendOptions.length > 0 ? backendOptions : ['Option 1', 'Option 2', 'Option 3'];
+        const usingFallbackOptions = backendOptions.length === 0;
+
+        console.log('Option mapping debug:');
+        console.log('Backend options:', backendOptions);
+        console.log('Displayed options:', displayedOptions);
+        console.log('Selected option:', selectedOption);
+        console.log('Using fallback options:', usingFallbackOptions);
+
+        let optionIndex;
+        if (usingFallbackOptions) {
+          // When using fallback options, map directly based on display order
+          optionIndex = displayedOptions.indexOf(selectedOption);
+        } else {
+          // When using real backend options, find in backend options
+          optionIndex = backendOptions.indexOf(selectedOption);
+        }
+
+        console.log('Option index:', optionIndex);
+
+        if (optionIndex === -1) {
+          console.error('Selected option not found in available options!');
+          Alert.alert('Error', 'Invalid option selected. Please try again.');
+          return;
+        }
+
+        chosenOptionNumber = optionIndex + 1;
+      }
+
+      const placeBetRequest = {
+        chosenOption: chosenOptionNumber,
+        amount: amount,
+        comment: undefined
+      };
+
+      console.log('=== BET PLACEMENT DEBUG ===');
+      console.log('Bet ID:', id);
+      console.log('User ID from context:', user?.id);
+      console.log('Bet data:', JSON.stringify(betData, null, 2));
+      console.log('Selected option:', selectedOption);
+      console.log('Bet amount:', amount);
+      console.log('Place bet request:', JSON.stringify(placeBetRequest, null, 2));
+      console.log('Calling betService.placeBet...');
+
+      const updatedBet = await betService.placeBet(parseInt(id), placeBetRequest);
+
+      console.log('=== BET PLACEMENT RESPONSE ===');
+      console.log('Updated bet data:', JSON.stringify(updatedBet, null, 2));
+
+      // Check if the response indicates an error
+      if (updatedBet.success === false || updatedBet.error) {
+        const errorMessage = updatedBet.message || updatedBet.error || 'Failed to place bet';
+        console.error('Bet placement failed:', errorMessage);
+        Alert.alert('Error', errorMessage);
+        return;
+      }
+
+      // Update the local bet data with the response
+      setBetData(updatedBet);
+
+      Alert.alert('Success', `Bet placed successfully!\nAmount: $${amount}\nOption: ${selectedOption}`);
+
+      // Navigate back to the group page
+      router.push(`/groups/${betData.groupId}`);
+
+    } catch (error) {
+      console.error('=== BET PLACEMENT ERROR ===');
+      console.error('Error placing bet:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', JSON.stringify(error.response.data, null, 2));
+      }
+      Alert.alert('Error', 'Failed to place bet. Please try again.');
+    } finally {
       setIsJoining(false);
-      Alert.alert('Coming Soon', `Bet joining functionality will be implemented next.\nAmount: $${amount}\nYour selection: ${selection}`);
-    }, 1000);
+    }
   };
 
   const getBetAmountForDisplay = () => {
@@ -189,11 +299,11 @@ export default function BetDetails() {
   const isValidBetSelection = () => {
     if (!betData) return false;
 
-    if (betData.bettingType === 'MULTIPLE_CHOICE' || betData.bettingType === 'YES_NO') {
+    if (betData.betType === 'MULTIPLE_CHOICE' || betData.betType === 'BINARY') {
       return selectedOption !== null;
     }
 
-    if (betData.bettingType === 'VALUE_ENTRY') {
+    if (betData.betType === 'PREDICTION') {
       return customValue.trim().length > 0;
     }
 
@@ -323,7 +433,7 @@ export default function BetDetails() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>Creator</Text>
               <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '500' }}>
-                @{betData.creator.username}
+                @{betData.creator?.username || 'Unknown'}
               </Text>
             </View>
 
@@ -376,9 +486,10 @@ export default function BetDetails() {
             Your Selection
           </Text>
 
-          {betData.bettingType === 'MULTIPLE_CHOICE' && betData.options ? (
+
+          {betData.betType === 'MULTIPLE_CHOICE' ? (
             <View style={{ gap: 8 }}>
-              {betData.options.map((option, index) => (
+              {(betData.options && betData.options.length > 0 ? betData.options : ['Option 1', 'Option 2', 'Option 3']).map((option, index) => (
                 <TouchableOpacity
                   key={index}
                   onPress={() => handleOptionSelect(option)}
@@ -415,7 +526,7 @@ export default function BetDetails() {
                 </TouchableOpacity>
               ))}
             </View>
-          ) : betData.bettingType === 'YES_NO' ? (
+          ) : betData.betType === 'BINARY' ? (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity
                 onPress={() => handleOptionSelect('Yes')}
@@ -504,32 +615,14 @@ export default function BetDetails() {
             color: '#ffffff',
             marginBottom: 16
           }}>
-            Participants ({betData.participants.length})
+            Participants ({betData.totalParticipants || 0})
           </Text>
 
-          {betData.participants.length > 0 ? (
+          {betData.totalParticipants && betData.totalParticipants > 0 ? (
             <View style={{ gap: 12 }}>
-              {betData.participants.map((participant) => (
-                <View key={participant.id} style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '500' }}>
-                    @{participant.username}
-                  </Text>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    {participant.choice && (
-                      <Text style={{ color: '#00D4AA', fontSize: 12, marginBottom: 2 }}>
-                        {participant.choice}
-                      </Text>
-                    )}
-                    <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 12 }}>
-                      ${participant.amount}
-                    </Text>
-                  </View>
-                </View>
-              ))}
+              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
+                {betData.totalParticipants} user{betData.totalParticipants > 1 ? 's' : ''} {betData.totalParticipants > 1 ? 'have' : 'has'} joined this bet
+              </Text>
             </View>
           ) : (
             <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
@@ -666,7 +759,7 @@ export default function BetDetails() {
           </View>
         </View>
 
-        {/* Action Button */}
+        {/* Action Buttons */}
         {betData.status === 'OPEN' && (
           <View style={{
             marginHorizontal: 20,
@@ -713,7 +806,51 @@ export default function BetDetails() {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Resolve Button - Show when bet is CLOSED and user can resolve */}
+        {betData.status === 'CLOSED' && canUserResolve() && (
+          <View style={{
+            marginHorizontal: 20,
+            marginTop: 20,
+            marginBottom: 40
+          }}>
+            <TouchableOpacity
+              onPress={() => setShowResolutionModal(true)}
+              style={{
+                backgroundColor: '#FF9500',
+                borderRadius: 12,
+                paddingVertical: 16,
+                alignItems: 'center',
+                shadowColor: '#FF9500',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 8,
+                flexDirection: 'row',
+                justifyContent: 'center'
+              }}
+            >
+              <MaterialIcons name="gavel" size={20} color="#000000" style={{ marginRight: 8 }} />
+              <Text style={{
+                color: '#000000',
+                fontSize: 16,
+                fontWeight: '700'
+              }}>
+                {betData.resolutionMethod === 'CONSENSUS_VOTING' ? 'Vote on Resolution' : 'Resolve Bet'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
+
+      {/* Resolution Modal */}
+      <BetResolutionModal
+        visible={showResolutionModal}
+        onClose={() => setShowResolutionModal(false)}
+        onResolve={handleResolveBet}
+        bet={betData}
+        resolutionType={betData?.resolutionMethod === 'CONSENSUS_VOTING' ? 'vote' : 'resolve'}
+      />
     </View>
   );
 }

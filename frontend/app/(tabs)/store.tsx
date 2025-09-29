@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Text, View, ScrollView, StatusBar, FlatList, Alert, Platform, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Text, View, ScrollView, StatusBar, FlatList, Alert, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import StoreHeader from '../../components/store/StoreHeader';
 import StoreCategoryTabs, { StoreCategory } from '../../components/store/StoreCategoryTabs';
@@ -7,14 +7,53 @@ import StoreItem, { StoreItemData } from '../../components/store/StoreItem';
 import EarnCreditsModal from '../../components/store/EarnCreditsModal';
 import TransactionHistoryModal, { Transaction } from '../../components/store/TransactionHistoryModal';
 import { storeItems, EarnCreditsOption } from '../../components/store/storeData';
+import { userService } from '../../services/user/userService';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function Store() {
   // Use platform-specific safe area fallbacks
   const topPadding = Platform.OS === 'ios' ? 50 : 20;
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [activeCategory, setActiveCategory] = useState<StoreCategory>('featured');
-  const [userCredits, setUserCredits] = useState(425); // Mock user credits
   const [earnCreditsModalVisible, setEarnCreditsModalVisible] = useState(false);
   const [transactionHistoryVisible, setTransactionHistoryVisible] = useState(false);
+
+  // Get user credits - use separate API call since AuthContext might not have latest credits
+  const [userCredits, setUserCredits] = useState(0);
+  const [fetchingCredits, setFetchingCredits] = useState(true);
+
+  // Debug logging to check what's in the user object
+  console.log('Store - Debug user object:', {
+    user: user,
+    userCredits: userCredits,
+    totalCredits: user?.totalCredits,
+    credits: user?.credits
+  });
+
+  // Fetch latest user credits when component mounts or user changes
+  useEffect(() => {
+    const fetchUserCredits = async () => {
+      if (!isAuthenticated) {
+        setFetchingCredits(false);
+        return;
+      }
+
+      try {
+        setFetchingCredits(true);
+        const userProfile = await userService.getCurrentUserProfile();
+        console.log('Store - Fetched user profile:', userProfile);
+        setUserCredits(userProfile.totalCredits || 0);
+      } catch (error) {
+        console.error('Store - Failed to fetch user credits:', error);
+        // Fallback to AuthContext credits if API call fails
+        setUserCredits(user?.totalCredits || 0);
+      } finally {
+        setFetchingCredits(false);
+      }
+    };
+
+    fetchUserCredits();
+  }, [isAuthenticated, user]);
 
   // Mock transaction data - in real app this would come from API
   const [transactions] = useState<Transaction[]>([
@@ -126,6 +165,36 @@ export default function Store() {
     </View>
   );
 
+  // Show loading while authentication is being checked
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center', paddingTop: topPadding }}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="#0a0a0f"
+          translucent={true}
+        />
+        <ActivityIndicator size="large" color="white" />
+      </View>
+    );
+  }
+
+  // Show login message if user is not authenticated
+  if (!isAuthenticated) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center', paddingTop: topPadding }}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="#0a0a0f"
+          translucent={true}
+        />
+        <Text style={{ color: 'white', fontSize: 18, textAlign: 'center' }}>
+          Please log in to access the store
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
       <StatusBar
@@ -133,9 +202,9 @@ export default function Store() {
         backgroundColor="#0a0a0f"
         translucent={true}
       />
-      
-      <ScrollView 
-        style={{ flex: 1 }} 
+
+      <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: topPadding + 8 }}
         showsVerticalScrollIndicator={false}
       >

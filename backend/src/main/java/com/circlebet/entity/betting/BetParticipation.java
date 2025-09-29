@@ -301,16 +301,16 @@ public class BetParticipation {
 
     /**
      * Checks if the participation is valid for the current bet state.
-     * 
+     *
      * @return true if participation is valid
      */
     public boolean isValid() {
-        return isActive && 
+        return isActive &&
                status == ParticipationStatus.ACTIVE &&
-               betAmount != null && 
+               betAmount != null &&
                betAmount.compareTo(BigDecimal.ZERO) > 0 &&
-               chosenOption != null && 
-               chosenOption >= 1 && 
+               chosenOption != null &&
+               chosenOption >= 1 &&
                chosenOption <= 4;
     }
 
@@ -340,6 +340,7 @@ public class BetParticipation {
      * Status of a user's participation in a bet.
      */
     public enum ParticipationStatus {
+        CREATOR,    // User created the bet (tracking only, no money involved)
         ACTIVE,     // Bet is placed and active
         WON,        // Participation won
         LOST,       // Participation lost

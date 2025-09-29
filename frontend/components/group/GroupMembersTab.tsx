@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, Modal, Alert, TextInput, Share, KeyboardAvoidingView, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { groupService, type GroupMemberResponse } from '../../services/group/groupService';
@@ -13,10 +15,16 @@ interface GroupMembersTabProps {
 }
 
 const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
+  const insets = useSafeAreaInsets();
   const [activeFilter, setActiveFilter] = useState('All');
   const [members, setMembers] = useState<GroupMemberResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteMethod, setInviteMethod] = useState<'link' | 'username'>('link');
+  const [usernameToInvite, setUsernameToInvite] = useState('');
+  const [isInviting, setIsInviting] = useState(false);
+  const [inviteLink, setInviteLink] = useState('');
   const memberFilters = ['All', 'Admins', 'Active', 'Recent'];
 
   // Fetch group members
@@ -118,19 +126,71 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
   const formatLastActivity = (member: GroupMemberResponse): string => {
     if (isOnline(member)) return 'Online';
     if (!member.lastActivityAt) return 'Never';
-    
+
     const lastActivity = new Date(member.lastActivityAt);
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - lastActivity.getTime());
     const diffMinutes = Math.floor(diffTime / (1000 * 60));
     const diffHours = Math.floor(diffMinutes / 60);
     const diffDays = Math.floor(diffHours / 24);
-    
+
     if (diffMinutes < 60) return `${diffMinutes} min ago`;
     if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
     if (diffDays === 1) return 'Yesterday';
     return `${diffDays} days ago`;
   };
+
+  // Helper functions for invite functionality
+  const generateInviteLink = () => {
+    const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
+    const link = `https://groupreels.app/invite/${currentGroupId}`;
+    setInviteLink(link);
+    return link;
+  };
+
+  const handleShareInviteLink = async () => {
+    try {
+      const link = generateInviteLink();
+      await Share.share({
+        message: `Join my group "${groupData.name}" on GroupReels! ${link}`,
+        url: link,
+      });
+    } catch (error) {
+      Alert.alert('Error', 'Failed to share invite link');
+    }
+  };
+
+  const handleCopyInviteLink = async () => {
+    try {
+      const link = generateInviteLink();
+      await Clipboard.setStringAsync(link);
+      Alert.alert('Copied!', 'Invite link copied to clipboard');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to copy invite link');
+    }
+  };
+
+  const handleInviteByUsername = async () => {
+    if (!usernameToInvite.trim()) {
+      Alert.alert('Error', 'Please enter a username');
+      return;
+    }
+
+    setIsInviting(true);
+    try {
+      // TODO: Implement actual API call for username invite
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      Alert.alert('Success', `Invite sent to ${usernameToInvite}`);
+      setUsernameToInvite('');
+      setShowInviteModal(false);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to send invite');
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const filteredMembers = getFilteredMembers();
 
   return (
     <View>
@@ -150,14 +210,19 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
           Members ({groupData.memberCount})
         </Text>
         
-        <TouchableOpacity style={{
-          backgroundColor: 'rgba(0, 212, 170, 0.15)',
-          width: 36,
-          height: 36,
-          borderRadius: 8,
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
+        <TouchableOpacity
+          onPress={() => {
+            console.log('🎯 Invite button pressed, opening modal');
+            setShowInviteModal(true);
+          }}
+          style={{
+            backgroundColor: 'rgba(0, 212, 170, 0.15)',
+            width: 36,
+            height: 36,
+            borderRadius: 8,
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
           <MaterialIcons name="person-add" size={18} color="#00D4AA" />
         </TouchableOpacity>
       </View>
@@ -442,6 +507,251 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
           )}
         </>
       )}
+
+      {/* Simple Invite Modal */}
+      {console.log('🔍 Modal state:', { showInviteModal })}
+      <Modal
+        visible={showInviteModal}
+        transparent={true}
+        animationType="none"
+        onRequestClose={() => setShowInviteModal(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 20
+          }}
+          activeOpacity={1}
+          onPress={() => setShowInviteModal(false)}
+        >
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
+            onPress={(e) => {
+              e.stopPropagation();
+            }}
+          >
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingVertical: 20
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: '#1a1a1f',
+                borderRadius: 16,
+                padding: 16,
+                width: '100%',
+                maxWidth: 360,
+                marginTop: -40,
+                maxHeight: `${100 - ((insets.top + insets.bottom + 40) / 8)}%`,
+                overflow: 'hidden'
+              }}
+            >
+            {/* Header */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 12
+            }}>
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '700',
+                color: '#ffffff'
+              }}>
+                Invite Members
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowInviteModal(false)}
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}
+              >
+                <MaterialIcons name="close" size={16} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Method Selection Tabs */}
+            <View style={{
+              flexDirection: 'row',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: 8,
+              padding: 4,
+              marginBottom: 12
+            }}>
+              <TouchableOpacity
+                onPress={() => {
+                  console.log('🎯 Share Link tab pressed');
+                  setInviteMethod('link');
+                }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 6,
+                  backgroundColor: inviteMethod === 'link' ? '#00D4AA' : 'transparent'
+                }}
+              >
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: inviteMethod === 'link' ? '#000000' : 'rgba(255, 255, 255, 0.7)',
+                  textAlign: 'center'
+                }}>
+                  Share Link
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  console.log('🎯 By Username tab pressed');
+                  setInviteMethod('username');
+                }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 6,
+                  backgroundColor: inviteMethod === 'username' ? '#00D4AA' : 'transparent'
+                }}
+              >
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: inviteMethod === 'username' ? '#000000' : 'rgba(255, 255, 255, 0.7)',
+                  textAlign: 'center'
+                }}>
+                  By Username
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Content based on selected method */}
+            {console.log('🔍 Current inviteMethod:', inviteMethod)}
+            {inviteMethod === 'link' ? (
+              <View>
+                <Text style={{
+                  fontSize: 14,
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  marginBottom: 12,
+                  textAlign: 'center'
+                }}>
+                  Share an invite link for anyone to join the group
+                </Text>
+
+                <View style={{ gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={handleShareInviteLink}
+                    style={{
+                      backgroundColor: '#00D4AA',
+                      borderRadius: 10,
+                      padding: 12,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <MaterialIcons name="share" size={18} color="#000000" style={{ marginRight: 6 }} />
+                    <Text style={{
+                      fontSize: 14,
+                      fontWeight: '600',
+                      color: '#000000'
+                    }}>
+                      Share Invite Link
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleCopyInviteLink}
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      borderRadius: 12,
+                      paddingVertical: 12,
+                      paddingHorizontal: 16,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <MaterialIcons name="content-copy" size={20} color="#ffffff" style={{ marginRight: 8 }} />
+                    <Text style={{
+                      fontSize: 16,
+                      fontWeight: '600',
+                      color: '#ffffff'
+                    }}>
+                      Copy Link
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View>
+                {console.log('🎯 Rendering username input section')}
+                <TextInput
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                    borderRadius: 12,
+                    padding: 12,
+                    color: '#ffffff',
+                    fontSize: 16,
+                    marginBottom: 16,
+                    borderWidth: 1,
+                    borderColor: '#00D4AA'
+                  }}
+                  placeholder="Enter a username to send a direct invite"
+                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                  value={usernameToInvite}
+                  onChangeText={setUsernameToInvite}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                <TouchableOpacity
+                  onPress={handleInviteByUsername}
+                  disabled={isInviting || !usernameToInvite.trim()}
+                  style={{
+                    backgroundColor: (!usernameToInvite.trim() || isInviting) ? 'rgba(255, 255, 255, 0.1)' : '#00D4AA',
+                    borderRadius: 12,
+                    paddingVertical: 12,
+                    paddingHorizontal: 16,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <MaterialIcons
+                    name="person-add"
+                    size={20}
+                    color={(!usernameToInvite.trim() || isInviting) ? 'rgba(255, 255, 255, 0.5)' : '#000000'}
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={{
+                    fontSize: 16,
+                    fontWeight: '600',
+                    color: (!usernameToInvite.trim() || isInviting) ? 'rgba(255, 255, 255, 0.5)' : '#000000'
+                  }}>
+                    {isInviting ? 'Sending...' : 'Send Invite'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            </View>
+          </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
     </View>
   );
 };

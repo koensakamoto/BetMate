@@ -24,6 +24,18 @@ export interface BetResponse {
   status: string;
   outcome?: string;
   resolutionMethod: string;
+  creator: {
+    id: number;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    bio?: string;
+    displayName: string;
+    emailVerified: boolean;
+    isActive: boolean;
+    createdAt: string;
+  };
   groupId: number;
   groupName: string;
   bettingDeadline: string;
@@ -58,6 +70,22 @@ export interface BetSummaryResponse {
   hasUserParticipated: boolean;
 }
 
+export interface PlaceBetRequest {
+  chosenOption: number;
+  amount: number;
+  comment?: string;
+}
+
+export interface ResolveBetRequest {
+  outcome: string;
+  reasoning?: string;
+}
+
+export interface VoteOnResolutionRequest {
+  outcome: string;
+  reasoning: string;
+}
+
 class BetService extends BaseApiService {
   constructor() {
     super(API_ENDPOINTS.BETS);
@@ -86,6 +114,23 @@ class BetService extends BaseApiService {
   // Get bets by status
   async getBetsByStatus(status: string): Promise<BetSummaryResponse[]> {
     return this.get<BetSummaryResponse[]>(`/status/${status}`);
+  }
+
+  // Place a bet on an existing bet
+  async placeBet(betId: number, request: PlaceBetRequest): Promise<BetResponse> {
+    return this.post<BetResponse, PlaceBetRequest>(`/${betId}/participate`, request);
+  }
+
+  // Resolve a bet (for creators or assigned resolvers)
+  async resolveBet(betId: number, outcome: string, reasoning?: string): Promise<BetResponse> {
+    const request: ResolveBetRequest = { outcome, reasoning };
+    return this.post<BetResponse, ResolveBetRequest>(`/${betId}/resolve`, request);
+  }
+
+  // Vote on bet resolution (for consensus voting)
+  async voteOnResolution(betId: number, outcome: string, reasoning: string): Promise<BetResponse> {
+    const request: VoteOnResolutionRequest = { outcome, reasoning };
+    return this.post<BetResponse, VoteOnResolutionRequest>(`/${betId}/vote`, request);
   }
 }
 

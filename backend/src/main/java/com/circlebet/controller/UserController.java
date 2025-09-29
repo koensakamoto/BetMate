@@ -135,7 +135,7 @@ public class UserController {
             if (userPrincipal == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
-            
+
             User user = userPrincipal.getUser();
             return ResponseEntity.ok(UserProfileResponseDto.fromUser(user));
         } catch (Exception e) {

@@ -11,8 +11,10 @@ const icon = require("../../../assets/images/icon.png");
 export default function GroupDetails() {
   console.log(`🚀 [GroupDetails] === COMPONENT START ===`);
 
-  const { groupId } = useLocalSearchParams();
+  const searchParams = useLocalSearchParams();
+  const { groupId } = searchParams;
   console.log(`🚀 [GroupDetails] 1. Got groupId from params:`, { groupId, type: typeof groupId });
+  console.log(`🚀 [GroupDetails] All search params:`, { searchParams, tabParam: searchParams.tab });
 
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   console.log(`🚀 [GroupDetails] 2. Got auth state:`, { isAuthenticated, authLoading, hasUser: !!user });

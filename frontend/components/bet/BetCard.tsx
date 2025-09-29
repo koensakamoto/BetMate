@@ -170,32 +170,10 @@ export default function BetCard({
           </View>
         </View>
 
-        {/* Action Button */}
-        {!isJoined && status === 'open' ? (
-          <TouchableOpacity
-            style={{
-              backgroundColor: '#00D4AA',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 16
-            }}
-            onPress={(e) => {
-              e.stopPropagation();
-              // Handle join bet
-              console.log('Join bet:', id);
-            }}
-          >
-            <Text style={{
-              fontSize: 12,
-              fontWeight: '600',
-              color: '#000000'
-            }}>
-              Join
-            </Text>
-          </TouchableOpacity>
-        ) : (
+        {/* Status Indicator */}
+        {isJoined && (
           <View style={{
-            backgroundColor: isJoined ? 'rgba(0, 212, 170, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+            backgroundColor: 'rgba(0, 212, 170, 0.15)',
             paddingHorizontal: 12,
             paddingVertical: 6,
             borderRadius: 16
@@ -203,9 +181,9 @@ export default function BetCard({
             <Text style={{
               fontSize: 12,
               fontWeight: '600',
-              color: isJoined ? '#00D4AA' : 'rgba(255, 255, 255, 0.6)'
+              color: '#00D4AA'
             }}>
-              {isJoined ? 'Joined' : 'View'}
+              Joined
             </Text>
           </View>
         )}

@@ -1,6 +1,7 @@
 package com.circlebet.dto.user.response;
 
 import com.circlebet.entity.user.User;
+import java.math.BigDecimal;
 
 /**
  * Response DTO for user profile data.
@@ -17,7 +18,10 @@ public class UserProfileResponseDto {
     private boolean emailVerified;
     private boolean isActive;
     private String createdAt;
-
+    private BigDecimal totalCredits;
+    private Integer totalWins;
+    private Integer totalLosses;
+    private Double winRate;
     public static UserProfileResponseDto fromUser(User user) {
         UserProfileResponseDto response = new UserProfileResponseDto();
         response.id = user.getId();
@@ -28,8 +32,12 @@ public class UserProfileResponseDto {
         response.bio = user.getBio();
         response.displayName = user.getFullName(); // Use getFullName() to avoid lazy loading settings
         response.emailVerified = user.getEmailVerified();
-        response.isActive = user.getIsActive();
+        response.isActive = user.isActiveUser();
         response.createdAt = user.getCreatedAt().toString();
+        response.totalCredits = user.getCreditBalance();
+        response.totalWins = user.getWinCount();
+        response.totalLosses = user.getLossCount();
+        response.winRate = user.getWinRate();
         return response;
     }
 
@@ -44,4 +52,8 @@ public class UserProfileResponseDto {
     public boolean isEmailVerified() { return emailVerified; }
     public boolean isActive() { return isActive; }
     public String getCreatedAt() { return createdAt; }
+    public BigDecimal getTotalCredits() { return totalCredits; }
+    public Integer getTotalWins() { return totalWins; }
+    public Integer getTotalLosses() { return totalLosses; }
+    public Double getWinRate() { return winRate; }
 }

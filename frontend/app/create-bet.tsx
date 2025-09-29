@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, StatusBar, TextInput, Alert, Image, Modal, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { betService, CreateBetRequest } from '../services/bet/betService';
@@ -10,6 +10,7 @@ const icon = require("../assets/images/icon.png");
 
 export default function CreateBet() {
   const insets = useSafeAreaInsets();
+  const { groupId } = useLocalSearchParams();
   const [betTitle, setBetTitle] = useState('');
   const [betDescription, setBetDescription] = useState('');
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
@@ -96,8 +97,11 @@ export default function CreateBet() {
           text: 'Create', 
           onPress: async () => {
             try {
+              const betGroupId = groupId ? parseInt(groupId as string) : 1;
+              console.log(`[CreateBet] Creating bet for groupId: ${betGroupId}`);
+
               const createBetRequest: CreateBetRequest = {
-                groupId: 1, // TODO: Get actual group ID from context/route params
+                groupId: betGroupId,
                 title: betTitle,
                 description: betDescription || undefined,
                 betType: betType === 'multiple_choice' ? 'MULTIPLE_CHOICE' :
@@ -118,8 +122,10 @@ export default function CreateBet() {
               const response = await betService.createBet(createBetRequest);
               Alert.alert('Success!', 'Your bet has been created successfully.', [
                 { text: 'OK', onPress: () => {
-                  // Navigate to betting tab and trigger refresh with timestamp parameter
-                  router.replace(`/(tabs)/bet?refresh=${Date.now()}`);
+                  // Navigate back to the group page with Bets tab active (tab=1)
+                  // Use dismissAll to clear stack and navigate fresh with proper path
+                  router.dismissAll();
+                  router.navigate(`/(tabs)/group/${betGroupId}?tab=1&refresh=${Date.now()}`);
                 }}
               ]);
             } catch (error) {

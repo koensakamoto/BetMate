@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { router, useLocalSearchParams } from 'expo-router';
+import BetCard from '../bet/BetCard';
 import { betService, BetSummaryResponse } from '../../services/bet/betService';
+
+const icon = require("../../assets/images/icon.png");
 
 interface GroupBetsTabProps {
   groupData: {
@@ -13,17 +18,21 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData }) => {
   const betFilters = ['All', 'OPEN', 'CLOSED', 'RESOLVED'];
   const [bets, setBets] = useState<BetSummaryResponse[]>([]);
   const [loading, setLoading] = useState(false);
+  const searchParams = useLocalSearchParams();
 
-  // Load bets data
+  // Load bets data - reload when group changes or refresh parameter changes
   useEffect(() => {
+    console.log(`🔄 [GroupBetsTab] Loading bets for group ${groupData.id}, refresh: ${searchParams.refresh}`);
     loadGroupBets();
-  }, [groupData.id]);
+  }, [groupData.id, searchParams.refresh]);
 
   const loadGroupBets = async () => {
     setLoading(true);
     try {
       const groupId = Array.isArray(groupData.id) ? parseInt(groupData.id[0]) : parseInt(groupData.id as string);
+      console.log(`📡 [GroupBetsTab] Fetching bets for group ${groupId}`);
       const groupBets = await betService.getGroupBets(groupId);
+      console.log(`✅ [GroupBetsTab] Loaded ${groupBets.length} bets for group ${groupId}`);
       setBets(groupBets);
     } catch (error) {
       console.error('Failed to load group bets:', error);
@@ -38,7 +47,28 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData }) => {
     return bets.filter(bet => bet.status === activeBetFilter);
   };
 
+  const handleCreateBet = () => {
+    const groupIdParam = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
+    router.push(`/create-bet?groupId=${groupIdParam}`);
+  };
+
   // Calculate time remaining until deadline
+  // Transform backend bet data to frontend format (same as in bet.tsx)
+  const transformBetData = (bet: BetSummaryResponse) => ({
+    id: bet.id.toString(),
+    title: bet.title,
+    description: '',  // Description not in summary, would need full bet details
+    category: bet.betType,
+    categoryIcon: '🎯',  // Default icon
+    timeRemaining: calculateTimeRemaining(bet.bettingDeadline),
+    participantCount: bet.totalParticipants,
+    participantAvatars: [icon, icon, icon],  // Placeholder avatars
+    stakeAmount: Math.round(bet.totalPool / Math.max(bet.totalParticipants, 1)),
+    status: bet.status.toLowerCase() as 'open' | 'active' | 'closed',
+    isJoined: bet.hasUserParticipated,
+    creatorName: bet.creatorUsername
+  });
+
   const calculateTimeRemaining = (deadline: string): string => {
     const now = new Date();
     const deadlineDate = new Date(deadline);
@@ -57,18 +87,47 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData }) => {
 
   return (
     <View>
+      {/* Create Bet Button */}
+      <TouchableOpacity
+        onPress={handleCreateBet}
+        style={{
+          backgroundColor: '#00D4AA',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: 14,
+          paddingHorizontal: 20,
+          borderRadius: 12,
+          marginBottom: 20,
+          shadowColor: '#00D4AA',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          elevation: 5
+        }}
+      >
+        <MaterialIcons name="add-circle" size={20} color="#000000" style={{ marginRight: 8 }} />
+        <Text style={{
+          fontSize: 16,
+          fontWeight: '600',
+          color: '#000000'
+        }}>
+          Create New Bet
+        </Text>
+      </TouchableOpacity>
+
       {/* Bet Filters */}
       <View style={{
         marginBottom: 20
       }}>
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: 0
           }}
         >
-          <View style={{ 
+          <View style={{
             flexDirection: 'row',
             gap: 8
           }}>
@@ -120,99 +179,10 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData }) => {
           </Text>
         </View>
       ) : getFilteredBets().map((bet) => (
-        <View key={bet.id} style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.02)',
-          borderWidth: 0.5,
-          borderColor: 'rgba(255, 255, 255, 0.08)',
-          borderRadius: 12,
-          padding: 16,
-          marginBottom: 12
-        }}>
-          {/* Bet Header */}
-          <View style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            marginBottom: 12
-          }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: '#ffffff',
-                marginBottom: 4
-              }}>
-{bet.title}
-              </Text>
-              <Text style={{
-                fontSize: 13,
-                color: 'rgba(255, 255, 255, 0.6)',
-                lineHeight: 16
-              }}>
-Pool: ${bet.totalPool.toFixed(2)}
-              </Text>
-            </View>
-            
-            {/* Status Badge */}
-            <View style={{
-              backgroundColor: 
-                bet.status === 'OPEN' ? 'rgba(255, 255, 255, 0.08)' :
-                bet.status === 'CLOSED' ? 'rgba(0, 212, 170, 0.2)' :
-                bet.status === 'RESOLVED' ? 'rgba(34, 197, 94, 0.2)' :
-                'rgba(156, 163, 175, 0.2)',
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-              borderRadius: 8,
-              marginLeft: 12
-            }}>
-              <Text style={{
-                fontSize: 11,
-                fontWeight: '600',
-                color: 
-                  bet.status === 'OPEN' ? 'rgba(255, 255, 255, 0.7)' :
-                  bet.status === 'CLOSED' ? '#00D4AA' :
-                  bet.status === 'RESOLVED' ? '#22C55E' :
-                  '#9CA3AF'
-              }}>
-                {bet.status}
-              </Text>
-            </View>
-          </View>
-
-          {/* Bet Stats */}
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginTop: 12
-          }}>
-            <Text style={{
-              fontSize: 13,
-              color: 'rgba(255, 255, 255, 0.6)'
-            }}>
-{bet.totalParticipants} players • {calculateTimeRemaining(bet.bettingDeadline)}
-            </Text>
-            
-            <TouchableOpacity style={{
-              backgroundColor: 
-                bet.status === 'OPEN' && !bet.hasUserParticipated ? 'rgba(0, 212, 170, 0.15)' :
-                'rgba(255, 255, 255, 0.08)',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 8
-            }}>
-              <Text style={{
-                fontSize: 12,
-                fontWeight: '600',
-                color: bet.status === 'OPEN' && !bet.hasUserParticipated ? '#00D4AA' : '#ffffff'
-              }}>
-                {bet.status === 'OPEN' && !bet.hasUserParticipated ? 'Join' :
-                 bet.status === 'OPEN' && bet.hasUserParticipated ? 'Joined' :
-                 'View'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <BetCard
+          key={bet.id}
+          {...transformBetData(bet)}
+        />
       ))}
     </View>
   );

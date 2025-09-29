@@ -150,6 +150,16 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles bet participation exceptions.
+     */
+    @ExceptionHandler(com.circlebet.exception.betting.BetParticipationException.class)
+    public ApiResponse<Void> handleBetParticipationException(
+            com.circlebet.exception.betting.BetParticipationException ex, HttpServletRequest request) {
+        log.warn("Bet participation error for request {}: {}", request.getRequestURI(), ex.getMessage());
+        return createErrorResponse(HttpStatus.BAD_REQUEST, "Bet Participation Error", ex.getMessage(), request.getRequestURI());
+    }
+
+    /**
      * Handles all other unexpected exceptions.
      */
     @ExceptionHandler(Exception.class)

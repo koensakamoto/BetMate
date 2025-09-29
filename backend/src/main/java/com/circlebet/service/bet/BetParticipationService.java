@@ -68,16 +68,31 @@ public class BetParticipationService {
         // Validate bet can accept participations
         validateBetForParticipation(bet, user, betAmount);
 
-        // Check if user already participated
-        if (participationRepository.existsByUserAndBet(user, bet)) {
+        // Check if user already has an ACTIVE participation (creators can upgrade to ACTIVE)
+        Optional<BetParticipation> existingParticipation = participationRepository.findByUserAndBet(user, bet);
+        if (existingParticipation.isPresent() && existingParticipation.get().getStatus() == ParticipationStatus.ACTIVE) {
             throw new BetParticipationException("User has already placed a bet on this");
         }
 
         // Deduct credits from user
         creditService.deductCredits(user.getId(), betAmount, "Bet placed on: " + bet.getTitle());
 
-        // Create participation (for prediction bets, chosenOption is always 1)
-        BetParticipation participation = createParticipation(user, bet, 1, betAmount);
+        // Create or update participation (for prediction bets, chosenOption is always 1)
+        BetParticipation participation;
+        if (existingParticipation.isPresent() && existingParticipation.get().getStatus() == ParticipationStatus.CREATOR) {
+            // Upgrade existing creator participation to active
+            participation = existingParticipation.get();
+            participation.setChosenOption(1);
+            participation.setBetAmount(betAmount);
+            participation.setStatus(ParticipationStatus.ACTIVE);
+
+            // Calculate potential winnings based on current odds
+            double odds = getOddsForOption(bet, 1);
+            participation.calculatePotentialWinnings(odds);
+        } else {
+            // Create new participation
+            participation = createParticipation(user, bet, 1, betAmount);
+        }
         BetParticipation savedParticipation = participationRepository.save(participation);
 
         // Create prediction
@@ -102,12 +117,13 @@ public class BetParticipationService {
                                    @Min(1) @Max(4) Integer chosenOption,
                                    @NotNull @DecimalMin("0.01") BigDecimal betAmount) {
         Bet bet = betService.getBetById(betId);
-        
+
         // Validate bet can accept participations
         validateBetForParticipation(bet, user, betAmount);
-        
-        // Check if user already participated
-        if (participationRepository.existsByUserAndBet(user, bet)) {
+
+        // Check if user already has an ACTIVE participation (creators can upgrade to ACTIVE)
+        Optional<BetParticipation> existingParticipation = participationRepository.findByUserAndBet(user, bet);
+        if (existingParticipation.isPresent() && existingParticipation.get().getStatus() == ParticipationStatus.ACTIVE) {
             throw new BetParticipationException("User has already placed a bet on this");
         }
         
@@ -116,9 +132,23 @@ public class BetParticipationService {
         
         // Deduct credits from user
         creditService.deductCredits(user.getId(), betAmount, "Bet placed on: " + bet.getTitle());
-        
-        // Create participation
-        BetParticipation participation = createParticipation(user, bet, chosenOption, betAmount);
+
+        // Create or update participation
+        BetParticipation participation;
+        if (existingParticipation.isPresent() && existingParticipation.get().getStatus() == ParticipationStatus.CREATOR) {
+            // Upgrade existing creator participation to active
+            participation = existingParticipation.get();
+            participation.setChosenOption(chosenOption);
+            participation.setBetAmount(betAmount);
+            participation.setStatus(ParticipationStatus.ACTIVE);
+
+            // Calculate potential winnings based on current odds
+            double odds = getOddsForOption(bet, chosenOption);
+            participation.calculatePotentialWinnings(odds);
+        } else {
+            // Create new participation
+            participation = createParticipation(user, bet, chosenOption, betAmount);
+        }
         BetParticipation savedParticipation = participationRepository.save(participation);
         
         // Update bet statistics
@@ -217,7 +247,7 @@ public class BetParticipationService {
         participation.setBet(bet);
         participation.setChosenOption(1);
         participation.setBetAmount(BigDecimal.ZERO);
-        participation.setStatus(BetParticipation.ParticipationStatus.ACTIVE);
+        participation.setStatus(BetParticipation.ParticipationStatus.CREATOR);
         participation.setPotentialWinnings(BigDecimal.ZERO);
 
         return participationRepository.save(participation);

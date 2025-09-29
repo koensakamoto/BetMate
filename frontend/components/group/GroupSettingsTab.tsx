@@ -487,15 +487,6 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
         />
       </SettingSection>
 
-      {/* Notifications */}
-      <SettingSection title="Notifications">
-        <SettingItem
-          materialIcon="notifications"
-          title="Group Notifications"
-          description="Manage notification preferences"
-          onPress={() => {}}
-        />
-      </SettingSection>
 
       {/* Danger Zone */}
       <TouchableOpacity 

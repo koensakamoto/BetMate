@@ -3,20 +3,21 @@ package com.circlebet.dto.betting.request;
 import jakarta.validation.constraints.*;
 
 /**
- * Request DTO for resolving a bet.
+ * Request DTO for voting on bet resolution (consensus voting).
  */
-public class ResolveBetRequestDto {
+public class VoteOnResolutionRequestDto {
 
-    @NotBlank(message = "Bet outcome is required")
+    @NotBlank(message = "Vote outcome is required")
     private String outcome;
 
-    @Size(max = 1000, message = "Resolution comment cannot exceed 1000 characters")
+    @NotBlank(message = "Reasoning is required for voting")
+    @Size(max = 1000, message = "Reasoning cannot exceed 1000 characters")
     private String reasoning;
 
     // Constructors
-    public ResolveBetRequestDto() {}
+    public VoteOnResolutionRequestDto() {}
 
-    public ResolveBetRequestDto(String outcome, String reasoning) {
+    public VoteOnResolutionRequestDto(String outcome, String reasoning) {
         this.outcome = outcome;
         this.reasoning = reasoning;
     }
