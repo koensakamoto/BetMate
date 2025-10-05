@@ -50,6 +50,8 @@ export interface BetResponse {
   createdAt: string;
   updatedAt: string;
   hasUserParticipated: boolean;
+  userChoice?: string;
+  userAmount?: number;
   canUserResolve: boolean;
 }
 

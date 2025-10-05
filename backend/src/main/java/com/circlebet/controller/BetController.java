@@ -402,6 +402,24 @@ public class BetController {
         // Set user context
         boolean hasParticipated = betParticipationService.hasUserParticipated(currentUser, bet.getId());
         response.setHasUserParticipated(hasParticipated);
+
+        // If user has participated, get their choice and amount
+        if (hasParticipated) {
+            betParticipationService.getUserParticipation(currentUser, bet.getId())
+                .ifPresent(participation -> {
+                    // Convert integer option (1,2,3,4) to BetOutcome enum
+                    Bet.BetOutcome userChoice = switch (participation.getChosenOption()) {
+                        case 1 -> Bet.BetOutcome.OPTION_1;
+                        case 2 -> Bet.BetOutcome.OPTION_2;
+                        case 3 -> Bet.BetOutcome.OPTION_3;
+                        case 4 -> Bet.BetOutcome.OPTION_4;
+                        default -> null;
+                    };
+                    response.setUserChoice(userChoice);
+                    response.setUserAmount(participation.getBetAmount());
+                });
+        }
+
         response.setCanUserResolve(bet.getCreator().getId().equals(currentUser.getId()));
 
         return response;
@@ -426,7 +444,23 @@ public class BetController {
         // Set user context - check if current user has participated in this bet
         boolean hasParticipated = betParticipationService.hasUserParticipated(currentUser, bet.getId());
         response.setHasUserParticipated(hasParticipated);
-        
+
+        // If user has participated, get their choice
+        if (hasParticipated) {
+            betParticipationService.getUserParticipation(currentUser, bet.getId())
+                .ifPresent(participation -> {
+                    // Convert integer option (1,2,3,4) to BetOutcome enum
+                    Bet.BetOutcome userChoice = switch (participation.getChosenOption()) {
+                        case 1 -> Bet.BetOutcome.OPTION_1;
+                        case 2 -> Bet.BetOutcome.OPTION_2;
+                        case 3 -> Bet.BetOutcome.OPTION_3;
+                        case 4 -> Bet.BetOutcome.OPTION_4;
+                        default -> null;
+                    };
+                    response.setUserChoice(userChoice);
+                });
+        }
+
         return response;
     }
 

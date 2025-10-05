@@ -82,9 +82,44 @@ export default function BetDetails() {
       const betResponse = await betService.getBetById(parseInt(id));
       setBetData(betResponse);
 
-      // Set default bet amount if it's a fixed amount bet
-      if (betResponse.minimumBet) {
-        setUserBetAmount(betResponse.minimumBet.toString());
+      // If user has already participated, pre-populate their selection and amount
+      if (betResponse.hasUserParticipated) {
+        // Pre-populate bet amount
+        if (betResponse.userAmount) {
+          setUserBetAmount(betResponse.userAmount.toString());
+        }
+
+        // Pre-populate selected option
+        if (betResponse.userChoice) {
+          // Map backend choice to display option
+          if (betResponse.betType === 'BINARY') {
+            // For binary bets, map OPTION_1 to 'Yes', OPTION_2 to 'No'
+            const displayChoice = betResponse.userChoice === 'OPTION_1' ? 'Yes' : 'No';
+            setSelectedOption(displayChoice);
+          } else if (betResponse.betType === 'MULTIPLE_CHOICE') {
+            // For multiple choice, map option number to option text
+            const optionMap = {
+              'OPTION_1': 0,
+              'OPTION_2': 1,
+              'OPTION_3': 2,
+              'OPTION_4': 3
+            };
+            const optionIndex = optionMap[betResponse.userChoice as keyof typeof optionMap];
+            const options = betResponse.options && betResponse.options.length > 0
+              ? betResponse.options
+              : ['Option 1', 'Option 2', 'Option 3'];
+            if (optionIndex !== undefined && options[optionIndex]) {
+              setSelectedOption(options[optionIndex]);
+            }
+          } else if (betResponse.betType === 'PREDICTION') {
+            setCustomValue(betResponse.userChoice);
+          }
+        }
+      } else {
+        // Set default bet amount if it's a fixed amount bet and user hasn't joined
+        if (betResponse.minimumBet) {
+          setUserBetAmount(betResponse.minimumBet.toString());
+        }
       }
 
       setIsLoading(false);
@@ -760,7 +795,7 @@ export default function BetDetails() {
         </View>
 
         {/* Action Buttons */}
-        {betData.status === 'OPEN' && (
+        {betData.status === 'OPEN' && !betData.hasUserParticipated && (
           <View style={{
             marginHorizontal: 20,
             marginTop: 20,
@@ -804,6 +839,35 @@ export default function BetDetails() {
                 </Text>
               )}
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Already Joined Message */}
+        {betData.status === 'OPEN' && betData.hasUserParticipated && (
+          <View style={{
+            marginHorizontal: 20,
+            marginTop: 20,
+            marginBottom: 40
+          }}>
+            <View style={{
+              backgroundColor: 'rgba(0, 212, 170, 0.15)',
+              borderRadius: 12,
+              paddingVertical: 16,
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(0, 212, 170, 0.3)',
+              flexDirection: 'row',
+              justifyContent: 'center'
+            }}>
+              <MaterialIcons name="check-circle" size={20} color="#00D4AA" style={{ marginRight: 8 }} />
+              <Text style={{
+                color: '#00D4AA',
+                fontSize: 16,
+                fontWeight: '700'
+              }}>
+                Already Joined
+              </Text>
+            </View>
           </View>
         )}
 
