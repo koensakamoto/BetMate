@@ -7,6 +7,7 @@ import com.circlebet.dto.betting.request.ResolveBetRequestDto;
 import com.circlebet.dto.betting.request.VoteOnResolutionRequestDto;
 import com.circlebet.dto.betting.response.BetResponseDto;
 import com.circlebet.dto.betting.response.BetSummaryResponseDto;
+import com.circlebet.dto.betting.response.BetParticipationResponseDto;
 import com.circlebet.dto.user.response.UserProfileResponseDto;
 import com.circlebet.dto.common.PagedResponseDto;
 import com.circlebet.entity.betting.Bet;
@@ -270,6 +271,9 @@ public class BetController {
 
     /**
      * Resolve a bet (for creators or assigned resolvers).
+     * Supports two resolution modes:
+     * 1. Option-based: Pass 'outcome' field for BINARY/MULTIPLE_CHOICE bets
+     * 2. Winner-based: Pass 'winnerUserIds' field for PREDICTION bets
      */
     @PostMapping("/{betId}/resolve")
     public ResponseEntity<BetResponseDto> resolveBet(
@@ -281,19 +285,36 @@ public class BetController {
             User currentUser = userService.getUserByUsername(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-            System.out.println("DEBUG: Resolving bet - User: " + currentUser.getUsername() +
-                             ", BetId: " + betId + ", Outcome: " + request.getOutcome());
+            Bet resolvedBet;
 
-            // Convert string outcome to BetOutcome enum
-            Bet.BetOutcome outcome = convertStringToOutcome(request.getOutcome());
+            // Check which resolution mode to use
+            if (request.getWinnerUserIds() != null && !request.getWinnerUserIds().isEmpty()) {
+                // Winner-based resolution (for PREDICTION bets)
+                System.out.println("DEBUG: Resolving bet by winners - User: " + currentUser.getUsername() +
+                                 ", BetId: " + betId + ", Winners: " + request.getWinnerUserIds());
 
-            // Resolve the bet
-            Bet resolvedBet = betResolutionService.resolveBet(
-                betId,
-                currentUser,
-                outcome,
-                request.getReasoning()
-            );
+                resolvedBet = betResolutionService.resolveBetByWinners(
+                    betId,
+                    currentUser,
+                    request.getWinnerUserIds(),
+                    request.getReasoning()
+                );
+            } else if (request.getOutcome() != null && !request.getOutcome().trim().isEmpty()) {
+                // Option-based resolution (for BINARY/MULTIPLE_CHOICE bets)
+                System.out.println("DEBUG: Resolving bet by outcome - User: " + currentUser.getUsername() +
+                                 ", BetId: " + betId + ", Outcome: " + request.getOutcome());
+
+                Bet.BetOutcome outcome = convertStringToOutcome(request.getOutcome());
+
+                resolvedBet = betResolutionService.resolveBet(
+                    betId,
+                    currentUser,
+                    outcome,
+                    request.getReasoning()
+                );
+            } else {
+                throw new RuntimeException("Either outcome or winnerUserIds must be provided");
+            }
 
             // Return updated bet details
             BetResponseDto response = convertToDetailedResponse(resolvedBet, currentUser);
@@ -342,6 +363,46 @@ public class BetController {
 
         } catch (Exception e) {
             System.err.println("ERROR voting on resolution: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    /**
+     * Get all participations for a bet (for resolvers to see who participated).
+     */
+    @GetMapping("/{betId}/participations")
+    public ResponseEntity<List<BetParticipationResponseDto>> getBetParticipations(
+            @PathVariable Long betId,
+            Authentication authentication) {
+
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+            Bet bet = betService.getBetById(betId);
+
+            // Check if user is authorized to view participations
+            // For now, allow bet creator, group members, and participants
+            if (!groupMembershipService.isMember(currentUser, bet.getGroup())) {
+                throw new RuntimeException("Access denied - not a member of this group");
+            }
+
+            // Get all participations for this bet
+            List<BetParticipation> participations = betParticipationService.getBetParticipations(betId);
+
+            // Convert to DTOs
+            List<BetParticipationResponseDto> response = participations.stream()
+                .filter(p -> p.getStatus() == BetParticipation.ParticipationStatus.ACTIVE ||
+                           p.getStatus() == BetParticipation.ParticipationStatus.WON ||
+                           p.getStatus() == BetParticipation.ParticipationStatus.LOST)
+                .map(p -> BetParticipationResponseDto.fromParticipation(p, bet))
+                .toList();
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("ERROR getting bet participations: " + e.getMessage());
             e.printStackTrace();
             throw e;
         }

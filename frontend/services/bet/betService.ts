@@ -78,8 +78,24 @@ export interface PlaceBetRequest {
   comment?: string;
 }
 
+export interface BetParticipationResponse {
+  participationId: number;
+  userId: number;
+  username: string;
+  displayName: string;
+  profileImageUrl?: string;
+  chosenOption?: number;
+  chosenOptionText?: string;
+  predictedValue?: string;
+  betAmount: number;
+  potentialWinnings?: number;
+  status: string;
+  createdAt: string;
+}
+
 export interface ResolveBetRequest {
-  outcome: string;
+  outcome?: string;
+  winnerUserIds?: number[];
   reasoning?: string;
 }
 
@@ -123,9 +139,17 @@ class BetService extends BaseApiService {
     return this.post<BetResponse, PlaceBetRequest>(`/${betId}/participate`, request);
   }
 
+  // Get all participations for a bet (for resolvers to see who participated)
+  async getBetParticipations(betId: number): Promise<BetParticipationResponse[]> {
+    return this.get<BetParticipationResponse[]>(`/${betId}/participations`);
+  }
+
   // Resolve a bet (for creators or assigned resolvers)
-  async resolveBet(betId: number, outcome: string, reasoning?: string): Promise<BetResponse> {
-    const request: ResolveBetRequest = { outcome, reasoning };
+  // Supports two modes:
+  // 1. Option-based: pass outcome for BINARY/MULTIPLE_CHOICE
+  // 2. Winner-based: pass winnerUserIds for PREDICTION
+  async resolveBet(betId: number, outcome?: string, winnerUserIds?: number[], reasoning?: string): Promise<BetResponse> {
+    const request: ResolveBetRequest = { outcome, winnerUserIds, reasoning };
     return this.post<BetResponse, ResolveBetRequest>(`/${betId}/resolve`, request);
   }
 

@@ -177,16 +177,17 @@ export default function BetDetails() {
     return false;
   };
 
-  const handleResolveBet = async (outcome: string, reasoning?: string) => {
+  const handleResolveBet = async (outcome?: string, winnerUserIds?: number[], reasoning?: string) => {
     try {
       // Determine if this is a direct resolution or a vote
       const resolutionType = betData?.resolutionMethod === 'CONSENSUS_VOTING' ? 'vote' : 'resolve';
 
       if (resolutionType === 'resolve') {
-        await betService.resolveBet(parseInt(id), outcome, reasoning);
+        await betService.resolveBet(parseInt(id), outcome, winnerUserIds, reasoning);
         Alert.alert('Success', 'Bet has been resolved successfully!');
       } else {
-        await betService.voteOnResolution(parseInt(id), outcome, reasoning);
+        // For voting, we always use outcome (not winnerUserIds)
+        await betService.voteOnResolution(parseInt(id), outcome || '', reasoning || '');
         Alert.alert('Success', 'Your vote has been submitted!');
       }
 
@@ -482,16 +483,18 @@ export default function BetDetails() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>Join Deadline</Text>
               <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '500' }}>
-                {formatDate(betData.joinDeadline)}
+                {formatDate(betData.bettingDeadline)}
               </Text>
             </View>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>Bet Ends</Text>
-              <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '500' }}>
-                {formatDate(betData.betEndDate)}
-              </Text>
-            </View>
+            {betData.resolveDate && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>Bet Ends</Text>
+                <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '500' }}>
+                  {formatDate(betData.resolveDate)}
+                </Text>
+              </View>
+            )}
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>Bet Amount</Text>

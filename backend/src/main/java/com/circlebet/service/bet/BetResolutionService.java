@@ -65,7 +65,7 @@ public class BetResolutionService {
      */
     public Bet resolveBet(@NotNull Long betId, @NotNull User resolver, @NotNull Bet.BetOutcome outcome, String reasoning) {
         Bet bet = getBetForResolution(betId);
-        
+
         switch (bet.getResolutionMethod()) {
             case CREATOR_ONLY -> {
                 return resolveByCreator(bet, resolver, outcome);
@@ -78,6 +78,60 @@ public class BetResolutionService {
             }
             default -> throw new BetResolutionException("Unknown resolution method: " + bet.getResolutionMethod());
         }
+    }
+
+    /**
+     * Resolves a bet by selecting specific winner user IDs.
+     * Used for PREDICTION bets where resolver picks which users had correct predictions.
+     */
+    public Bet resolveBetByWinners(@NotNull Long betId, @NotNull User resolver, @NotNull List<Long> winnerUserIds, String reasoning) {
+        Bet bet = getBetForResolution(betId);
+
+        // Verify user has permission to resolve
+        if (!canUserResolveBet(betId, resolver)) {
+            throw new BetResolutionException("User is not authorized to resolve this bet");
+        }
+
+        if (winnerUserIds == null || winnerUserIds.isEmpty()) {
+            throw new BetResolutionException("At least one winner must be selected");
+        }
+
+        // Get all participations for this bet
+        List<BetParticipation> allParticipations = betParticipationRepository.findByBetId(betId);
+
+        // Verify all winner IDs correspond to actual participants
+        List<Long> participantUserIds = allParticipations.stream()
+            .map(BetParticipation::getUserId)
+            .toList();
+
+        for (Long winnerId : winnerUserIds) {
+            if (!participantUserIds.contains(winnerId)) {
+                throw new BetResolutionException("User ID " + winnerId + " is not a participant in this bet");
+            }
+        }
+
+        // Mark selected users as winners
+        for (BetParticipation participation : allParticipations) {
+            if (winnerUserIds.contains(participation.getUserId())) {
+                // This is a winner - calculate their winnings
+                // For now, use a simple proportional payout
+                participation.setStatus(BetParticipation.ParticipationStatus.WON);
+            } else {
+                // This is a loser
+                participation.setStatus(BetParticipation.ParticipationStatus.LOST);
+                participation.setActualWinnings(BigDecimal.ZERO);
+            }
+            betParticipationRepository.save(participation);
+        }
+
+        // Mark bet as resolved (use OPTION_1 as placeholder since there's no specific option)
+        bet.resolve(Bet.BetOutcome.OPTION_1);
+        bet = betRepository.save(bet);
+
+        // Publish bet resolved event for notifications
+        publishBetResolvedEvent(bet);
+
+        return bet;
     }
 
     /**

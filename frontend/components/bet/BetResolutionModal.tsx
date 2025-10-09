@@ -10,12 +10,12 @@ import {
   Alert
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { BetResponse } from '../../services/bet/betService';
+import { BetResponse, betService, BetParticipationResponse } from '../../services/bet/betService';
 
 interface BetResolutionModalProps {
   visible: boolean;
   onClose: () => void;
-  onResolve: (outcome: string, reasoning?: string) => Promise<void>;
+  onResolve: (outcome?: string, winnerUserIds?: number[], reasoning?: string) => Promise<void>;
   bet: BetResponse | null;
   resolutionType: 'resolve' | 'vote'; // Direct resolution or voting
 }
@@ -28,15 +28,37 @@ export default function BetResolutionModal({
   resolutionType
 }: BetResolutionModalProps) {
   const [selectedOutcome, setSelectedOutcome] = useState<string | null>(null);
-  const [selectedWinners, setSelectedWinners] = useState<string[]>([]);
+  const [selectedWinnerIds, setSelectedWinnerIds] = useState<number[]>([]);
   const [reasoning, setReasoning] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [participations, setParticipations] = useState<BetParticipationResponse[]>([]);
+  const [isLoadingParticipations, setIsLoadingParticipations] = useState(false);
+
+  // Load participations when modal opens
+  useEffect(() => {
+    const loadParticipations = async () => {
+      if (visible && bet) {
+        try {
+          setIsLoadingParticipations(true);
+          const data = await betService.getBetParticipations(bet.id);
+          setParticipations(data);
+        } catch (error) {
+          console.error('Error loading participations:', error);
+          Alert.alert('Error', 'Failed to load participant data');
+        } finally {
+          setIsLoadingParticipations(false);
+        }
+      }
+    };
+
+    loadParticipations();
+  }, [visible, bet]);
 
   // Reset state when modal opens
   useEffect(() => {
     if (visible) {
       setSelectedOutcome(null);
-      setSelectedWinners([]);
+      setSelectedWinnerIds([]);
       setReasoning('');
     }
   }, [visible]);
@@ -44,7 +66,7 @@ export default function BetResolutionModal({
   if (!bet) return null;
 
   const handleSubmit = async () => {
-    if (!selectedOutcome && selectedWinners.length === 0) {
+    if (!selectedOutcome && selectedWinnerIds.length === 0) {
       Alert.alert('Error', 'Please select an outcome or winners');
       return;
     }
@@ -66,12 +88,13 @@ export default function BetResolutionModal({
           onPress: async () => {
             setIsSubmitting(true);
             try {
-              // For exact value bets with multiple winners, pass the winners list
-              const outcome = selectedWinners.length > 0
-                ? JSON.stringify(selectedWinners)
-                : selectedOutcome;
-
-              await onResolve(outcome || '', reasoning);
+              // For winner-based resolution (PREDICTION bets)
+              if (selectedWinnerIds.length > 0) {
+                await onResolve(undefined, selectedWinnerIds, reasoning);
+              } else {
+                // For option-based resolution (BINARY/MULTIPLE_CHOICE)
+                await onResolve(selectedOutcome || '', undefined, reasoning);
+              }
               onClose();
             } catch (error) {
               console.error('Resolution error:', error);
@@ -160,16 +183,38 @@ export default function BetResolutionModal({
   };
 
   const renderExactValueOptions = () => {
-    // For prediction/exact value bets, show all unique predictions and allow selecting winners
-    // This would need participant prediction data from the backend
-    const mockPredictions = [
-      { userId: '1', username: 'user1', prediction: '42', amount: 10 },
-      { userId: '2', username: 'user2', prediction: '45', amount: 15 },
-      { userId: '3', username: 'user3', prediction: '42', amount: 20 },
-      { userId: '4', username: 'user4', prediction: '50', amount: 10 }
-    ];
+    if (isLoadingParticipations) {
+      return (
+        <View style={{ padding: 20, alignItems: 'center' }}>
+          <ActivityIndicator color="#00D4AA" />
+          <Text style={{ color: 'rgba(255, 255, 255, 0.6)', marginTop: 8 }}>
+            Loading participants...
+          </Text>
+        </View>
+      );
+    }
 
-    const uniquePredictions = [...new Set(mockPredictions.map(p => p.prediction))];
+    // Group participations by predicted value
+    const predictionGroups = participations.reduce((groups, p) => {
+      const prediction = p.predictedValue || p.chosenOptionText || 'Unknown';
+      if (!groups[prediction]) {
+        groups[prediction] = [];
+      }
+      groups[prediction].push(p);
+      return groups;
+    }, {} as Record<string, BetParticipationResponse[]>);
+
+    const uniquePredictions = Object.keys(predictionGroups);
+
+    if (uniquePredictions.length === 0) {
+      return (
+        <View style={{ padding: 20, alignItems: 'center' }}>
+          <Text style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+            No participants found
+          </Text>
+        </View>
+      );
+    }
 
     return (
       <View style={{ marginBottom: 20 }}>
@@ -179,7 +224,7 @@ export default function BetResolutionModal({
           fontWeight: '600',
           marginBottom: 12
         }}>
-          Select Winning Predictions:
+          Select Winning Users/Predictions:
         </Text>
 
         <Text style={{
@@ -187,33 +232,41 @@ export default function BetResolutionModal({
           fontSize: 13,
           marginBottom: 12
         }}>
-          Multiple predictions can be selected as winners
+          Multiple users can be selected as winners
         </Text>
 
         {uniquePredictions.map((prediction) => {
-          const participants = mockPredictions.filter(p => p.prediction === prediction);
-          const isSelected = selectedWinners.includes(prediction);
+          const participants = predictionGroups[prediction];
+          const participantIds = participants.map(p => p.userId);
+          const allSelected = participantIds.every(id => selectedWinnerIds.includes(id));
+          const someSelected = participantIds.some(id => selectedWinnerIds.includes(id));
 
           return (
             <TouchableOpacity
               key={prediction}
               onPress={() => {
-                if (isSelected) {
-                  setSelectedWinners(prev => prev.filter(w => w !== prediction));
+                if (allSelected) {
+                  // Unselect all
+                  setSelectedWinnerIds(prev => prev.filter(id => !participantIds.includes(id)));
                 } else {
-                  setSelectedWinners(prev => [...prev, prediction]);
+                  // Select all in this group
+                  setSelectedWinnerIds(prev => [...new Set([...prev, ...participantIds])]);
                 }
               }}
               style={{
                 padding: 16,
-                backgroundColor: isSelected
+                backgroundColor: allSelected
                   ? 'rgba(0, 212, 170, 0.15)'
+                  : someSelected
+                  ? 'rgba(0, 212, 170, 0.08)'
                   : 'rgba(255, 255, 255, 0.04)',
                 borderRadius: 12,
                 marginBottom: 8,
                 borderWidth: 1,
-                borderColor: isSelected
+                borderColor: allSelected
                   ? '#00D4AA'
+                  : someSelected
+                  ? 'rgba(0, 212, 170, 0.5)'
                   : 'rgba(255, 255, 255, 0.08)'
               }}
             >
@@ -221,17 +274,20 @@ export default function BetResolutionModal({
                 <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '600' }}>
                   Prediction: {prediction}
                 </Text>
-                {isSelected && (
+                {allSelected && (
                   <MaterialIcons name="check-circle" size={20} color="#00D4AA" />
+                )}
+                {someSelected && !allSelected && (
+                  <MaterialIcons name="radio-button-checked" size={20} color="rgba(0, 212, 170, 0.5)" />
                 )}
               </View>
 
               <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 13 }}>
-                {participants.length} participant{participants.length !== 1 ? 's' : ''}: {participants.map(p => p.username).join(', ')}
+                {participants.length} participant{participants.length !== 1 ? 's' : ''}: {participants.map(p => p.displayName || p.username).join(', ')}
               </Text>
 
               <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 12, marginTop: 4 }}>
-                Total stake: ${participants.reduce((sum, p) => sum + p.amount, 0)}
+                Total stake: ${participants.reduce((sum, p) => sum + p.betAmount, 0).toFixed(2)}
               </Text>
             </TouchableOpacity>
           );
@@ -348,9 +404,9 @@ export default function BetResolutionModal({
             {/* Submit Button */}
             <TouchableOpacity
               onPress={handleSubmit}
-              disabled={isSubmitting || (!selectedOutcome && selectedWinners.length === 0)}
+              disabled={isSubmitting || (!selectedOutcome && selectedWinnerIds.length === 0)}
               style={{
-                backgroundColor: (!selectedOutcome && selectedWinners.length === 0) || isSubmitting
+                backgroundColor: (!selectedOutcome && selectedWinnerIds.length === 0) || isSubmitting
                   ? 'rgba(255, 255, 255, 0.1)'
                   : '#00D4AA',
                 paddingVertical: 16,
@@ -363,7 +419,7 @@ export default function BetResolutionModal({
                 <ActivityIndicator color="#ffffff" />
               ) : (
                 <Text style={{
-                  color: (!selectedOutcome && selectedWinners.length === 0) ? 'rgba(255, 255, 255, 0.3)' : '#000000',
+                  color: (!selectedOutcome && selectedWinnerIds.length === 0) ? 'rgba(255, 255, 255, 0.3)' : '#000000',
                   fontSize: 16,
                   fontWeight: '700'
                 }}>

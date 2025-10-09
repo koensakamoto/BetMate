@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Text, View, TouchableOpacity, ScrollView, StatusBar, TextInput, Alert, Image, Modal, Animated } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { Text, View, TouchableOpacity, ScrollView, StatusBar, TextInput, Alert, Image, Modal, Animated, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -26,6 +26,13 @@ export default function CreateBet() {
   const [showDatePicker, setShowDatePicker] = useState<'start' | 'end' | 'resolution' | null>(null);
   const [multipleChoiceOptions, setMultipleChoiceOptions] = useState(['', '']);
   const [overUnderLine, setOverUnderLine] = useState('');
+
+  // Refs for TextInputs
+  const titleRef = useRef<TextInput>(null);
+  const descriptionRef = useRef<TextInput>(null);
+  const stakeRef = useRef<TextInput>(null);
+  const optionRefs = useRef<(TextInput | null)[]>([]);
+  const overUnderRef = useRef<TextInput>(null);
 
   // Progress tracking
   const [completionPercentage, setCompletionPercentage] = useState(0);
@@ -273,24 +280,36 @@ export default function CreateBet() {
         translucent={true}
       />
       
-      <View style={{ flex: 1 }}>
-        {/* Header with Progress */}
-        <View style={{
-          paddingTop: insets.top + 20,
-          paddingHorizontal: 20,
-          paddingBottom: 16,
-          borderBottomWidth: 0.5,
-          borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-        }}>
-          {/* Header Row */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            paddingTop: insets.top + 20,
+            paddingBottom: insets.bottom + 120,
+            paddingHorizontal: 20
+          }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          {/* Header with Progress */}
           <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 12
+            paddingBottom: 16,
+            marginBottom: 16,
+            borderBottomWidth: 0.5,
+            borderBottomColor: 'rgba(255, 255, 255, 0.08)',
           }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity 
+            {/* Header Row */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 12
+            }}>
+              <TouchableOpacity
                 onPress={() => router.back()}
                 style={{
                   width: 40,
@@ -304,7 +323,7 @@ export default function CreateBet() {
               >
                 <MaterialIcons name="close" size={18} color="#ffffff" />
               </TouchableOpacity>
-              
+
               <View>
                 <Text style={{
                   fontSize: 24,
@@ -323,59 +342,24 @@ export default function CreateBet() {
               </View>
             </View>
 
-            <TouchableOpacity
-              onPress={handleCreateBet}
-              style={{
-                backgroundColor: (betTitle.trim() && selectedSport && stakeAmount) ? '#00D4AA' : 'rgba(255, 255, 255, 0.08)',
-                paddingHorizontal: 20,
-                paddingVertical: 10,
-                borderRadius: 25,
-                opacity: (betTitle.trim() && selectedSport && stakeAmount) ? 1 : 0.5,
-                shadowColor: (betTitle.trim() && selectedSport && stakeAmount) ? '#00D4AA' : 'transparent',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.3,
-                shadowRadius: 4,
-                elevation: 4,
-              }}
-              disabled={!(betTitle.trim() && selectedSport && stakeAmount)}
-            >
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: (betTitle.trim() && selectedSport && stakeAmount) ? '#000000' : 'rgba(255, 255, 255, 0.6)'
-              }}>
-                Create
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Progress Bar */}
-          <View style={{
-            height: 3,
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: 2,
-            overflow: 'hidden'
-          }}>
-            <Animated.View style={{
-              height: '100%',
-              backgroundColor: '#00D4AA',
+            {/* Progress Bar */}
+            <View style={{
+              height: 3,
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
               borderRadius: 2,
-              width: progressAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: ['0%', '100%']
-              })
-            }} />
+              overflow: 'hidden'
+            }}>
+              <Animated.View style={{
+                height: '100%',
+                backgroundColor: '#00D4AA',
+                borderRadius: 2,
+                width: progressAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0%', '100%']
+                })
+              }} />
+            </View>
           </View>
-        </View>
-
-        <ScrollView 
-          style={{ flex: 1 }}
-          contentContainerStyle={{ 
-            paddingHorizontal: 20,
-            paddingVertical: 16
-          }}
-          showsVerticalScrollIndicator={false}
-        >
           {/* Basic Information Section */}
           <View style={{
             backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -420,6 +404,7 @@ export default function CreateBet() {
               alignItems: 'center'
             }}>
               <TextInput
+                ref={titleRef}
                 style={{
                   flex: 1,
                   fontSize: 16,
@@ -431,6 +416,9 @@ export default function CreateBet() {
                 placeholder="What are you betting on?"
                 placeholderTextColor="rgba(255, 255, 255, 0.4)"
                 maxLength={100}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => descriptionRef.current?.focus()}
               />
               <Text style={{
                 fontSize: 12,
@@ -457,9 +445,10 @@ export default function CreateBet() {
               borderColor: betDescription.trim() ? '#00D4AA' : 'rgba(255, 255, 255, 0.1)',
               paddingHorizontal: 16,
               paddingVertical: 14,
-              marginBottom: 16
+              marginBottom: 8
             }}>
               <TextInput
+                ref={descriptionRef}
                 style={{
                   fontSize: 16,
                   color: '#ffffff',
@@ -473,8 +462,18 @@ export default function CreateBet() {
                 placeholderTextColor="rgba(255, 255, 255, 0.4)"
                 multiline={true}
                 maxLength={200}
+                returnKeyType="done"
+                blurOnSubmit={true}
               />
             </View>
+            <Text style={{
+              fontSize: 12,
+              color: 'rgba(255, 255, 255, 0.4)',
+              textAlign: 'right',
+              marginBottom: 16
+            }}>
+              {betDescription.length}/200
+            </Text>
 
             {/* Category Selection */}
             <Text style={{
@@ -526,7 +525,8 @@ export default function CreateBet() {
             backgroundColor: 'rgba(255, 255, 255, 0.02)',
             borderRadius: 16,
             padding: 20,
-            marginBottom: 20,
+            marginBottom: 24,
+            marginTop: 4,
             borderWidth: 1,
             borderColor: 'rgba(255, 255, 255, 0.06)'
           }}>
@@ -573,18 +573,24 @@ export default function CreateBet() {
                 Answer Options *
               </Text>
               {multipleChoiceOptions.map((option, index) => (
-                <View key={index} style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                  borderRadius: 8,
-                  borderWidth: 0.5,
-                  borderColor: 'rgba(255, 255, 255, 0.15)',
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  marginBottom: 8,
-                  flexDirection: 'row',
-                  alignItems: 'center'
-                }}>
+                <TouchableOpacity
+                  key={index}
+                  activeOpacity={1}
+                  onPress={() => optionRefs.current[index]?.focus()}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                    borderRadius: 8,
+                    borderWidth: 0.5,
+                    borderColor: 'rgba(255, 255, 255, 0.15)',
+                    paddingHorizontal: 12,
+                    paddingVertical: 12,
+                    marginBottom: 8,
+                    flexDirection: 'row',
+                    alignItems: 'center'
+                  }}
+                >
                   <TextInput
+                    ref={(ref) => (optionRefs.current[index] = ref)}
                     style={{
                       flex: 1,
                       fontSize: 15,
@@ -595,13 +601,20 @@ export default function CreateBet() {
                     onChangeText={(text) => updateMultipleChoiceOption(index, text)}
                     placeholder={`Option ${index + 1}`}
                     placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                    returnKeyType={index === multipleChoiceOptions.length - 1 ? "done" : "next"}
+                    blurOnSubmit={index === multipleChoiceOptions.length - 1}
+                    onSubmitEditing={() => {
+                      if (index < multipleChoiceOptions.length - 1) {
+                        optionRefs.current[index + 1]?.focus();
+                      }
+                    }}
                   />
                   {multipleChoiceOptions.length > 2 && (
                     <TouchableOpacity onPress={() => removeMultipleChoiceOption(index)}>
                       <MaterialIcons name="close" size={20} color="rgba(255, 255, 255, 0.5)" />
                     </TouchableOpacity>
                   )}
-                </View>
+                </TouchableOpacity>
               ))}
               <TouchableOpacity
                 onPress={addMultipleChoiceOption}
@@ -672,6 +685,7 @@ export default function CreateBet() {
                   placeholder="e.g., 2.5, 45.5, 200"
                   placeholderTextColor="rgba(255, 255, 255, 0.4)"
                   keyboardType="numeric"
+                  returnKeyType="done"
                 />
               </View>
             </>
@@ -726,6 +740,7 @@ export default function CreateBet() {
                 $
               </Text>
               <TextInput
+                ref={stakeRef}
                 style={{
                   flex: 1,
                   fontSize: 16,
@@ -733,10 +748,24 @@ export default function CreateBet() {
                   fontWeight: '400'
                 }}
                 value={stakeAmount}
-                onChangeText={setStakeAmount}
+                onChangeText={(text) => {
+                  // Only allow numbers and one decimal point
+                  const filtered = text.replace(/[^0-9.]/g, '');
+                  // Ensure only one decimal point
+                  const parts = filtered.split('.');
+                  if (parts.length > 2) {
+                    return;
+                  }
+                  // Limit to 2 decimal places
+                  if (parts[1] && parts[1].length > 2) {
+                    return;
+                  }
+                  setStakeAmount(filtered);
+                }}
                 placeholder="How much each participant bets"
                 placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
+                returnKeyType="done"
               />
             </View>
           </View>
@@ -757,9 +786,16 @@ export default function CreateBet() {
             fontSize: 13,
             fontWeight: '500',
             color: 'rgba(255, 255, 255, 0.8)',
+            marginBottom: 4
+          }}>
+            Bet Start Time <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontWeight: '400' }}>(Optional)</Text>
+          </Text>
+          <Text style={{
+            fontSize: 12,
+            color: 'rgba(255, 255, 255, 0.5)',
             marginBottom: 6
           }}>
-            Bet Start Time
+            When participants can start joining this bet
           </Text>
           <TouchableOpacity
             onPress={() => setShowDatePicker('start')}
@@ -791,9 +827,16 @@ export default function CreateBet() {
             fontSize: 13,
             fontWeight: '500',
             color: 'rgba(255, 255, 255, 0.8)',
+            marginBottom: 4
+          }}>
+            Join Deadline <Text style={{ color: '#FF4757' }}>*</Text>
+          </Text>
+          <Text style={{
+            fontSize: 12,
+            color: 'rgba(255, 255, 255, 0.5)',
             marginBottom: 6
           }}>
-            Bet End Time *
+            Last time participants can join this bet
           </Text>
           <TouchableOpacity
             onPress={() => setShowDatePicker('end')}
@@ -825,9 +868,16 @@ export default function CreateBet() {
             fontSize: 13,
             fontWeight: '500',
             color: 'rgba(255, 255, 255, 0.8)',
+            marginBottom: 4
+          }}>
+            Event/Resolution Date <Text style={{ color: '#FF4757' }}>*</Text>
+          </Text>
+          <Text style={{
+            fontSize: 12,
+            color: 'rgba(255, 255, 255, 0.5)',
             marginBottom: 6
           }}>
-            Event/Resolution Date *
+            When the bet outcome will be determined
           </Text>
           <TouchableOpacity
             onPress={() => setShowDatePicker('resolution')}
@@ -854,13 +904,57 @@ export default function CreateBet() {
             <MaterialIcons name="event" size={20} color="rgba(255, 255, 255, 0.5)" />
           </TouchableOpacity>
 
+          {/* Evidence Requirements */}
+          <Text style={{
+            fontSize: 13,
+            fontWeight: '500',
+            color: 'rgba(255, 255, 255, 0.8)',
+            marginBottom: 4,
+            marginTop: 24
+          }}>
+            Evidence Requirements <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontWeight: '400' }}>(Optional)</Text>
+          </Text>
+          <Text style={{
+            fontSize: 12,
+            color: 'rgba(255, 255, 255, 0.5)',
+            marginBottom: 6
+          }}>
+            What proof is needed to resolve this bet
+          </Text>
+          <View style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.06)',
+            borderRadius: 8,
+            borderWidth: 0.5,
+            borderColor: 'rgba(255, 255, 255, 0.15)',
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            marginBottom: 24
+          }}>
+            <TextInput
+              style={{
+                fontSize: 15,
+                color: '#ffffff',
+                fontWeight: '400',
+                minHeight: 60,
+                textAlignVertical: 'top'
+              }}
+              value={evidenceRequirements}
+              onChangeText={setEvidenceRequirements}
+              placeholder="What proof is needed to resolve this bet? (e.g., official scoreboard, news article, screenshot)"
+              placeholderTextColor="rgba(255, 255, 255, 0.4)"
+              multiline={true}
+              maxLength={300}
+              returnKeyType="done"
+              blurOnSubmit={true}
+            />
+          </View>
+
           {/* Bet Resolver */}
           <Text style={{
             fontSize: 18,
             fontWeight: '600',
             color: '#ffffff',
-            marginBottom: 16,
-            marginTop: 24
+            marginBottom: 16
           }}>
             Who will resolve this bet? *
           </Text>
@@ -971,42 +1065,32 @@ export default function CreateBet() {
             </>
           )}
 
-          {/* Evidence Requirements */}
-          <Text style={{
-            fontSize: 13,
-            fontWeight: '500',
-            color: 'rgba(255, 255, 255, 0.8)',
-            marginBottom: 6
-          }}>
-            Evidence Requirements
-          </Text>
-          <View style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            borderRadius: 8,
-            borderWidth: 0.5,
-            borderColor: 'rgba(255, 255, 255, 0.15)',
-            paddingHorizontal: 12,
-            paddingVertical: 10,
-            marginBottom: 24
-          }}>
-            <TextInput
-              style={{
-                fontSize: 15,
-                color: '#ffffff',
-                fontWeight: '400',
-                minHeight: 60,
-                textAlignVertical: 'top'
-              }}
-              value={evidenceRequirements}
-              onChangeText={setEvidenceRequirements}
-              placeholder="What proof is needed to resolve this bet? (e.g., official scoreboard, news article, screenshot)"
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
-              multiline={true}
-              maxLength={300}
-            />
-          </View>
-
-          <View style={{ height: insets.bottom + 20 }} />
+          {/* Create Button at Bottom */}
+          <TouchableOpacity
+            onPress={handleCreateBet}
+            style={{
+              backgroundColor: (betTitle.trim() && selectedSport && stakeAmount) ? '#00D4AA' : 'rgba(255, 255, 255, 0.08)',
+              borderRadius: 12,
+              paddingVertical: 16,
+              alignItems: 'center',
+              marginTop: 32,
+              marginBottom: 20,
+              shadowColor: (betTitle.trim() && selectedSport && stakeAmount) ? '#00D4AA' : 'transparent',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            }}
+            disabled={!(betTitle.trim() && selectedSport && stakeAmount)}
+          >
+            <Text style={{
+              fontSize: 16,
+              fontWeight: '700',
+              color: (betTitle.trim() && selectedSport && stakeAmount) ? '#000000' : 'rgba(255, 255, 255, 0.6)'
+            }}>
+              Create Bet
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
 
         {/* Date Picker Modal */}
@@ -1070,7 +1154,7 @@ export default function CreateBet() {
             </View>
           </Modal>
         )}
-      </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
