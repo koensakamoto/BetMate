@@ -168,14 +168,24 @@ export default function Bet() {
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
       <StatusBar
         barStyle="light-content"
-        backgroundColor="#0a0a0f"
+        backgroundColor="transparent"
         translucent={true}
       />
-      
-      <View style={{ flex: 1 }}>
-        <ScrollView 
-          style={{ flex: 1 }} 
-          contentContainerStyle={{ paddingTop: insets.top + 32, paddingBottom: insets.bottom + 20 }}
+      {/* Solid background behind status bar - Instagram style */}
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top,
+        backgroundColor: '#0a0a0f',
+        zIndex: 1
+      }} />
+
+      <View style={{ flex: 1, marginTop: insets.top }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingTop: 20, paddingBottom: insets.bottom + 20 }}
           showsVerticalScrollIndicator={false}
         >
           <View style={{ flex: 1, paddingHorizontal: 20 }}>

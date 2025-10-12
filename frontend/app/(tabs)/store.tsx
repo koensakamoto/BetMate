@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View, ScrollView, StatusBar, FlatList, Alert, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import StoreHeader from '../../components/store/StoreHeader';
 import StoreCategoryTabs, { StoreCategory } from '../../components/store/StoreCategoryTabs';
@@ -11,8 +12,7 @@ import { userService } from '../../services/user/userService';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Store() {
-  // Use platform-specific safe area fallbacks
-  const topPadding = Platform.OS === 'ios' ? 50 : 20;
+  const insets = useSafeAreaInsets();
   const { user, isAuthenticated, isLoading } = useAuth();
   const [activeCategory, setActiveCategory] = useState<StoreCategory>('featured');
   const [earnCreditsModalVisible, setEarnCreditsModalVisible] = useState(false);
@@ -168,7 +168,7 @@ export default function Store() {
   // Show loading while authentication is being checked
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center', paddingTop: topPadding }}>
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
         <StatusBar
           barStyle="light-content"
           backgroundColor="#0a0a0f"
@@ -182,7 +182,7 @@ export default function Store() {
   // Show login message if user is not authenticated
   if (!isAuthenticated) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center', paddingTop: topPadding }}>
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
         <StatusBar
           barStyle="light-content"
           backgroundColor="#0a0a0f"
@@ -199,13 +199,23 @@ export default function Store() {
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
       <StatusBar
         barStyle="light-content"
-        backgroundColor="#0a0a0f"
+        backgroundColor="transparent"
         translucent={true}
       />
+      {/* Solid background behind status bar - Instagram style */}
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top,
+        backgroundColor: '#0a0a0f',
+        zIndex: 1
+      }} />
 
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: topPadding + 8 }}
+        style={{ flex: 1, marginTop: insets.top }}
+        contentContainerStyle={{ paddingTop: 20 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
