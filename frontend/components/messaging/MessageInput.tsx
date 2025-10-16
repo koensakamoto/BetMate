@@ -187,7 +187,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       borderTopColor: 'rgba(255, 255, 255, 0.1)',
       paddingHorizontal: 12,
       paddingTop: 8,
-      paddingBottom: 8
+      paddingBottom: Math.max(8, insets.bottom)
     }}>
       {/* Reply/Edit indicator */}
       {(isReplying || isEditing) && (
