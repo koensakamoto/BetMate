@@ -25,7 +25,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
   const [usernameToInvite, setUsernameToInvite] = useState('');
   const [isInviting, setIsInviting] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
-  const memberFilters = ['All', 'Admins', 'Recent'];
+  const memberFilters = ['All', 'Admins', 'Officers'];
 
   // Fetch group members
   useEffect(() => {
@@ -80,14 +80,9 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
 
     switch (activeFilter) {
       case 'Admins':
-        return members.filter(member => member.role === 'ADMIN' || member.role === 'OFFICER');
-      case 'Recent':
-        return members.filter(member => {
-          const joinDate = new Date(member.joinedAt);
-          const now = new Date();
-          const daysDiff = (now.getTime() - joinDate.getTime()) / (1000 * 60 * 60 * 24);
-          return daysDiff <= 7; // Joined within last 7 days
-        });
+        return members.filter(member => member.role === 'ADMIN');
+      case 'Officers':
+        return members.filter(member => member.role === 'OFFICER');
       default:
         return members;
     }
