@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Text, View, TouchableOpacity, Switch, Alert, TextInput, Modal, Image } from 'react-native';
+import { Text, View, TouchableOpacity, Switch, Alert, TextInput, Modal, Image, Keyboard, TouchableWithoutFeedback, ScrollView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -545,8 +545,15 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
         visible={showEditNameModal}
         transparent={true}
         animationType="none"
-        onRequestClose={() => setShowEditNameModal(false)}
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setShowEditNameModal(false);
+        }}
       >
+        <TouchableWithoutFeedback onPress={() => {
+          Keyboard.dismiss();
+          setShowEditNameModal(false);
+        }}>
         <View style={{
           flex: 1,
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -554,12 +561,12 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
           paddingHorizontal: 20,
           paddingTop: 300
         }}>
-          <TouchableOpacity 
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} 
-            onPress={() => setShowEditNameModal(false)}
-            activeOpacity={1}
-          />
-          
+          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            scrollEnabled={false}
+            contentContainerStyle={{ flexGrow: 0 }}
+          >
           <View style={{
             backgroundColor: '#1a1a1f',
             borderRadius: 12,
@@ -591,7 +598,6 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
               }}
               maxLength={50}
               editable={!isUpdating}
-              autoFocus={true}
               returnKeyType="done"
               onSubmitEditing={handleSaveGroupName}
             />
@@ -601,7 +607,10 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
               gap: 12
             }}>
               <TouchableOpacity
-                onPress={() => setShowEditNameModal(false)}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setShowEditNameModal(false);
+                }}
                 disabled={isUpdating}
                 style={{
                   flex: 1,
@@ -643,7 +652,10 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
               </TouchableOpacity>
             </View>
           </View>
+          </ScrollView>
+          </TouchableWithoutFeedback>
         </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* Edit Group Description Modal */}
@@ -651,8 +663,15 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
         visible={showEditDescriptionModal}
         transparent={true}
         animationType="none"
-        onRequestClose={() => setShowEditDescriptionModal(false)}
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setShowEditDescriptionModal(false);
+        }}
       >
+        <TouchableWithoutFeedback onPress={() => {
+          Keyboard.dismiss();
+          setShowEditDescriptionModal(false);
+        }}>
         <View style={{
           flex: 1,
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -660,12 +679,12 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
           paddingHorizontal: 20,
           paddingTop: 250
         }}>
-          <TouchableOpacity 
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} 
-            onPress={() => setShowEditDescriptionModal(false)}
-            activeOpacity={1}
-          />
-          
+          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            scrollEnabled={false}
+            contentContainerStyle={{ flexGrow: 0 }}
+          >
           <View style={{
             backgroundColor: '#1a1a1f',
             borderRadius: 12,
@@ -699,7 +718,6 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
               }}
               maxLength={200}
               editable={!isUpdating}
-              autoFocus={true}
               multiline={true}
               numberOfLines={4}
             />
@@ -709,7 +727,10 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
               gap: 12
             }}>
               <TouchableOpacity
-                onPress={() => setShowEditDescriptionModal(false)}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setShowEditDescriptionModal(false);
+                }}
                 disabled={isUpdating}
                 style={{
                   flex: 1,
@@ -751,7 +772,10 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
               </TouchableOpacity>
             </View>
           </View>
+          </ScrollView>
+          </TouchableWithoutFeedback>
         </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* Edit Group Photo Modal */}
