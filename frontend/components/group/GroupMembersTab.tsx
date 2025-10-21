@@ -521,7 +521,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
           onPress={() => setShowInviteModal(false)}
         >
           <TouchableOpacity
-            style={{ flex: 1 }}
+            style={{ flex: 1, width: '100%' }}
             activeOpacity={1}
             onPress={(e) => {
               e.stopPropagation();
@@ -532,7 +532,8 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
               flex: 1,
               justifyContent: 'center',
               alignItems: 'center',
-              paddingVertical: 20
+              paddingVertical: 20,
+              width: '100%'
             }}
           >
             <View
@@ -540,8 +541,9 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
                 backgroundColor: '#1a1a1f',
                 borderRadius: 16,
                 padding: 16,
-                width: '100%',
+                alignSelf: 'stretch',
                 maxWidth: 360,
+                minWidth: 320,
                 marginTop: -40,
                 maxHeight: `${100 - ((insets.top + insets.bottom + 40) / 8)}%`,
                 overflow: 'hidden'
@@ -633,7 +635,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
             {/* Content based on selected method */}
             {console.log('🔍 Current inviteMethod:', inviteMethod)}
             {inviteMethod === 'link' ? (
-              <View>
+              <View style={{ width: '100%' }}>
                 <Text style={{
                   fontSize: 14,
                   color: 'rgba(255, 255, 255, 0.7)',
@@ -689,11 +691,12 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
                 </View>
               </View>
             ) : (
-              <View>
+              <View style={{ width: '100%' }}>
                 {console.log('🎯 Rendering username input section')}
                 <TextInput
                   style={{
                     width: '100%',
+                    flexShrink: 0,
                     backgroundColor: 'rgba(255, 255, 255, 0.15)',
                     borderRadius: 12,
                     padding: 12,
