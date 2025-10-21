@@ -693,6 +693,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
                 {console.log('🎯 Rendering username input section')}
                 <TextInput
                   style={{
+                    width: '100%',
                     backgroundColor: 'rgba(255, 255, 255, 0.15)',
                     borderRadius: 12,
                     padding: 12,
