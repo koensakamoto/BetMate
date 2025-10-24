@@ -35,13 +35,19 @@ export default function GroupConfig() {
   }, [groupId, isAuthenticated, authLoading]);
 
   const handleGroupUpdated = (updatedGroup: any) => {
-    setGroupData(prev => prev ? {
-      ...prev,
-      groupName: updatedGroup.groupName || updatedGroup.name || prev.groupName,
-      description: updatedGroup.description || prev.description,
-      privacy: updatedGroup.privacy || prev.privacy,
-      autoApproveMembers: updatedGroup.autoApproveMembers !== undefined ? updatedGroup.autoApproveMembers : prev.autoApproveMembers
-    } : null);
+    setGroupData(prev => {
+      if (!prev) return null;
+
+      return {
+        ...prev,
+        groupName: updatedGroup.groupName ?? updatedGroup.name ?? prev.groupName,
+        description: updatedGroup.description ?? prev.description,
+        privacy: updatedGroup.privacy ?? prev.privacy,
+        autoApproveMembers: updatedGroup.autoApproveMembers ?? false,
+        ...(updatedGroup.memberCount !== undefined && { memberCount: updatedGroup.memberCount }),
+        ...(updatedGroup.updatedAt !== undefined && { updatedAt: updatedGroup.updatedAt }),
+      };
+    });
   };
 
   // Transform data for GroupSettingsTab
@@ -51,7 +57,7 @@ export default function GroupConfig() {
     description: groupData.description,
     memberCount: groupData.memberCount,
     privacy: groupData.privacy || 'PRIVATE' as 'PUBLIC' | 'PRIVATE' | 'INVITE_ONLY',
-    autoApproveMembers: groupData.autoApproveMembers || false
+    autoApproveMembers: groupData.autoApproveMembers ?? false
   } : null;
 
   if (isLoading || !groupData || !settingsGroupData) {

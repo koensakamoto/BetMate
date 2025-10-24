@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Text, View, TouchableOpacity, Switch, Alert, TextInput, Modal, Image, Keyboard, TouchableWithoutFeedback, ScrollView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -17,106 +17,290 @@ interface GroupSettingsTabProps {
   onGroupUpdated?: (updatedGroup: any) => void;
 }
 
+// Shared SettingItem component
+const SettingItem = React.memo(({
+  title,
+  description,
+  onPress,
+  showSwitch = false,
+  switchValue = false,
+  onSwitchChange,
+  switchDisabled = false,
+  materialIcon,
+  iconColor = 'rgba(255, 255, 255, 0.8)'
+}: {
+  title: string;
+  description: string;
+  onPress?: () => void;
+  showSwitch?: boolean;
+  switchValue?: boolean;
+  onSwitchChange?: (value: boolean) => void;
+  switchDisabled?: boolean;
+  materialIcon?: string;
+  iconColor?: string;
+}) => (
+  <TouchableOpacity
+    onPress={onPress}
+    disabled={showSwitch}
+    style={{
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 12,
+      borderBottomWidth: 0.5,
+      borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+      marginBottom: 8
+    }}
+  >
+    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+      {materialIcon && (
+        <View style={{
+          width: 24,
+          height: 24,
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginRight: 12
+        }}>
+          <MaterialIcons
+            name={materialIcon as any}
+            size={18}
+            color={iconColor}
+          />
+        </View>
+      )}
+      <View style={{ flex: 1 }}>
+        <Text style={{
+          fontSize: 15,
+          color: '#ffffff',
+          marginBottom: 2
+        }}>
+          {title}
+        </Text>
+        <Text style={{
+          fontSize: 13,
+          color: 'rgba(255, 255, 255, 0.6)'
+        }}>
+          {description}
+        </Text>
+      </View>
+    </View>
+
+    {showSwitch ? (
+      <Switch
+        value={switchValue}
+        onValueChange={onSwitchChange}
+        disabled={switchDisabled}
+        trackColor={{ false: 'rgba(255, 255, 255, 0.2)', true: '#00D4AA' }}
+        thumbColor={switchValue ? '#ffffff' : '#ffffff'}
+        ios_backgroundColor="rgba(255, 255, 255, 0.2)"
+      />
+    ) : (
+      <MaterialIcons
+        name="chevron-right"
+        size={20}
+        color="rgba(255, 255, 255, 0.4)"
+      />
+    )}
+  </TouchableOpacity>
+));
+
+// Button Group Component for binary choices
+const ButtonGroup = React.memo(({
+  title,
+  description,
+  leftLabel,
+  rightLabel,
+  leftSelected,
+  onLeftPress,
+  onRightPress,
+  disabled = false,
+  materialIcon
+}: {
+  title: string;
+  description?: string;
+  leftLabel: string;
+  rightLabel: string;
+  leftSelected: boolean;
+  onLeftPress: () => void;
+  onRightPress: () => void;
+  disabled?: boolean;
+  materialIcon?: string;
+}) => (
+  <View style={{
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 8
+  }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+      {materialIcon && (
+        <View style={{
+          width: 24,
+          height: 24,
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginRight: 12
+        }}>
+          <MaterialIcons
+            name={materialIcon as any}
+            size={18}
+            color="rgba(255, 255, 255, 0.8)"
+          />
+        </View>
+      )}
+      <Text style={{
+        fontSize: 15,
+        color: '#ffffff',
+        fontWeight: '500'
+      }}>
+        {title}
+      </Text>
+    </View>
+
+    {description && (
+      <Text style={{
+        fontSize: 13,
+        color: 'rgba(255, 255, 255, 0.6)',
+        marginBottom: 12,
+        marginLeft: materialIcon ? 36 : 0
+      }}>
+        {description}
+      </Text>
+    )}
+
+    <View style={{
+      flexDirection: 'row',
+      gap: 8,
+      marginLeft: materialIcon ? 36 : 0
+    }}>
+      <TouchableOpacity
+        onPress={onLeftPress}
+        disabled={disabled}
+        style={{
+          flex: 1,
+          backgroundColor: leftSelected ? '#00D4AA' : 'rgba(255, 255, 255, 0.1)',
+          borderRadius: 8,
+          paddingVertical: 10,
+          alignItems: 'center',
+          opacity: disabled ? 0.5 : 1
+        }}
+      >
+        <Text style={{
+          color: '#ffffff',
+          fontSize: 14,
+          fontWeight: leftSelected ? '600' : '500'
+        }}>
+          {leftLabel}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={onRightPress}
+        disabled={disabled}
+        style={{
+          flex: 1,
+          backgroundColor: !leftSelected ? '#00D4AA' : 'rgba(255, 255, 255, 0.1)',
+          borderRadius: 8,
+          paddingVertical: 10,
+          alignItems: 'center',
+          opacity: disabled ? 0.5 : 1
+        }}
+      >
+        <Text style={{
+          color: '#ffffff',
+          fontSize: 14,
+          fontWeight: !leftSelected ? '600' : '500'
+        }}>
+          {rightLabel}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+));
+
 const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupUpdated }) => {
-  // Remove local state - use props directly as single source of truth
-  // const [isPublicGroup, setIsPublicGroup] = useState(groupData.privacy === 'PUBLIC');
-  // const [autoApproveMembers, setAutoApproveMembers] = useState(
-  //   groupData.privacy === 'PRIVATE' ? false : (groupData.autoApproveMembers ?? false)
-  // );
-  
   const [showEditNameModal, setShowEditNameModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState(groupData.name);
   const [showEditDescriptionModal, setShowEditDescriptionModal] = useState(false);
   const [newGroupDescription, setNewGroupDescription] = useState(groupData.description);
   const [showEditPhotoModal, setShowEditPhotoModal] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+
+  // Modal states for privacy settings
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showAutoApproveModal, setShowAutoApproveModal] = useState(false);
+  const [tempPrivacy, setTempPrivacy] = useState<'PUBLIC' | 'PRIVATE'>('PRIVATE');
+  const [tempAutoApprove, setTempAutoApprove] = useState(false);
+
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Remove useEffect sync - no longer needed with single source of truth
-  // useEffect(() => {
-  //   const newIsPublic = groupData.privacy === 'PUBLIC';
-  //   const newAutoApprove = groupData.privacy === 'PRIVATE' ? false : (groupData.autoApproveMembers ?? false);
-  //   
-  //   setIsPublicGroup(newIsPublic);
-  //   setAutoApproveMembers(newAutoApprove);
-  // }, [groupData.privacy, groupData.autoApproveMembers]);
+  // Modal handlers
+  const handleOpenPrivacyModal = () => {
+    setTempPrivacy(groupData.privacy || 'PRIVATE');
+    setShowPrivacyModal(true);
+  };
 
-  // Compute values directly from props
-  const isPublicGroup = groupData.privacy === 'PUBLIC';
-  const autoApproveMembers = groupData.privacy === 'PRIVATE' ? false : (groupData.autoApproveMembers ?? false);
+  const handleOpenAutoApproveModal = () => {
+    setTempAutoApprove(groupData.autoApproveMembers ?? false);
+    setShowAutoApproveModal(true);
+  };
 
-  // Optimistic update toggle handlers - no local state
-  const handlePrivacyToggle = useCallback(async (newValue: boolean) => {
-    if (isUpdating) return;
-    
+  const handleSavePrivacy = async () => {
+    if (isUpdating || tempPrivacy === groupData.privacy) {
+      setShowPrivacyModal(false);
+      return;
+    }
+
     setIsUpdating(true);
-    const newPrivacy = newValue ? 'PUBLIC' : 'PRIVATE';
-    
+
     try {
-      // Prepare update payload
-      let updatePayload: any = { privacy: newPrivacy };
-      
-      // When switching to private, also set auto-approve to false
-      if (!newValue) {
+      const updatePayload: any = { privacy: tempPrivacy };
+
+      // If switching to PRIVATE and auto-approve is ON, turn it OFF
+      if (tempPrivacy === 'PRIVATE' && groupData.autoApproveMembers) {
         updatePayload.autoApproveMembers = false;
       }
-      
-      // Make API call first
-      await groupService.updateGroup(groupData.id, updatePayload);
-      
-      // Notify parent with updated data only after successful API call
+
+      const updatedGroup = await groupService.updateGroup(groupData.id, updatePayload);
+
       if (onGroupUpdated) {
-        onGroupUpdated({
-          ...groupData,
-          privacy: newPrivacy,
-          autoApproveMembers: newValue ? groupData.autoApproveMembers : false
-        });
+        onGroupUpdated(updatedGroup);
       }
+
+      setShowPrivacyModal(false);
     } catch (error) {
       console.error('Failed to update privacy:', error);
       Alert.alert('Error', 'Failed to update privacy settings. Please try again.');
     } finally {
       setIsUpdating(false);
     }
-  }, [groupData, onGroupUpdated, isUpdating]);
+  };
 
-  const handleAutoApproveToggle = useCallback(async (newValue: boolean) => {
-    // Don't allow changes for private groups or when updating
-    if (!isPublicGroup || isUpdating) return;
-    
+  const handleSaveAutoApprove = async () => {
+    if (isUpdating || tempAutoApprove === groupData.autoApproveMembers) {
+      setShowAutoApproveModal(false);
+      return;
+    }
+
     setIsUpdating(true);
-    
+
     try {
-      // Make API call first
-      await groupService.updateGroup(groupData.id, {
-        autoApproveMembers: newValue
+      const updatedGroup = await groupService.updateGroup(groupData.id, {
+        autoApproveMembers: tempAutoApprove
       });
-      
-      // Notify parent with updated data only after successful API call
+
       if (onGroupUpdated) {
-        onGroupUpdated({
-          ...groupData,
-          autoApproveMembers: newValue
-        });
+        onGroupUpdated(updatedGroup);
       }
+
+      setShowAutoApproveModal(false);
     } catch (error) {
       console.error('Failed to update auto-approve:', error);
       Alert.alert('Error', 'Failed to update auto-approve setting. Please try again.');
     } finally {
       setIsUpdating(false);
     }
-  }, [groupData, isPublicGroup, onGroupUpdated, isUpdating]);
-
-  // Memoized computed values
-  const autoApproveDescription = useMemo(() => {
-    return !isPublicGroup 
-      ? "Private groups require manual approval" 
-      : "Automatically approve join requests";
-  }, [isPublicGroup]);
-
-  const autoApproveIconColor = useMemo(() => {
-    return !isPublicGroup ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.8)';
-  }, [isPublicGroup]);
+  };
 
   const SettingSection = React.memo(({ title, children }: { title: string; children: React.ReactNode }) => (
     <View style={{
@@ -137,92 +321,6 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
       </Text>
       {children}
     </View>
-  ));
-
-  const SettingItem = React.memo(({ 
-    title, 
-    description, 
-    onPress, 
-    showSwitch = false, 
-    switchValue = false, 
-    onSwitchChange,
-    switchDisabled = false,
-    materialIcon,
-    iconColor = 'rgba(255, 255, 255, 0.8)'
-  }: {
-    title: string;
-    description: string;
-    onPress?: () => void;
-    showSwitch?: boolean;
-    switchValue?: boolean;
-    onSwitchChange?: (value: boolean) => void;
-    switchDisabled?: boolean;
-    materialIcon?: string;
-    iconColor?: string;
-  }) => (
-    <TouchableOpacity 
-      onPress={onPress}
-      disabled={showSwitch}
-      style={{
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 12,
-        borderBottomWidth: 0.5,
-        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-        marginBottom: 8
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-        {materialIcon && (
-          <View style={{
-            width: 24,
-            height: 24,
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginRight: 12
-          }}>
-            <MaterialIcons 
-              name={materialIcon as any} 
-              size={18} 
-              color={iconColor} 
-            />
-          </View>
-        )}
-        <View style={{ flex: 1 }}>
-          <Text style={{
-            fontSize: 15,
-            color: '#ffffff',
-            marginBottom: 2
-          }}>
-            {title}
-          </Text>
-          <Text style={{
-            fontSize: 13,
-            color: 'rgba(255, 255, 255, 0.6)'
-          }}>
-            {description}
-          </Text>
-        </View>
-      </View>
-      
-      {showSwitch ? (
-        <Switch
-          value={switchValue}
-          onValueChange={onSwitchChange}
-          disabled={switchDisabled}
-          trackColor={{ false: 'rgba(255, 255, 255, 0.2)', true: '#00D4AA' }}
-          thumbColor={switchValue ? '#ffffff' : '#ffffff'}
-          ios_backgroundColor="rgba(255, 255, 255, 0.2)"
-        />
-      ) : (
-        <MaterialIcons 
-          name="chevron-right" 
-          size={20} 
-          color="rgba(255, 255, 255, 0.4)" 
-        />
-      )}
-    </TouchableOpacity>
   ));
 
   const handleEditGroupName = () => {
@@ -456,28 +554,24 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
       <SettingSection title="Privacy & Access">
         <SettingItem
           materialIcon="public"
-          title="Public Group"
-          description="Anyone can find and view this group"
-          showSwitch={true}
-          switchValue={isPublicGroup}
-          onSwitchChange={handlePrivacyToggle}
-          switchDisabled={isUpdating}
+          title="Privacy"
+          description={groupData.privacy === 'PUBLIC' ? 'Public' : 'Private'}
+          onPress={handleOpenPrivacyModal}
         />
         <SettingItem
           materialIcon="how-to-reg"
           title="Auto-approve Members"
-          description={autoApproveDescription}
-          showSwitch={true}
-          switchValue={autoApproveMembers}
-          onSwitchChange={handleAutoApproveToggle}
-          switchDisabled={!isPublicGroup || isUpdating}
-          iconColor={autoApproveIconColor}
-        />
-        <SettingItem
-          materialIcon="link"
-          title="Invite Link"
-          description="Create and share invite links"
-          onPress={() => {}}
+          description={
+            groupData.privacy === 'PRIVATE'
+              ? "Private groups require manual approval"
+              : (groupData.autoApproveMembers ? 'On' : 'Off')
+          }
+          onPress={handleOpenAutoApproveModal}
+          iconColor={
+            groupData.privacy === 'PRIVATE'
+              ? 'rgba(255, 255, 255, 0.4)'
+              : 'rgba(255, 255, 255, 0.8)'
+          }
         />
       </SettingSection>
 
@@ -941,6 +1035,386 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Privacy Modal */}
+      <Modal
+        visible={showPrivacyModal}
+        transparent={true}
+        animationType="none"
+        onRequestClose={() => setShowPrivacyModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowPrivacyModal(false)}>
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'flex-start',
+            paddingHorizontal: 20,
+            paddingTop: 300
+          }}>
+            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+              <View style={{
+                backgroundColor: '#1a1a1f',
+                borderRadius: 12,
+                padding: 20,
+                marginHorizontal: 20
+              }}>
+                <Text style={{
+                  fontSize: 18,
+                  fontWeight: '600',
+                  color: '#ffffff',
+                  marginBottom: 20
+                }}>
+                  Change Privacy
+                </Text>
+
+                <TouchableOpacity
+                  onPress={() => setTempPrivacy('PUBLIC')}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    paddingHorizontal: 16,
+                    backgroundColor: tempPrivacy === 'PUBLIC' ? 'rgba(0, 212, 170, 0.2)' : 'transparent',
+                    borderRadius: 8,
+                    marginBottom: 8,
+                    borderWidth: tempPrivacy === 'PUBLIC' ? 1 : 0,
+                    borderColor: '#00D4AA'
+                  }}
+                >
+                  <View style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    borderWidth: 2,
+                    borderColor: tempPrivacy === 'PUBLIC' ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
+                    backgroundColor: tempPrivacy === 'PUBLIC' ? '#00D4AA' : 'transparent',
+                    marginRight: 12,
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {tempPrivacy === 'PUBLIC' && (
+                      <View style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: '#ffffff'
+                      }} />
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{
+                      fontSize: 16,
+                      fontWeight: '500',
+                      color: '#ffffff'
+                    }}>
+                      Public
+                    </Text>
+                    <Text style={{
+                      fontSize: 13,
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      marginTop: 2
+                    }}>
+                      Anyone can find and view this group
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setTempPrivacy('PRIVATE')}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    paddingHorizontal: 16,
+                    backgroundColor: tempPrivacy === 'PRIVATE' ? 'rgba(0, 212, 170, 0.2)' : 'transparent',
+                    borderRadius: 8,
+                    marginBottom: 20,
+                    borderWidth: tempPrivacy === 'PRIVATE' ? 1 : 0,
+                    borderColor: '#00D4AA'
+                  }}
+                >
+                  <View style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    borderWidth: 2,
+                    borderColor: tempPrivacy === 'PRIVATE' ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
+                    backgroundColor: tempPrivacy === 'PRIVATE' ? '#00D4AA' : 'transparent',
+                    marginRight: 12,
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {tempPrivacy === 'PRIVATE' && (
+                      <View style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: '#ffffff'
+                      }} />
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{
+                      fontSize: 16,
+                      fontWeight: '500',
+                      color: '#ffffff'
+                    }}>
+                      Private
+                    </Text>
+                    <Text style={{
+                      fontSize: 13,
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      marginTop: 2
+                    }}>
+                      Only invited members can view
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                <View style={{
+                  flexDirection: 'row',
+                  gap: 12
+                }}>
+                  <TouchableOpacity
+                    onPress={() => setShowPrivacyModal(false)}
+                    disabled={isUpdating}
+                    style={{
+                      flex: 1,
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      borderRadius: 8,
+                      paddingVertical: 12,
+                      alignItems: 'center',
+                      opacity: isUpdating ? 0.5 : 1
+                    }}
+                  >
+                    <Text style={{
+                      color: '#ffffff',
+                      fontSize: 16,
+                      fontWeight: '500'
+                    }}>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleSavePrivacy}
+                    disabled={isUpdating}
+                    style={{
+                      flex: 1,
+                      backgroundColor: '#00D4AA',
+                      borderRadius: 8,
+                      paddingVertical: 12,
+                      alignItems: 'center',
+                      opacity: isUpdating ? 0.5 : 1
+                    }}
+                  >
+                    <Text style={{
+                      color: '#ffffff',
+                      fontSize: 16,
+                      fontWeight: '500'
+                    }}>
+                      {isUpdating ? 'Saving...' : 'Save'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Auto-approve Modal */}
+      <Modal
+        visible={showAutoApproveModal}
+        transparent={true}
+        animationType="none"
+        onRequestClose={() => setShowAutoApproveModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowAutoApproveModal(false)}>
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'flex-start',
+            paddingHorizontal: 20,
+            paddingTop: 300
+          }}>
+            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+              <View style={{
+                backgroundColor: '#1a1a1f',
+                borderRadius: 12,
+                padding: 20,
+                marginHorizontal: 20
+              }}>
+                <Text style={{
+                  fontSize: 18,
+                  fontWeight: '600',
+                  color: '#ffffff',
+                  marginBottom: 8
+                }}>
+                  Auto-approve Members
+                </Text>
+
+                {groupData.privacy === 'PRIVATE' && (
+                  <Text style={{
+                    fontSize: 14,
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    marginBottom: 20
+                  }}>
+                    Private groups require manual approval for all members.
+                  </Text>
+                )}
+
+                {groupData.privacy === 'PUBLIC' && (
+                  <>
+                    <Text style={{
+                      fontSize: 14,
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      marginBottom: 20
+                    }}>
+                      Choose whether to automatically approve join requests.
+                    </Text>
+
+                    <TouchableOpacity
+                      onPress={() => setTempAutoApprove(true)}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+                        backgroundColor: tempAutoApprove ? 'rgba(0, 212, 170, 0.2)' : 'transparent',
+                        borderRadius: 8,
+                        marginBottom: 8,
+                        borderWidth: tempAutoApprove ? 1 : 0,
+                        borderColor: '#00D4AA'
+                      }}
+                    >
+                      <View style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        borderWidth: 2,
+                        borderColor: tempAutoApprove ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
+                        backgroundColor: tempAutoApprove ? '#00D4AA' : 'transparent',
+                        marginRight: 12,
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        {tempAutoApprove && (
+                          <View style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: '#ffffff'
+                          }} />
+                        )}
+                      </View>
+                      <Text style={{
+                        fontSize: 16,
+                        fontWeight: '500',
+                        color: '#ffffff'
+                      }}>
+                        On
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => setTempAutoApprove(false)}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+                        backgroundColor: !tempAutoApprove ? 'rgba(0, 212, 170, 0.2)' : 'transparent',
+                        borderRadius: 8,
+                        marginBottom: 20,
+                        borderWidth: !tempAutoApprove ? 1 : 0,
+                        borderColor: '#00D4AA'
+                      }}
+                    >
+                      <View style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        borderWidth: 2,
+                        borderColor: !tempAutoApprove ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
+                        backgroundColor: !tempAutoApprove ? '#00D4AA' : 'transparent',
+                        marginRight: 12,
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        {!tempAutoApprove && (
+                          <View style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: '#ffffff'
+                          }} />
+                        )}
+                      </View>
+                      <Text style={{
+                        fontSize: 16,
+                        fontWeight: '500',
+                        color: '#ffffff'
+                      }}>
+                        Off
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+
+                <View style={{
+                  flexDirection: 'row',
+                  gap: 12
+                }}>
+                  <TouchableOpacity
+                    onPress={() => setShowAutoApproveModal(false)}
+                    disabled={isUpdating}
+                    style={{
+                      flex: 1,
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      borderRadius: 8,
+                      paddingVertical: 12,
+                      alignItems: 'center',
+                      opacity: isUpdating ? 0.5 : 1
+                    }}
+                  >
+                    <Text style={{
+                      color: '#ffffff',
+                      fontSize: 16,
+                      fontWeight: '500'
+                    }}>
+                      {groupData.privacy === 'PRIVATE' ? 'OK' : 'Cancel'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {groupData.privacy === 'PUBLIC' && (
+                    <TouchableOpacity
+                      onPress={handleSaveAutoApprove}
+                      disabled={isUpdating}
+                      style={{
+                        flex: 1,
+                        backgroundColor: '#00D4AA',
+                        borderRadius: 8,
+                        paddingVertical: 12,
+                        alignItems: 'center',
+                        opacity: isUpdating ? 0.5 : 1
+                      }}
+                    >
+                      <Text style={{
+                        color: '#ffffff',
+                        fontSize: 16,
+                        fontWeight: '500'
+                      }}>
+                        {isUpdating ? 'Saving...' : 'Save'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );
