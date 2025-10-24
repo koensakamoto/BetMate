@@ -127,7 +127,7 @@ export default function TermsOfService() {
         {/* Content */}
         <Section title="Agreement to Terms">
           <Paragraph>
-            By accessing and using GroupReels ("we," "our," or "us"), you accept and agree to be bound by the terms and provision of this agreement.
+            By accessing and using BetMate ("we," "our," or "us"), you accept and agree to be bound by the terms and provision of this agreement.
           </Paragraph>
           <Paragraph>
             If you do not agree to abide by the above, please do not use this service.
@@ -136,11 +136,11 @@ export default function TermsOfService() {
 
         <Section title="Use License">
           <Paragraph>
-            Permission is granted to temporarily download one copy of GroupReels per device for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:
+            Permission is granted to temporarily download one copy of BetMate per device for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:
           </Paragraph>
           <ListItem>modify or copy the materials</ListItem>
           <ListItem>use the materials for any commercial purpose or for any public display</ListItem>
-          <ListItem>attempt to reverse engineer any software contained in GroupReels</ListItem>
+          <ListItem>attempt to reverse engineer any software contained in BetMate</ListItem>
           <ListItem>remove any copyright or other proprietary notations from the materials</ListItem>
         </Section>
 
@@ -155,11 +155,11 @@ export default function TermsOfService() {
 
         <Section title="Betting and Gaming">
           <Paragraph>
-            GroupReels facilitates social betting among friends and groups. All betting activities are subject to the following:
+            BetMate facilitates social betting among friends and groups. All betting activities are subject to the following:
           </Paragraph>
           <ListItem>You must be 18 years or older to participate in betting activities</ListItem>
           <ListItem>All bets are made voluntarily between consenting participants</ListItem>
-          <ListItem>GroupReels is not responsible for disputes between betting participants</ListItem>
+          <ListItem>BetMate is not responsible for disputes between betting participants</ListItem>
           <ListItem>We reserve the right to suspend accounts that violate betting policies</ListItem>
         </Section>
 
@@ -168,7 +168,7 @@ export default function TermsOfService() {
             Our service allows you to post, link, store, share and otherwise make available certain information, text, graphics, or other material. You are responsible for the content that you post to the service.
           </Paragraph>
           <Paragraph>
-            By posting content to GroupReels, you grant us the right to use, modify, publicly perform, publicly display, reproduce, and distribute such content.
+            By posting content to BetMate, you grant us the right to use, modify, publicly perform, publicly display, reproduce, and distribute such content.
           </Paragraph>
         </Section>
 
@@ -206,7 +206,7 @@ export default function TermsOfService() {
 
         <Section title="Limitation of Liability">
           <Paragraph>
-            In no event shall GroupReels, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential, or punitive damages.
+            In no event shall BetMate, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential, or punitive damages.
           </Paragraph>
         </Section>
 
@@ -243,7 +243,7 @@ export default function TermsOfService() {
               lineHeight: 24,
               letterSpacing: 0.1
             }}>
-              Email: legal@groupreels.com{'\n'}
+              Email: legal@betmate.com{'\n'}
               Address: 123 App Street, Tech City, TC 12345{'\n'}
               Phone: +1 (555) 123-4567
             </Text>
@@ -265,7 +265,7 @@ export default function TermsOfService() {
             textAlign: 'center',
             letterSpacing: 0.3
           }}>
-            GroupReels v1.0.0
+            BetMate v1.0.0
           </Text>
           <Text style={{
             fontSize: 12,
@@ -274,7 +274,7 @@ export default function TermsOfService() {
             marginTop: 8,
             letterSpacing: 0.2
           }}>
-            © 2025 GroupReels. All rights reserved.
+            © 2025 BetMate. All rights reserved.
           </Text>
         </View>
       </ScrollView>

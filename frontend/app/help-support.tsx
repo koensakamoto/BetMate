@@ -371,7 +371,7 @@ export default function HelpSupport() {
             icon="email"
             title="Email Support"
             description="Send us a detailed message"
-            onPress={() => openExternalLink('mailto:support@groupreels.com')}
+            onPress={() => openExternalLink('mailto:support@betmate.com')}
             gradientColors={['rgba(59, 130, 246, 0.15)', 'rgba(59, 130, 246, 0.05)']}
             iconColor="#3B82F6"
           />
@@ -705,7 +705,7 @@ export default function HelpSupport() {
           </Text>
           
           <TouchableOpacity
-            onPress={() => openExternalLink('mailto:bugs@groupreels.com')}
+            onPress={() => openExternalLink('mailto:bugs@betmate.com')}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -738,7 +738,7 @@ export default function HelpSupport() {
             marginTop: 24,
             letterSpacing: 0.5
           }}>
-            GroupReels v1.0.0
+            BetMate v1.0.0
           </Text>
         </ModernCard>
       </ScrollView>

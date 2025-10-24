@@ -95,7 +95,7 @@ export default function LoadingScreen() {
           letterSpacing: -0.5,
           marginBottom: 16
         }}>
-          GroupReels
+          BetMate
         </Text>
 
         {/* Loading Indicator */}

@@ -136,7 +136,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
   // Helper functions for invite functionality
   const generateInviteLink = () => {
     const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
-    const link = `https://groupreels.app/invite/${currentGroupId}`;
+    const link = `https://betmate.app/invite/${currentGroupId}`;
     setInviteLink(link);
     return link;
   };
@@ -145,7 +145,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
     try {
       const link = generateInviteLink();
       await Share.share({
-        message: `Join my group "${groupData.name}" on GroupReels! ${link}`,
+        message: `Join my group "${groupData.name}" on BetMate! ${link}`,
         url: link,
       });
     } catch (error) {

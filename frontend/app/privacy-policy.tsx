@@ -127,10 +127,10 @@ export default function PrivacyPolicy() {
         {/* Content */}
         <Section title="Introduction">
           <Paragraph>
-            At GroupReels, we respect your privacy and are committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you use our social betting platform.
+            At BetMate, we respect your privacy and are committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you use our social betting platform.
           </Paragraph>
           <Paragraph>
-            By using GroupReels, you agree to the collection and use of information in accordance with this policy.
+            By using BetMate, you agree to the collection and use of information in accordance with this policy.
           </Paragraph>
         </Section>
 
@@ -248,7 +248,7 @@ export default function PrivacyPolicy() {
           <ListItem>Restriction: Request limited processing of your data</ListItem>
           
           <Paragraph>
-            To exercise these rights, contact us at privacy@groupreels.com.
+            To exercise these rights, contact us at privacy@betmate.com.
           </Paragraph>
         </Section>
 
@@ -268,7 +268,7 @@ export default function PrivacyPolicy() {
 
         <Section title="Children's Privacy">
           <Paragraph>
-            GroupReels is not intended for users under 18 years of age. We do not knowingly collect personal information from children under 18.
+            BetMate is not intended for users under 18 years of age. We do not knowingly collect personal information from children under 18.
           </Paragraph>
           <Paragraph>
             If we discover that we have collected personal information from someone under 18, we will delete that information immediately. If you believe we have collected information from a minor, please contact us.
@@ -293,7 +293,7 @@ export default function PrivacyPolicy() {
           <ListItem>Updating the "last updated" date at the top of this policy</ListItem>
           
           <Paragraph>
-            Continued use of GroupReels after changes constitutes acceptance of the updated policy.
+            Continued use of BetMate after changes constitutes acceptance of the updated policy.
           </Paragraph>
         </Section>
 
@@ -315,8 +315,8 @@ export default function PrivacyPolicy() {
               lineHeight: 24,
               letterSpacing: 0.1
             }}>
-              Email: privacy@groupreels.com{'\n'}
-              Data Protection Officer: dpo@groupreels.com{'\n'}
+              Email: privacy@betmate.com{'\n'}
+              Data Protection Officer: dpo@betmate.com{'\n'}
               Address: 123 App Street, Tech City, TC 12345{'\n'}
               Phone: +1 (555) 123-4567
             </Text>
@@ -338,7 +338,7 @@ export default function PrivacyPolicy() {
             textAlign: 'center',
             letterSpacing: 0.3
           }}>
-            GroupReels v1.0.0
+            BetMate v1.0.0
           </Text>
           <Text style={{
             fontSize: 12,
@@ -347,7 +347,7 @@ export default function PrivacyPolicy() {
             marginTop: 8,
             letterSpacing: 0.2
           }}>
-            © 2025 GroupReels. All rights reserved.
+            © 2025 BetMate. All rights reserved.
           </Text>
         </View>
       </ScrollView>

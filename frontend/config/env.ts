@@ -34,13 +34,13 @@ const getApiBaseUrl = (): string => {
       // Use laptop IP for mobile device testing
       console.log(`[DEVELOPMENT] 🔧 Using laptop IP for mobile device testing`);
       return 'http://192.168.1.231:8080';
-      
+
     case 'staging':
-      return 'https://api-staging.groupreels.com';
-      
+      return 'https://api-staging.betmate.com';
+
     case 'production':
-      return 'https://api.groupreels.com';
-      
+      return 'https://api.betmate.com';
+
     default:
       return 'http://localhost:8080';
   }

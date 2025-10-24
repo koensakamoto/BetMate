@@ -118,7 +118,7 @@ export default function About() {
               color: '#ffffff',
               letterSpacing: 0.3
             }}>
-              About GroupReels
+              About BetMate
             </Text>
             <Text style={{
               fontSize: 14,
@@ -153,7 +153,7 @@ export default function About() {
               color: '#00D4AA',
               fontWeight: '700'
             }}>
-              GR
+              BM
             </Text>
           </View>
           <Text style={{
@@ -163,7 +163,7 @@ export default function About() {
             marginBottom: 8,
             letterSpacing: 0.3
           }}>
-            GroupReels
+            BetMate
           </Text>
           <Text style={{
             fontSize: 16,
@@ -178,7 +178,7 @@ export default function About() {
         {/* About the App */}
         <Section title="About the App">
           <Paragraph>
-            GroupReels is a social betting platform that brings friends together through friendly wagers and group competitions. Create betting groups with your friends, place bets on sports, games, or anything you can imagine, and track your wins and losses together.
+            BetMate is a social betting platform that brings friends together through friendly wagers and group competitions. Create betting groups with your friends, place bets on sports, games, or anything you can imagine, and track your wins and losses together.
           </Paragraph>
           <Paragraph>
             Our platform emphasizes responsible social betting, community building, and having fun with friends while adding excitement to the events you love watching.
@@ -318,7 +318,7 @@ export default function About() {
         {/* Development Team */}
         <Section title="Development Team">
           <Paragraph>
-            GroupReels is developed by a passionate team of developers who love bringing people together through technology and shared experiences.
+            BetMate is developed by a passionate team of developers who love bringing people together through technology and shared experiences.
           </Paragraph>
           <View style={{
             backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -343,7 +343,7 @@ export default function About() {
         {/* Technical Information */}
         <Section title="Technical Information">
           <Paragraph>
-            GroupReels is built using modern technologies to ensure a fast, reliable, and secure experience:
+            BetMate is built using modern technologies to ensure a fast, reliable, and secure experience:
           </Paragraph>
           <View style={{
             backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -395,7 +395,7 @@ export default function About() {
             borderColor: 'rgba(255, 255, 255, 0.05)'
           }}>
             <TouchableOpacity
-              onPress={() => openLink('mailto:support@groupreels.com')}
+              onPress={() => openLink('mailto:support@betmate.com')}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -412,12 +412,12 @@ export default function About() {
                 marginLeft: 12,
                 letterSpacing: 0.1
               }}>
-                support@groupreels.com
+                support@betmate.com
               </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
-              onPress={() => openLink('https://groupreels.com')}
+              onPress={() => openLink('https://betmate.com')}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -434,7 +434,7 @@ export default function About() {
                 marginLeft: 12,
                 letterSpacing: 0.1
               }}>
-                www.groupreels.com
+                www.betmate.com
               </Text>
             </TouchableOpacity>
             
@@ -528,7 +528,7 @@ export default function About() {
             textAlign: 'center',
             letterSpacing: 0.3
           }}>
-            GroupReels v1.0.0
+            BetMate v1.0.0
           </Text>
           <Text style={{
             fontSize: 12,
@@ -537,7 +537,7 @@ export default function About() {
             marginTop: 8,
             letterSpacing: 0.2
           }}>
-            © 2025 GroupReels. All rights reserved.
+            © 2025 BetMate. All rights reserved.
           </Text>
           <Text style={{
             fontSize: 11,
