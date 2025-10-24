@@ -193,7 +193,7 @@ export default function PrivacyPolicy() {
           <ListItem>To facilitate group betting and social interactions</ListItem>
           <ListItem>To process and track betting transactions</ListItem>
           <ListItem>To send you notifications about bets and group activities</ListItem>
-          <ListItem>To improve our app's functionality and user experience</ListItem>
+          <ListItem>To improve our app&apos;s functionality and user experience</ListItem>
           <ListItem>To ensure compliance with age restrictions and legal requirements</ListItem>
           <ListItem>To prevent fraud and maintain platform security</ListItem>
           <ListItem>To provide customer support and respond to your inquiries</ListItem>
@@ -290,7 +290,7 @@ export default function PrivacyPolicy() {
           </Paragraph>
           <ListItem>Sending an email notification</ListItem>
           <ListItem>Posting a prominent notice in the app</ListItem>
-          <ListItem>Updating the "last updated" date at the top of this policy</ListItem>
+          <ListItem>Updating the &quot;last updated&quot; date at the top of this policy</ListItem>
           
           <Paragraph>
             Continued use of BetMate after changes constitutes acceptance of the updated policy.

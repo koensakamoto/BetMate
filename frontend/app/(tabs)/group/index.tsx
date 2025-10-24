@@ -231,7 +231,7 @@ export default function Group() {
             <Text style={{
               fontSize: 14,
               color: 'rgba(255, 255, 255, 0.6)'
-            }}>Searching for "{searchQuery}"</Text>
+            }}>Searching for &quot;{searchQuery}&quot;</Text>
           </View>
         )}
 

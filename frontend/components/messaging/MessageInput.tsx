@@ -342,7 +342,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
             height: inputHeight,
             paddingHorizontal: 10,
             paddingVertical: 8,
-            textAlignVertical: 'center',
           }}
           multiline
           editable={!disabled}

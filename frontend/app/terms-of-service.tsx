@@ -127,7 +127,7 @@ export default function TermsOfService() {
         {/* Content */}
         <Section title="Agreement to Terms">
           <Paragraph>
-            By accessing and using BetMate ("we," "our," or "us"), you accept and agree to be bound by the terms and provision of this agreement.
+            By accessing and using BetMate (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;), you accept and agree to be bound by the terms and provision of this agreement.
           </Paragraph>
           <Paragraph>
             If you do not agree to abide by the above, please do not use this service.
@@ -200,7 +200,7 @@ export default function TermsOfService() {
 
         <Section title="Disclaimer">
           <Paragraph>
-            The information on this app is provided on an 'as is' basis. To the fullest extent permitted by law, this company excludes all representations, warranties, conditions and terms.
+            The information on this app is provided on an &apos;as is&apos; basis. To the fullest extent permitted by law, this company excludes all representations, warranties, conditions and terms.
           </Paragraph>
         </Section>
 

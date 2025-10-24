@@ -363,7 +363,7 @@ export default function AccountSecurity() {
                     fontSize: 13,
                     color: 'rgba(255, 255, 255, 0.6)'
                   }}>
-                    Don't show when you're active
+                    Don&apos;t show when you&apos;re active
                   </Text>
                 </View>
               </View>

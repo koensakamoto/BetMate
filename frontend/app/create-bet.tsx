@@ -650,7 +650,7 @@ export default function CreateBet() {
                 lineHeight: 18,
                 marginBottom: 16
               }}>
-                Users will predict the exact outcome when they place their bets. Use the description above to clearly explain what they should predict (e.g., "final score", "winner's name", "exact number").
+                Users will predict the exact outcome when they place their bets. Use the description above to clearly explain what they should predict (e.g., &quot;final score&quot;, &quot;winner&apos;s name&quot;, &quot;exact number&quot;).
               </Text>
             </>
           )}

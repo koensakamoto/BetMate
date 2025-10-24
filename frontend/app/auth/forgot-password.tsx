@@ -134,7 +134,7 @@ export default function ForgotPassword() {
             marginTop: 32,
             paddingHorizontal: 40
           }}>
-            Didn't receive the email? Check your spam folder or try resending.
+            Didn&apos;t receive the email? Check your spam folder or try resending.
           </Text>
         </View>
       </View>

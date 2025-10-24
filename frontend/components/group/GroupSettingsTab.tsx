@@ -103,6 +103,7 @@ const SettingItem = React.memo(({
     )}
   </TouchableOpacity>
 ));
+SettingItem.displayName = 'SettingItem';
 
 // Button Group Component for binary choices
 const ButtonGroup = React.memo(({
@@ -217,6 +218,7 @@ const ButtonGroup = React.memo(({
     </View>
   </View>
 ));
+ButtonGroup.displayName = 'ButtonGroup';
 
 const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupUpdated }) => {
   const [showEditNameModal, setShowEditNameModal] = useState(false);
@@ -322,6 +324,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
       {children}
     </View>
   ));
+  SettingSection.displayName = 'SettingSection';
 
   const handleEditGroupName = () => {
     setNewGroupName(groupData.name);

@@ -340,7 +340,7 @@ export default function HelpSupport() {
                 marginTop: 2,
                 letterSpacing: 0.3
               }}>
-                We're here to help you
+                We&apos;re here to help you
               </Text>
             </View>
           </View>
@@ -490,7 +490,7 @@ export default function HelpSupport() {
               lineHeight: 22,
               letterSpacing: 0.2
             }}>
-              Have a question that's not answered in our FAQ? Send us a message and we'll get back to you within 24 hours.
+              Have a question that&apos;s not answered in our FAQ? Send us a message and we&apos;ll get back to you within 24 hours.
             </Text>
             
             <AuthInput

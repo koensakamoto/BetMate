@@ -384,7 +384,7 @@ export default function About() {
         {/* Contact & Support */}
         <Section title="Contact & Support">
           <Paragraph>
-            Have questions, feedback, or need support? We'd love to hear from you!
+            Have questions, feedback, or need support? We&apos;d love to hear from you!
           </Paragraph>
           <View style={{
             backgroundColor: 'rgba(255, 255, 255, 0.02)',
