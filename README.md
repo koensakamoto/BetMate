@@ -593,10 +593,9 @@ node -v                        # Verify Node 18+
 
 1. Fork repository
 2. Create feature branch (`git checkout -b feature/name`)
-3. Follow [CLAUDE.md](CLAUDE.md) workflow
-4. Write tests
-5. Commit (`git commit -m 'Add feature'`)
-6. Push (`git push origin feature/name`)
-7. Open Pull Request
+3.Write tests
+4.Commit (`git commit -m 'Add feature'`)
+5.Push (`git push origin feature/name`)
+6.Open Pull Request
 
 ---
