@@ -516,10 +516,6 @@ npm test
 
 ---
 
-## Development Workflow
-
-Follows [CLAUDE.md](CLAUDE.md) workflow: **research → plan → implement → validate**
-
 ### Build Commands
 
 **Backend:**
@@ -592,25 +588,6 @@ node -v                        # Verify Node 18+
 
 ---
 
-## Technical Highlights for Portfolio
-
-✅ **Full-stack proficiency:** Spring Boot (Java 17) + React Native (TypeScript)
-✅ **Database design:** 16+ entities with complex relationships, normalization, indexing
-✅ **Security:** JWT auth, BCrypt hashing, RBAC, CORS, input validation
-✅ **Real-time systems:** WebSocket (STOMP) for live chat and notifications
-✅ **Caching:** Redis for performance optimization and session management
-✅ **RESTful API:** 50+ endpoints following REST conventions
-✅ **Mobile development:** Cross-platform iOS/Android with Expo
-✅ **Type safety:** TypeScript with strict mode, interfaces, generics
-✅ **State management:** React Context API, secure storage, persistent state
-✅ **Transaction handling:** ACID compliance, atomic operations, rollback
-✅ **Testing:** Unit tests, integration tests, H2 in-memory DB
-✅ **Clean architecture:** Layered design, separation of concerns, DRY
-✅ **API documentation:** Swagger/OpenAPI with interactive UI
-✅ **Complex business logic:** Odds calculation, consensus voting, payout distribution
-✅ **Event-driven:** Application events for decoupled notification system
-
----
 
 ## Contributing
 
@@ -623,11 +600,3 @@ node -v                        # Verify Node 18+
 7. Open Pull Request
 
 ---
-
-## License
-
-[Add license - MIT, Apache 2.0, etc.]
-
----
-
-**Built with:** Spring Boot • React Native • Expo • MySQL • Redis • TypeScript • Java 17
