@@ -300,6 +300,8 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
   };
 
   const handleSaveGroupName = async () => {
+    Keyboard.dismiss();
+
     if (!newGroupName.trim() || newGroupName.trim() === groupData.name) {
       setShowEditNameModal(false);
       return;
@@ -352,6 +354,8 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
   };
 
   const handleSaveGroupDescription = async () => {
+    Keyboard.dismiss();
+
     if (newGroupDescription.trim() === groupData.description) {
       setShowEditDescriptionModal(false);
       return;
