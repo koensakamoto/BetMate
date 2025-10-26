@@ -106,13 +106,28 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
   const formatJoinDate = (dateString: string): string => {
     const joinDate = new Date(dateString);
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - joinDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) return '1 day ago';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.ceil(diffDays / 7)} week${Math.ceil(diffDays / 7) > 1 ? 's' : ''} ago`;
-    return `${Math.ceil(diffDays / 30)} month${Math.ceil(diffDays / 30) > 1 ? 's' : ''} ago`;
+
+    // Check if same day
+    if (joinDate.toDateString() === now.toDateString()) return 'today';
+
+    // Calculate year, month, and day differences
+    let years = now.getFullYear() - joinDate.getFullYear();
+    let months = now.getMonth() - joinDate.getMonth();
+
+    // Adjust for negative months
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    // Return formatted string based on time difference
+    if (years >= 1) return `${years} year${years > 1 ? 's' : ''} ago`;
+    if (months >= 1) return `${months} month${months > 1 ? 's' : ''} ago`;
+
+    // For days, calculate total days difference
+    const totalDays = Math.floor((now.getTime() - joinDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (totalDays === 1) return 'yesterday';
+    return `${totalDays} day${totalDays > 1 ? 's' : ''} ago`;
   };
 
   // Helper function to format last activity
@@ -202,7 +217,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
         }}>
           Members ({groupData.memberCount})
         </Text>
-        
+
         <TouchableOpacity
           onPress={() => {
             console.log('🎯 Invite button pressed, opening modal');
@@ -222,12 +237,12 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
 
       {/* Member Filters */}
       <View style={{ marginBottom: 20 }}>
-        <ScrollView 
-          horizontal 
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 0 }}
         >
-          <View style={{ 
+          <View style={{
             flexDirection: 'row',
             gap: 8
           }}>
@@ -361,7 +376,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
             }}>
               {getDisplayName(member).charAt(0).toUpperCase()}
             </Text>
-            
+
             {/* Online Indicator */}
             {isOnline(member) && (
               <View style={{
@@ -393,7 +408,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
               }}>
                 {getDisplayName(member)}
               </Text>
-              
+
               {(member.role === 'ADMIN' || member.role === 'OFFICER') && (
                 <View style={{
                   backgroundColor: 'rgba(255, 215, 0, 0.2)',
@@ -420,26 +435,12 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
               @{member.username}
             </Text>
 
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between'
+            <Text style={{
+              fontSize: 12,
+              color: 'rgba(255, 255, 255, 0.5)'
             }}>
-              <Text style={{
-                fontSize: 12,
-                color: 'rgba(255, 255, 255, 0.5)'
-              }}>
-                Joined {formatJoinDate(member.joinedAt)}
-              </Text>
-              
-              <Text style={{
-                fontSize: 12,
-                color: isOnline(member) ? '#00D4AA' : 'rgba(255, 255, 255, 0.5)',
-                fontWeight: isOnline(member) ? '600' : '400'
-              }}>
-                {formatLastActivity(member)}
-              </Text>
-            </View>
+              Joined {formatJoinDate(member.joinedAt)}
+            </Text>
           </View>
 
           {/* Member Actions */}
@@ -466,7 +467,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
           </TouchableOpacity>
         </View>
           ))}
-          
+
           {/* Empty State */}
           {getFilteredMembers().length === 0 && (
             <Text style={{

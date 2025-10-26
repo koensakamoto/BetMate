@@ -84,13 +84,33 @@ export default function ManageMember() {
   const formatJoinDate = (dateString: string): string => {
     const joinDate = new Date(dateString);
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - joinDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 1) return '1 day ago';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.ceil(diffDays / 7)} week${Math.ceil(diffDays / 7) > 1 ? 's' : ''} ago`;
-    return `${Math.ceil(diffDays / 30)} month${Math.ceil(diffDays / 30) > 1 ? 's' : ''} ago`;
+    // Check if same day
+    if (joinDate.toDateString() === now.toDateString()) return 'today';
+
+    // Calculate year, month, and day differences
+    let years = now.getFullYear() - joinDate.getFullYear();
+    let months = now.getMonth() - joinDate.getMonth();
+    let days = now.getDate() - joinDate.getDate();
+
+    // Adjust for negative months or days
+    if (days < 0) {
+      months--;
+      days += new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+    }
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    // Return formatted string based on time difference
+    if (years >= 1) return `${years} year${years > 1 ? 's' : ''} ago`;
+    if (months >= 1) return `${months} month${months > 1 ? 's' : ''} ago`;
+
+    // For days, calculate total days difference
+    const totalDays = Math.floor((now.getTime() - joinDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (totalDays === 1) return 'yesterday';
+    return `${totalDays} day${totalDays > 1 ? 's' : ''} ago`;
   };
 
   const formatLastActivity = (member: GroupMemberResponse): string => {
