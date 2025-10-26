@@ -7,7 +7,6 @@ import { MaterialIcons } from '@expo/vector-icons';
 export default function AccountSecurity() {
   const insets = useSafeAreaInsets();
   const [privateProfile, setPrivateProfile] = useState(false);
-  const [hideOnlineStatus, setHideOnlineStatus] = useState(false);
 
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <View style={{ marginBottom: 32 }}>
@@ -286,7 +285,7 @@ export default function AccountSecurity() {
               alignItems: 'center',
               paddingHorizontal: 16,
               paddingVertical: 16,
-              borderBottomWidth: 0.5,
+              borderBottomWidth: 0,
               borderBottomColor: 'rgba(255, 255, 255, 0.08)'
             }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -297,10 +296,10 @@ export default function AccountSecurity() {
                   alignItems: 'center',
                   marginRight: 12
                 }}>
-                  <MaterialIcons 
-                    name="lock" 
-                    size={18} 
-                    color="rgba(255, 255, 255, 0.7)" 
+                  <MaterialIcons
+                    name="lock"
+                    size={18}
+                    color="rgba(255, 255, 255, 0.7)"
                   />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -324,54 +323,6 @@ export default function AccountSecurity() {
                 onValueChange={setPrivateProfile}
                 trackColor={{ false: 'rgba(255, 255, 255, 0.2)', true: '#00D4AA' }}
                 thumbColor={privateProfile ? '#ffffff' : '#ffffff'}
-                ios_backgroundColor="rgba(255, 255, 255, 0.2)"
-              />
-            </View>
-
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              paddingVertical: 16,
-              borderBottomWidth: 0.5,
-              borderBottomColor: 'rgba(255, 255, 255, 0.08)'
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                <View style={{
-                  width: 24,
-                  height: 24,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  marginRight: 12
-                }}>
-                  <MaterialIcons 
-                    name="visibility-off" 
-                    size={18} 
-                    color="rgba(255, 255, 255, 0.7)" 
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{
-                    fontSize: 15,
-                    color: '#ffffff',
-                    marginBottom: 2
-                  }}>
-                    Hide Online Status
-                  </Text>
-                  <Text style={{
-                    fontSize: 13,
-                    color: 'rgba(255, 255, 255, 0.6)'
-                  }}>
-                    Don&apos;t show when you&apos;re active
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                value={hideOnlineStatus}
-                onValueChange={setHideOnlineStatus}
-                trackColor={{ false: 'rgba(255, 255, 255, 0.2)', true: '#00D4AA' }}
-                thumbColor={hideOnlineStatus ? '#ffffff' : '#ffffff'}
                 ios_backgroundColor="rgba(255, 255, 255, 0.2)"
               />
             </View>

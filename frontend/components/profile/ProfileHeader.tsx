@@ -9,7 +9,6 @@ interface ProfileHeaderProps {
   firstName?: string;
   lastName?: string;
   profileImageUrl?: string;
-  isActive?: boolean;
   isVerified?: boolean;
   onActionPress: () => void;
   actionText: string;
@@ -23,7 +22,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   firstName,
   lastName,
   profileImageUrl,
-  isActive = false,
   isVerified = false,
   onActionPress,
   actionText,
@@ -139,26 +137,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               }}
             />
 
-            {/* Online Status Indicator */}
-            {isActive && (
-              <View style={{
-                position: 'absolute',
-                bottom: 8,
-                right: 8,
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                backgroundColor: '#00D4AA',
-                borderWidth: 3,
-                borderColor: '#0a0a0f',
-                shadowColor: '#00D4AA',
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.5,
-                shadowRadius: 4,
-                elevation: 4
-              }} />
-            )}
-
             {/* Verification Badge */}
             {isVerified && (
               <View style={{
@@ -201,34 +179,6 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             }}>
               {displayName}
             </Text>
-          )}
-
-          {isActive && (
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: 'rgba(0, 212, 170, 0.1)',
-              paddingHorizontal: 12,
-              paddingVertical: 4,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: 'rgba(0, 212, 170, 0.3)'
-            }}>
-              <View style={{
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: '#00D4AA',
-                marginRight: 6
-              }} />
-              <Text style={{
-                fontSize: 12,
-                color: '#00D4AA',
-                fontWeight: '600'
-              }}>
-                Active now
-              </Text>
-            </View>
           )}
         </View>
 
