@@ -1,8 +1,8 @@
 package com.betmate.service.bet;
 
 import com.betmate.entity.betting.Bet;
-import com.betmate.entity.betting.enums.BetResolutionMethod;
-import com.betmate.entity.betting.enums.BetStatus;
+import com.betmate.entity.betting.Bet.BetResolutionMethod;
+import com.betmate.entity.betting.Bet.BetStatus;
 import com.betmate.event.betting.BetDeadlineReachedEvent;
 import com.betmate.event.betting.BetAwaitingResolutionEvent;
 import com.betmate.repository.betting.BetRepository;

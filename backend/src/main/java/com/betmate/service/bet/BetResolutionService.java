@@ -385,32 +385,39 @@ public class BetResolutionService {
             .orElse(false);
     }
 
-    private void checkAndResolveIfConsensusReached(Bet bet) {
+    /**
+     * Checks if consensus has been reached for a CONSENSUS_VOTING bet
+     * and automatically resolves it if conditions are met.
+     *
+     * @param bet The bet to check for consensus
+     * @return true if the bet was resolved, false otherwise
+     */
+    public boolean checkAndResolveIfConsensusReached(Bet bet) {
         Map<Bet.BetOutcome, Long> voteCounts = getVoteCounts(bet.getId());
-        
+
         if (voteCounts.isEmpty()) {
-            return;
+            return false;
         }
-        
+
         long totalVotes = voteCounts.values().stream().mapToLong(Long::longValue).sum();
-        
+
         // Check if minimum votes requirement met
         if (totalVotes < bet.getMinimumVotesRequired()) {
-            return;
+            return false;
         }
-        
+
         // Find outcome with most votes
         Bet.BetOutcome winningOutcome = voteCounts.entrySet().stream()
             .max(Map.Entry.comparingByValue())
             .map(Map.Entry::getKey)
             .orElse(null);
-        
+
         if (winningOutcome == null) {
-            return;
+            return false;
         }
-        
+
         long winningVotes = voteCounts.get(winningOutcome);
-        
+
         // Check if majority (more than half of total votes)
         if (winningVotes > totalVotes / 2) {
             bet.resolve(winningOutcome);
@@ -418,7 +425,10 @@ public class BetResolutionService {
 
             // Publish bet resolved event for notifications
             publishBetResolvedEvent(bet);
+            return true;
         }
+
+        return false;
     }
 
     /**
