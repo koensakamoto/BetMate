@@ -7,10 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Text,
-  Keyboard,
-  Animated,
-  Dimensions,
-  Easing
+  Keyboard
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
@@ -38,8 +35,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList>(null);
   const { user, isLoading: authLoading } = useAuth();
-  const keyboardHeight = useRef(new Animated.Value(0)).current;
-  const contentScale = useRef(new Animated.Value(1)).current;
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   // Generate unique component instance ID for isolation
   const componentInstanceId = useRef(`comp_${groupId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`).current;
@@ -84,47 +80,23 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
     };
   }, [groupId, user, authLoading]);
 
-  // Keyboard handling
+  // Keyboard handling - Professional smooth transitions
   useEffect(() => {
     const keyboardWillShowListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (e) => {
-        // Parallel animations for smooth, natural movement
-        Animated.parallel([
-          Animated.spring(keyboardHeight, {
-            toValue: e.endCoordinates.height,
-            tension: 100,
-            friction: 8,
-            useNativeDriver: false,
-          }),
-          Animated.spring(contentScale, {
-            toValue: 0.98,
-            tension: 100,
-            friction: 8,
-            useNativeDriver: false,
-          })
-        ]).start();
+        setIsKeyboardVisible(true);
+        // Smooth scroll to bottom when keyboard appears
+        setTimeout(() => {
+          scrollToBottom();
+        }, 100);
       }
     );
-    
+
     const keyboardWillHideListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       (e) => {
-        // Slightly faster hide animation with spring
-        Animated.parallel([
-          Animated.spring(keyboardHeight, {
-            toValue: 0,
-            tension: 120,
-            friction: 9,
-            useNativeDriver: false,
-          }),
-          Animated.spring(contentScale, {
-            toValue: 1,
-            tension: 120,
-            friction: 9,
-            useNativeDriver: false,
-          })
-        ]).start();
+        setIsKeyboardVisible(false);
       }
     );
 
@@ -132,7 +104,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
       keyboardWillShowListener?.remove();
       keyboardWillHideListener?.remove();
     };
-  }, [keyboardHeight, contentScale]);
+  }, []);
 
   const initializeChat = async () => {
     try {
@@ -525,22 +497,24 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   });
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
-      {/* Messages List */}
-      <Animated.View 
-        style={{ 
-          flex: 1,
-          marginBottom: keyboardHeight,
-          transform: [{ scale: contentScale }]
-        }}
-      >
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: '#0a0a0f' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 85 + insets.bottom : 0}
+    >
+      <View style={{ flex: 1 }}>
+        {/* Messages List */}
         <FlatList
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
           keyExtractor={keyExtractor}
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingTop: 16, paddingBottom: 8 }}
+          contentContainerStyle={{
+            paddingTop: 16,
+            paddingBottom: 8,
+            flexGrow: 1
+          }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -559,7 +533,6 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
             autoscrollToTopThreshold: 10,
           }}
           // Performance optimizations
-          // Note: Skipping getItemLayout since messages have variable heights
           initialNumToRender={15}
           maxToRenderPerBatch={10}
           windowSize={10}
@@ -578,17 +551,17 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
           onCancelReply={cancelReply}
           editingMessage={editingMessage}
           onCancelEdit={cancelEdit}
-          disabled={false} // Always allow messaging - will use HTTP fallback if WebSocket fails
+          disabled={false}
           placeholder={
-            connectionStatus === 'connecting' 
-              ? 'Connecting to real-time...' 
+            connectionStatus === 'connecting'
+              ? 'Connecting to real-time...'
               : connectionStatus === 'connected'
               ? 'Type a message...'
               : 'Type a message... (using HTTP)'
           }
         />
-      </Animated.View>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 

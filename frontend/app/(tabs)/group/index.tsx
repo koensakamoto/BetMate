@@ -1,5 +1,5 @@
-import { Text, View, TouchableOpacity, ScrollView, Image, StatusBar, TextInput } from "react-native";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { Text, View, TouchableOpacity, ScrollView, Image, StatusBar, TextInput, RefreshControl } from "react-native";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
@@ -18,35 +18,60 @@ export default function Group() {
   const [publicGroups, setPublicGroups] = useState<GroupSummaryResponse[]>([]);
   const [searchResults, setSearchResults] = useState<GroupSummaryResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const tabs = ['My Groups', 'Discover'];
   const insets = useSafeAreaInsets();
 
+  // Cache management: 5 minute cache
+  const lastFetchTime = useRef<number>(0);
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  const isCacheValid = useCallback(() => {
+    return (Date.now() - lastFetchTime.current) < CACHE_DURATION;
+  }, []);
+
   // Refresh both groups lists
-  const refreshGroups = useCallback(async () => {
-    setIsLoading(true);
+  const refreshGroups = useCallback(async (isRefreshing: boolean = false) => {
+    if (isRefreshing) {
+      setRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+
     try {
       // Fetch both groups lists in parallel
       const [myGroupsData, publicGroupsData] = await Promise.all([
         groupService.getMyGroups(),
         groupService.getPublicGroups()
       ]);
-      
+
       setMyGroups(myGroupsData);
       setPublicGroups(publicGroupsData);
       debugLog('Groups refreshed - My groups:', myGroupsData, 'Public groups:', publicGroupsData);
+
+      // Update cache timestamp
+      lastFetchTime.current = Date.now();
     } catch (error) {
       errorLog('Error refreshing groups:', error);
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
-  // Refresh groups when page gains focus (e.g., returning from create-group)
+  // Smart refresh on focus: only refetch if cache expired
   useFocusEffect(
     useCallback(() => {
-      refreshGroups();
-    }, [refreshGroups])
+      if (!isCacheValid() || myGroups.length === 0) {
+        refreshGroups(false);
+      }
+    }, [refreshGroups, isCacheValid, myGroups.length])
   );
+
+  // Pull-to-refresh handler
+  const onRefresh = useCallback(() => {
+    refreshGroups(true);
+  }, [refreshGroups]);
 
   // Fetch data based on active tab (for tab switching only - useFocusEffect handles initial load)
   useEffect(() => {
@@ -133,7 +158,18 @@ export default function Group() {
         backgroundColor: '#0a0a0f',
         zIndex: 1
       }} />
-      <ScrollView style={{ flex: 1, marginTop: insets.top }} contentContainerStyle={{ paddingTop: 20 }}>
+      <ScrollView
+        style={{ flex: 1, marginTop: insets.top }}
+        contentContainerStyle={{ paddingTop: 20 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#00D4AA"
+            colors={['#00D4AA']}
+          />
+        }
+      >
         <View style={{ flex: 1, paddingHorizontal: 20 }}>
         {/* Clean Search */}
         <View style={{

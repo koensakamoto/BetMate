@@ -157,9 +157,20 @@ export default function FriendsList() {
         translucent={true}
       />
 
+      {/* Solid background behind status bar */}
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top,
+        backgroundColor: '#0a0a0f',
+        zIndex: 1
+      }} />
+
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 20 }}
+        style={{ flex: 1, marginTop: insets.top }}
+        contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 20 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}

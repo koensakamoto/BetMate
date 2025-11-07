@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
+import { Text, View, StatusBar, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -43,15 +44,29 @@ export default function ProfileSettings() {
         backgroundColor="#0a0a0f"
         translucent={true}
       />
-      
-      <ScrollView 
-        style={{ flex: 1 }}
-        contentContainerStyle={{ 
-          paddingTop: insets.top + 16,
+
+      {/* Solid background behind status bar */}
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top,
+        backgroundColor: '#0a0a0f',
+        zIndex: 1
+      }} />
+
+      <KeyboardAwareScrollView
+        style={{ flex: 1, backgroundColor: '#0a0a0f', marginTop: insets.top }}
+        contentContainerStyle={{
+          paddingTop: 16,
           paddingBottom: insets.bottom + 40,
           paddingHorizontal: 24
         }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        extraScrollHeight={20}
+        enableOnAndroid={true}
       >
         {/* Header */}
         <View style={{
@@ -266,6 +281,7 @@ export default function ProfileSettings() {
                   fontSize: 16,
                   color: '#ffffff'
                 }}
+                autoCapitalize="none"
               />
             </View>
           </View>
@@ -296,12 +312,14 @@ export default function ProfileSettings() {
                   fontSize: 16,
                   color: '#ffffff'
                 }}
+                keyboardType="email-address"
+                autoCapitalize="none"
               />
             </View>
           </View>
         </View>
 
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

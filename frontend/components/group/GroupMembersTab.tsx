@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Modal, Alert, TextInput, Share, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
@@ -12,10 +12,12 @@ interface GroupMembersTabProps {
     id: string | string[];
     memberCount: number;
   };
+  forceRefresh?: number; // Increment this to force a refresh
 }
 
-const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
+const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefresh }) => {
   const insets = useSafeAreaInsets();
+
   const [activeFilter, setActiveFilter] = useState('All');
   const [members, setMembers] = useState<GroupMemberResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,50 +29,76 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
   const [inviteLink, setInviteLink] = useState('');
   const memberFilters = ['All', 'Admins', 'Officers'];
 
-  // Fetch group members
-  useEffect(() => {
-    const fetchMembers = async () => {
-      setIsLoading(true);
-      setError(null);
+  // Cache management: 5 minute cache
+  const lastFetchTime = useRef<number>(0);
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-      try {
-        const groupId = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
-        debugLog('Fetching members for group ID:', groupId);
-        const membersData = await groupService.getGroupMembers(Number(groupId));
+  const isCacheValid = useCallback(() => {
+    return (Date.now() - lastFetchTime.current) < CACHE_DURATION;
+  }, []);
 
-        // Ensure we always set an array
-        if (Array.isArray(membersData)) {
-          setMembers(membersData);
-          setError(null);
-          debugLog('Group members fetched successfully:', membersData);
-        } else {
-          errorLog('API returned non-array data:', membersData);
-          setMembers([]);
-          setError('Invalid data received from server');
-        }
-      } catch (error: any) {
-        errorLog('Error fetching group members:', error);
+  // Fetch group members with caching
+  const fetchMembers = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const groupId = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
+      debugLog('Fetching members for group ID:', groupId);
+      const membersData = await groupService.getGroupMembers(Number(groupId));
+
+      // Ensure we always set an array
+      if (Array.isArray(membersData)) {
+        setMembers(membersData);
+        setError(null);
+        debugLog('Group members fetched successfully:', membersData);
+
+        // Update cache timestamp
+        lastFetchTime.current = Date.now();
+      } else {
+        errorLog('API returned non-array data:', membersData);
         setMembers([]);
-
-        // Set more specific error messages
-        if (error?.response?.status === 401) {
-          setError('Authentication required. Please log in again.');
-        } else if (error?.response?.status === 403) {
-          setError('You do not have permission to view members of this group.');
-        } else if (error?.response?.status === 404) {
-          setError('Group not found.');
-        } else {
-          setError('Failed to load group members. Please try again.');
-        }
-      } finally {
-        setIsLoading(false);
+        setError('Invalid data received from server');
       }
-    };
+    } catch (error: any) {
+      errorLog('Error fetching group members:', error);
+      setMembers([]);
 
-    if (groupData.id) {
-      fetchMembers();
+      // Set more specific error messages
+      if (error?.response?.status === 401) {
+        setError('Authentication required. Please log in again.');
+      } else if (error?.response?.status === 403) {
+        setError('You do not have permission to view members of this group.');
+      } else if (error?.response?.status === 404) {
+        setError('Group not found.');
+      } else {
+        setError('Failed to load group members. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   }, [groupData.id]);
+
+  // Smart fetch with caching
+  useEffect(() => {
+    if (groupData.id) {
+      // Only fetch if cache is invalid or no data
+      if (!isCacheValid() || members.length === 0) {
+        debugLog('Cache invalid or no data, fetching members');
+        fetchMembers();
+      } else {
+        debugLog('Using cached members data');
+      }
+    }
+  }, [groupData.id, isCacheValid, members.length, fetchMembers]);
+
+  // Handle force refresh from parent (pull-to-refresh)
+  useEffect(() => {
+    if (forceRefresh && forceRefresh > 0) {
+      debugLog('Force refresh triggered for members');
+      fetchMembers();
+    }
+  }, [forceRefresh, fetchMembers]);
 
   // Filter members based on selected filter - memoized to avoid recalculating on every render
   const filteredMembers = useMemo(() => {

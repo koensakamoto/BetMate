@@ -108,11 +108,22 @@ export default function NotificationPreferences() {
         backgroundColor="#0a0a0f"
         translucent={true}
       />
-      
-      <ScrollView 
-        style={{ flex: 1 }}
-        contentContainerStyle={{ 
-          paddingTop: insets.top + 16,
+
+      {/* Solid background behind status bar */}
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top,
+        backgroundColor: '#0a0a0f',
+        zIndex: 1
+      }} />
+
+      <ScrollView
+        style={{ flex: 1, marginTop: insets.top }}
+        contentContainerStyle={{
+          paddingTop: 16,
           paddingBottom: insets.bottom + 60,
           paddingHorizontal: 24
         }}

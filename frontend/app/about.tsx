@@ -74,11 +74,22 @@ export default function About() {
         backgroundColor="#0a0a0f"
         translucent={true}
       />
-      
-      <ScrollView 
-        style={{ flex: 1 }}
-        contentContainerStyle={{ 
-          paddingTop: insets.top + 16,
+
+      {/* Solid background behind status bar */}
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top,
+        backgroundColor: '#0a0a0f',
+        zIndex: 1
+      }} />
+
+      <ScrollView
+        style={{ flex: 1, marginTop: insets.top }}
+        contentContainerStyle={{
+          paddingTop: 16,
           paddingBottom: insets.bottom + 60,
           paddingHorizontal: 24
         }}
@@ -194,84 +205,136 @@ export default function About() {
             borderWidth: 1,
             borderColor: 'rgba(255, 255, 255, 0.05)'
           }}>
-            <View style={{ marginBottom: 16 }}>
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: '#ffffff',
-                marginBottom: 8,
-                letterSpacing: 0.2
+            <View style={{ flexDirection: 'row', marginBottom: 20 }}>
+              <View style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: 'rgba(0, 212, 170, 0.15)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: 16
               }}>
-                🎯 Group Betting
-              </Text>
-              <Text style={{
-                fontSize: 14,
-                color: 'rgba(255, 255, 255, 0.7)',
-                lineHeight: 20,
-                letterSpacing: 0.1
-              }}>
-                Create private groups and bet with friends on sports, games, and events
-              </Text>
+                <MaterialIcons name="group" size={20} color="#00D4AA" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: '#ffffff',
+                  marginBottom: 6,
+                  letterSpacing: 0.2
+                }}>
+                  Group Betting
+                </Text>
+                <Text style={{
+                  fontSize: 14,
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  lineHeight: 20,
+                  letterSpacing: 0.1
+                }}>
+                  Create private groups and bet with friends on sports, games, and events
+                </Text>
+              </View>
             </View>
-            
-            <View style={{ marginBottom: 16 }}>
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: '#ffffff',
-                marginBottom: 8,
-                letterSpacing: 0.2
+
+            <View style={{ flexDirection: 'row', marginBottom: 20 }}>
+              <View style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: 'rgba(0, 212, 170, 0.15)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: 16
               }}>
-                💬 Real-time Chat
-              </Text>
-              <Text style={{
-                fontSize: 14,
-                color: 'rgba(255, 255, 255, 0.7)',
-                lineHeight: 20,
-                letterSpacing: 0.1
-              }}>
-                Discuss bets, share predictions, and celebrate wins with group messaging
-              </Text>
+                <MaterialIcons name="chat-bubble" size={20} color="#00D4AA" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: '#ffffff',
+                  marginBottom: 6,
+                  letterSpacing: 0.2
+                }}>
+                  Real-time Chat
+                </Text>
+                <Text style={{
+                  fontSize: 14,
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  lineHeight: 20,
+                  letterSpacing: 0.1
+                }}>
+                  Discuss bets, share predictions, and celebrate wins with group messaging
+                </Text>
+              </View>
             </View>
-            
-            <View style={{ marginBottom: 16 }}>
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: '#ffffff',
-                marginBottom: 8,
-                letterSpacing: 0.2
+
+            <View style={{ flexDirection: 'row', marginBottom: 20 }}>
+              <View style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: 'rgba(0, 212, 170, 0.15)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: 16
               }}>
-                📊 Statistics Tracking
-              </Text>
-              <Text style={{
-                fontSize: 14,
-                color: 'rgba(255, 255, 255, 0.7)',
-                lineHeight: 20,
-                letterSpacing: 0.1
-              }}>
-                Track your betting performance with detailed win/loss statistics
-              </Text>
+                <MaterialIcons name="analytics" size={20} color="#00D4AA" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: '#ffffff',
+                  marginBottom: 6,
+                  letterSpacing: 0.2
+                }}>
+                  Statistics Tracking
+                </Text>
+                <Text style={{
+                  fontSize: 14,
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  lineHeight: 20,
+                  letterSpacing: 0.1
+                }}>
+                  Track your betting performance with detailed win/loss statistics
+                </Text>
+              </View>
             </View>
-            
-            <View>
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: '#ffffff',
-                marginBottom: 8,
-                letterSpacing: 0.2
+
+            <View style={{ flexDirection: 'row' }}>
+              <View style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: 'rgba(0, 212, 170, 0.15)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: 16
               }}>
-                🏆 Achievements
-              </Text>
-              <Text style={{
-                fontSize: 14,
-                color: 'rgba(255, 255, 255, 0.7)',
-                lineHeight: 20,
-                letterSpacing: 0.1
-              }}>
-                Unlock achievements and compete with friends for bragging rights
-              </Text>
+                <MaterialIcons name="emoji-events" size={20} color="#00D4AA" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: '#ffffff',
+                  marginBottom: 6,
+                  letterSpacing: 0.2
+                }}>
+                  Achievements
+                </Text>
+                <Text style={{
+                  fontSize: 14,
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  lineHeight: 20,
+                  letterSpacing: 0.1
+                }}>
+                  Unlock achievements and compete with friends for bragging rights
+                </Text>
+              </View>
             </View>
           </View>
         </Section>
@@ -320,24 +383,6 @@ export default function About() {
           <Paragraph>
             BetMate is developed by a passionate team of developers who love bringing people together through technology and shared experiences.
           </Paragraph>
-          <View style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.02)',
-            borderRadius: 12,
-            padding: 20,
-            marginTop: 8,
-            borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.05)'
-          }}>
-            <Text style={{
-              fontSize: 15,
-              color: 'rgba(255, 255, 255, 0.85)',
-              lineHeight: 24,
-              letterSpacing: 0.1,
-              textAlign: 'center'
-            }}>
-              Built with ❤️ for the community
-            </Text>
-          </View>
         </Section>
 
         {/* Technical Information */}
@@ -354,7 +399,7 @@ export default function About() {
           }}>
             <InfoItem label="Frontend" value="React Native & Expo" />
             <InfoItem label="Backend" value="Java Spring Boot" />
-            <InfoItem label="Database" value="PostgreSQL" />
+            <InfoItem label="Database" value="MySQL" />
             <InfoItem label="Real-time" value="WebSocket (STOMP)" />
             <View style={{
               flexDirection: 'row',
@@ -516,11 +561,11 @@ export default function About() {
         {/* Footer */}
         <View style={{
           alignItems: 'center',
-          paddingTop: 40,
-          paddingBottom: 20,
+          paddingTop: 24,
+          paddingBottom: 16,
           borderTopWidth: 1,
           borderTopColor: 'rgba(255, 255, 255, 0.05)',
-          marginTop: 40
+          marginTop: 32
         }}>
           <Text style={{
             fontSize: 13,
@@ -538,15 +583,6 @@ export default function About() {
             letterSpacing: 0.2
           }}>
             © 2025 BetMate. All rights reserved.
-          </Text>
-          <Text style={{
-            fontSize: 11,
-            color: 'rgba(255, 255, 255, 0.25)',
-            textAlign: 'center',
-            marginTop: 16,
-            letterSpacing: 0.2
-          }}>
-            Made with ❤️ for the betting community
           </Text>
         </View>
       </ScrollView>

@@ -164,20 +164,31 @@ export default function FindFriends() {
         backgroundColor="#0a0a0f"
         translucent={true}
       />
-      
+
+      {/* Solid background behind status bar */}
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top,
+        backgroundColor: '#0a0a0f',
+        zIndex: 1
+      }} />
+
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 20 }}
+        style={{ flex: 1, marginTop: insets.top }}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 20 }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ flex: 1, paddingHorizontal: 20 }}>
-          {/* Header */}
+          {/* Header with Search Input */}
           <View style={{
             flexDirection: 'row',
             alignItems: 'center',
-            marginBottom: 24
+            marginBottom: 20
           }}>
             <TouchableOpacity
               onPress={handleBackPress}
@@ -188,101 +199,52 @@ export default function FindFriends() {
                 backgroundColor: 'rgba(255, 255, 255, 0.08)',
                 justifyContent: 'center',
                 alignItems: 'center',
-                marginRight: 16
+                marginRight: 12
               }}
             >
               <MaterialIcons name="arrow-back" size={20} color="#ffffff" />
             </TouchableOpacity>
-            
-            <Text style={{
-              fontSize: 20,
-              fontWeight: '600',
-              color: '#ffffff',
-              flex: 1
-            }}>
-              Find Friends
-            </Text>
-          </View>
 
-          {/* Search Input */}
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: 24,
-            paddingBottom: 8,
-            borderBottomWidth: 1,
-            borderBottomColor: 'rgba(255, 255, 255, 0.1)'
-          }}>
+            {/* Search Input */}
             <View style={{
-              width: 16,
-              height: 16,
-              marginRight: 8,
-              position: 'relative'
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              borderRadius: 20,
+              paddingHorizontal: 16,
+              paddingVertical: 10
             }}>
-              {/* Search circle */}
-              <View style={{
-                position: 'absolute',
-                top: 1,
-                left: 1,
-                width: 10,
-                height: 10,
-                borderWidth: 1.5,
-                borderColor: 'rgba(255, 255, 255, 0.5)',
-                borderRadius: 5,
-                backgroundColor: 'transparent'
-              }} />
-              {/* Search handle */}
-              <View style={{
-                position: 'absolute',
-                bottom: 1,
-                right: 1,
-                width: 5,
-                height: 1.5,
-                backgroundColor: 'rgba(255, 255, 255, 0.5)',
-                borderRadius: 1,
-                transform: [{ rotate: '45deg' }]
-              }} />
-            </View>
-            
-            <TextInput
-              style={{
-                flex: 1,
-                fontSize: 16,
-                color: '#ffffff',
-                paddingVertical: 4
-              }}
-              placeholder="Search by username or name..."
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              selectionColor="#ffffff"
-              autoCapitalize="none"
-            />
-            
-            {searchQuery.length > 0 && (
-              <TouchableOpacity
-                onPress={() => setSearchQuery('')}
-                style={{ paddingLeft: 8 }}
-              >
-                <Text style={{
-                  fontSize: 16,
-                  color: 'rgba(255, 255, 255, 0.5)'
-                }}>×</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+              <MaterialIcons name="search" size={20} color="rgba(255, 255, 255, 0.5)" style={{ marginRight: 8 }} />
 
-          {/* Search Status */}
-          {searchQuery.length > 0 && (
-            <View style={{ marginBottom: 16 }}>
-              <Text style={{
-                fontSize: 14,
-                color: 'rgba(255, 255, 255, 0.6)'
-              }}>
-                {isLoading ? 'Searching...' : `Searching for "${searchQuery}"`}
-              </Text>
+              <TextInput
+                style={{
+                  flex: 1,
+                  fontSize: 16,
+                  color: '#ffffff',
+                  paddingVertical: 0
+                }}
+                placeholder="Find friends..."
+                placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                selectionColor="#ffffff"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="off"
+                spellCheck={false}
+              />
+
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  style={{ marginLeft: 8 }}
+                >
+                  <MaterialIcons name="close" size={18} color="rgba(255, 255, 255, 0.5)" />
+                </TouchableOpacity>
+              )}
             </View>
-          )}
+          </View>
 
           {/* Results */}
           {searchQuery.length === 0 ? (

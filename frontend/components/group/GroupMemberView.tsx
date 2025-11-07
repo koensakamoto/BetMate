@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Text, View, ScrollView, Image, TouchableOpacity, StatusBar } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Text, View, ScrollView, Image, TouchableOpacity, StatusBar, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -51,6 +51,8 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
 
   const [activeTab, setActiveTab] = useState(getInitialTab);
   const [groupData, setGroupData] = useState(initialGroupData);
+  const [refreshing, setRefreshing] = useState(false);
+  const [forceRefreshCounter, setForceRefreshCounter] = useState(0);
   const tabs = ['Chat', 'Bets', 'People'];
 
   // Sync local state with incoming props when they change
@@ -73,6 +75,18 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
       privacy: updatedGroup.privacy,
       autoApproveMembers: updatedGroup.autoApproveMembers
     }));
+  }, []);
+
+  // Pull-to-refresh handler
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    // Increment counter to trigger force refresh in child tabs
+    setForceRefreshCounter(prev => prev + 1);
+
+    // Simulate a brief delay for better UX
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
   }, []);
 
   // Transform data for GroupSettingsTab
@@ -205,23 +219,52 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
         </View>
       </View>
 
-      {/* Tab Content */}
-      {activeTab === 0 ? (
-        /* Chat Tab Content */
-        <GroupChatTab groupData={groupData} />
-      ) : (
-        /* Other Tabs - ScrollView Layout */
-        <ScrollView style={{ flex: 1 }}>
-          <View style={{ paddingHorizontal: 20 }}>
-            {/* Tab Content */}
-            {activeTab === 1 && <GroupBetsTab groupData={groupData} />}
-            {activeTab === 2 && <GroupMembersTab groupData={groupData} />}
+      {/* Tab Content - All tabs stay mounted, only visibility changes */}
 
-            {/* Additional spacing for scroll */}
+      {/* Chat Tab */}
+      <View style={{ flex: 1, display: activeTab === 0 ? 'flex' : 'none' }}>
+        <GroupChatTab groupData={groupData} />
+      </View>
+
+      {/* Bets Tab */}
+      <View style={{ flex: 1, display: activeTab === 1 ? 'flex' : 'none' }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#00D4AA"
+              colors={['#00D4AA']}
+            />
+          }
+        >
+          <View style={{ paddingHorizontal: 20 }}>
+            <GroupBetsTab groupData={groupData} forceRefresh={forceRefreshCounter} />
             <View style={{ height: 60 }} />
           </View>
         </ScrollView>
-      )}
+      </View>
+
+      {/* People Tab */}
+      <View style={{ flex: 1, display: activeTab === 2 ? 'flex' : 'none' }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#00D4AA"
+              colors={['#00D4AA']}
+            />
+          }
+        >
+          <View style={{ paddingHorizontal: 20 }}>
+            <GroupMembersTab groupData={groupData} forceRefresh={forceRefreshCounter} />
+            <View style={{ height: 60 }} />
+          </View>
+        </ScrollView>
+      </View>
     </View>
   );
 };

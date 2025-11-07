@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Text, View, ScrollView, StatusBar, FlatList, Alert, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Text, View, ScrollView, StatusBar, FlatList, Alert, Platform, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import StoreHeader from '../../components/store/StoreHeader';
@@ -25,6 +25,11 @@ export default function Store() {
   // Get user credits - use separate API call since AuthContext might not have latest credits
   const [userCredits, setUserCredits] = useState(0);
   const [fetchingCredits, setFetchingCredits] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Cache management: 5 minute cache
+  const lastFetchTime = useRef<number>(0);
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   // Debug logging to check what's in the user object
   console.log('Store - Debug user object:', {
@@ -34,30 +39,44 @@ export default function Store() {
     credits: user?.credits
   });
 
+  const fetchUserCredits = useCallback(async (isRefreshing: boolean = false) => {
+    if (!isAuthenticated) {
+      setFetchingCredits(false);
+      return;
+    }
+
+    try {
+      if (isRefreshing) {
+        setRefreshing(true);
+      } else {
+        setFetchingCredits(true);
+      }
+
+      const userProfile = await userService.getCurrentUserProfile();
+      console.log('Store - Fetched user profile:', userProfile);
+      setUserCredits(userProfile.totalCredits || 0);
+
+      // Update cache timestamp
+      lastFetchTime.current = Date.now();
+    } catch (error) {
+      console.error('Store - Failed to fetch user credits:', error);
+      // Fallback to AuthContext credits if API call fails
+      setUserCredits(user?.totalCredits || 0);
+    } finally {
+      setFetchingCredits(false);
+      setRefreshing(false);
+    }
+  }, [isAuthenticated, user]);
+
   // Fetch latest user credits when component mounts or user changes
   useEffect(() => {
-    const fetchUserCredits = async () => {
-      if (!isAuthenticated) {
-        setFetchingCredits(false);
-        return;
-      }
+    fetchUserCredits(false);
+  }, [isAuthenticated, fetchUserCredits]);
 
-      try {
-        setFetchingCredits(true);
-        const userProfile = await userService.getCurrentUserProfile();
-        console.log('Store - Fetched user profile:', userProfile);
-        setUserCredits(userProfile.totalCredits || 0);
-      } catch (error) {
-        console.error('Store - Failed to fetch user credits:', error);
-        // Fallback to AuthContext credits if API call fails
-        setUserCredits(user?.totalCredits || 0);
-      } finally {
-        setFetchingCredits(false);
-      }
-    };
-
-    fetchUserCredits();
-  }, [isAuthenticated, user]);
+  // Pull-to-refresh handler
+  const onRefresh = useCallback(() => {
+    fetchUserCredits(true);
+  }, [fetchUserCredits]);
 
   // Mock transaction data - in real app this would come from API
   const [transactions] = useState<Transaction[]>([
@@ -235,6 +254,14 @@ export default function Store() {
         style={{ flex: 1, marginTop: insets.top }}
         contentContainerStyle={{ paddingTop: 20 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#00D4AA"
+            colors={['#00D4AA']}
+          />
+        }
       >
         {/* Header */}
         <StoreHeader
