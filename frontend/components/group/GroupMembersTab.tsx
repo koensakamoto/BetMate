@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Text, View, TouchableOpacity, ScrollView, Modal, Alert, TextInput, Share, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
@@ -72,7 +72,8 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
     }
   }, [groupData.id]);
 
-  const getFilteredMembers = () => {
+  // Filter members based on selected filter - memoized to avoid recalculating on every render
+  const filteredMembers = useMemo(() => {
     // Ensure members is always an array
     if (!Array.isArray(members)) {
       return [];
@@ -86,7 +87,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
       default:
         return members;
     }
-  };
+  }, [members, activeFilter]);
 
   // Helper function to check if member is online
   const isOnline = (member: GroupMemberResponse): boolean => {
@@ -197,8 +198,6 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
       setIsInviting(false);
     }
   };
-
-  const filteredMembers = getFilteredMembers();
 
   return (
     <View>
@@ -347,7 +346,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
       ) : (
         <>
           {/* Members List */}
-          {getFilteredMembers().map((member, index) => (
+          {filteredMembers.map((member, index) => (
         <View key={member.id} style={{
           backgroundColor: 'rgba(255, 255, 255, 0.02)',
           borderWidth: 0.5,
@@ -469,7 +468,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
           ))}
 
           {/* Empty State */}
-          {getFilteredMembers().length === 0 && (
+          {filteredMembers.length === 0 && (
             <Text style={{
               color: 'rgba(255, 255, 255, 0.6)',
               textAlign: 'center',
@@ -480,7 +479,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData }) => {
           )}
 
           {/* Show More Button */}
-          {getFilteredMembers().length < groupData.memberCount && (
+          {filteredMembers.length < groupData.memberCount && (
             <TouchableOpacity style={{
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
               paddingVertical: 14,

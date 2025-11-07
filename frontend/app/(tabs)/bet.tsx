@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -64,24 +64,8 @@ export default function Bet() {
     }
   };
 
-  // Transform backend bet data to frontend format
-  const transformBetData = (bet: BetSummaryResponse) => ({
-    id: bet.id.toString(),
-    title: bet.title,
-    description: '',  // Description not in summary, would need full bet details
-    category: bet.betType,
-    categoryIcon: '🎯',  // Default icon
-    timeRemaining: calculateTimeRemaining(bet.bettingDeadline),
-    participantCount: bet.totalParticipants,
-    participantAvatars: [icon, icon, icon],  // Placeholder avatars
-    stakeAmount: Math.round(bet.totalPool / Math.max(bet.totalParticipants, 1)),
-    status: bet.status.toLowerCase() as 'open' | 'active' | 'closed',
-    isJoined: bet.hasUserParticipated,
-    creatorName: bet.creatorUsername
-  });
-
-  // Calculate time remaining until deadline
-  const calculateTimeRemaining = (deadline: string): string => {
+  // Calculate time remaining until deadline - memoized for performance
+  const calculateTimeRemaining = useCallback((deadline: string): string => {
     const now = new Date();
     const deadlineDate = new Date(deadline);
     const diff = deadlineDate.getTime() - now.getTime();
@@ -95,10 +79,26 @@ export default function Bet() {
     if (days > 0) return `${days}d ${hours}h`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
-  };
+  }, []);
 
-  // Filter my bets based on selected filter
-  const getFilteredMyBets = (): BetSummaryResponse[] => {
+  // Transform backend bet data to frontend format - memoized for performance
+  const transformBetData = useCallback((bet: BetSummaryResponse) => ({
+    id: bet.id.toString(),
+    title: bet.title,
+    description: '',  // Description not in summary, would need full bet details
+    category: bet.betType,
+    categoryIcon: '🎯',  // Default icon
+    timeRemaining: calculateTimeRemaining(bet.bettingDeadline),
+    participantCount: bet.totalParticipants,
+    participantAvatars: [icon, icon, icon],  // Placeholder avatars
+    stakeAmount: Math.round(bet.totalPool / Math.max(bet.totalParticipants, 1)),
+    status: bet.status.toLowerCase() as 'open' | 'active' | 'closed',
+    isJoined: bet.hasUserParticipated,
+    creatorName: bet.creatorUsername
+  }), [calculateTimeRemaining]);
+
+  // Filter my bets based on selected filter - memoized to avoid recalculating on every render
+  const filteredMyBets = useMemo(() => {
     return myBets.filter(bet => {
       switch (myBetsFilter) {
         case 'active':
@@ -110,7 +110,16 @@ export default function Bet() {
           return true;
       }
     });
-  };
+  }, [myBets, myBetsFilter]);
+
+  // Memoize transformed bet arrays to avoid recalculating on every render
+  const transformedMyBets = useMemo(() => {
+    return filteredMyBets.map(bet => transformBetData(bet));
+  }, [filteredMyBets, transformBetData]);
+
+  const transformedDiscoverBets = useMemo(() => {
+    return discoverBets.map(bet => transformBetData(bet));
+  }, [discoverBets, transformBetData]);
 
   const betHistory = [
     { id: '1', game: 'Chiefs vs Bills', bet: 'Chiefs -2.5', amount: 100, odds: -110, status: 'won', payout: 190.91, date: '2 days ago' },
@@ -378,12 +387,11 @@ export default function Bet() {
                     <SkeletonBetCard />
                   </>
                 ) : (() => {
-                  const filteredBets = getFilteredMyBets();
-                  return filteredBets.length > 0 ? (
-                    filteredBets.map((bet) => (
+                  return transformedMyBets.length > 0 ? (
+                    transformedMyBets.map((bet) => (
                       <BetCard
                         key={bet.id}
-                        {...transformBetData(bet)}
+                        {...bet}
                       />
                     ))
                   ) : (
@@ -438,11 +446,11 @@ export default function Bet() {
                     <SkeletonBetCard />
                     <SkeletonBetCard />
                   </>
-                ) : discoverBets.length > 0 ? (
-                  discoverBets.map((bet) => (
+                ) : transformedDiscoverBets.length > 0 ? (
+                  transformedDiscoverBets.map((bet) => (
                     <BetCard
                       key={bet.id}
-                      {...transformBetData(bet)}
+                      {...bet}
                     />
                   ))
                 ) : (

@@ -1,6 +1,6 @@
 import { Text, View, Image, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useCallback } from 'react';
@@ -89,6 +89,16 @@ export default function Profile() {
     if (percentage === undefined || percentage === null) return '0%';
     return Math.round(percentage) + '%';
   };
+
+  // Memoize detailed stats array to avoid recalculating on every render
+  const detailedStats = useMemo(() => [
+    { label: 'Wins', value: formatNumber(userStats?.winCount), color: '#00D4AA' },
+    { label: 'Losses', value: formatNumber(userStats?.lossCount), color: '#EF4444' },
+    { label: 'Win Rate', value: formatPercentage(userStats?.winRate ? userStats.winRate * 100 : 0), color: '#00D4AA' },
+    { label: 'Total Games', value: formatNumber(userStats?.totalGames), color: '#ffffff' },
+    { label: 'Longest Streak', value: formatNumber(userStats?.longestStreak), color: '#00D4AA' },
+    { label: 'Current Streak', value: formatNumber(userStats?.currentStreak), color: '#FFB800' }
+  ], [userStats]);
 
   // Show loading while checking authentication or loading profile data
   if (authLoading || isLoading) {
@@ -532,14 +542,7 @@ export default function Profile() {
                   Detailed Statistics
                 </Text>
                 
-                {[
-                  { label: 'Wins', value: formatNumber(userStats?.winCount), color: '#00D4AA' },
-                  { label: 'Losses', value: formatNumber(userStats?.lossCount), color: '#EF4444' },
-                  { label: 'Win Rate', value: formatPercentage(userStats?.winRate ? userStats.winRate * 100 : 0), color: '#00D4AA' },
-                  { label: 'Total Games', value: formatNumber(userStats?.totalGames), color: '#ffffff' },
-                  { label: 'Longest Streak', value: formatNumber(userStats?.longestStreak), color: '#00D4AA' },
-                  { label: 'Current Streak', value: formatNumber(userStats?.currentStreak), color: '#FFB800' }
-                ].map((stat, index) => (
+                {detailedStats.map((stat, index) => (
                   <View key={index} style={{
                     flexDirection: 'row',
                     justifyContent: 'space-between',

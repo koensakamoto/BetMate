@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -42,19 +42,25 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData }) => {
     }
   };
 
-  const getFilteredBets = () => {
-    if (activeBetFilter === 'All') return bets;
-    return bets.filter(bet => bet.status === activeBetFilter);
-  };
+  // Calculate time remaining until deadline - memoized for performance
+  const calculateTimeRemaining = useCallback((deadline: string): string => {
+    const now = new Date();
+    const deadlineDate = new Date(deadline);
+    const diff = deadlineDate.getTime() - now.getTime();
 
-  const handleCreateBet = () => {
-    const groupIdParam = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
-    router.push(`/create-bet?groupId=${groupIdParam}`);
-  };
+    if (diff <= 0) return 'Ended';
 
-  // Calculate time remaining until deadline
-  // Transform backend bet data to frontend format (same as in bet.tsx)
-  const transformBetData = (bet: BetSummaryResponse) => ({
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  }, []);
+
+  // Transform backend bet data to frontend format - memoized for performance
+  const transformBetData = useCallback((bet: BetSummaryResponse) => ({
     id: bet.id.toString(),
     title: bet.title,
     description: '',  // Description not in summary, would need full bet details
@@ -67,22 +73,22 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData }) => {
     status: bet.status.toLowerCase() as 'open' | 'active' | 'closed',
     isJoined: bet.hasUserParticipated,
     creatorName: bet.creatorUsername
-  });
+  }), [calculateTimeRemaining]);
 
-  const calculateTimeRemaining = (deadline: string): string => {
-    const now = new Date();
-    const deadlineDate = new Date(deadline);
-    const diff = deadlineDate.getTime() - now.getTime();
-    
-    if (diff <= 0) return 'Ended';
-    
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (days > 0) return `${days}d ${hours}h`;
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
+  // Filter bets based on selected filter - memoized to avoid recalculating on every render
+  const filteredBets = useMemo(() => {
+    if (activeBetFilter === 'All') return bets;
+    return bets.filter(bet => bet.status === activeBetFilter);
+  }, [activeBetFilter, bets]);
+
+  // Memoize transformed bets array to avoid recalculating on every render
+  const transformedBets = useMemo(() => {
+    return filteredBets.map(bet => transformBetData(bet));
+  }, [filteredBets, transformBetData]);
+
+  const handleCreateBet = () => {
+    const groupIdParam = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
+    router.push(`/create-bet?groupId=${groupIdParam}`);
   };
 
   return (
@@ -178,10 +184,10 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData }) => {
             Loading bets...
           </Text>
         </View>
-      ) : getFilteredBets().map((bet) => (
+      ) : transformedBets.map((bet) => (
         <BetCard
           key={bet.id}
-          {...transformBetData(bet)}
+          {...bet}
         />
       ))}
     </View>

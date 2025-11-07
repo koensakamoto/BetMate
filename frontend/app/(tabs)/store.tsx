@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Text, View, ScrollView, StatusBar, FlatList, Alert, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -168,8 +168,9 @@ export default function Store() {
 
   const currentItems = storeItems[activeCategory] || [];
 
-  const renderStoreItem = ({ item, index }: { item: StoreItemData; index: number }) => (
-    <View style={{ 
+  // Memoize renderStoreItem to prevent recreation on every render
+  const renderStoreItem = useCallback(({ item, index }: { item: StoreItemData; index: number }) => (
+    <View style={{
       width: '48%',
       marginLeft: index % 2 === 0 ? 0 : '4%'
     }}>
@@ -179,7 +180,7 @@ export default function Store() {
         onPurchase={handlePurchase}
       />
     </View>
-  );
+  ), [userCredits, handlePurchase]);
 
   // Show loading while authentication is being checked
   if (isLoading) {
