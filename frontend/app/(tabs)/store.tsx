@@ -11,6 +11,8 @@ import { storeItems, EarnCreditsOption } from '../../components/store/storeData'
 import { userService } from '../../services/user/userService';
 import { useAuth } from '../../contexts/AuthContext';
 import { haptic } from '../../utils/haptics';
+import LoadingOverlay from '../../components/common/LoadingOverlay';
+import { SkeletonStoreItem } from '../../components/common/SkeletonCard';
 
 export default function Store() {
   const insets = useSafeAreaInsets();
@@ -18,6 +20,7 @@ export default function Store() {
   const [activeCategory, setActiveCategory] = useState<StoreCategory>('featured');
   const [earnCreditsModalVisible, setEarnCreditsModalVisible] = useState(false);
   const [transactionHistoryVisible, setTransactionHistoryVisible] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
 
   // Get user credits - use separate API call since AuthContext might not have latest credits
   const [userCredits, setUserCredits] = useState(0);
@@ -119,9 +122,13 @@ export default function Store() {
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Buy',
-            onPress: () => {
+            onPress: async () => {
+              setIsPurchasing(true);
+              // Simulate API call delay
+              await new Promise(resolve => setTimeout(resolve, 1000));
               setUserCredits(prev => prev - item.price);
               // In a real app, you'd update the item's owned status here
+              setIsPurchasing(false);
               haptic.success();
               Alert.alert('Purchase Successful!', `You now own ${item.name}`);
             }
@@ -245,39 +252,57 @@ export default function Store() {
 
         {/* Items Grid */}
         <View style={{ paddingHorizontal: 20 }}>
-          <FlatList
-            data={currentItems}
-            renderItem={renderStoreItem}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            scrollEnabled={false}
-            contentContainerStyle={{ paddingBottom: 24 }}
-            columnWrapperStyle={{ justifyContent: 'space-between' }}
-          />
-
-          {/* Empty State */}
-          {currentItems.length === 0 && (
+          {fetchingCredits ? (
             <View style={{
-              alignItems: 'center',
-              paddingVertical: 60
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+              paddingBottom: 24
             }}>
-              <Text style={{
-                fontSize: 18,
-                color: 'rgba(255, 255, 255, 0.6)',
-                textAlign: 'center',
-                fontWeight: '500'
-              }}>
-                No items available in this category
-              </Text>
-              <Text style={{
-                fontSize: 14,
-                color: 'rgba(255, 255, 255, 0.4)',
-                textAlign: 'center',
-                marginTop: 8
-              }}>
-                Check back soon for new items
-              </Text>
+              <SkeletonStoreItem />
+              <SkeletonStoreItem />
+              <SkeletonStoreItem />
+              <SkeletonStoreItem />
+              <SkeletonStoreItem />
+              <SkeletonStoreItem />
             </View>
+          ) : (
+            <>
+              <FlatList
+                data={currentItems}
+                renderItem={renderStoreItem}
+                keyExtractor={(item) => item.id}
+                numColumns={2}
+                scrollEnabled={false}
+                contentContainerStyle={{ paddingBottom: 24 }}
+                columnWrapperStyle={{ justifyContent: 'space-between' }}
+              />
+
+              {/* Empty State */}
+              {currentItems.length === 0 && (
+                <View style={{
+                  alignItems: 'center',
+                  paddingVertical: 60
+                }}>
+                  <Text style={{
+                    fontSize: 18,
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    textAlign: 'center',
+                    fontWeight: '500'
+                  }}>
+                    No items available in this category
+                  </Text>
+                  <Text style={{
+                    fontSize: 14,
+                    color: 'rgba(255, 255, 255, 0.4)',
+                    textAlign: 'center',
+                    marginTop: 8
+                  }}>
+                    Check back soon for new items
+                  </Text>
+                </View>
+              )}
+            </>
           )}
 
         </View>
@@ -295,6 +320,12 @@ export default function Store() {
         visible={transactionHistoryVisible}
         onClose={() => setTransactionHistoryVisible(false)}
         transactions={transactions}
+      />
+
+      {/* Loading Overlay for Purchases */}
+      <LoadingOverlay
+        visible={isPurchasing}
+        message="Processing purchase..."
       />
     </View>
   );

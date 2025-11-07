@@ -6,6 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { betService, CreateBetRequest } from '../services/bet/betService';
 import { haptic } from '../utils/haptics';
+import LoadingButton from '../components/common/LoadingButton';
 
 const icon = require("../assets/images/icon.png");
 
@@ -38,6 +39,7 @@ export default function CreateBet() {
   const [showDatePicker, setShowDatePicker] = useState<'start' | 'end' | 'resolution' | null>(null);
   const [multipleChoiceOptions, setMultipleChoiceOptions] = useState(['', '']);
   const [overUnderLine, setOverUnderLine] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
   // Refs for TextInputs
   const titleRef = useRef<TextInput>(null);
@@ -119,6 +121,7 @@ export default function CreateBet() {
           text: 'Create',
           onPress: async () => {
             haptic.medium();
+            setIsCreating(true);
             try {
               const betGroupId = groupId ? parseInt(groupId as string) : 1;
               console.log(`[CreateBet] Creating bet for groupId: ${betGroupId}`);
@@ -156,6 +159,8 @@ export default function CreateBet() {
               console.error('Failed to create bet:', error);
               haptic.error();
               Alert.alert('Error', 'Failed to create bet. Please try again.');
+            } finally {
+              setIsCreating(false);
             }
           }
         }
@@ -1095,31 +1100,21 @@ export default function CreateBet() {
           )}
 
           {/* Create Button at Bottom */}
-          <TouchableOpacity
+          <LoadingButton
+            title="Create Bet"
             onPress={handleCreateBet}
+            loading={isCreating}
+            disabled={!(betTitle.trim() && selectedSport && stakeAmount)}
             style={{
-              backgroundColor: (betTitle.trim() && selectedSport && stakeAmount) ? '#00D4AA' : 'rgba(255, 255, 255, 0.08)',
-              borderRadius: 12,
-              paddingVertical: 16,
-              alignItems: 'center',
               marginTop: 32,
               marginBottom: 20,
-              shadowColor: (betTitle.trim() && selectedSport && stakeAmount) ? '#00D4AA' : 'transparent',
+              shadowColor: (betTitle.trim() && selectedSport && stakeAmount && !isCreating) ? '#00D4AA' : 'transparent',
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
               shadowRadius: 8,
               elevation: 8,
             }}
-            disabled={!(betTitle.trim() && selectedSport && stakeAmount)}
-          >
-            <Text style={{
-              fontSize: 16,
-              fontWeight: '700',
-              color: (betTitle.trim() && selectedSport && stakeAmount) ? '#000000' : 'rgba(255, 255, 255, 0.6)'
-            }}>
-              Create Bet
-            </Text>
-          </TouchableOpacity>
+          />
         </ScrollView>
 
         {/* Date Picker Modal */}
