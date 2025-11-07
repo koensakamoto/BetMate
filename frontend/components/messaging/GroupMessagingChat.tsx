@@ -558,6 +558,12 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
             minIndexForVisible: 0,
             autoscrollToTopThreshold: 10,
           }}
+          // Performance optimizations
+          // Note: Skipping getItemLayout since messages have variable heights
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          updateCellsBatchingPeriod={50}
         />
 
         {/* Typing Indicator */}
