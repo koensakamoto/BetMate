@@ -7,6 +7,7 @@ import GroupCard from "../../../components/group/groupcard";
 import { groupService, type GroupSummaryResponse } from '../../../services/group/groupService';
 import { debugLog, errorLog } from '../../../config/env';
 import { haptic } from '../../../utils/haptics';
+import { SkeletonGroupCard } from '../../../components/common/SkeletonCard';
 const icon = require("../../../assets/images/icon.png");
 
 
@@ -278,9 +279,16 @@ export default function Group() {
 
             {/* My Groups Grid - 2 Columns */}
             {isLoading ? (
-              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', textAlign: 'center', marginTop: 20 }}>
-                Loading groups...
-              </Text>
+              <View style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between'
+              }}>
+                <SkeletonGroupCard />
+                <SkeletonGroupCard />
+                <SkeletonGroupCard />
+                <SkeletonGroupCard />
+              </View>
             ) : (
               <View style={{
                 flexDirection: 'row',
@@ -319,9 +327,16 @@ export default function Group() {
           <View>
             {/* Public Groups Grid - 2 Columns */}
             {isLoading ? (
-              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', textAlign: 'center', marginTop: 20 }}>
-                Loading groups...
-              </Text>
+              <View style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between'
+              }}>
+                <SkeletonGroupCard />
+                <SkeletonGroupCard />
+                <SkeletonGroupCard />
+                <SkeletonGroupCard />
+              </View>
             ) : (
               <View style={{
                 flexDirection: 'row',

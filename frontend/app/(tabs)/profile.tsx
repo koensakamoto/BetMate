@@ -9,6 +9,7 @@ import { userService, UserProfileResponse, UserStatistics } from '../../services
 import { friendshipService } from '../../services/friendship/friendshipService';
 import { debugLog, errorLog } from '../../config/env';
 import { NotificationIconButton } from '../../components/ui/NotificationBadge';
+import { SkeletonProfile } from '../../components/common/SkeletonCard';
 
 const icon = require("../../assets/images/icon.png");
 
@@ -92,11 +93,19 @@ export default function Profile() {
   // Show loading while checking authentication or loading profile data
   if (authLoading || isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#00D4AA" />
-        <Text style={{ color: '#ffffff', marginTop: 16, fontSize: 16 }}>
-          {authLoading ? 'Checking authentication...' : 'Loading profile...'}
-        </Text>
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
+        <StatusBar barStyle="light-content" backgroundColor="#0a0a0f" translucent={true} />
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            paddingTop: insets.top + 20,
+            paddingBottom: insets.bottom + 20,
+            paddingHorizontal: 20
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          <SkeletonProfile />
+        </ScrollView>
       </View>
     );
   }

@@ -8,6 +8,7 @@ import BetResolutionModal from '../../components/bet/BetResolutionModal';
 import { authService } from '../../services/auth/authService';
 import { useAuth } from '../../contexts/AuthContext';
 import { haptic } from '../../utils/haptics';
+import LoadingButton from '../../components/common/LoadingButton';
 
 interface BetDetailsData {
   id: number;
@@ -820,44 +821,19 @@ export default function BetDetails() {
             marginTop: 20,
             marginBottom: 40
           }}>
-            <TouchableOpacity
+            <LoadingButton
+              title="Join Bet"
               onPress={handleJoinBet}
-              disabled={isJoining || (!betData.isFixedAmount && !isValidBetAmount()) || !isValidBetSelection()}
+              loading={isJoining}
+              disabled={(!betData.isFixedAmount && !isValidBetAmount()) || !isValidBetSelection()}
               style={{
-                backgroundColor: (isJoining || (!betData.isFixedAmount && !isValidBetAmount()) || !isValidBetSelection()) ? 'rgba(0, 212, 170, 0.3)' : '#00D4AA',
-                borderRadius: 12,
-                paddingVertical: 16,
-                alignItems: 'center',
                 shadowColor: '#00D4AA',
                 shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: (isJoining || (!betData.isFixedAmount && !isValidBetAmount()) || !isValidBetSelection()) ? 0.1 : 0.3,
+                shadowOpacity: 0.3,
                 shadowRadius: 8,
                 elevation: 8,
-                flexDirection: 'row',
-                justifyContent: 'center'
               }}
-            >
-              {isJoining ? (
-                <>
-                  <ActivityIndicator size="small" color="#000000" style={{ marginRight: 8 }} />
-                  <Text style={{
-                    color: '#000000',
-                    fontSize: 16,
-                    fontWeight: '700'
-                  }}>
-                    Joining...
-                  </Text>
-                </>
-              ) : (
-                <Text style={{
-                  color: '#000000',
-                  fontSize: 16,
-                  fontWeight: '700'
-                }}>
-                  Join Bet
-                </Text>
-              )}
-            </TouchableOpacity>
+            />
           </View>
         )}
 

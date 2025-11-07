@@ -6,6 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import BetCard from '../../components/bet/BetCard';
 import { betService, BetSummaryResponse } from '../../services/bet/betService';
+import { SkeletonBetCard } from '../../components/common/SkeletonCard';
 
 const icon = require("../../assets/images/icon.png");
 
@@ -371,21 +372,11 @@ export default function Bet() {
 
                 {/* My Bets Feed */}
                 {loading ? (
-                  <View style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                    borderRadius: 8,
-                    padding: 24,
-                    alignItems: 'center',
-                    marginBottom: 32
-                  }}>
-                    <Text style={{
-                      fontSize: 16,
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      textAlign: 'center'
-                    }}>
-                      Loading bets...
-                    </Text>
-                  </View>
+                  <>
+                    <SkeletonBetCard />
+                    <SkeletonBetCard />
+                    <SkeletonBetCard />
+                  </>
                 ) : (() => {
                   const filteredBets = getFilteredMyBets();
                   return filteredBets.length > 0 ? (
@@ -442,21 +433,11 @@ export default function Bet() {
               <>
                 {/* Discover Bets Feed */}
                 {loading ? (
-                  <View style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                    borderRadius: 8,
-                    padding: 24,
-                    alignItems: 'center',
-                    marginBottom: 32
-                  }}>
-                    <Text style={{
-                      fontSize: 16,
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      textAlign: 'center'
-                    }}>
-                      Loading bets...
-                    </Text>
-                  </View>
+                  <>
+                    <SkeletonBetCard />
+                    <SkeletonBetCard />
+                    <SkeletonBetCard />
+                  </>
                 ) : discoverBets.length > 0 ? (
                   discoverBets.map((bet) => (
                     <BetCard
