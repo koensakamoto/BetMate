@@ -1,5 +1,5 @@
 import { Text, View, TouchableOpacity, ScrollView, Image, StatusBar, TextInput } from "react-native";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
@@ -102,13 +102,13 @@ export default function Group() {
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-  // Get groups to display based on current state
-  const getGroupsToDisplay = (): GroupSummaryResponse[] => {
+  // Get groups to display based on current state - memoized to avoid recalculating on every render
+  const groupsToDisplay = useMemo((): GroupSummaryResponse[] => {
     if (searchQuery.trim().length > 0) {
       return searchResults;
     }
     return activeTab === 0 ? myGroups : publicGroups;
-  };
+  }, [searchQuery, searchResults, activeTab, myGroups, publicGroups]);
 
   return (
      <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
@@ -295,17 +295,17 @@ export default function Group() {
                 flexWrap: 'wrap',
                 justifyContent: 'space-between'
               }}>
-                {getGroupsToDisplay().length === 0 ? (
-                  <Text style={{ 
-                    color: 'rgba(255, 255, 255, 0.6)', 
-                    textAlign: 'center', 
+                {groupsToDisplay.length === 0 ? (
+                  <Text style={{
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    textAlign: 'center',
                     width: '100%',
-                    marginTop: 20 
+                    marginTop: 20
                   }}>
                     {searchQuery.trim().length > 0 ? 'No groups found matching your search.' : 'You haven\'t joined any groups yet. Create one or discover groups below!'}
                   </Text>
                 ) : (
-                  getGroupsToDisplay().map((group, index) => (
+                  groupsToDisplay.map((group, index) => (
                     <View key={group.id} style={{ width: '48%', marginBottom: 16 }}>
                       <GroupCard 
                         name={group.groupName}
@@ -343,17 +343,17 @@ export default function Group() {
                 flexWrap: 'wrap',
                 justifyContent: 'space-between'
               }}>
-                {getGroupsToDisplay().length === 0 ? (
-                  <Text style={{ 
-                    color: 'rgba(255, 255, 255, 0.6)', 
-                    textAlign: 'center', 
+                {groupsToDisplay.length === 0 ? (
+                  <Text style={{
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    textAlign: 'center',
                     width: '100%',
-                    marginTop: 20 
+                    marginTop: 20
                   }}>
                     {searchQuery.trim().length > 0 ? 'No groups found matching your search.' : 'No public groups available yet. Be the first to create one!'}
                   </Text>
                 ) : (
-                  getGroupsToDisplay().map((group, index) => (
+                  groupsToDisplay.map((group, index) => (
                     <View key={group.id} style={{ width: '48%', marginBottom: 16 }}>
                       <GroupCard 
                         name={group.groupName}
