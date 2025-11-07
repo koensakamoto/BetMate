@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import GroupCard from "../../../components/group/groupcard";
 import { groupService, type GroupSummaryResponse } from '../../../services/group/groupService';
 import { debugLog, errorLog } from '../../../config/env';
+import { haptic } from '../../../utils/haptics';
 const icon = require("../../../assets/images/icon.png");
 
 
@@ -205,13 +206,17 @@ export default function Group() {
             return (
               <TouchableOpacity
                 key={tab}
-                onPress={() => setActiveTab(index)}
+                onPress={() => {
+                  haptic.selection();
+                  setActiveTab(index);
+                }}
                 style={{
                   marginRight: 32,
                   paddingBottom: 8,
                   borderBottomWidth: isActive ? 2 : 0,
                   borderBottomColor: '#ffffff'
                 }}
+                activeOpacity={0.7}
               >
                 <Text style={{
                   fontSize: 16,
