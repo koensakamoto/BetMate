@@ -5,8 +5,20 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { betService, CreateBetRequest } from '../services/bet/betService';
+import { haptic } from '../utils/haptics';
 
 const icon = require("../assets/images/icon.png");
+
+// Helper function to round time to nearest 15-minute interval
+const roundToNearest15Minutes = (date: Date): Date => {
+  const rounded = new Date(date);
+  const minutes = rounded.getMinutes();
+  const roundedMinutes = Math.ceil(minutes / 15) * 15;
+  rounded.setMinutes(roundedMinutes);
+  rounded.setSeconds(0);
+  rounded.setMilliseconds(0);
+  return rounded;
+};
 
 export default function CreateBet() {
   const insets = useSafeAreaInsets();
@@ -16,9 +28,9 @@ export default function CreateBet() {
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [betType, setBetType] = useState<'multiple_choice' | 'exact_value' | 'over_under'>('multiple_choice');
   const [stakeAmount, setStakeAmount] = useState('');
-  const [betStartTime, setBetStartTime] = useState(new Date());
-  const [betEndTime, setBetEndTime] = useState(new Date(Date.now() + 24 * 60 * 60 * 1000));
-  const [eventResolutionDate, setEventResolutionDate] = useState(new Date(Date.now() + 48 * 60 * 60 * 1000));
+  const [betStartTime, setBetStartTime] = useState(roundToNearest15Minutes(new Date()));
+  const [betEndTime, setBetEndTime] = useState(roundToNearest15Minutes(new Date(Date.now() + 24 * 60 * 60 * 1000)));
+  const [eventResolutionDate, setEventResolutionDate] = useState(roundToNearest15Minutes(new Date(Date.now() + 48 * 60 * 60 * 1000)));
   const [resolver, setResolver] = useState<'self' | 'specific' | 'multiple' | 'group'>('self');
   const [selectedResolver, setSelectedResolver] = useState<string | null>(null);
   const [selectedResolvers, setSelectedResolvers] = useState<string[]>([]);
@@ -80,17 +92,20 @@ export default function CreateBet() {
 
   const handleCreateBet = async () => {
     if (!betTitle.trim() || !selectedSport || !stakeAmount) {
+      haptic.error();
       Alert.alert('Missing Information', 'Please fill in all required fields.');
       return;
     }
 
     if (betType === 'multiple_choice' && multipleChoiceOptions.some(opt => !opt.trim())) {
+      haptic.error();
       Alert.alert('Missing Options', 'Please fill in all multiple choice options.');
       return;
     }
 
 
     if (betType === 'over_under' && !overUnderLine) {
+      haptic.error();
       Alert.alert('Missing Line', 'Please enter the over/under line.');
       return;
     }
@@ -100,9 +115,10 @@ export default function CreateBet() {
       `Create "${betTitle}" with $${stakeAmount} stake?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Create', 
+        {
+          text: 'Create',
           onPress: async () => {
+            haptic.medium();
             try {
               const betGroupId = groupId ? parseInt(groupId as string) : 1;
               console.log(`[CreateBet] Creating bet for groupId: ${betGroupId}`);
@@ -113,7 +129,7 @@ export default function CreateBet() {
                 description: betDescription || undefined,
                 betType: betType === 'multiple_choice' ? 'MULTIPLE_CHOICE' :
                          betType === 'exact_value' ? 'PREDICTION' : 'OVER_UNDER',
-                resolutionMethod: resolver === 'self' ? 'CREATOR_ONLY' : 
+                resolutionMethod: resolver === 'self' ? 'CREATOR_ONLY' :
                                  resolver === 'specific' ? 'ASSIGNED_RESOLVER' : 'CONSENSUS_VOTING',
                 bettingDeadline: betEndTime.toISOString(),
                 resolveDate: eventResolutionDate.toISOString(),
@@ -127,6 +143,7 @@ export default function CreateBet() {
               };
 
               const response = await betService.createBet(createBetRequest);
+              haptic.success();
               Alert.alert('Success!', 'Your bet has been created successfully.', [
                 { text: 'OK', onPress: () => {
                   // Navigate back to the group page with Bets tab active (tab=1)
@@ -137,6 +154,7 @@ export default function CreateBet() {
               ]);
             } catch (error) {
               console.error('Failed to create bet:', error);
+              haptic.error();
               Alert.alert('Error', 'Failed to create bet. Please try again.');
             }
           }
@@ -179,7 +197,10 @@ export default function CreateBet() {
 
   const BetTypeCard = ({ type, title, description, icon }: { type: string, title: string, description: string, icon: string }) => (
     <TouchableOpacity
-      onPress={() => setBetType(type as any)}
+      onPress={() => {
+        haptic.light();
+        setBetType(type as any);
+      }}
       style={{
         backgroundColor: betType === type ? 'rgba(0, 212, 170, 0.15)' : 'rgba(255, 255, 255, 0.05)',
         borderRadius: 12,
@@ -188,6 +209,7 @@ export default function CreateBet() {
         borderWidth: betType === type ? 1.5 : 0.5,
         borderColor: betType === type ? '#00D4AA' : 'rgba(255, 255, 255, 0.1)'
       }}
+      activeOpacity={0.7}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
         <Text style={{ fontSize: 20, marginRight: 10 }}>{icon}</Text>
@@ -493,7 +515,10 @@ export default function CreateBet() {
               {sports.map((sport) => (
                 <TouchableOpacity
                   key={sport.id}
-                  onPress={() => setSelectedSport(sport.id)}
+                  onPress={() => {
+                    haptic.light();
+                    setSelectedSport(sport.id);
+                  }}
                   style={{
                     backgroundColor: selectedSport === sport.id ? sport.color + '20' : 'rgba(255, 255, 255, 0.05)',
                     borderWidth: selectedSport === sport.id ? 1.5 : 0.5,
@@ -968,7 +993,10 @@ export default function CreateBet() {
             ].map((option) => (
               <TouchableOpacity
                 key={option.id}
-                onPress={() => setResolver(option.id as any)}
+                onPress={() => {
+                  haptic.selection();
+                  setResolver(option.id as any);
+                }}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -980,6 +1008,7 @@ export default function CreateBet() {
                   borderWidth: resolver === option.id ? 1 : 0.5,
                   borderColor: resolver === option.id ? '#00D4AA' : 'rgba(255, 255, 255, 0.1)'
                 }}
+                activeOpacity={0.7}
               >
                 <View style={{
                   width: 20,
@@ -1133,18 +1162,20 @@ export default function CreateBet() {
                 </View>
                 
                 <DateTimePicker
-                  value={showDatePicker === 'start' ? betStartTime : 
+                  value={showDatePicker === 'start' ? betStartTime :
                         showDatePicker === 'end' ? betEndTime : eventResolutionDate}
                   mode="datetime"
                   display="spinner"
+                  minuteInterval={15}
                   onChange={(event, selectedDate) => {
                     if (selectedDate) {
+                      const roundedDate = roundToNearest15Minutes(selectedDate);
                       if (showDatePicker === 'start') {
-                        setBetStartTime(selectedDate);
+                        setBetStartTime(roundedDate);
                       } else if (showDatePicker === 'end') {
-                        setBetEndTime(selectedDate);
+                        setBetEndTime(roundedDate);
                       } else {
-                        setEventResolutionDate(selectedDate);
+                        setEventResolutionDate(roundedDate);
                       }
                     }
                   }}

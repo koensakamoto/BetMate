@@ -52,10 +52,10 @@ spring:
 # Bet Scheduling Configuration
 bet:
   scheduling:
-    # Close expired bets every 2 minutes (120000 ms)
-    close-expired-interval-ms: ${BET_CLOSE_INTERVAL:120000}
-    # Process resolvable bets every 5 minutes (300000 ms)
-    process-resolvable-interval-ms: ${BET_RESOLVE_INTERVAL:300000}
+    # Close expired bets every 15 minutes (900000 ms)
+    close-expired-interval-ms: ${BET_CLOSE_INTERVAL:900000}
+    # Process resolvable bets every 15 minutes (900000 ms)
+    process-resolvable-interval-ms: ${BET_RESOLVE_INTERVAL:900000}
 
 logging:
   level:

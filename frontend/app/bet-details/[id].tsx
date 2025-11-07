@@ -7,6 +7,7 @@ import { betService, BetResponse } from '../../services/bet/betService';
 import BetResolutionModal from '../../components/bet/BetResolutionModal';
 import { authService } from '../../services/auth/authService';
 import { useAuth } from '../../contexts/AuthContext';
+import { haptic } from '../../utils/haptics';
 
 interface BetDetailsData {
   id: number;
@@ -178,16 +179,19 @@ export default function BetDetails() {
   };
 
   const handleResolveBet = async (outcome?: string, winnerUserIds?: number[], reasoning?: string) => {
+    haptic.heavy();
     try {
       // Determine if this is a direct resolution or a vote
       const resolutionType = betData?.resolutionMethod === 'CONSENSUS_VOTING' ? 'vote' : 'resolve';
 
       if (resolutionType === 'resolve') {
         await betService.resolveBet(parseInt(id), outcome, winnerUserIds, reasoning);
+        haptic.success();
         Alert.alert('Success', 'Bet has been resolved successfully!');
       } else {
         // For voting, we always use outcome (not winnerUserIds)
         await betService.voteOnResolution(parseInt(id), outcome || '', reasoning || '');
+        haptic.success();
         Alert.alert('Success', 'Your vote has been submitted!');
       }
 
@@ -195,12 +199,14 @@ export default function BetDetails() {
       await loadBetDetails();
     } catch (error) {
       console.error('Error resolving bet:', error);
+      haptic.error();
       throw error;
     }
   };
 
   const handleJoinBet = async () => {
     if (!betData || !id) {
+      haptic.error();
       Alert.alert('Error', 'Invalid bet data');
       return;
     }
@@ -208,27 +214,33 @@ export default function BetDetails() {
     // Validate bet amount
     const amount = parseFloat(userBetAmount);
     if (isNaN(amount) || amount <= 0) {
+      haptic.error();
       Alert.alert('Error', 'Please enter a valid bet amount');
       return;
     }
 
     // Validate minimum bet amount
     if (amount < betData.minimumBet) {
+      haptic.warning();
       Alert.alert('Error', `Minimum bet amount is $${betData.minimumBet}`);
       return;
     }
 
     // Validate maximum bet amount if set
     if (betData.maximumBet && amount > betData.maximumBet) {
+      haptic.warning();
       Alert.alert('Error', `Maximum bet amount is $${betData.maximumBet}`);
       return;
     }
 
     // Validate bet option selection
     if (!selectedOption) {
+      haptic.error();
       Alert.alert('Error', 'Please select a betting option');
       return;
     }
+
+    haptic.medium();
 
     try {
       setIsJoining(true);
@@ -293,6 +305,7 @@ export default function BetDetails() {
       if (updatedBet.success === false || updatedBet.error) {
         const errorMessage = updatedBet.message || updatedBet.error || 'Failed to place bet';
         console.error('Bet placement failed:', errorMessage);
+        haptic.error();
         Alert.alert('Error', errorMessage);
         return;
       }
@@ -300,6 +313,7 @@ export default function BetDetails() {
       // Update the local bet data with the response
       setBetData(updatedBet);
 
+      haptic.success();
       Alert.alert('Success', `Bet placed successfully!\nAmount: $${amount}\nOption: ${selectedOption}`);
 
       // Navigate back to the group page
@@ -313,6 +327,7 @@ export default function BetDetails() {
         console.error('Response status:', error.response.status);
         console.error('Response data:', JSON.stringify(error.response.data, null, 2));
       }
+      haptic.error();
       Alert.alert('Error', 'Failed to place bet. Please try again.');
     } finally {
       setIsJoining(false);
@@ -347,6 +362,7 @@ export default function BetDetails() {
   };
 
   const handleOptionSelect = (option: string) => {
+    haptic.light();
     setSelectedOption(option);
   };
 

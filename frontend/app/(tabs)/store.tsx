@@ -10,6 +10,7 @@ import TransactionHistoryModal, { Transaction } from '../../components/store/Tra
 import { storeItems, EarnCreditsOption } from '../../components/store/storeData';
 import { userService } from '../../services/user/userService';
 import { useAuth } from '../../contexts/AuthContext';
+import { haptic } from '../../utils/haptics';
 
 export default function Store() {
   const insets = useSafeAreaInsets();
@@ -116,16 +117,23 @@ export default function Store() {
         `Purchase ${item.name} for ${item.price} credits?`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Buy', 
+          {
+            text: 'Buy',
             onPress: () => {
               setUserCredits(prev => prev - item.price);
               // In a real app, you'd update the item's owned status here
+              haptic.success();
               Alert.alert('Purchase Successful!', `You now own ${item.name}`);
             }
           }
         ]
       );
+    } else if (item.isOwned) {
+      haptic.warning();
+      Alert.alert('Already Owned', `You already own ${item.name}`);
+    } else {
+      haptic.error();
+      Alert.alert('Insufficient Credits', `You need ${item.price - userCredits} more credits to purchase this item`);
     }
   };
 
@@ -138,6 +146,7 @@ export default function Store() {
   };
 
   const handleEarnCredits = (option: EarnCreditsOption) => {
+    haptic.success();
     Alert.alert(
       'Earn Credits',
       `Complete: ${option.title}\n\nThis would navigate you to complete this action and earn ${option.credits} credits.`,
@@ -228,7 +237,10 @@ export default function Store() {
         {/* Category Tabs */}
         <StoreCategoryTabs
           activeCategory={activeCategory}
-          onCategoryChange={setActiveCategory}
+          onCategoryChange={(category) => {
+            haptic.selection();
+            setActiveCategory(category);
+          }}
         />
 
         {/* Items Grid */}

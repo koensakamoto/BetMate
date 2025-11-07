@@ -3,6 +3,7 @@ import { Text, View, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
 import { ItemType, ItemCategory, Rarity } from './storeData';
+import { haptic } from '../../utils/haptics';
 
 export interface StoreItemData {
   id: string;
@@ -209,6 +210,7 @@ export default function StoreItem({ item, userCredits, onPurchase }: StoreItemPr
           <TouchableOpacity
             onPress={(e) => {
               e.stopPropagation();
+              haptic.medium();
               onPurchase(item);
             }}
             style={{
@@ -222,6 +224,7 @@ export default function StoreItem({ item, userCredits, onPurchase }: StoreItemPr
               opacity: canAfford ? 1 : 0.4
             }}
             disabled={!canAfford}
+            activeOpacity={0.7}
           >
             <Text style={{
               fontSize: 12,
