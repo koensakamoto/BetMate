@@ -10,6 +10,8 @@ import { friendshipService } from '../../services/friendship/friendshipService';
 import { debugLog, errorLog } from '../../config/env';
 import { NotificationIconButton } from '../../components/ui/NotificationBadge';
 import { SkeletonProfile } from '../../components/common/SkeletonCard';
+import { formatNumber, formatPercentage } from '../../utils/formatters';
+import { ACHIEVEMENTS } from '../../constants/profile';
 
 const icon = require("../../assets/images/icon.png");
 
@@ -72,23 +74,6 @@ export default function Profile() {
     }
   };
 
-  const handleEditProfile = () => {
-    router.push('/edit-profile');
-  };
-
-
-  const formatNumber = (num?: number): string => {
-    if (num === undefined || num === null) return '0';
-    if (num >= 1000) {
-      return (num / 1000).toFixed(1) + 'K';
-    }
-    return num.toString();
-  };
-
-  const formatPercentage = (percentage?: number): string => {
-    if (percentage === undefined || percentage === null) return '0%';
-    return Math.round(percentage) + '%';
-  };
 
   // Memoize detailed stats array to avoid recalculating on every render
   const detailedStats = useMemo(() => [
@@ -99,6 +84,23 @@ export default function Profile() {
     { label: 'Longest Streak', value: formatNumber(userStats?.longestStreak), color: '#00D4AA' },
     { label: 'Current Streak', value: formatNumber(userStats?.currentStreak), color: '#FFB800' }
   ], [userStats]);
+
+  // Memoize navigation handlers to provide stable references
+  const navigateToEditProfile = useCallback(() => {
+    router.push('/edit-profile');
+  }, []);
+
+  const navigateToSettings = useCallback(() => {
+    router.push('/settings');
+  }, []);
+
+  const navigateToFindFriends = useCallback(() => {
+    router.push('/find-friends');
+  }, []);
+
+  const navigateToFriendsList = useCallback(() => {
+    router.push('/friends-list');
+  }, []);
 
   // Show loading while checking authentication or loading profile data
   if (authLoading || isLoading) {
@@ -186,8 +188,8 @@ export default function Profile() {
           alignItems: 'center'
         }}>
           {/* Find Friends Icon */}
-          <TouchableOpacity 
-            onPress={() => router.push('/find-friends')}
+          <TouchableOpacity
+            onPress={navigateToFindFriends}
             style={{
               width: 40,
               height: 40,
@@ -212,8 +214,8 @@ export default function Profile() {
             <NotificationIconButton size={20} />
 
             {/* Settings Icon */}
-            <TouchableOpacity 
-              onPress={() => router.push('/settings')}
+            <TouchableOpacity
+              onPress={navigateToSettings}
               style={{
                 width: 40,
                 height: 40,
@@ -282,7 +284,7 @@ export default function Profile() {
             }}>
               <TouchableOpacity
                 style={{ alignItems: 'center' }}
-                onPress={() => router.push('/friends-list')}
+                onPress={navigateToFriendsList}
               >
                 <Text style={{
                   fontSize: 18,
@@ -348,7 +350,7 @@ export default function Profile() {
             }}>
               {/* Sleek Edit Button */}
               <TouchableOpacity
-                onPress={() => router.push('/edit-profile')}
+                onPress={navigateToEditProfile}
                 style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.06)',
                   paddingVertical: 10,
@@ -587,12 +589,7 @@ export default function Profile() {
                 flexWrap: 'wrap',
                 gap: 12
               }}>
-                {[
-                  { title: 'First Win', desc: 'Won your first bet', color: '#FFD700' },
-                  { title: 'Hot Streak', desc: '5 wins in a row', color: '#FF6B6B' },
-                  { title: 'Big Winner', desc: 'Won $1000+ in a bet', color: '#4ECDC4' },
-                  { title: 'Social Star', desc: '100+ friends', color: '#45B7D1' }
-                ].map((achievement, index) => (
+                {ACHIEVEMENTS.map((achievement, index) => (
                   <View key={index} style={{
                     backgroundColor: 'rgba(255, 255, 255, 0.03)',
                     padding: 16,

@@ -121,6 +121,18 @@ export default function Bet() {
     return discoverBets.map(bet => transformBetData(bet));
   }, [discoverBets, transformBetData]);
 
+  // Memoize tab change handler to provide stable reference
+  const handleTabChange = useCallback((index: number) => {
+    haptic.selection();
+    setActiveTab(index);
+  }, []);
+
+  // Memoize filter change handler to provide stable reference
+  const handleFilterChange = useCallback((filter: 'all' | 'active' | 'resolved') => {
+    haptic.selection();
+    setMyBetsFilter(filter);
+  }, []);
+
   const betHistory = [
     { id: '1', game: 'Chiefs vs Bills', bet: 'Chiefs -2.5', amount: 100, odds: -110, status: 'won', payout: 190.91, date: '2 days ago' },
     { id: '2', game: 'Lakers vs Warriors', bet: 'Over 225.5', amount: 50, odds: -110, status: 'lost', payout: 0, date: '1 week ago' },
@@ -277,7 +289,7 @@ export default function Bet() {
                 return (
                   <TouchableOpacity
                     key={tab}
-                    onPress={() => setActiveTab(index)}
+                    onPress={() => handleTabChange(index)}
                     style={{
                       marginRight: 32,
                       paddingBottom: 8,
@@ -309,7 +321,7 @@ export default function Bet() {
                   return (
                     <TouchableOpacity
                       key={filter.key}
-                      onPress={() => setMyBetsFilter(filter.key)}
+                      onPress={() => handleFilterChange(filter.key)}
                       style={{
                         backgroundColor: isActive ? 'rgba(0, 212, 170, 0.15)' : 'rgba(255, 255, 255, 0.05)',
                         borderRadius: 20,

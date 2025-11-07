@@ -113,7 +113,8 @@ export default function Store() {
     }
   ]);
 
-  const handlePurchase = (item: StoreItemData) => {
+  // Memoize purchase handler to provide stable reference to child components
+  const handlePurchase = useCallback((item: StoreItemData) => {
     if (userCredits >= item.price && !item.isOwned) {
       Alert.alert(
         'Confirm Purchase',
@@ -142,17 +143,17 @@ export default function Store() {
       haptic.error();
       Alert.alert('Insufficient Credits', `You need ${item.price - userCredits} more credits to purchase this item`);
     }
-  };
+  }, [userCredits]);
 
-  const handlePreview = (item: StoreItemData) => {
+  const handlePreview = useCallback((item: StoreItemData) => {
     Alert.alert(
       'Item Preview',
       `Preview: ${item.name}\n\n${item.description}\n\nThis would show you exactly how this item looks and works before purchasing.`,
       [{ text: 'Close' }]
     );
-  };
+  }, []);
 
-  const handleEarnCredits = (option: EarnCreditsOption) => {
+  const handleEarnCredits = useCallback((option: EarnCreditsOption) => {
     haptic.success();
     Alert.alert(
       'Earn Credits',
@@ -160,11 +161,11 @@ export default function Store() {
       [{ text: 'Close' }]
     );
     setEarnCreditsModalVisible(false);
-  };
+  }, []);
 
-  const handleTransactionHistory = () => {
+  const handleTransactionHistory = useCallback(() => {
     setTransactionHistoryVisible(true);
-  };
+  }, []);
 
   const currentItems = storeItems[activeCategory] || [];
 

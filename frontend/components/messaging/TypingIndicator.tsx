@@ -6,10 +6,10 @@ interface TypingIndicatorProps {
   maxDisplay?: number;
 }
 
-const TypingIndicator: React.FC<TypingIndicatorProps> = ({ 
-  typingUsers, 
-  maxDisplay = 3 
-}) => {
+function TypingIndicator({
+  typingUsers,
+  maxDisplay = 3
+}: TypingIndicatorProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
@@ -131,6 +131,6 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({
       </View>
     </Animated.View>
   );
-};
+}
 
-export default TypingIndicator;
+export default React.memo(TypingIndicator);
