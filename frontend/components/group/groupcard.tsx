@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Text, View, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 
@@ -23,7 +23,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
 
 
 }) => {
-    const handlePress = () => {
+    const handlePress = useCallback(() => {
         if (groupId) {
             if (isJoined) {
                 router.push(`/group/${groupId}`);
@@ -31,7 +31,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
                 router.push(`/group/${groupId}/preview`);
             }
         }
-    };
+    }, [groupId, isJoined]);
     const renderMemberAvatars = () => {
         if (!memberAvatars || memberAvatars.length === 0) return null;
 
@@ -167,4 +167,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default GroupCard;
+export default React.memo(GroupCard);

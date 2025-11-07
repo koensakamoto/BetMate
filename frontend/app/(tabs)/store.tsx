@@ -276,6 +276,21 @@ export default function Store() {
                 scrollEnabled={false}
                 contentContainerStyle={{ paddingBottom: 24 }}
                 columnWrapperStyle={{ justifyContent: 'space-between' }}
+                // Performance optimizations
+                getItemLayout={(data, index) => {
+                  const ITEM_HEIGHT = 220; // Estimated height of StoreItem card
+                  const ROW_INDEX = Math.floor(index / 2); // 2 columns
+                  return {
+                    length: ITEM_HEIGHT,
+                    offset: ITEM_HEIGHT * ROW_INDEX,
+                    index,
+                  };
+                }}
+                initialNumToRender={6}
+                maxToRenderPerBatch={4}
+                windowSize={5}
+                removeClippedSubviews={true}
+                updateCellsBatchingPeriod={50}
               />
 
               {/* Empty State */}

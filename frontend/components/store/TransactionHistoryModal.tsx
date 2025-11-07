@@ -219,6 +219,20 @@ export default function TransactionHistoryModal({ visible, onClose, transactions
               paddingBottom: insets.bottom + 20
             }}
             showsVerticalScrollIndicator={false}
+            // Performance optimizations
+            getItemLayout={(data, index) => {
+              const ITEM_HEIGHT = 110; // Estimated height of transaction item
+              return {
+                length: ITEM_HEIGHT,
+                offset: ITEM_HEIGHT * index,
+                index,
+              };
+            }}
+            initialNumToRender={8}
+            maxToRenderPerBatch={5}
+            windowSize={7}
+            removeClippedSubviews={true}
+            updateCellsBatchingPeriod={50}
           />
         ) : (
           /* Empty State */

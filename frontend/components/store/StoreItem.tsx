@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Text, View, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
@@ -28,28 +28,36 @@ interface StoreItemProps {
   onPurchase: (item: StoreItemData) => void;
 }
 
-export default function StoreItem({ item, userCredits, onPurchase }: StoreItemProps) {
+function StoreItem({ item, userCredits, onPurchase }: StoreItemProps) {
   const canAfford = userCredits >= item.price;
-  
-  const getRarityColor = (rarity: Rarity) => {
-    switch (rarity) {
-      case Rarity.COMMON: return '#9CA3AF';      // Gray
-      case Rarity.UNCOMMON: return '#10B981';    // Green  
-      case Rarity.RARE: return '#3B82F6';        // Blue
-      case Rarity.EPIC: return '#8B5CF6';        // Purple
-      case Rarity.LEGENDARY: return '#F59E0B';   // Orange/Gold
-    }
-  };
 
-  const getRarityBgColor = (rarity: Rarity) => {
-    switch (rarity) {
-      case Rarity.COMMON: return 'rgba(156, 163, 175, 0.15)';
-      case Rarity.UNCOMMON: return 'rgba(16, 185, 129, 0.15)';
-      case Rarity.RARE: return 'rgba(59, 130, 246, 0.15)';
-      case Rarity.EPIC: return 'rgba(139, 92, 246, 0.15)';
-      case Rarity.LEGENDARY: return 'rgba(245, 158, 11, 0.15)';
-    }
-  };
+  // Memoize rarity colors to avoid recalculation on every render
+  const rarityStyles = useMemo(() => {
+    const getRarityColor = (rarity: Rarity) => {
+      switch (rarity) {
+        case Rarity.COMMON: return '#9CA3AF';      // Gray
+        case Rarity.UNCOMMON: return '#10B981';    // Green
+        case Rarity.RARE: return '#3B82F6';        // Blue
+        case Rarity.EPIC: return '#8B5CF6';        // Purple
+        case Rarity.LEGENDARY: return '#F59E0B';   // Orange/Gold
+      }
+    };
+
+    const getRarityBgColor = (rarity: Rarity) => {
+      switch (rarity) {
+        case Rarity.COMMON: return 'rgba(156, 163, 175, 0.15)';
+        case Rarity.UNCOMMON: return 'rgba(16, 185, 129, 0.15)';
+        case Rarity.RARE: return 'rgba(59, 130, 246, 0.15)';
+        case Rarity.EPIC: return 'rgba(139, 92, 246, 0.15)';
+        case Rarity.LEGENDARY: return 'rgba(245, 158, 11, 0.15)';
+      }
+    };
+
+    return {
+      color: getRarityColor(item.rarity),
+      bgColor: getRarityBgColor(item.rarity)
+    };
+  }, [item.rarity]);
 
   return (
     <View
@@ -59,10 +67,10 @@ export default function StoreItem({ item, userCredits, onPurchase }: StoreItemPr
         padding: 20,
         marginBottom: 20,
         borderWidth: 1,
-        borderColor: getRarityColor(item.rarity),
+        borderColor: rarityStyles.color,
         opacity: item.isOwned ? 0.8 : 1,
         position: 'relative',
-        shadowColor: getRarityColor(item.rarity),
+        shadowColor: rarityStyles.color,
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
@@ -78,8 +86,8 @@ export default function StoreItem({ item, userCredits, onPurchase }: StoreItemPr
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: getRarityColor(item.rarity),
-        shadowColor: getRarityColor(item.rarity),
+        backgroundColor: rarityStyles.color,
+        shadowColor: rarityStyles.color,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.6,
         shadowRadius: 4,
@@ -115,7 +123,7 @@ export default function StoreItem({ item, userCredits, onPurchase }: StoreItemPr
             left: -1,
             right: -1,
             height: 3,
-            backgroundColor: getRarityColor(item.rarity),
+            backgroundColor: rarityStyles.color,
             borderBottomLeftRadius: 20,
             borderBottomRightRadius: 20,
             opacity: 0.8
@@ -240,3 +248,5 @@ export default function StoreItem({ item, userCredits, onPurchase }: StoreItemPr
     </View>
   );
 }
+
+export default React.memo(StoreItem);

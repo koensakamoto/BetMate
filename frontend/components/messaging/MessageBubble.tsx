@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Text, View, TouchableOpacity, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { MessageResponse, MessageType } from '../../types/api';
@@ -21,8 +21,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   onDelete,
   isLastInSequence = true
 }) => {
-  // Improved message ownership logic with defensive checks
-  const isOwnMessage = (() => {
+  // Improved message ownership logic with defensive checks - memoized for performance
+  const isOwnMessage = useMemo(() => {
     console.log(`[MessageBubble] DEBUG - Checking message ownership:`, {
       messageId: message.id,
       senderUsername: message.senderUsername,
@@ -52,24 +52,24 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     });
 
     return isOwn;
-  })();
+  }, [message.senderUsername, currentUsername, message.id, message.content]);
 
   const isSystemMessage = messagingService.isSystemMessage(message);
   const hasAttachment = messagingService.hasAttachment(message);
 
-  const handleLongPress = () => {
+  const handleLongPress = useCallback(() => {
     if (isSystemMessage) return;
 
     const options = ['Reply'];
-    
+
     if (message.canEdit && isOwnMessage) {
       options.push('Edit');
     }
-    
+
     if (message.canDelete && isOwnMessage) {
       options.push('Delete');
     }
-    
+
     options.push('Cancel');
 
     Alert.alert(
@@ -95,9 +95,9 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         { text: 'Cancel', style: 'cancel' }
       ]
     );
-  };
+  }, [isSystemMessage, message, isOwnMessage, onReply, onEdit, handleDelete]);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     Alert.alert(
       'Delete Message',
       'Are you sure you want to delete this message?',
@@ -110,7 +110,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         }
       ]
     );
-  };
+  }, [message, onDelete]);
 
   const formatTime = (timestamp: string): string => {
     return messagingService.formatMessageTime(timestamp);
@@ -325,4 +325,4 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   );
 };
 
-export default MessageBubble;
+export default React.memo(MessageBubble);

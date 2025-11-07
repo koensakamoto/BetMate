@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Text, View, TouchableOpacity, Image } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -22,7 +22,7 @@ interface BetCardProps {
   resolution?: string;
 }
 
-export default function BetCard({
+function BetCard({
   id,
   title,
   description,
@@ -38,11 +38,11 @@ export default function BetCard({
   creatorName,
   resolution
 }: BetCardProps) {
-  
-  const handlePress = () => {
+
+  const handlePress = useCallback(() => {
     // Navigate to bet details
     router.push(`/bet-details/${id}`);
-  };
+  }, [id]);
 
   return (
     <TouchableOpacity
@@ -191,3 +191,5 @@ export default function BetCard({
     </TouchableOpacity>
   );
 }
+
+export default React.memo(BetCard);
