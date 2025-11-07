@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 
@@ -18,7 +18,7 @@ export interface UserCardProps {
   isLoading?: boolean;
 }
 
-const UserCard: React.FC<UserCardProps> = ({
+function UserCard({
   id,
   username,
   firstName,
@@ -30,21 +30,21 @@ const UserCard: React.FC<UserCardProps> = ({
   friendRequestStatus = 'none',
   showFollowButton = true,
   isLoading = false
-}) => {
-  const displayName = firstName && lastName 
-    ? `${firstName} ${lastName}` 
+}: UserCardProps) {
+  const displayName = firstName && lastName
+    ? `${firstName} ${lastName}`
     : username;
 
-  const handleUserPress = () => {
+  const handleUserPress = useCallback(() => {
     // Navigate to user profile page
     router.push(`/profile/${id}`);
-  };
+  }, [id]);
 
-  const handleFriendPress = () => {
+  const handleFriendPress = useCallback(() => {
     if (onFriendPress) {
       onFriendPress(id);
     }
-  };
+  }, [id, onFriendPress]);
 
   return (
     <TouchableOpacity
@@ -153,6 +153,6 @@ const UserCard: React.FC<UserCardProps> = ({
       )}
     </TouchableOpacity>
   );
-};
+}
 
-export default UserCard;
+export default React.memo(UserCard);

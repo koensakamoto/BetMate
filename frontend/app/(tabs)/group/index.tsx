@@ -110,6 +110,12 @@ export default function Group() {
     return activeTab === 0 ? myGroups : publicGroups;
   }, [searchQuery, searchResults, activeTab, myGroups, publicGroups]);
 
+  // Memoize tab change handler to provide stable reference
+  const handleTabChange = useCallback((index: number) => {
+    haptic.selection();
+    setActiveTab(index);
+  }, []);
+
   return (
      <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
       <StatusBar
@@ -207,10 +213,7 @@ export default function Group() {
             return (
               <TouchableOpacity
                 key={tab}
-                onPress={() => {
-                  haptic.selection();
-                  setActiveTab(index);
-                }}
+                onPress={() => handleTabChange(index)}
                 style={{
                   marginRight: 32,
                   paddingBottom: 8,

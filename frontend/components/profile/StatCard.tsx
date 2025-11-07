@@ -11,7 +11,7 @@ interface StatCardProps {
   subtitle?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({
+function StatCard({
   title,
   value,
   icon,
@@ -158,4 +158,4 @@ export const StatsGrid: React.FC<StatsGridProps> = ({ children }) => {
   );
 };
 
-export default StatCard;
+export default React.memo(StatCard);

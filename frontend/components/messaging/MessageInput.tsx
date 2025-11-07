@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Text, 
   View, 
@@ -70,18 +70,19 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
 
 
-  const handleTextChange = (text: string) => {
+  // Memoize text change handler to prevent recreation on every render
+  const handleTextChange = useCallback((text: string) => {
     setMessage(text);
-    
+
     // Handle typing indicators
     if (onTyping && text.trim().length > 0) {
       onTyping(true);
-      
+
       // Clear existing timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
-      
+
       // Set typing to false after 2 seconds of inactivity
       typingTimeoutRef.current = setTimeout(() => {
         onTyping(false);
@@ -92,7 +93,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
         clearTimeout(typingTimeoutRef.current);
       }
     }
-  };
+  }, [onTyping]);
 
   const handleSend = async () => {
     const trimmedMessage = message.trim();

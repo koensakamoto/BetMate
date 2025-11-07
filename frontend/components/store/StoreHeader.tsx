@@ -8,7 +8,7 @@ interface StoreHeaderProps {
   onTransactionHistory: () => void;
 }
 
-export default function StoreHeader({ credits, onEarnCredits, onTransactionHistory }: StoreHeaderProps) {
+function StoreHeader({ credits, onEarnCredits, onTransactionHistory }: StoreHeaderProps) {
   return (
     <View style={{
       paddingHorizontal: 20,
@@ -90,3 +90,5 @@ export default function StoreHeader({ credits, onEarnCredits, onTransactionHisto
     </View>
   );
 }
+
+export default React.memo(StoreHeader);

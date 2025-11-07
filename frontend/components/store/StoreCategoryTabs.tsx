@@ -15,23 +15,23 @@ const categories = [
   { id: 'customization' as StoreCategory, name: 'Customization' }
 ];
 
-export default function StoreCategoryTabs({ activeCategory, onCategoryChange }: StoreCategoryTabsProps) {
+function StoreCategoryTabs({ activeCategory, onCategoryChange }: StoreCategoryTabsProps) {
   return (
     <View style={{ marginBottom: 20 }}>
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20
         }}
       >
-        <View style={{ 
+        <View style={{
           flexDirection: 'row',
           gap: 8
         }}>
           {categories.map((category) => {
             const isActive = activeCategory === category.id;
-            
+
             return (
               <TouchableOpacity
                 key={category.id}
@@ -62,3 +62,5 @@ export default function StoreCategoryTabs({ activeCategory, onCategoryChange }: 
     </View>
   );
 }
+
+export default React.memo(StoreCategoryTabs);
