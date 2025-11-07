@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -11,20 +11,42 @@ interface GroupBetsTabProps {
   groupData: {
     id: string | string[];
   };
+  forceRefresh?: number; // Increment this to force a refresh
 }
 
-const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData }) => {
+const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) => {
   const [activeBetFilter, setActiveBetFilter] = useState('All');
   const betFilters = ['All', 'OPEN', 'CLOSED', 'RESOLVED'];
   const [bets, setBets] = useState<BetSummaryResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const searchParams = useLocalSearchParams();
 
+  // Cache management: 5 minute cache
+  const lastFetchTime = useRef<number>(0);
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  const isCacheValid = useCallback(() => {
+    return (Date.now() - lastFetchTime.current) < CACHE_DURATION;
+  }, []);
+
   // Load bets data - reload when group changes or refresh parameter changes
   useEffect(() => {
-    console.log(`🔄 [GroupBetsTab] Loading bets for group ${groupData.id}, refresh: ${searchParams.refresh}`);
-    loadGroupBets();
-  }, [groupData.id, searchParams.refresh]);
+    // Only fetch if cache is invalid, no data, or forced refresh
+    if (!isCacheValid() || bets.length === 0 || searchParams.refresh) {
+      console.log(`🔄 [GroupBetsTab] Loading bets for group ${groupData.id}, refresh: ${searchParams.refresh}`);
+      loadGroupBets();
+    } else {
+      console.log(`✅ [GroupBetsTab] Using cached bets for group ${groupData.id}`);
+    }
+  }, [groupData.id, searchParams.refresh, isCacheValid, bets.length]);
+
+  // Handle force refresh from parent (pull-to-refresh)
+  useEffect(() => {
+    if (forceRefresh && forceRefresh > 0) {
+      console.log(`🔄 [GroupBetsTab] Force refresh triggered`);
+      loadGroupBets();
+    }
+  }, [forceRefresh]);
 
   const loadGroupBets = async () => {
     setLoading(true);
@@ -34,6 +56,9 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData }) => {
       const groupBets = await betService.getGroupBets(groupId);
       console.log(`✅ [GroupBetsTab] Loaded ${groupBets.length} bets for group ${groupId}`);
       setBets(groupBets);
+
+      // Update cache timestamp
+      lastFetchTime.current = Date.now();
     } catch (error) {
       console.error('Failed to load group bets:', error);
       Alert.alert('Error', 'Failed to load group bets. Please try again.');

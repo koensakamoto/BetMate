@@ -306,16 +306,27 @@ export default function CreateBet() {
         backgroundColor="#0a0a0f"
         translucent={true}
       />
-      
+
+      {/* Solid background behind status bar */}
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top,
+        backgroundColor: '#0a0a0f',
+        zIndex: 1
+      }} />
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
         <ScrollView
-          style={{ flex: 1 }}
+          style={{ flex: 1, marginTop: insets.top }}
           contentContainerStyle={{
-            paddingTop: insets.top + 20,
+            paddingTop: 20,
             paddingBottom: insets.bottom + 120,
             paddingHorizontal: 20
           }}

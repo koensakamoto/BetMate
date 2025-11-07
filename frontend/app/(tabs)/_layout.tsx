@@ -3,10 +3,13 @@ import { MaterialIcons } from '@expo/vector-icons';
 
 
 export default function TabsLayout() {
-    return <Tabs screenOptions={{ 
+    return <Tabs screenOptions={{
         headerShown: false,
         headerShadowVisible: false,
         swipeEnabled: false,
+        // Performance optimizations for smooth transitions
+        lazy: false, // Render all tabs immediately for instant switching
+        unmountOnBlur: false, // Keep screens mounted when switching tabs
         tabBarStyle: {
             backgroundColor: '#0a0a0f',
             borderTopWidth: 1,

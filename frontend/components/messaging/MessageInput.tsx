@@ -46,11 +46,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [isSending, setIsSending] = useState(false);
   const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
   const [inputHeight, setInputHeight] = useState(36);
+  const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Animations - simplified
+
+  // Smooth animations for professional feel
   const attachmentRotation = useRef(new Animated.Value(0)).current;
+  const borderOpacity = useRef(new Animated.Value(0.1)).current;
 
   // Auto-focus when replying or editing
   useEffect(() => {
@@ -113,16 +115,27 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
       console.log(`[MessageInput] 🔍 SENDING MESSAGE: groupId=${groupId}, content="${trimmedMessage}", request=`, request);
       await onSendMessage(request);
-      
-      // Clear the input and reset states with animation
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+      // Clear the input and reset states with smooth spring animation
+      LayoutAnimation.configureNext({
+        duration: 250,
+        create: {
+          type: LayoutAnimation.Types.spring,
+          property: LayoutAnimation.Properties.opacity,
+          springDamping: 0.8,
+        },
+        update: {
+          type: LayoutAnimation.Types.spring,
+          springDamping: 0.8,
+        },
+      });
       setMessage('');
       setInputHeight(36);
       if (onTyping) onTyping(false);
       if (replyToMessage && onCancelReply) onCancelReply();
       if (editingMessage && onCancelEdit) onCancelEdit();
-      
-      // Dismiss keyboard
+
+      // Dismiss keyboard smoothly
       Keyboard.dismiss();
       
     } catch (error) {
@@ -134,10 +147,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const handleAttachment = () => {
-    // Animate attachment button rotation
-    Animated.timing(attachmentRotation, {
+    // Smooth spring animation for attachment button rotation
+    Animated.spring(attachmentRotation, {
       toValue: showAttachmentOptions ? 0 : 1,
-      duration: 200,
+      tension: 200,
+      friction: 15,
       useNativeDriver: true,
     }).start();
 
@@ -165,11 +179,23 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const handleFocus = () => {
-    // Simple focus handler
+    setIsFocused(true);
+    // Smooth border animation on focus - like iMessage
+    Animated.timing(borderOpacity, {
+      toValue: 0.3,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
   };
 
   const handleBlur = () => {
-    // Simple blur handler
+    setIsFocused(false);
+    // Smooth border animation on blur
+    Animated.timing(borderOpacity, {
+      toValue: 0.1,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
   };
 
   const canSend = message.trim().length > 0 && !isSending && !disabled;
@@ -286,7 +312,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
         </Animated.View>
       )}
 
-      {/* Main input container */}
+      {/* Main input container with smooth animations */}
       <Animated.View style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -297,7 +323,16 @@ const MessageInput: React.FC<MessageInputProps> = ({
         borderWidth: 1,
         borderColor: message.trim().length > 0
           ? 'rgba(0, 212, 170, 0.3)'
-          : 'rgba(255, 255, 255, 0.1)'
+          : borderOpacity.interpolate({
+              inputRange: [0.1, 0.3],
+              outputRange: ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.3)']
+            }),
+        // Subtle shadow on focus for depth - like iMessage
+        shadowColor: '#00D4AA',
+        shadowOffset: { width: 0, height: isFocused ? 2 : 0 },
+        shadowOpacity: isFocused ? 0.15 : 0,
+        shadowRadius: isFocused ? 8 : 0,
+        elevation: isFocused ? 3 : 0
       }}>
         {/* Attachment button */}
         <TouchableOpacity

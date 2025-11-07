@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -19,6 +19,7 @@ export default function Bet() {
   const [myBets, setMyBets] = useState<BetSummaryResponse[]>([]);
   const [discoverBets, setDiscoverBets] = useState<BetSummaryResponse[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Filter states for My Bets tab
@@ -29,22 +30,37 @@ export default function Bet() {
     { key: 'resolved' as const, label: 'Resolved' }
   ];
 
-  // Load bets data when screen comes into focus (including initial load and returning from bet creation)
+  // Cache management: 5 minute cache
+  const lastFetchTime = useRef<number>(0);
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  const isCacheValid = useCallback(() => {
+    return (Date.now() - lastFetchTime.current) < CACHE_DURATION;
+  }, []);
+
+  // Smart refresh on focus: only refetch if cache expired or forced
   useFocusEffect(
     useCallback(() => {
-      loadBets();
-    }, [refreshKey])
+      if (!isCacheValid() || myBets.length === 0 || refreshKey > 0) {
+        loadBets(false);
+      }
+    }, [refreshKey, isCacheValid, myBets.length])
   );
 
   // Trigger refresh when URL refresh parameter changes (from bet creation)
   useEffect(() => {
     if (refresh) {
-      loadBets();
+      loadBets(false);
     }
   }, [refresh]);
 
-  const loadBets = async () => {
-    setLoading(true);
+  const loadBets = async (isRefreshing: boolean = false) => {
+    if (isRefreshing) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
       // Load my bets
       const myBetsData = await betService.getMyBets();
@@ -55,14 +71,23 @@ export default function Bet() {
       // Filter out bets the user has already participated in
       const discoverableBets = openBets.filter(bet => !bet.hasUserParticipated);
       setDiscoverBets(discoverableBets);
-      
+
+      // Update cache timestamp
+      lastFetchTime.current = Date.now();
+
     } catch (error) {
       console.error('Failed to load bets:', error);
       Alert.alert('Error', 'Failed to load bets. Please try again.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
+
+  // Pull-to-refresh handler
+  const onRefresh = useCallback(() => {
+    loadBets(true);
+  }, []);
 
   // Calculate time remaining until deadline - memoized for performance
   const calculateTimeRemaining = useCallback((deadline: string): string => {
@@ -209,6 +234,14 @@ export default function Bet() {
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingTop: 20, paddingBottom: insets.bottom + 20 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#00D4AA"
+              colors={['#00D4AA']}
+            />
+          }
         >
           <View style={{ flex: 1, paddingHorizontal: 20 }}>
             {/* Clean Search */}

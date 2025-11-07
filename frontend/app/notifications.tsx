@@ -518,6 +518,17 @@ export default function Notifications() {
         translucent={true}
       />
 
+      {/* Solid background behind status bar */}
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top,
+        backgroundColor: '#0a0a0f',
+        zIndex: 1
+      }} />
+
       <View style={{ flex: 1 }}>
         {/* Header */}
         <View style={{

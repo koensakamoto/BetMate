@@ -260,15 +260,26 @@ export default function EditProfile() {
         backgroundColor="#0a0a0f"
         translucent={true}
       />
-      
-      <KeyboardAvoidingView 
+
+      {/* Solid background behind status bar */}
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top,
+        backgroundColor: '#0a0a0f',
+        zIndex: 1
+      }} />
+
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView 
-          style={{ flex: 1 }}
-          contentContainerStyle={{ 
-            paddingTop: insets.top + 20,
+        <ScrollView
+          style={{ flex: 1, marginTop: insets.top }}
+          contentContainerStyle={{
+            paddingTop: 20,
             paddingBottom: insets.bottom + 20,
             paddingHorizontal: 20
           }}

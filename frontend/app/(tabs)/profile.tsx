@@ -1,9 +1,8 @@
-import { Text, View, Image, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator, Alert } from "react-native";
+import { Text, View, Image, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator, Alert, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { userService, UserProfileResponse, UserStatistics } from '../../services/user/userService';
 import { friendshipService } from '../../services/friendship/friendshipService';
@@ -23,39 +22,52 @@ export default function Profile() {
   const [userStats, setUserStats] = useState<UserStatistics | null>(null);
   const [friendsCount, setFriendsCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const tabs = ['Stats', 'Achievements'];
 
+  // Cache management: 5 minute cache
+  const lastFetchTime = useRef<number>(0);
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  const isCacheValid = useCallback(() => {
+    return (Date.now() - lastFetchTime.current) < CACHE_DURATION;
+  }, []);
+
+  // Initial load on mount
   useEffect(() => {
     if (!authLoading) {
       if (isAuthenticated) {
-        loadUserData();
+        loadUserData(false); // Initial load, not forced
       } else {
-        // User is not authenticated, redirect to login
         router.replace('/auth/login');
       }
     }
   }, [authLoading, isAuthenticated]);
 
-  // Reload data when screen comes into focus (e.g., returning from edit profile)
+  // Smart refresh on focus: only refetch if cache expired
   useFocusEffect(
     useCallback(() => {
-      if (isAuthenticated && !authLoading) {
-        loadUserData();
+      if (isAuthenticated && !authLoading && !isCacheValid()) {
+        loadUserData(false);
       }
-    }, [isAuthenticated, authLoading])
+    }, [isAuthenticated, authLoading, isCacheValid])
   );
 
-  const loadUserData = async () => {
+  const loadUserData = async (isRefreshing: boolean = false) => {
     try {
-      setIsLoading(true);
+      if (isRefreshing) {
+        setRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
       setError(null);
-      
+
       // Load user profile
       const profile = await userService.getCurrentUserProfile();
       setUserProfile(profile);
       debugLog('User profile loaded:', profile);
-      
+
       // Load user statistics
       const stats = await userService.getCurrentUserStatistics();
       setUserStats(stats);
@@ -65,14 +77,23 @@ export default function Profile() {
       const count = await friendshipService.getFriendsCount();
       setFriendsCount(count);
       debugLog('Friends count loaded:', count);
-      
+
+      // Update cache timestamp
+      lastFetchTime.current = Date.now();
+
     } catch (err: any) {
       errorLog('Failed to load user data:', err);
       setError(err.message || 'Failed to load profile data');
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   };
+
+  // Pull-to-refresh handler
+  const onRefresh = useCallback(() => {
+    loadUserData(true);
+  }, []);
 
 
   // Memoize detailed stats array to avoid recalculating on every render
@@ -178,6 +199,14 @@ export default function Profile() {
         style={{ flex: 1, marginTop: insets.top }}
         contentContainerStyle={{ paddingTop: 20, paddingBottom: insets.bottom + 20 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#00D4AA"
+            colors={['#00D4AA']}
+          />
+        }
       >
         {/* Header Icons */}
         <View style={{ 
