@@ -31,12 +31,27 @@ class UserCreditServiceTest {
     @BeforeEach
     void setUp() {
         userService = new TestUserService();
-        creditService = new UserCreditService(userService);
-        
+        // Create a mock TransactionService that does nothing (tests don't verify transaction persistence)
+        TransactionService transactionService = new TransactionService(null) {
+            @Override
+            public com.betmate.entity.user.Transaction createTransaction(
+                    com.betmate.entity.user.User user,
+                    com.betmate.entity.user.Transaction.TransactionType type,
+                    java.math.BigDecimal amount,
+                    String reason,
+                    java.math.BigDecimal balanceBefore,
+                    java.math.BigDecimal balanceAfter,
+                    String correlationId) {
+                // No-op mock for testing
+                return null;
+            }
+        };
+        creditService = new UserCreditService(userService, transactionService);
+
         // Create test users with initial balances
         testUser1 = createTestUser(TEST_USER_1_ID, "testuser1", INITIAL_BALANCE);
         testUser2 = createTestUser(TEST_USER_2_ID, "testuser2", INITIAL_BALANCE);
-        
+
         userService.saveUser(testUser1);
         userService.saveUser(testUser2);
     }

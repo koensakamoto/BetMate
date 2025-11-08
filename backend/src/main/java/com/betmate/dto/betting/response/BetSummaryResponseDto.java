@@ -34,6 +34,7 @@ public class BetSummaryResponseDto {
     // User context
     private Boolean hasUserParticipated;
     private Bet.BetOutcome userChoice;
+    private BigDecimal userAmount;
 
     // Participant previews for displaying avatars
     private List<MemberPreviewDto> participantPreviews;
@@ -160,6 +161,14 @@ public class BetSummaryResponseDto {
 
     public void setUserChoice(Bet.BetOutcome userChoice) {
         this.userChoice = userChoice;
+    }
+
+    public BigDecimal getUserAmount() {
+        return userAmount;
+    }
+
+    public void setUserAmount(BigDecimal userAmount) {
+        this.userAmount = userAmount;
     }
 
     public List<MemberPreviewDto> getParticipantPreviews() {

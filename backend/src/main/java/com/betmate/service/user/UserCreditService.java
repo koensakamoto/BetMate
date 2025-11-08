@@ -1,5 +1,6 @@
 package com.betmate.service.user;
 
+import com.betmate.entity.user.Transaction;
 import com.betmate.entity.user.User;
 import com.betmate.exception.user.InsufficientCreditsException;
 import com.betmate.exception.user.InsufficientFrozenCreditsException;
@@ -28,10 +29,12 @@ public class UserCreditService {
 
     private static final Logger log = LoggerFactory.getLogger(UserCreditService.class);
     private final UserService userService;
+    private final TransactionService transactionService;
 
     @Autowired
-    public UserCreditService(UserService userService) {
+    public UserCreditService(UserService userService, TransactionService transactionService) {
         this.userService = userService;
+        this.transactionService = transactionService;
     }
 
     /**
@@ -268,10 +271,15 @@ public class UserCreditService {
         );
     }
 
-    private void logCreditTransaction(Long userId, BigDecimal amount, String type, String reason, 
+    private void logCreditTransaction(Long userId, BigDecimal amount, String type, String reason,
                                     BigDecimal oldBalance, BigDecimal newBalance, String correlationId) {
-        log.info("CREDIT_TRANSACTION: User={}, Type={}, Amount={}, Reason={}, Balance={}→{}, CorrelationId={}", 
+        log.info("CREDIT_TRANSACTION: User={}, Type={}, Amount={}, Reason={}, Balance={}→{}, CorrelationId={}",
             userId, type, amount, reason, oldBalance, newBalance, correlationId);
+
+        // Persist transaction to database
+        User user = userService.getUserById(userId);
+        Transaction.TransactionType transactionType = Transaction.TransactionType.valueOf(type);
+        transactionService.createTransaction(user, transactionType, amount, reason, oldBalance, newBalance, correlationId);
     }
 
     private void logFreezeTransaction(Long userId, BigDecimal amount, String type, String reason, 

@@ -6,9 +6,12 @@ import com.betmate.dto.user.request.UserRegistrationRequestDto;
 import com.betmate.dto.user.response.UserAvailabilityResponseDto;
 import com.betmate.dto.user.response.UserProfileResponseDto;
 import com.betmate.dto.user.response.UserSearchResultResponseDto;
+import com.betmate.dto.user.response.TransactionResponseDto;
+import com.betmate.entity.user.Transaction;
 import com.betmate.entity.user.User;
 import com.betmate.service.FileStorageService;
 import com.betmate.service.security.UserDetailsServiceImpl;
+import com.betmate.service.user.TransactionService;
 import com.betmate.service.user.UserRegistrationService;
 import com.betmate.service.user.UserService;
 import com.betmate.service.user.UserStatisticsService;
@@ -17,6 +20,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -40,14 +44,17 @@ public class UserController {
     private final UserRegistrationService userRegistrationService;
     private final UserStatisticsService userStatisticsService;
     private final FileStorageService fileStorageService;
+    private final TransactionService transactionService;
 
     @Autowired
     public UserController(UserService userService, UserRegistrationService userRegistrationService,
-                         UserStatisticsService userStatisticsService, FileStorageService fileStorageService) {
+                         UserStatisticsService userStatisticsService, FileStorageService fileStorageService,
+                         TransactionService transactionService) {
         this.userService = userService;
         this.userRegistrationService = userRegistrationService;
         this.userStatisticsService = userStatisticsService;
         this.fileStorageService = fileStorageService;
+        this.transactionService = transactionService;
     }
 
     // ==========================================
@@ -295,6 +302,33 @@ public class UserController {
             .map(UserSearchResultResponseDto::fromUser)
             .toList();
         return ResponseEntity.ok(results);
+    }
+
+    /**
+     * Get transaction history for the current user.
+     * @param page Page number (0-indexed, default: 0)
+     * @param size Page size (default: 20)
+     * @return Paginated list of transactions
+     */
+    @GetMapping("/transactions")
+    public ResponseEntity<Page<TransactionResponseDto>> getUserTransactions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
+            if (userPrincipal == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            User user = userService.getUserById(userPrincipal.getUserId());
+            Page<Transaction> transactions = transactionService.getUserTransactions(user, page, size);
+            Page<TransactionResponseDto> transactionDtos = transactions.map(TransactionResponseDto::fromTransaction);
+
+            return ResponseEntity.ok(transactionDtos);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     // Helper method
