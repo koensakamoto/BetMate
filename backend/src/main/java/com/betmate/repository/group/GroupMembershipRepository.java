@@ -44,9 +44,16 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
     
     // Membership status checks
     boolean existsByUserAndGroupAndIsActiveTrue(User user, Group group);
-    
+
     @Query("SELECT COUNT(gm) FROM GroupMembership gm WHERE gm.group = :group AND gm.isActive = true")
     Long countActiveMembers(@Param("group") Group group);
+
+    // Pending request queries
+    @Query("SELECT gm FROM GroupMembership gm WHERE gm.group = :group AND gm.status = 'PENDING' ORDER BY gm.joinedAt DESC")
+    List<GroupMembership> findPendingRequestsByGroup(@Param("group") Group group);
+
+    @Query("SELECT COUNT(gm) FROM GroupMembership gm WHERE gm.group = :group AND gm.status = 'PENDING'")
+    Long countPendingRequestsByGroup(@Param("group") Group group);
     
     @Query("SELECT COUNT(gm) FROM GroupMembership gm WHERE gm.user = :user AND gm.isActive = true")
     Long countUserActiveMemberships(@Param("user") User user);

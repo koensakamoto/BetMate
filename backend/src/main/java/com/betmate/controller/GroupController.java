@@ -7,6 +7,7 @@ import com.betmate.dto.group.response.GroupResponseDto;
 import com.betmate.dto.group.response.GroupSummaryResponseDto;
 import com.betmate.dto.group.response.GroupMemberResponseDto;
 import com.betmate.dto.group.response.MemberPreviewDto;
+import com.betmate.dto.group.response.PendingRequestResponseDto;
 import com.betmate.entity.group.Group;
 import com.betmate.entity.group.GroupMembership;
 import com.betmate.entity.user.User;
@@ -395,5 +396,124 @@ public class GroupController {
             user.getLastName(),
             user.getProfileImageUrl()
         );
+    }
+
+    // ==========================================
+    // PENDING REQUEST ENDPOINTS
+    // ==========================================
+
+    /**
+     * Get all pending join requests for a group.
+     * Only accessible to group admins/officers.
+     */
+    @GetMapping("/{groupId}/pending-requests")
+    public ResponseEntity<List<PendingRequestResponseDto>> getPendingRequests(
+            @PathVariable Long groupId,
+            Authentication authentication) {
+
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+            Group group = groupService.getGroupById(groupId);
+
+            // Get pending requests
+            List<GroupMembership> pendingRequests = groupMembershipService.getPendingRequests(group);
+
+            // Convert to DTOs
+            List<PendingRequestResponseDto> response = pendingRequests.stream()
+                .map(PendingRequestResponseDto::fromGroupMembership)
+                .collect(Collectors.toList());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            System.err.println("ERROR getting pending requests: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    /**
+     * Get count of pending join requests for a group.
+     * Only accessible to group admins/officers.
+     */
+    @GetMapping("/{groupId}/pending-requests/count")
+    public ResponseEntity<Long> getPendingRequestCount(
+            @PathVariable Long groupId,
+            Authentication authentication) {
+
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+            Group group = groupService.getGroupById(groupId);
+
+            // Get pending request count
+            Long count = groupMembershipService.getPendingRequestCount(group);
+
+            return ResponseEntity.ok(count);
+
+        } catch (Exception e) {
+            System.err.println("ERROR getting pending request count: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    /**
+     * Approve a pending join request.
+     * Only accessible to group admins/officers.
+     */
+    @PostMapping("/{groupId}/pending-requests/{requestId}/approve")
+    public ResponseEntity<Void> approvePendingRequest(
+            @PathVariable Long groupId,
+            @PathVariable Long requestId,
+            Authentication authentication) {
+
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+            Group group = groupService.getGroupById(groupId);
+
+            // Approve the request
+            groupMembershipService.approvePendingRequest(currentUser, requestId, group);
+
+            return ResponseEntity.ok().build();
+
+        } catch (Exception e) {
+            System.err.println("ERROR approving pending request: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    /**
+     * Deny/reject a pending join request.
+     * Only accessible to group admins/officers.
+     */
+    @PostMapping("/{groupId}/pending-requests/{requestId}/deny")
+    public ResponseEntity<Void> denyPendingRequest(
+            @PathVariable Long groupId,
+            @PathVariable Long requestId,
+            Authentication authentication) {
+
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+            Group group = groupService.getGroupById(groupId);
+
+            // Deny the request
+            groupMembershipService.denyPendingRequest(currentUser, requestId, group);
+
+            return ResponseEntity.ok().build();
+
+        } catch (Exception e) {
+            System.err.println("ERROR denying pending request: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 }

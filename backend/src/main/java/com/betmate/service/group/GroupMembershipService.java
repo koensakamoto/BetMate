@@ -350,6 +350,100 @@ public class GroupMembershipService {
             .orElseThrow(() -> new GroupMembershipException("User is not a member of this group"));
     }
 
+    // ==========================================
+    // PENDING REQUEST METHODS
+    // ==========================================
 
+    /**
+     * Gets all pending join requests for a group.
+     *
+     * @param group the group
+     * @return list of pending memberships
+     */
+    public List<GroupMembership> getPendingRequests(@NotNull Group group) {
+        return membershipRepository.findPendingRequestsByGroup(group);
+    }
+
+    /**
+     * Gets the count of pending join requests for a group.
+     *
+     * @param group the group
+     * @return number of pending requests
+     */
+    public Long getPendingRequestCount(@NotNull Group group) {
+        return membershipRepository.countPendingRequestsByGroup(group);
+    }
+
+    /**
+     * Approves a pending join request.
+     *
+     * @param actor the user approving the request (must be admin/officer)
+     * @param requestId the membership/request ID
+     * @param group the group
+     * @return the approved membership
+     */
+    public GroupMembership approvePendingRequest(@NotNull User actor, @NotNull Long requestId, @NotNull Group group) {
+        // Check permission (admins and officers can manage requests)
+        if (!permissionService.canManageJoinRequests(actor, group)) {
+            throw new GroupMembershipException("Insufficient permissions to manage join requests");
+        }
+
+        // Get the pending membership
+        GroupMembership membership = membershipRepository.findById(requestId)
+            .orElseThrow(() -> new GroupMembershipException("Join request not found"));
+
+        // Validate it belongs to this group
+        if (!membership.getGroup().getId().equals(group.getId())) {
+            throw new GroupMembershipException("Join request does not belong to this group");
+        }
+
+        // Validate it's actually pending
+        if (membership.getStatus() != GroupMembership.MembershipStatus.PENDING) {
+            throw new GroupMembershipException("Join request is not in pending status");
+        }
+
+        // Approve the request
+        membership.setStatus(GroupMembership.MembershipStatus.APPROVED);
+        GroupMembership approvedMembership = membershipRepository.save(membership);
+
+        // Update group member count
+        long memberCount = membershipRepository.countActiveMembers(group);
+        groupService.updateMemberCount(group.getId(), (int) memberCount);
+
+        return approvedMembership;
+    }
+
+    /**
+     * Denies/rejects a pending join request.
+     *
+     * @param actor the user denying the request (must be admin/officer)
+     * @param requestId the membership/request ID
+     * @param group the group
+     */
+    public void denyPendingRequest(@NotNull User actor, @NotNull Long requestId, @NotNull Group group) {
+        // Check permission (admins and officers can manage requests)
+        if (!permissionService.canManageJoinRequests(actor, group)) {
+            throw new GroupMembershipException("Insufficient permissions to manage join requests");
+        }
+
+        // Get the pending membership
+        GroupMembership membership = membershipRepository.findById(requestId)
+            .orElseThrow(() -> new GroupMembershipException("Join request not found"));
+
+        // Validate it belongs to this group
+        if (!membership.getGroup().getId().equals(group.getId())) {
+            throw new GroupMembershipException("Join request does not belong to this group");
+        }
+
+        // Validate it's actually pending
+        if (membership.getStatus() != GroupMembership.MembershipStatus.PENDING) {
+            throw new GroupMembershipException("Join request is not in pending status");
+        }
+
+        // Reject the request
+        membership.setStatus(GroupMembership.MembershipStatus.REJECTED);
+        membership.setIsActive(false);
+        membershipRepository.save(membership);
+    }
 
 }
