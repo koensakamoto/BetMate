@@ -8,6 +8,7 @@ import com.betmate.dto.betting.request.VoteOnResolutionRequestDto;
 import com.betmate.dto.betting.response.BetResponseDto;
 import com.betmate.dto.betting.response.BetSummaryResponseDto;
 import com.betmate.dto.betting.response.BetParticipationResponseDto;
+import com.betmate.dto.group.response.MemberPreviewDto;
 import com.betmate.dto.user.response.UserProfileResponseDto;
 import com.betmate.dto.common.PagedResponseDto;
 import com.betmate.entity.betting.Bet;
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * REST controller for bet management operations.
@@ -521,6 +523,35 @@ public class BetController {
                     response.setUserChoice(userChoice);
                 });
         }
+
+        // Fetch first 3 participants for preview avatars
+        List<BetParticipation> participations = betParticipationService.getBetParticipations(bet.getId());
+        System.out.println("🔍 [BetController] Bet: " + bet.getTitle() +
+                          ", Total participants fetched: " + participations.size());
+
+        List<MemberPreviewDto> participantPreviews = participations.stream()
+            .limit(3)
+            .map(participation -> {
+                User user = participation.getUser();
+                return new MemberPreviewDto(
+                    user.getId(),
+                    user.getUsername(),
+                    user.getFirstName(),
+                    user.getLastName(),
+                    user.getProfileImageUrl()
+                );
+            })
+            .collect(Collectors.toList());
+
+        System.out.println("🔍 [BetController] Participant previews created: " + participantPreviews.size());
+        participantPreviews.forEach(pp ->
+            System.out.println("   - Participant: " + pp.getUsername() +
+                              ", firstName: " + pp.getFirstName() +
+                              ", lastName: " + pp.getLastName() +
+                              ", profileImageUrl: " + pp.getProfileImageUrl())
+        );
+
+        response.setParticipantPreviews(participantPreviews);
 
         return response;
     }

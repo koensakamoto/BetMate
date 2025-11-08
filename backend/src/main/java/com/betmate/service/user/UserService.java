@@ -92,6 +92,16 @@ public class UserService {
     }
 
     /**
+     * Update user's profile picture URL
+     */
+    @Transactional
+    public User updateProfilePicture(@NotNull Long userId, String profileImageUrl) {
+        User user = getUserById(userId);
+        user.setProfileImageUrl(profileImageUrl);
+        return userRepository.save(user);
+    }
+
+    /**
      * Checks if username exists.
      */
     public boolean existsByUsername(@NotNull String username) {

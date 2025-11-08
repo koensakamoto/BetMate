@@ -119,6 +119,16 @@ public class GroupService {
     }
 
     /**
+     * Updates group picture URL.
+     */
+    @Transactional
+    public Group updateGroupPicture(@NotNull Long groupId, @NotNull String pictureUrl) {
+        Group group = getGroupById(groupId);
+        group.setGroupPictureUrl(pictureUrl);
+        return groupRepository.save(group);
+    }
+
+    /**
      * Saves a group (used by creation service).
      */
     @Transactional

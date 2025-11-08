@@ -3,13 +3,14 @@ package com.betmate.dto.group.response;
 import com.betmate.entity.group.Group;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Lightweight response DTO for group summary information.
  * Used in lists and search results.
  */
 public class GroupSummaryResponseDto {
-    
+
     private Long id;
     private String groupName;
     private String description;
@@ -23,9 +24,12 @@ public class GroupSummaryResponseDto {
     private Long totalMessages;
     private LocalDateTime lastMessageAt;
     private LocalDateTime createdAt;
-    
+
     // User context
     private Boolean isUserMember;
+
+    // Member previews for displaying avatars
+    private List<MemberPreviewDto> memberPreviews;
     
     // Constructors
     public GroupSummaryResponseDto() {}
@@ -159,5 +163,13 @@ public class GroupSummaryResponseDto {
 
     public void setIsUserMember(Boolean isUserMember) {
         this.isUserMember = isUserMember;
+    }
+
+    public List<MemberPreviewDto> getMemberPreviews() {
+        return memberPreviews;
+    }
+
+    public void setMemberPreviews(List<MemberPreviewDto> memberPreviews) {
+        this.memberPreviews = memberPreviews;
     }
 }

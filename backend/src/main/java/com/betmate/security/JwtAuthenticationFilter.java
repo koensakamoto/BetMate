@@ -50,6 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Note: /api/auth/me requires authentication and is NOT in this list
         "/api/users/register",
         "/api/users/availability/**",
+        "/api/files/**",
         "/actuator/health",
         "/actuator/info",
         "/swagger-ui/**",

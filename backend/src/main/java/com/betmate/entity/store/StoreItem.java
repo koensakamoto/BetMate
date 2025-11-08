@@ -281,8 +281,21 @@ public class StoreItem {
     }
 
     /**
+     * Checks if this is a gameplay mechanic item.
+     *
+     * @return true if item affects betting gameplay
+     */
+    public boolean isGameplayItem() {
+        return category == ItemCategory.RISK_MANAGEMENT ||
+               category == ItemCategory.MULTIPLIERS ||
+               category == ItemCategory.BETTING_TOOLS ||
+               category == ItemCategory.DISCOUNTS ||
+               category == ItemCategory.BOOSTERS;
+    }
+
+    /**
      * Checks if this is a social interaction item.
-     * 
+     *
      * @return true if item is for social features
      */
     public boolean isSocialItem() {
@@ -291,7 +304,7 @@ public class StoreItem {
 
     /**
      * Checks if this is a cosmetic customization item.
-     * 
+     *
      * @return true if item is for appearance customization
      */
     public boolean isCosmeticItem() {
@@ -300,7 +313,7 @@ public class StoreItem {
 
     /**
      * Checks if this is a progression/achievement item.
-     * 
+     *
      * @return true if item is for progression/status
      */
     public boolean isProgressionItem() {
@@ -325,34 +338,59 @@ public class StoreItem {
     // ==========================================
     // ENUMS
     // ==========================================
-    
+
     /**
      * Types of store items available for purchase.
      */
     public enum ItemType {
-        // Social Power Moves
+        // Risk Management
+        BET_INSURANCE,          // Insurance to get stake back
+        FREEZE_CARD,            // Pause a bet and withdraw stake
+        HEDGE_HELPER,           // Counter-bet at discount
+        MULLIGAN_TOKEN,         // Change bet choice after deadline
+
+        // Multipliers
+        MULTIPLIER,             // General multiplier boosts
+        CREDIT_BOOSTER,         // Earn more credits
+
+        // Betting Tools
+        TIME_EXTENSION,         // Extend betting deadline
+        SURE_SHOT,              // Zero-risk bet
+        SIDE_BET_CREATOR,       // Create side bets
+
+        // Discounts
+        DISCOUNT_TICKET,        // Reduce bet stake cost
+        VIP_PASS,               // Ongoing discount benefits
+
+        // Boosters
+        DAILY_BOOSTER,          // Daily reward bonuses
+        CHALLENGE_BOOSTER,      // Challenge completion bonuses
+        REFERRAL_BOOSTER,       // Referral reward bonuses
+
+        // Cosmetic & Social (Legacy)
         ROAST_CARD_PACK,        // Pack of roast/taunt messages
         TAUNT_COLLECTION,       // Collection of taunt messages
-        
-        // Progression & Legacy  
         TITLE,                  // User titles like "King of Bets"
         BADGE,                  // Achievement badges
-        
-        // Customization & Fun
         AVATAR_SKIN,            // Profile avatar designs
         PROFILE_THEME,          // Profile color themes
         PROFILE_FRAME,          // Decorative profile borders
         EMOJI_PACK,             // Custom emoji collections
-        CHAT_EFFECT            // Special message effects
+        CHAT_EFFECT             // Special message effects
     }
 
     /**
      * Categories for organizing store items.
      */
     public enum ItemCategory {
+        RISK_MANAGEMENT,        // Items to reduce betting risk
+        MULTIPLIERS,            // Items to boost payouts/earnings
+        BETTING_TOOLS,          // Items for bet mechanics
+        DISCOUNTS,              // Items for cost reduction
+        BOOSTERS,               // Items for reward enhancement
         SOCIAL,                 // Items for social interactions (roasts, taunts)
         PROGRESSION,            // Items for status and achievements (titles, badges)
-        CUSTOMIZATION          // Items for appearance and personalization
+        CUSTOMIZATION           // Items for appearance and personalization
     }
 
     /**

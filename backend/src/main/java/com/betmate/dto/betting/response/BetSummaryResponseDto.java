@@ -1,37 +1,42 @@
 package com.betmate.dto.betting.response;
 
+import com.betmate.dto.group.response.MemberPreviewDto;
 import com.betmate.entity.betting.Bet;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Lightweight response DTO for bet summary information.
  * Used in lists and search results.
  */
 public class BetSummaryResponseDto {
-    
+
     private Long id;
     private String title;
     private Bet.BetType betType;
     private Bet.BetStatus status;
     private Bet.BetOutcome outcome;
-    
+
     private String creatorUsername;
     private Long groupId;
     private String groupName;
-    
+
     private LocalDateTime bettingDeadline;
     private LocalDateTime resolveDate;
-    
+
     private BigDecimal totalPool;
     private Integer totalParticipants;
-    
+
     private LocalDateTime createdAt;
-    
+
     // User context
     private Boolean hasUserParticipated;
     private Bet.BetOutcome userChoice;
+
+    // Participant previews for displaying avatars
+    private List<MemberPreviewDto> participantPreviews;
 
     // Constructors
     public BetSummaryResponseDto() {}
@@ -155,5 +160,13 @@ public class BetSummaryResponseDto {
 
     public void setUserChoice(Bet.BetOutcome userChoice) {
         this.userChoice = userChoice;
+    }
+
+    public List<MemberPreviewDto> getParticipantPreviews() {
+        return participantPreviews;
+    }
+
+    public void setParticipantPreviews(List<MemberPreviewDto> participantPreviews) {
+        this.participantPreviews = participantPreviews;
     }
 }

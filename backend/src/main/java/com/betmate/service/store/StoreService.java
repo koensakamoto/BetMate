@@ -7,6 +7,7 @@ import com.betmate.repository.store.StoreItemRepository;
 import com.betmate.repository.user.UserInventoryRepository;
 import com.betmate.exception.store.StoreItemNotFoundException;
 import com.betmate.exception.store.StoreOperationException;
+import com.betmate.service.user.UserCreditService;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -30,12 +31,15 @@ public class StoreService {
 
     private final StoreItemRepository storeItemRepository;
     private final UserInventoryRepository userInventoryRepository;
+    private final UserCreditService userCreditService;
 
     @Autowired
-    public StoreService(StoreItemRepository storeItemRepository, 
-                       UserInventoryRepository userInventoryRepository) {
+    public StoreService(StoreItemRepository storeItemRepository,
+                       UserInventoryRepository userInventoryRepository,
+                       UserCreditService userCreditService) {
         this.storeItemRepository = storeItemRepository;
         this.userInventoryRepository = userInventoryRepository;
+        this.userCreditService = userCreditService;
     }
 
     // ==========================================
@@ -139,13 +143,17 @@ public class StoreService {
     @Transactional
     public UserInventory purchaseItem(@NotNull User user, @NotNull Long itemId, @NotNull BigDecimal pricePaid) {
         StoreItem item = getStoreItem(itemId);
-        
+
         // Validate purchase
         validatePurchase(user, item, pricePaid);
-        
+
+        // Deduct credits from user's balance
+        String reason = "Store purchase: " + item.getName();
+        userCreditService.deductCredits(user.getId(), pricePaid, reason);
+
         // Create inventory entry using the static factory method
         UserInventory inventory = UserInventory.createPurchase(user, item, pricePaid);
-        
+
         return userInventoryRepository.save(inventory);
     }
 
