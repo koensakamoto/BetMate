@@ -64,6 +64,9 @@ public class User {
     @Column(length = 500)
     private String bio;
 
+    @Column(length = 255)
+    private String profileImageUrl;
+
     // ==========================================
     // SECURITY & AUTHENTICATION
     // ==========================================
@@ -185,6 +188,9 @@ public class User {
 
     public String getBio() { return bio; }
     public void setBio(String bio) { this.bio = bio; }
+
+    public String getProfileImageUrl() { return profileImageUrl; }
+    public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
 
     public Boolean getEmailVerified() { return emailVerified; }
     public void setEmailVerified(Boolean emailVerified) { this.emailVerified = emailVerified; }

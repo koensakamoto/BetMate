@@ -6,6 +6,7 @@ import com.betmate.dto.group.request.UpdateMemberRoleRequestDto;
 import com.betmate.dto.group.response.GroupResponseDto;
 import com.betmate.dto.group.response.GroupSummaryResponseDto;
 import com.betmate.dto.group.response.GroupMemberResponseDto;
+import com.betmate.dto.group.response.MemberPreviewDto;
 import com.betmate.entity.group.Group;
 import com.betmate.entity.group.GroupMembership;
 import com.betmate.entity.user.User;
@@ -13,14 +14,17 @@ import com.betmate.service.group.GroupCreationService;
 import com.betmate.service.group.GroupMembershipService;
 import com.betmate.service.group.GroupService;
 import com.betmate.service.user.UserService;
+import com.betmate.service.FileStorageService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * REST controller for group management operations.
@@ -34,16 +38,19 @@ public class GroupController {
     private final GroupCreationService groupCreationService;
     private final GroupMembershipService groupMembershipService;
     private final UserService userService;
+    private final FileStorageService fileStorageService;
 
     @Autowired
     public GroupController(GroupService groupService,
                           GroupCreationService groupCreationService,
                           GroupMembershipService groupMembershipService,
-                          UserService userService) {
+                          UserService userService,
+                          FileStorageService fileStorageService) {
         this.groupService = groupService;
         this.groupCreationService = groupCreationService;
         this.groupMembershipService = groupMembershipService;
         this.userService = userService;
+        this.fileStorageService = fileStorageService;
     }
 
     /**
@@ -224,8 +231,60 @@ public class GroupController {
         
         Group updatedGroup = groupService.updateGroup(group, request);
         GroupResponseDto response = convertToDetailedResponse(updatedGroup, currentUser);
-        
+
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Upload group picture for a specific group.
+     */
+    @PostMapping("/{groupId}/picture")
+    public ResponseEntity<?> uploadGroupPicture(
+            @PathVariable Long groupId,
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) {
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+            Group group = groupService.getGroupById(groupId);
+
+            // Check if user is authorized (creator or admin)
+            boolean isCreator = group.getCreator().getId().equals(currentUser.getId());
+            boolean isAdmin = groupMembershipService.isAdmin(currentUser, group);
+
+            if (!isCreator && !isAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Access denied - insufficient permissions to upload group picture");
+            }
+
+            // Get old group picture URL for deletion
+            String oldGroupPictureUrl = group.getGroupPictureUrl();
+
+            // Store the new file
+            String fileName = fileStorageService.storeProfilePicture(file, groupId);
+
+            // Generate the URL (relative path) - reuse profile-pictures directory
+            String groupPictureUrl = "/api/files/profile-pictures/" + fileName;
+
+            // Update group's picture URL
+            Group updatedGroup = groupService.updateGroupPicture(groupId, groupPictureUrl);
+
+            // Delete old group picture if it exists
+            if (oldGroupPictureUrl != null && !oldGroupPictureUrl.isEmpty()) {
+                String oldFileName = oldGroupPictureUrl.substring(oldGroupPictureUrl.lastIndexOf('/') + 1);
+                fileStorageService.deleteFile(oldFileName);
+            }
+
+            GroupResponseDto response = convertToDetailedResponse(updatedGroup, currentUser);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Failed to upload group picture: " + e.getMessage());
+        }
     }
 
     // Helper methods for DTO conversion
@@ -279,23 +338,43 @@ public class GroupController {
         response.setTotalMessages(group.getTotalMessages());
         response.setLastMessageAt(group.getLastMessageAt());
         response.setCreatedAt(group.getCreatedAt());
-        
+
         // Check if current user is a member of this group
         boolean isUserMember = groupMembershipService.isMember(currentUser, group);
         response.setIsUserMember(isUserMember);
-        
+
+        // Fetch first 4 members for preview avatars
+        List<GroupMembership> members = groupMembershipService.getGroupMembers(group);
+        System.out.println("🔍 [GroupController] Group: " + group.getGroupName() +
+                          ", Total members fetched: " + members.size());
+
+        List<MemberPreviewDto> memberPreviews = members.stream()
+            .limit(4)
+            .map(this::convertToMemberPreview)
+            .collect(Collectors.toList());
+
+        System.out.println("🔍 [GroupController] Member previews created: " + memberPreviews.size());
+        memberPreviews.forEach(mp ->
+            System.out.println("   - Member: " + mp.getUsername() +
+                              ", firstName: " + mp.getFirstName() +
+                              ", lastName: " + mp.getLastName() +
+                              ", profileImageUrl: " + mp.getProfileImageUrl())
+        );
+
+        response.setMemberPreviews(memberPreviews);
+
         return response;
     }
 
     private GroupMemberResponseDto convertToMemberResponse(GroupMembership membership) {
         GroupMemberResponseDto response = new GroupMemberResponseDto();
         User user = membership.getUser();
-        
+
         response.setId(user.getId());
         response.setUsername(user.getUsername());
         response.setDisplayName(user.getFullName()); // Use getFullName() to avoid lazy loading settings
         response.setEmail(user.getEmail());
-        response.setProfilePictureUrl(null); // User entity doesn't have profile picture yet
+        response.setProfilePictureUrl(user.getProfileImageUrl());
         response.setRole(membership.getRole());
         response.setIsActive(membership.getIsActive());
         response.setJoinedAt(membership.getJoinedAt());
@@ -303,7 +382,18 @@ public class GroupController {
         response.setTotalBets(membership.getTotalBets());
         response.setTotalWins(membership.getTotalWins());
         response.setTotalLosses(membership.getTotalLosses());
-        
+
         return response;
+    }
+
+    private MemberPreviewDto convertToMemberPreview(GroupMembership membership) {
+        User user = membership.getUser();
+        return new MemberPreviewDto(
+            user.getId(),
+            user.getUsername(),
+            user.getFirstName(),
+            user.getLastName(),
+            user.getProfileImageUrl()
+        );
     }
 }

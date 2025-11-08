@@ -250,49 +250,61 @@ public class UserInventory {
 
     /**
      * Checks if this is a cosmetic item that can be equipped.
-     * 
+     *
      * @return true if item can be equipped (titles, themes, avatar skins, etc.)
      */
     public boolean isEquippableItem() {
         if (storeItem == null) {
             return false;
         }
-        
+
         return switch (storeItem.getItemType()) {
             case TITLE, AVATAR_SKIN, PROFILE_THEME, PROFILE_FRAME -> true;
-            case ROAST_CARD_PACK, TAUNT_COLLECTION, BADGE, EMOJI_PACK, CHAT_EFFECT -> false;
+            case ROAST_CARD_PACK, TAUNT_COLLECTION, BADGE, EMOJI_PACK, CHAT_EFFECT,
+                 BET_INSURANCE, FREEZE_CARD, HEDGE_HELPER, MULLIGAN_TOKEN,
+                 MULTIPLIER, CREDIT_BOOSTER, TIME_EXTENSION, SURE_SHOT,
+                 SIDE_BET_CREATOR, DISCOUNT_TICKET, VIP_PASS,
+                 DAILY_BOOSTER, CHALLENGE_BOOSTER, REFERRAL_BOOSTER -> false;
         };
     }
 
     /**
-     * Checks if this is a consumable/usable item (roast cards, emoji packs).
-     * 
+     * Checks if this is a consumable/usable item (gameplay items, roast cards, emoji packs).
+     *
      * @return true if item is consumable
      */
     public boolean isConsumableItem() {
         if (storeItem == null) {
             return false;
         }
-        
+
         return switch (storeItem.getItemType()) {
-            case ROAST_CARD_PACK, TAUNT_COLLECTION, EMOJI_PACK, CHAT_EFFECT -> true;
+            case ROAST_CARD_PACK, TAUNT_COLLECTION, EMOJI_PACK, CHAT_EFFECT,
+                 BET_INSURANCE, FREEZE_CARD, HEDGE_HELPER, MULLIGAN_TOKEN,
+                 MULTIPLIER, CREDIT_BOOSTER, TIME_EXTENSION, SURE_SHOT,
+                 SIDE_BET_CREATOR, DISCOUNT_TICKET, VIP_PASS,
+                 DAILY_BOOSTER, CHALLENGE_BOOSTER, REFERRAL_BOOSTER -> true;
             case TITLE, AVATAR_SKIN, PROFILE_THEME, PROFILE_FRAME, BADGE -> false;
         };
     }
 
     /**
      * Checks if this is a collectible item (badges, titles).
-     * 
+     *
      * @return true if item is a collectible
      */
     public boolean isCollectibleItem() {
         if (storeItem == null) {
             return false;
         }
-        
+
         return switch (storeItem.getItemType()) {
             case BADGE, TITLE -> true;
-            case ROAST_CARD_PACK, TAUNT_COLLECTION, AVATAR_SKIN, PROFILE_THEME, PROFILE_FRAME, EMOJI_PACK, CHAT_EFFECT -> false;
+            case ROAST_CARD_PACK, TAUNT_COLLECTION, AVATAR_SKIN, PROFILE_THEME, PROFILE_FRAME, EMOJI_PACK, CHAT_EFFECT,
+                 BET_INSURANCE, FREEZE_CARD, HEDGE_HELPER, MULLIGAN_TOKEN,
+                 MULTIPLIER, CREDIT_BOOSTER, TIME_EXTENSION, SURE_SHOT,
+                 SIDE_BET_CREATOR, DISCOUNT_TICKET, VIP_PASS,
+                 DAILY_BOOSTER, CHALLENGE_BOOSTER, REFERRAL_BOOSTER -> false;
         };
     }
 

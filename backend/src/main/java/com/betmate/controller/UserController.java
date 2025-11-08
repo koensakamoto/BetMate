@@ -7,6 +7,7 @@ import com.betmate.dto.user.response.UserAvailabilityResponseDto;
 import com.betmate.dto.user.response.UserProfileResponseDto;
 import com.betmate.dto.user.response.UserSearchResultResponseDto;
 import com.betmate.entity.user.User;
+import com.betmate.service.FileStorageService;
 import com.betmate.service.security.UserDetailsServiceImpl;
 import com.betmate.service.user.UserRegistrationService;
 import com.betmate.service.user.UserService;
@@ -22,6 +23,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -37,13 +39,15 @@ public class UserController {
     private final UserService userService;
     private final UserRegistrationService userRegistrationService;
     private final UserStatisticsService userStatisticsService;
+    private final FileStorageService fileStorageService;
 
     @Autowired
     public UserController(UserService userService, UserRegistrationService userRegistrationService,
-                         UserStatisticsService userStatisticsService) {
+                         UserStatisticsService userStatisticsService, FileStorageService fileStorageService) {
         this.userService = userService;
         this.userRegistrationService = userRegistrationService;
         this.userStatisticsService = userStatisticsService;
+        this.fileStorageService = fileStorageService;
     }
 
     // ==========================================
@@ -170,6 +174,53 @@ public class UserController {
             return ResponseEntity.ok(UserProfileResponseDto.fromUser(updatedUser));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Upload profile picture for the currently authenticated user.
+     * @param file The image file to upload (max 5MB, JPG/PNG/GIF/WebP)
+     * @return Updated user profile with new profile picture URL
+     */
+    @PostMapping("/profile/picture")
+    public ResponseEntity<?> uploadProfilePicture(@RequestParam("file") MultipartFile file) {
+        try {
+            // Get authenticated user
+            UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
+            if (userPrincipal == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("User not authenticated");
+            }
+
+            // Get current user to check for existing profile picture
+            User currentUser = userService.getUserById(userPrincipal.getUserId());
+            String oldProfileImageUrl = currentUser.getProfileImageUrl();
+
+            // Store the new file
+            String fileName = fileStorageService.storeProfilePicture(file, userPrincipal.getUserId());
+
+            // Generate the URL (relative path)
+            String profileImageUrl = "/api/files/profile-pictures/" + fileName;
+
+            // Update user's profile picture URL
+            User updatedUser = userService.updateProfilePicture(userPrincipal.getUserId(), profileImageUrl);
+
+            // Delete old profile picture if it exists
+            if (oldProfileImageUrl != null && !oldProfileImageUrl.isEmpty()) {
+                // Extract filename from URL
+                String oldFileName = oldProfileImageUrl.substring(oldProfileImageUrl.lastIndexOf('/') + 1);
+                fileStorageService.deleteFile(oldFileName);
+            }
+
+            return ResponseEntity.ok(UserProfileResponseDto.fromUser(updatedUser));
+        } catch (IllegalArgumentException e) {
+            // Validation errors (file too large, wrong type, etc.)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Failed to upload profile picture: " + e.getMessage());
         }
     }
 

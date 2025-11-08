@@ -69,6 +69,10 @@ public class SecurityConfig {
         "/ws/**"
     };
 
+    private static final String[] PUBLIC_FILE_ENDPOINTS = {
+        "/api/files/**"
+    };
+
     
     // BCrypt strength - explicitly set to 12 for stronger hashing
     private static final int BCRYPT_STRENGTH = 12;
@@ -80,10 +84,10 @@ public class SecurityConfig {
         this.jwtAuthFilter = jwtAuthFilter;
         log.info("SecurityConfig initialized with JWT authentication filter");
         log.info("BCrypt password encoder strength set to: {}", BCRYPT_STRENGTH);
-        log.debug("Public endpoints configured: Auth={}, User={}, Health={}, Docs={}, Groups={}, WebSocket={}", 
-                 PUBLIC_AUTH_ENDPOINTS.length, PUBLIC_USER_ENDPOINTS.length, 
+        log.debug("Public endpoints configured: Auth={}, User={}, Health={}, Docs={}, Groups={}, WebSocket={}, Files={}",
+                 PUBLIC_AUTH_ENDPOINTS.length, PUBLIC_USER_ENDPOINTS.length,
                  PUBLIC_HEALTH_ENDPOINTS.length, PUBLIC_DOCS_ENDPOINTS.length, PUBLIC_GROUP_ENDPOINTS.length,
-                 PUBLIC_WEBSOCKET_ENDPOINTS.length);
+                 PUBLIC_WEBSOCKET_ENDPOINTS.length, PUBLIC_FILE_ENDPOINTS.length);
     }
 
     @Bean
@@ -103,7 +107,8 @@ public class SecurityConfig {
                 .requestMatchers(PUBLIC_DOCS_ENDPOINTS).permitAll()
                 .requestMatchers(PUBLIC_GROUP_ENDPOINTS).permitAll()
                 .requestMatchers(PUBLIC_WEBSOCKET_ENDPOINTS).permitAll()
-                
+                .requestMatchers(PUBLIC_FILE_ENDPOINTS).permitAll()
+
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
             )
@@ -170,7 +175,7 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         SecurityFilterChain filterChain = http.build();
-        log.info("SecurityFilterChain successfully configured with {} public endpoint groups", 6);
+        log.info("SecurityFilterChain successfully configured with {} public endpoint groups", 7);
         log.info("Security headers configured: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy");
         log.debug("JWT filter added before UsernamePasswordAuthenticationFilter");
         return filterChain;

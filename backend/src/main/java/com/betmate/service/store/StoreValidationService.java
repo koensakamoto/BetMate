@@ -180,7 +180,11 @@ public class StoreValidationService {
     private boolean isEquippableItemType(StoreItem.ItemType itemType) {
         return switch (itemType) {
             case TITLE, BADGE, AVATAR_SKIN, PROFILE_THEME, PROFILE_FRAME -> true;
-            case ROAST_CARD_PACK, TAUNT_COLLECTION, EMOJI_PACK, CHAT_EFFECT -> false;
+            case ROAST_CARD_PACK, TAUNT_COLLECTION, EMOJI_PACK, CHAT_EFFECT,
+                 BET_INSURANCE, FREEZE_CARD, HEDGE_HELPER, MULLIGAN_TOKEN,
+                 MULTIPLIER, CREDIT_BOOSTER, TIME_EXTENSION, SURE_SHOT,
+                 SIDE_BET_CREATOR, DISCOUNT_TICKET, VIP_PASS,
+                 DAILY_BOOSTER, CHALLENGE_BOOSTER, REFERRAL_BOOSTER -> false;
         };
     }
 

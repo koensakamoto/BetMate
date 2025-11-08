@@ -49,6 +49,10 @@ spring:
       expiration: 86400000 # 24 hours in milliseconds
       refresh-expiration: 604800000 # 7 days in milliseconds
 
+# File Upload Configuration
+file:
+  upload-dir: ${FILE_UPLOAD_DIR:uploads/profile-pictures}
+
 # Bet Scheduling Configuration
 bet:
   scheduling:
