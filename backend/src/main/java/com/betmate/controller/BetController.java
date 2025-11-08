@@ -508,7 +508,7 @@ public class BetController {
         boolean hasParticipated = betParticipationService.hasUserParticipated(currentUser, bet.getId());
         response.setHasUserParticipated(hasParticipated);
 
-        // If user has participated, get their choice
+        // If user has participated, get their choice and amount
         if (hasParticipated) {
             betParticipationService.getUserParticipation(currentUser, bet.getId())
                 .ifPresent(participation -> {
@@ -521,6 +521,7 @@ public class BetController {
                         default -> null;
                     };
                     response.setUserChoice(userChoice);
+                    response.setUserAmount(participation.getBetAmount());
                 });
         }
 

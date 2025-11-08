@@ -404,6 +404,7 @@ public class GroupMembershipService {
 
         // Approve the request
         membership.setStatus(GroupMembership.MembershipStatus.APPROVED);
+        membership.setIsActive(true);
         GroupMembership approvedMembership = membershipRepository.save(membership);
 
         // Update group member count
