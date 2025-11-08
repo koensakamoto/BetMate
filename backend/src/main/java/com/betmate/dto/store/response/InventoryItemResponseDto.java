@@ -14,6 +14,7 @@ public class InventoryItemResponseDto {
     private String itemType;
     private String rarity;
     private String iconUrl;
+    private String shortDescription;
     private String description;
     private BigDecimal purchasePrice;
     private LocalDateTime purchasedAt;
@@ -76,6 +77,14 @@ public class InventoryItemResponseDto {
 
     public void setIconUrl(String iconUrl) {
         this.iconUrl = iconUrl;
+    }
+
+    public String getShortDescription() {
+        return shortDescription;
+    }
+
+    public void setShortDescription(String shortDescription) {
+        this.shortDescription = shortDescription;
     }
 
     public String getDescription() {
