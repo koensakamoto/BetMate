@@ -211,28 +211,12 @@ public class StoreController {
 
     // Helper methods for DTO conversion
     private StoreItemResponseDto convertToStoreItemResponse(StoreItem item, User currentUser) {
-        StoreItemResponseDto response = new StoreItemResponseDto();
-        response.setId(item.getId());
-        response.setItemType(item.getItemType());
-        response.setName(item.getName());
-        response.setDescription(item.getDescription());
-        response.setCategory(item.getCategory());
-        response.setIconUrl(item.getIconUrl());
-        response.setPreviewData(item.getPreviewData());
-        response.setPrice(item.getPrice());
-        response.setRarity(item.getRarity());
-        response.setRarityColor(item.getRarityColor());
-        response.setIsActive(item.getIsActive());
-        response.setIsFeatured(item.getIsFeatured());
-        response.setIsLimitedTime(item.getIsLimitedTime());
-        response.setAvailableUntil(item.getAvailableUntil());
-        response.setCreatedAt(item.getCreatedAt());
-        
+        StoreItemResponseDto response = StoreItemResponseDto.fromEntity(item);
+
         // Set user context
         response.setUserOwns(userInventoryService.ownsItem(currentUser, item));
-        // TODO: Implement user balance check when user credit system is added
-        response.setUserCanAfford(true); // Placeholder until user balance is implemented
-        
+        response.setUserCanAfford(currentUser.getCreditBalance().compareTo(item.getPrice()) >= 0);
+
         return response;
     }
 

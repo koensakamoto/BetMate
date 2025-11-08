@@ -169,4 +169,30 @@ public class StoreItemResponseDto {
     public void setUserCanAfford(Boolean userCanAfford) {
         this.userCanAfford = userCanAfford;
     }
+
+    /**
+     * Creates a StoreItemResponseDto from a StoreItem entity.
+     */
+    public static StoreItemResponseDto fromEntity(StoreItem item) {
+        StoreItemResponseDto dto = new StoreItemResponseDto();
+        dto.setId(item.getId());
+        dto.setItemType(item.getItemType());
+        dto.setName(item.getName());
+        dto.setDescription(item.getDescription());
+        dto.setCategory(item.getCategory());
+        dto.setIconUrl(item.getIconUrl());
+        dto.setPreviewData(item.getPreviewData());
+        dto.setPrice(item.getPrice());
+        dto.setRarity(item.getRarity());
+        dto.setRarityColor(item.getRarityColor());
+        dto.setIsActive(item.getIsActive());
+        dto.setIsFeatured(item.getIsFeatured());
+        dto.setIsLimitedTime(item.getIsLimitedTime());
+        dto.setAvailableUntil(item.getAvailableUntil());
+        dto.setCreatedAt(item.getCreatedAt());
+        // User context fields set to null by default
+        dto.setUserOwns(null);
+        dto.setUserCanAfford(null);
+        return dto;
+    }
 }
