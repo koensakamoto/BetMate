@@ -32,6 +32,7 @@ public class InventoryMapper {
         response.setItemType(inventory.getItemType() != null ? inventory.getItemType().name() : null);
         response.setRarity(inventory.getItemRarity() != null ? inventory.getItemRarity().name() : null);
         response.setIconUrl(inventory.getStoreItem() != null ? inventory.getStoreItem().getIconUrl() : null);
+        response.setShortDescription(inventory.getStoreItem() != null ? inventory.getStoreItem().getShortDescription() : null);
         response.setDescription(inventory.getStoreItem() != null ? inventory.getStoreItem().getDescription() : null);
         response.setPurchasePrice(inventory.getPurchasePrice());
         response.setPurchasedAt(inventory.getPurchasedAt());

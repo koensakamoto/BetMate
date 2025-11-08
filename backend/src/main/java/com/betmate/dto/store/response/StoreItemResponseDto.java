@@ -13,6 +13,7 @@ public class StoreItemResponseDto {
     private Long id;
     private StoreItem.ItemType itemType;
     private String name;
+    private String shortDescription;
     private String description;
     private StoreItem.ItemCategory category;
     private String iconUrl;
@@ -56,6 +57,14 @@ public class StoreItemResponseDto {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getShortDescription() {
+        return shortDescription;
+    }
+
+    public void setShortDescription(String shortDescription) {
+        this.shortDescription = shortDescription;
     }
 
     public String getDescription() {
@@ -178,6 +187,7 @@ public class StoreItemResponseDto {
         dto.setId(item.getId());
         dto.setItemType(item.getItemType());
         dto.setName(item.getName());
+        dto.setShortDescription(item.getShortDescription());
         dto.setDescription(item.getDescription());
         dto.setCategory(item.getCategory());
         dto.setIconUrl(item.getIconUrl());

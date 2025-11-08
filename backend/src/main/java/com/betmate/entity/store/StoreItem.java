@@ -41,6 +41,10 @@ public class StoreItem {
     @Size(min = 1, max = 100, message = "Item name must be between 1 and 100 characters")
     private String name;
 
+    @Column(length = 100)
+    @Size(max = 100, message = "Short description cannot exceed 100 characters")
+    private String shortDescription;
+
     @Column(length = 500)
     @Size(max = 500, message = "Description cannot exceed 500 characters")
     private String description;
@@ -136,10 +140,18 @@ public class StoreItem {
         this.name = name;
     }
 
+    public String getShortDescription() {
+        return shortDescription;
+    }
+
+    public void setShortDescription(String shortDescription) {
+        this.shortDescription = shortDescription;
+    }
+
     public String getDescription() {
         return description;
     }
-    
+
     public void setDescription(String description) {
         this.description = description;
     }
