@@ -217,35 +217,35 @@ public class DataInitializer implements CommandLineRunner {
         // Create diverse bet scenarios
         List<MockBetData> mockBets = Arrays.asList(
             new MockBetData("Will the Lakers win their next game?", "Basketball season prediction", 
-                Bet.BetType.BINARY, "Lakers Win", "Lakers Lose", null, null, 24),
+                Bet.BetType.OVER_UNDER, "Lakers Win", "Lakers Lose", null, null, 24),
             new MockBetData("Which team will win the World Cup?", "Soccer championship prediction", 
                 Bet.BetType.MULTIPLE_CHOICE, "Brazil", "Argentina", "France", "Germany", 72),
             new MockBetData("Will Bitcoin reach $100k this year?", "Cryptocurrency price prediction", 
-                Bet.BetType.BINARY, "Yes, $100k+", "No, under $100k", null, null, 168),
+                Bet.BetType.OVER_UNDER, "Yes, $100k+", "No, under $100k", null, null, 168),
             new MockBetData("Next major game release winner?", "Gaming industry prediction", 
                 Bet.BetType.MULTIPLE_CHOICE, "GTA VI", "Elder Scrolls VI", "Witcher 4", "Cyberpunk sequel", 336),
             new MockBetData("Will it rain tomorrow?", "Weather prediction for fun", 
-                Bet.BetType.BINARY, "Rain", "No Rain", null, null, 18),
+                Bet.BetType.OVER_UNDER, "Rain", "No Rain", null, null, 18),
             new MockBetData("Who will win the next presidential election?", "Political prediction", 
                 Bet.BetType.MULTIPLE_CHOICE, "Incumbent", "Challenger A", "Challenger B", "Third Party", 8760),
             new MockBetData("Will the stock market go up this week?", "Financial market prediction", 
-                Bet.BetType.BINARY, "Market Up", "Market Down", null, null, 120),
+                Bet.BetType.OVER_UNDER, "Market Up", "Market Down", null, null, 120),
             new MockBetData("Which movie will win Best Picture?", "Academy Awards prediction", 
                 Bet.BetType.MULTIPLE_CHOICE, "Drama A", "Drama B", "Comedy", "Action Film", 2160),
             new MockBetData("Will our group reach 100 members?", "Group growth milestone", 
-                Bet.BetType.BINARY, "Yes, 100+", "No, under 100", null, null, 720),
+                Bet.BetType.OVER_UNDER, "Yes, 100+", "No, under 100", null, null, 720),
             new MockBetData("Next tech company to hit $1T valuation?", "Technology sector prediction", 
                 Bet.BetType.MULTIPLE_CHOICE, "Tesla", "Netflix", "AMD", "Other", 4320),
             new MockBetData("Will the temperature exceed 80°F today?", "Daily weather bet", 
-                Bet.BetType.BINARY, "Above 80°F", "80°F or below", null, null, 12),
+                Bet.BetType.OVER_UNDER, "Above 80°F", "80°F or below", null, null, 12),
             new MockBetData("Which gaming console sells most this holiday?", "Gaming market prediction", 
                 Bet.BetType.MULTIPLE_CHOICE, "PlayStation 5", "Xbox Series X", "Nintendo Switch", "Steam Deck", 1440),
             new MockBetData("Will unemployment rate decrease next month?", "Economic indicator prediction", 
-                Bet.BetType.BINARY, "Rate Decreases", "Rate Increases/Same", null, null, 672),
+                Bet.BetType.OVER_UNDER, "Rate Decreases", "Rate Increases/Same", null, null, 672),
             new MockBetData("Best streaming service next year?", "Entertainment industry prediction", 
                 Bet.BetType.MULTIPLE_CHOICE, "Netflix", "Disney+", "HBO Max", "Amazon Prime", 8760),
             new MockBetData("Will our favorite restaurant add new menu items?", "Local business prediction", 
-                Bet.BetType.BINARY, "New Items Added", "Menu Stays Same", null, null, 504)
+                Bet.BetType.OVER_UNDER, "New Items Added", "Menu Stays Same", null, null, 504)
         );
         
         for (Group group : allGroups) {
@@ -306,7 +306,7 @@ public class DataInitializer implements CommandLineRunner {
                     bet.setResolvedAt(now.minusHours(random.nextInt(168))); // Resolved in past week
                     
                     // Set random outcome for resolved bets
-                    if (bet.getBetType() == Bet.BetType.BINARY) {
+                    if (bet.getBetType() == Bet.BetType.OVER_UNDER) {
                         bet.setOutcome(random.nextBoolean() ? Bet.BetOutcome.OPTION_1 : Bet.BetOutcome.OPTION_2);
                     } else {
                         Bet.BetOutcome[] outcomes = {Bet.BetOutcome.OPTION_1, Bet.BetOutcome.OPTION_2, 
@@ -360,7 +360,7 @@ public class DataInitializer implements CommandLineRunner {
             
             // Choose random option (weighted toward options 1 and 2)
             int chosenOption;
-            if (bet.getBetType() == Bet.BetType.BINARY || random.nextInt(3) < 2) {
+            if (bet.getBetType() == Bet.BetType.OVER_UNDER || random.nextInt(3) < 2) {
                 chosenOption = random.nextBoolean() ? 1 : 2;
             } else {
                 chosenOption = random.nextInt(bet.getOptionCount()) + 1;

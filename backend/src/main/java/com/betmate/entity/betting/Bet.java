@@ -62,7 +62,7 @@ public class Bet {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private BetType betType = BetType.BINARY;
+    private BetType betType = BetType.MULTIPLE_CHOICE;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -588,12 +588,9 @@ public class Bet {
      * Types of bets supported by the platform.
      */
     public enum BetType {
-        BINARY,          // Simple yes/no or two-option bet
         MULTIPLE_CHOICE,  // Up to 4 options
         PREDICTION,      // Users predict exact values/outcomes
-        PARLAY,
-        WEIGHTED,
-        POOLED
+        OVER_UNDER       // Over/under a specific threshold
     }
 
     /**

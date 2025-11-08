@@ -112,6 +112,13 @@ public class GroupPermissionService {
     }
 
     /**
+     * Checks if user can manage pending join requests (approve/deny).
+     */
+    public boolean canManageJoinRequests(@NotNull User user, @NotNull Group group) {
+        return membershipRepository.isUserAdminOrModerator(user, group);
+    }
+
+    /**
      * Checks if user can view group member list.
      */
     public boolean canViewMembers(@NotNull User user, @NotNull Group group) {
