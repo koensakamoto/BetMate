@@ -2,6 +2,7 @@ package com.betmate.dto.betting.response;
 
 import com.betmate.dto.user.response.UserProfileResponseDto;
 import com.betmate.entity.betting.Bet;
+import com.betmate.entity.betting.BetStakeType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -29,6 +30,9 @@ public class BetResponseDto {
     
     private BigDecimal minimumBet;
     private BigDecimal maximumBet;
+    private BigDecimal fixedStakeAmount;  // NEW: For fixed-stake bets
+    private BetStakeType stakeType;  // NEW: Stake type (CREDIT/SOCIAL)
+    private String socialStakeDescription;  // NEW: Social stake description
     private BigDecimal totalPool;
     private Integer totalParticipants;
     
@@ -169,6 +173,30 @@ public class BetResponseDto {
 
     public void setMaximumBet(BigDecimal maximumBet) {
         this.maximumBet = maximumBet;
+    }
+
+    public BigDecimal getFixedStakeAmount() {
+        return fixedStakeAmount;
+    }
+
+    public void setFixedStakeAmount(BigDecimal fixedStakeAmount) {
+        this.fixedStakeAmount = fixedStakeAmount;
+    }
+
+    public BetStakeType getStakeType() {
+        return stakeType;
+    }
+
+    public void setStakeType(BetStakeType stakeType) {
+        this.stakeType = stakeType;
+    }
+
+    public String getSocialStakeDescription() {
+        return socialStakeDescription;
+    }
+
+    public void setSocialStakeDescription(String socialStakeDescription) {
+        this.socialStakeDescription = socialStakeDescription;
     }
 
     public BigDecimal getTotalPool() {

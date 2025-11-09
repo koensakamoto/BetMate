@@ -42,6 +42,8 @@ export class WebSocketMessagingService {
   constructor() {
     this.client = new Client({
       brokerURL: ENV.WS_BASE_URL, // Use pure WebSocket URL
+      // CRITICAL for React Native: Provide WebSocket factory
+      webSocketFactory: () => new WebSocket(ENV.WS_BASE_URL),
       reconnectDelay: this.reconnectDelay,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,

@@ -82,6 +82,13 @@ export default function BetDetails() {
       }
 
       const betResponse = await betService.getBetById(parseInt(id));
+      console.log('Bet Response:', {
+        id: betResponse.id,
+        title: betResponse.title,
+        fixedStakeAmount: betResponse.fixedStakeAmount,
+        minimumBet: betResponse.minimumBet,
+        maximumBet: betResponse.maximumBet
+      });
       setBetData(betResponse);
 
       // If user has already participated, pre-populate their selection and amount
@@ -119,7 +126,11 @@ export default function BetDetails() {
         }
       } else {
         // Set default bet amount if it's a fixed amount bet and user hasn't joined
-        if (betResponse.minimumBet) {
+        // NEW: Use fixedStakeAmount if available (fixed-stake bets)
+        if (betResponse.fixedStakeAmount) {
+          setUserBetAmount(betResponse.fixedStakeAmount.toString());
+        } else if (betResponse.minimumBet) {
+          // DEPRECATED: Fallback to minimumBet for old variable-stake bets
           setUserBetAmount(betResponse.minimumBet.toString());
         }
       }
@@ -235,10 +246,20 @@ export default function BetDetails() {
     }
 
     // Validate bet option selection
-    if (!selectedOption) {
-      haptic.error();
-      Alert.alert('Error', 'Please select a betting option');
-      return;
+    if (betData.betType === 'PREDICTION') {
+      // For prediction bets, check customValue instead
+      if (!customValue || customValue.trim().length === 0) {
+        haptic.error();
+        Alert.alert('Error', 'Please enter your prediction');
+        return;
+      }
+    } else {
+      // For other bet types, check selectedOption
+      if (!selectedOption) {
+        haptic.error();
+        Alert.alert('Error', 'Please select a betting option');
+        return;
+      }
     }
 
     haptic.medium();
@@ -246,47 +267,60 @@ export default function BetDetails() {
     try {
       setIsJoining(true);
 
-      // Map string option to number based on bet type
-      let chosenOptionNumber = 1;
-      if (betData.betType === 'BINARY') {
-        chosenOptionNumber = selectedOption === 'Yes' ? 1 : 2;
+      let placeBetRequest;
+
+      // Handle PREDICTION bets differently
+      if (betData.betType === 'PREDICTION') {
+        // For prediction bets, send predictedValue
+        placeBetRequest = {
+          amount: amount,
+          predictedValue: customValue,
+          comment: undefined
+        };
       } else {
-        // For other bet types, we need to map option text to number
-        const backendOptions = betData.options || [];
-        const displayedOptions = backendOptions.length > 0 ? backendOptions : ['Option 1', 'Option 2', 'Option 3'];
-        const usingFallbackOptions = backendOptions.length === 0;
+        // For BINARY and MULTIPLE_CHOICE bets, map option to number
+        let chosenOptionNumber = 1;
 
-        console.log('Option mapping debug:');
-        console.log('Backend options:', backendOptions);
-        console.log('Displayed options:', displayedOptions);
-        console.log('Selected option:', selectedOption);
-        console.log('Using fallback options:', usingFallbackOptions);
-
-        let optionIndex;
-        if (usingFallbackOptions) {
-          // When using fallback options, map directly based on display order
-          optionIndex = displayedOptions.indexOf(selectedOption);
+        if (betData.betType === 'BINARY') {
+          chosenOptionNumber = selectedOption === 'Yes' ? 1 : 2;
         } else {
-          // When using real backend options, find in backend options
-          optionIndex = backendOptions.indexOf(selectedOption);
+          // For MULTIPLE_CHOICE, map option text to number
+          const backendOptions = betData.options || [];
+          const displayedOptions = backendOptions.length > 0 ? backendOptions : ['Option 1', 'Option 2', 'Option 3'];
+          const usingFallbackOptions = backendOptions.length === 0;
+
+          console.log('Option mapping debug:');
+          console.log('Backend options:', backendOptions);
+          console.log('Displayed options:', displayedOptions);
+          console.log('Selected option:', selectedOption);
+          console.log('Using fallback options:', usingFallbackOptions);
+
+          let optionIndex;
+          if (usingFallbackOptions) {
+            // When using fallback options, map directly based on display order
+            optionIndex = displayedOptions.indexOf(selectedOption);
+          } else {
+            // When using real backend options, find in backend options
+            optionIndex = backendOptions.indexOf(selectedOption);
+          }
+
+          console.log('Option index:', optionIndex);
+
+          if (optionIndex === -1) {
+            console.error('Selected option not found in available options!');
+            Alert.alert('Error', 'Invalid option selected. Please try again.');
+            return;
+          }
+
+          chosenOptionNumber = optionIndex + 1;
         }
 
-        console.log('Option index:', optionIndex);
-
-        if (optionIndex === -1) {
-          console.error('Selected option not found in available options!');
-          Alert.alert('Error', 'Invalid option selected. Please try again.');
-          return;
-        }
-
-        chosenOptionNumber = optionIndex + 1;
+        placeBetRequest = {
+          chosenOption: chosenOptionNumber,
+          amount: amount,
+          comment: undefined
+        };
       }
-
-      const placeBetRequest = {
-        chosenOption: chosenOptionNumber,
-        amount: amount,
-        comment: undefined
-      };
 
       console.log('=== BET PLACEMENT DEBUG ===');
       console.log('Bet ID:', id);
@@ -341,14 +375,14 @@ export default function BetDetails() {
   };
 
   const getBetAmountForDisplay = () => {
-    if (betData?.isFixedAmount) {
-      return betData.betAmount.toString();
+    if (betData?.fixedStakeAmount) {
+      return betData.fixedStakeAmount.toString();
     }
     return userBetAmount;
   };
 
   const isValidBetAmount = () => {
-    if (betData?.isFixedAmount) return true;
+    if (betData?.fixedStakeAmount) return true;
     const amount = parseFloat(userBetAmount);
     return !isNaN(amount) && amount > 0;
   };
@@ -521,7 +555,7 @@ export default function BetDetails() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>Bet Amount</Text>
               <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '600' }}>
-                {betData.isFixedAmount ? `$${betData.betAmount} (Fixed)` : 'Variable'}
+                {betData.fixedStakeAmount ? `$${betData.fixedStakeAmount} (Fixed)` : 'Variable'}
               </Text>
             </View>
           </View>
@@ -701,50 +735,16 @@ export default function BetDetails() {
           borderWidth: 1,
           borderColor: 'rgba(255, 255, 255, 0.08)'
         }}>
-          <Text style={{
-            fontSize: 16,
-            fontWeight: '600',
-            color: '#ffffff',
-            marginBottom: 16
-          }}>
-            Your Bet Amount
-          </Text>
-
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: betData.isFixedAmount ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.08)',
-            borderRadius: 12,
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            borderWidth: betData.isFixedAmount ? 0 : 1,
-            borderColor: betData.isFixedAmount ? 'transparent' : (isValidBetAmount() ? 'rgba(0, 212, 170, 0.3)' : 'rgba(255, 255, 255, 0.2)')
-          }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
             <Text style={{
-              color: '#00D4AA',
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: '600',
-              marginRight: 8
-            }}>$</Text>
-
-            <TextInput
-              style={{
-                flex: 1,
-                color: '#ffffff',
-                fontSize: 18,
-                fontWeight: '600',
-                padding: 0
-              }}
-              value={getBetAmountForDisplay()}
-              onChangeText={setUserBetAmount}
-              placeholder={betData.isFixedAmount ? betData.betAmount.toString() : '0'}
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
-              keyboardType="numeric"
-              editable={!betData.isFixedAmount}
-              selectTextOnFocus={!betData.isFixedAmount}
-            />
-
-            {betData.isFixedAmount && (
+              color: '#ffffff',
+              flex: 1
+            }}>
+              {betData.fixedStakeAmount ? 'Entry Fee' : 'Your Bet Amount'}
+            </Text>
+            {betData.fixedStakeAmount && (
               <View style={{
                 backgroundColor: 'rgba(255, 255, 255, 0.1)',
                 paddingHorizontal: 8,
@@ -760,7 +760,56 @@ export default function BetDetails() {
             )}
           </View>
 
-          {!betData.isFixedAmount && userBetAmount && !isValidBetAmount() && (
+          {betData.fixedStakeAmount && (
+            <Text style={{
+              fontSize: 12,
+              color: 'rgba(255, 255, 255, 0.5)',
+              marginBottom: 12
+            }}>
+              Everyone must bet exactly this amount
+            </Text>
+          )}
+
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: betData.fixedStakeAmount ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.08)',
+            borderRadius: 12,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            borderWidth: betData.fixedStakeAmount ? 0 : 1,
+            borderColor: betData.fixedStakeAmount ? 'transparent' : (isValidBetAmount() ? 'rgba(0, 212, 170, 0.3)' : 'rgba(255, 255, 255, 0.2)')
+          }}>
+            <Text style={{
+              color: '#00D4AA',
+              fontSize: 18,
+              fontWeight: '600',
+              marginRight: 8
+            }}>$</Text>
+
+            <TextInput
+              style={{
+                flex: 1,
+                color: betData.fixedStakeAmount ? 'rgba(255, 255, 255, 0.7)' : '#ffffff',
+                fontSize: 18,
+                fontWeight: '600',
+                padding: 0
+              }}
+              value={getBetAmountForDisplay()}
+              onChangeText={setUserBetAmount}
+              placeholder={betData.fixedStakeAmount ? betData.fixedStakeAmount.toString() : '0'}
+              placeholderTextColor="rgba(255, 255, 255, 0.4)"
+              keyboardType="numeric"
+              editable={!betData.fixedStakeAmount}
+              selectTextOnFocus={!betData.fixedStakeAmount}
+            />
+
+            {betData.fixedStakeAmount && (
+              <MaterialIcons name="lock" size={18} color="rgba(255, 255, 255, 0.4)" />
+            )}
+          </View>
+
+          {!betData.fixedStakeAmount && userBetAmount && !isValidBetAmount() && (
             <Text style={{
               color: '#FF6B6B',
               fontSize: 12,
@@ -830,7 +879,7 @@ export default function BetDetails() {
               title="Join Bet"
               onPress={handleJoinBet}
               loading={isJoining}
-              disabled={(!betData.isFixedAmount && !isValidBetAmount()) || !isValidBetSelection()}
+              disabled={(!betData.fixedStakeAmount && !isValidBetAmount()) || !isValidBetSelection()}
               style={{
                 shadowColor: '#00D4AA',
                 shadowOffset: { width: 0, height: 4 },

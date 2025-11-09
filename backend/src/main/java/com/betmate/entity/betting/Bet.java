@@ -85,12 +85,67 @@ public class Bet {
     // BETTING MECHANICS
     // ==========================================
     
+    // DEPRECATED: For backward compatibility with variable-stake bets
+    // New bets should use fixedStakeAmount instead
     @Column(nullable = false, precision = 19, scale = 2)
     @DecimalMin(value = "0.01", message = "Minimum bet amount is 0.01")
     private BigDecimal minimumBet = new BigDecimal("1.00");
 
+    // DEPRECATED: For backward compatibility with variable-stake bets
     @Column(precision = 19, scale = 2)
     private BigDecimal maximumBet;
+
+    // NEW: Fixed stake amount for new bets (everyone bets exactly this amount)
+    // Nullable for backward compatibility, will be required for CREDIT type bets
+    @Column(precision = 19, scale = 2)
+    @DecimalMin(value = "0.01", message = "Fixed stake amount must be at least 0.01")
+    private BigDecimal fixedStakeAmount;
+
+    // ==========================================
+    // STAKE TYPE & SOCIAL BETTING
+    // ==========================================
+
+    /**
+     * Type of stake for this bet
+     * CREDIT: Uses in-game credits (requires fixedStakeAmount)
+     * SOCIAL: Fun/social stakes with no credits (requires socialStakeDescription)
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private BetStakeType stakeType = BetStakeType.CREDIT; // Default to CREDIT for backward compatibility
+
+    /**
+     * Description of the social stake (e.g., "Loser buys pizza")
+     * Required when stakeType = SOCIAL
+     */
+    @Column(length = 500)
+    @Size(max = 500, message = "Social stake description cannot exceed 500 characters")
+    private String socialStakeDescription;
+
+    /**
+     * Structured template data for social stakes (JSON format)
+     * For future template-based stake creation
+     */
+    @Column(columnDefinition = "TEXT")
+    private String socialStakeTemplate;
+
+    /**
+     * Whether fulfillment of the social stake should be tracked
+     * For future feature: tracking if winner received their stake
+     */
+    @Column(nullable = false)
+    private Boolean stakeFulfillmentRequired = false;
+
+    /**
+     * When the social stake was marked as fulfilled
+     * For future feature: recording stake completion
+     */
+    @Column
+    private LocalDateTime stakeFulfilledAt;
+
+    // ==========================================
+    // POOL TRACKING
+    // ==========================================
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal totalPool = BigDecimal.ZERO;
@@ -287,9 +342,57 @@ public class Bet {
     public BigDecimal getMaximumBet() {
         return maximumBet;
     }
-    
+
     public void setMaximumBet(BigDecimal maximumBet) {
         this.maximumBet = maximumBet;
+    }
+
+    public BigDecimal getFixedStakeAmount() {
+        return fixedStakeAmount;
+    }
+
+    public void setFixedStakeAmount(BigDecimal fixedStakeAmount) {
+        this.fixedStakeAmount = fixedStakeAmount;
+    }
+
+    public BetStakeType getStakeType() {
+        return stakeType;
+    }
+
+    public void setStakeType(BetStakeType stakeType) {
+        this.stakeType = stakeType;
+    }
+
+    public String getSocialStakeDescription() {
+        return socialStakeDescription;
+    }
+
+    public void setSocialStakeDescription(String socialStakeDescription) {
+        this.socialStakeDescription = socialStakeDescription;
+    }
+
+    public String getSocialStakeTemplate() {
+        return socialStakeTemplate;
+    }
+
+    public void setSocialStakeTemplate(String socialStakeTemplate) {
+        this.socialStakeTemplate = socialStakeTemplate;
+    }
+
+    public Boolean getStakeFulfillmentRequired() {
+        return stakeFulfillmentRequired;
+    }
+
+    public void setStakeFulfillmentRequired(Boolean stakeFulfillmentRequired) {
+        this.stakeFulfillmentRequired = stakeFulfillmentRequired;
+    }
+
+    public LocalDateTime getStakeFulfilledAt() {
+        return stakeFulfilledAt;
+    }
+
+    public void setStakeFulfilledAt(LocalDateTime stakeFulfilledAt) {
+        this.stakeFulfilledAt = stakeFulfilledAt;
     }
 
     public BigDecimal getTotalPool() {
@@ -589,8 +692,8 @@ public class Bet {
      */
     public enum BetType {
         MULTIPLE_CHOICE,  // Up to 4 options
-        PREDICTION,      // Users predict exact values/outcomes
-        OVER_UNDER       // Over/under a specific threshold
+        PREDICTION      // Users predict exact values/outcomes
+        // OVER_UNDER       // Over/under a specific threshold (COMMENTED OUT - TODO: Implement later)
     }
 
     /**

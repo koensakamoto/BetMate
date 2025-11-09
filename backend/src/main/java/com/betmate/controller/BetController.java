@@ -99,6 +99,9 @@ public class BetController {
                 request.getOptions() != null && request.getOptions().length > 1 ? request.getOptions()[1] : "No",
                 request.getOptions() != null && request.getOptions().length > 2 ? request.getOptions()[2] : null,
                 request.getOptions() != null && request.getOptions().length > 3 ? request.getOptions()[3] : null,
+                request.getStakeType(),
+                request.getFixedStakeAmount() != null ? BigDecimal.valueOf(request.getFixedStakeAmount()) : null,
+                request.getSocialStakeDescription(),
                 request.getMinimumBet() != null ? BigDecimal.valueOf(request.getMinimumBet()) : null,
                 request.getMaximumBet() != null ? BigDecimal.valueOf(request.getMaximumBet()) : null,
                 request.getBettingDeadline(),
@@ -247,20 +250,49 @@ public class BetController {
             User currentUser = userService.getUserByUsername(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-            System.out.println("DEBUG: Placing bet - User: " + currentUser.getUsername() +
-                             ", BetId: " + betId + ", Option: " + request.getChosenOption() +
-                             ", Amount: " + request.getAmount());
+            // Get bet to check type
+            Bet bet = betService.getBetById(betId);
 
-            // Place the bet
-            BetParticipation participation = betParticipationService.placeBet(
-                currentUser,
-                betId,
-                request.getChosenOption(),
-                request.getAmount()
-            );
+            BetParticipation participation;
+
+            // Handle PREDICTION bets differently
+            if (bet.getBetType() == Bet.BetType.PREDICTION) {
+                // Validate predictedValue is provided
+                if (request.getPredictedValue() == null || request.getPredictedValue().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Predicted value is required for prediction bets");
+                }
+
+                System.out.println("DEBUG: Placing PREDICTION bet - User: " + currentUser.getUsername() +
+                                 ", BetId: " + betId + ", PredictedValue: " + request.getPredictedValue() +
+                                 ", Amount: " + request.getAmount());
+
+                participation = betParticipationService.placeBetWithPrediction(
+                    currentUser,
+                    betId,
+                    request.getAmount(),
+                    request.getPredictedValue()
+                );
+            } else {
+                // Handle regular bets (BINARY, MULTIPLE_CHOICE)
+                // Validate chosenOption is provided
+                if (request.getChosenOption() == null) {
+                    throw new IllegalArgumentException("Chosen option is required for non-prediction bets");
+                }
+
+                System.out.println("DEBUG: Placing bet - User: " + currentUser.getUsername() +
+                                 ", BetId: " + betId + ", Option: " + request.getChosenOption() +
+                                 ", Amount: " + request.getAmount());
+
+                participation = betParticipationService.placeBet(
+                    currentUser,
+                    betId,
+                    request.getChosenOption(),
+                    request.getAmount()
+                );
+            }
 
             // Get updated bet details
-            Bet bet = betService.getBetById(betId);
+            bet = betService.getBetById(betId);
             BetResponseDto response = convertToDetailedResponse(bet, currentUser);
 
             return ResponseEntity.ok(response);
@@ -428,6 +460,9 @@ public class BetController {
         response.setResolvedAt(bet.getResolvedAt());
         response.setMinimumBet(bet.getMinimumBet());
         response.setMaximumBet(bet.getMaximumBet());
+        response.setFixedStakeAmount(bet.getFixedStakeAmount());  // NEW: Fixed-stake betting
+        response.setStakeType(bet.getStakeType());  // NEW: Stake type (CREDIT/SOCIAL)
+        response.setSocialStakeDescription(bet.getSocialStakeDescription());  // NEW: Social stake description
         response.setTotalPool(bet.getTotalPool());
         response.setTotalParticipants(bet.getTotalParticipants());
         response.setMinimumVotesRequired(bet.getMinimumVotesRequired());

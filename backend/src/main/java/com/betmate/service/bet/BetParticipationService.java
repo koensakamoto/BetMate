@@ -4,6 +4,7 @@ import com.betmate.entity.betting.Bet;
 import com.betmate.entity.betting.BetParticipation;
 import com.betmate.entity.betting.BetParticipation.ParticipationStatus;
 import com.betmate.entity.betting.BetPrediction;
+import com.betmate.entity.betting.BetStakeType;
 import com.betmate.entity.user.User;
 import com.betmate.exception.betting.BetParticipationException;
 import com.betmate.repository.betting.BetParticipationRepository;
@@ -74,8 +75,10 @@ public class BetParticipationService {
             throw new BetParticipationException("User has already placed a bet on this");
         }
 
-        // Deduct credits from user
-        creditService.deductCredits(user.getId(), betAmount, "Bet placed on: " + bet.getTitle());
+        // Deduct credits from user (only for CREDIT bets)
+        if (bet.getStakeType() == BetStakeType.CREDIT) {
+            creditService.deductCredits(user.getId(), betAmount, "Bet placed on: " + bet.getTitle());
+        }
 
         // Create or update participation (for prediction bets, chosenOption is always 1)
         BetParticipation participation;
@@ -129,9 +132,11 @@ public class BetParticipationService {
         
         // Validate chosen option
         validateChosenOption(bet, chosenOption);
-        
-        // Deduct credits from user
-        creditService.deductCredits(user.getId(), betAmount, "Bet placed on: " + bet.getTitle());
+
+        // Deduct credits from user (only for CREDIT bets)
+        if (bet.getStakeType() == BetStakeType.CREDIT) {
+            creditService.deductCredits(user.getId(), betAmount, "Bet placed on: " + bet.getTitle());
+        }
 
         // Create or update participation
         BetParticipation participation;
@@ -172,10 +177,12 @@ public class BetParticipationService {
         if (!bet.isOpenForBetting()) {
             throw new BetParticipationException("Cannot cancel participation after betting deadline");
         }
-        
-        // Refund credits
-        creditService.addCredits(user.getId(), participation.getBetAmount(), 
-            "Bet cancellation refund: " + bet.getTitle());
+
+        // Refund credits (only for CREDIT bets)
+        if (bet.getStakeType() == BetStakeType.CREDIT) {
+            creditService.addCredits(user.getId(), participation.getBetAmount(),
+                "Bet cancellation refund: " + bet.getTitle());
+        }
         
         // Mark participation as cancelled
         participation.setStatus(BetParticipation.ParticipationStatus.CANCELLED);
@@ -268,18 +275,33 @@ public class BetParticipationService {
         if (!bet.isOpenForBetting()) {
             throw new BetParticipationException("Bet is not open for betting");
         }
-        
-        if (betAmount.compareTo(bet.getMinimumBet()) < 0) {
-            throw new BetParticipationException("Bet amount is below minimum: " + bet.getMinimumBet());
+
+        // For CREDIT bets: validate stake amount and user credits
+        if (bet.getStakeType() == BetStakeType.CREDIT) {
+            // Fixed-stake validation (everyone bets exactly the same amount)
+            if (bet.getFixedStakeAmount() != null) {
+                if (betAmount.compareTo(bet.getFixedStakeAmount()) != 0) {
+                    throw new BetParticipationException(
+                        "This bet requires exactly " + bet.getFixedStakeAmount() + " credits to join"
+                    );
+                }
+            } else {
+                // DEPRECATED: Variable-stake validation (for backward compatibility)
+                if (betAmount.compareTo(bet.getMinimumBet()) < 0) {
+                    throw new BetParticipationException("Bet amount is below minimum: " + bet.getMinimumBet());
+                }
+
+                if (bet.getMaximumBet() != null && betAmount.compareTo(bet.getMaximumBet()) > 0) {
+                    throw new BetParticipationException("Bet amount exceeds maximum: " + bet.getMaximumBet());
+                }
+            }
+
+            // Check user has sufficient credits
+            if (!creditService.hasSufficientAvailableCredits(user.getId(), betAmount)) {
+                throw new BetParticipationException("Insufficient available credits for bet");
+            }
         }
-        
-        if (bet.getMaximumBet() != null && betAmount.compareTo(bet.getMaximumBet()) > 0) {
-            throw new BetParticipationException("Bet amount exceeds maximum: " + bet.getMaximumBet());
-        }
-        
-        if (!creditService.hasSufficientAvailableCredits(user.getId(), betAmount)) {
-            throw new BetParticipationException("Insufficient available credits for bet");
-        }
+        // For SOCIAL bets: no stake amount or credit validation needed
     }
 
     private void validateChosenOption(Bet bet, Integer chosenOption) {
@@ -332,16 +354,18 @@ public class BetParticipationService {
 
     private void resolveParticipation(BetParticipation participation, Bet bet, Bet.BetOutcome outcome) {
         User user = participation.getUser();
-        
+
         if (participation.isWinner()) {
             // Calculate winnings based on final pool distribution
             BigDecimal winnings = calculateWinnings(participation, bet);
             participation.settle(winnings);
-            
-            // Credit winnings to user
-            creditService.addCredits(user.getId(), winnings, 
-                "Bet winnings: " + bet.getTitle());
-            
+
+            // Credit winnings to user (only for CREDIT bets)
+            if (bet.getStakeType() == BetStakeType.CREDIT) {
+                creditService.addCredits(user.getId(), winnings,
+                    "Bet winnings: " + bet.getTitle());
+            }
+
             // Update user statistics
             statisticsService.recordWin(user.getId());
         } else {
@@ -349,10 +373,10 @@ public class BetParticipationService {
             participation.settle(BigDecimal.ZERO);
             statisticsService.recordLoss(user.getId());
         }
-        
+
         // Decrement active bets count
         statisticsService.decrementActiveBets(user.getId());
-        
+
         participationRepository.save(participation);
     }
 

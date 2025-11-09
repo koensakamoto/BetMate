@@ -1,6 +1,7 @@
 package com.betmate.dto.betting.request;
 
 import com.betmate.entity.betting.Bet;
+import com.betmate.entity.betting.BetStakeType;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
@@ -34,13 +35,28 @@ public class BetCreationRequestDto {
     @Future(message = "Resolve date must be in the future")
     private LocalDateTime resolveDate;
     
-    @NotNull(message = "Minimum bet amount is required")
+    // DEPRECATED: For backward compatibility with variable-stake bets
+    // New bets should use fixedStakeAmount instead
     @DecimalMin(value = "0.01", message = "Minimum bet amount must be at least 0.01")
     private Double minimumBet;
-    
+
+    // DEPRECATED: For backward compatibility with variable-stake bets
     @DecimalMin(value = "0.01", message = "Maximum bet amount must be at least 0.01")
     private Double maximumBet;
-    
+
+    // NEW: Fixed stake amount for new bets (everyone bets exactly this amount)
+    // Required when stakeType = CREDIT
+    @DecimalMin(value = "0.01", message = "Fixed stake amount must be at least 0.01")
+    private Double fixedStakeAmount;
+
+    // NEW: Stake type (CREDIT or SOCIAL) - defaults to CREDIT if not provided
+    private BetStakeType stakeType;
+
+    // NEW: Social stake description (e.g., "Loser buys pizza")
+    // Required when stakeType = SOCIAL
+    @Size(max = 500, message = "Social stake description cannot exceed 500 characters")
+    private String socialStakeDescription;
+
     @Min(value = 1, message = "Minimum votes required must be at least 1")
     private Integer minimumVotesRequired;
     
@@ -124,6 +140,30 @@ public class BetCreationRequestDto {
 
     public void setMaximumBet(Double maximumBet) {
         this.maximumBet = maximumBet;
+    }
+
+    public Double getFixedStakeAmount() {
+        return fixedStakeAmount;
+    }
+
+    public void setFixedStakeAmount(Double fixedStakeAmount) {
+        this.fixedStakeAmount = fixedStakeAmount;
+    }
+
+    public BetStakeType getStakeType() {
+        return stakeType;
+    }
+
+    public void setStakeType(BetStakeType stakeType) {
+        this.stakeType = stakeType;
+    }
+
+    public String getSocialStakeDescription() {
+        return socialStakeDescription;
+    }
+
+    public void setSocialStakeDescription(String socialStakeDescription) {
+        this.socialStakeDescription = socialStakeDescription;
     }
 
     public Integer getMinimumVotesRequired() {
