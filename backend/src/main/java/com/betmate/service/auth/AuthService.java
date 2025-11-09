@@ -12,6 +12,7 @@ import com.betmate.service.security.AuthenticationService;
 import com.betmate.service.security.JwtService;
 import com.betmate.service.security.UserDetailsServiceImpl;
 import com.betmate.service.user.UserService;
+import com.betmate.service.user.DailyLoginRewardService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,6 +20,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import com.betmate.util.SecurityContextUtil;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 
 /**
  * Service for handling authentication business logic.
@@ -33,16 +36,19 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationService authenticationService;
     private final UserService userService;
+    private final DailyLoginRewardService dailyLoginRewardService;
 
     @Autowired
     public AuthService(AuthenticationManager authenticationManager,
                       JwtService jwtService,
                       AuthenticationService authenticationService,
-                      UserService userService) {
+                      UserService userService,
+                      DailyLoginRewardService dailyLoginRewardService) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.authenticationService = authenticationService;
         this.userService = userService;
+        this.dailyLoginRewardService = dailyLoginRewardService;
         log.info("AuthService initialized with all dependencies");
     }
 
@@ -60,24 +66,49 @@ public class AuthService {
             )
         );
 
-        UserDetailsServiceImpl.UserPrincipal userPrincipal = 
+        UserDetailsServiceImpl.UserPrincipal userPrincipal =
             (UserDetailsServiceImpl.UserPrincipal) authentication.getPrincipal();
-        
+
         User user = userPrincipal.getUser();
-        log.info("User authenticated successfully: {}", user.getUsername());
+        log.info("=== LOGIN SUCCESSFUL === User: {}, Username: {}", user.getId(), user.getUsername());
+
+        // Update last login timestamp and handle successful login
+        log.info("=== UPDATING LOGIN TIMESTAMP === User: {}", user.getId());
+        user.setFailedLoginAttempts(0);
+        user.setAccountLockedUntil(null);
+        user.setLastLoginAt(LocalDateTime.now());
+        User savedUser = userService.saveUser(user);
+        log.info("User saved after login - User: {}, LastLoginAt: {}", savedUser.getId(), savedUser.getLastLoginAt());
+
+        // Award daily login reward if eligible
+        log.info("=== ATTEMPTING DAILY LOGIN REWARD === User: {}", savedUser.getId());
+        try {
+            DailyLoginRewardService.DailyRewardResult result = dailyLoginRewardService.checkAndAwardDailyReward(savedUser);
+            log.info("=== DAILY LOGIN REWARD RESULT === User: {}, WasAwarded: {}, Amount: {}, ClaimedAt: {}",
+                savedUser.getId(), result.wasAwarded(), result.amountAwarded(), result.claimedAt());
+
+            // Refresh user to get updated credit balance
+            if (result.wasAwarded()) {
+                savedUser = userService.getUserById(savedUser.getId());
+                log.info("User refreshed with new credit balance: {}", savedUser.getCreditBalance());
+            }
+        } catch (Exception e) {
+            log.error("=== DAILY LOGIN REWARD FAILED === User: {}, Error: {}", savedUser.getId(), e.getMessage(), e);
+        }
+        log.info("=== LOGIN HANDLER END === User: {}", savedUser.getId());
 
         // Set the authentication in the security context for the current session
         SecurityContextUtil.setAuthentication(authentication);
-        log.debug("Authentication set in SecurityContextHolder for user: {}", user.getUsername());
+        log.debug("Authentication set in SecurityContextHolder for user: {}", savedUser.getUsername());
 
         // Generate tokens
-        String accessToken = jwtService.generateAccessToken(userPrincipal, user.getId());
-        String refreshToken = jwtService.generateRefreshToken(userPrincipal, user.getId());
+        String accessToken = jwtService.generateAccessToken(userPrincipal, savedUser.getId());
+        String refreshToken = jwtService.generateRefreshToken(userPrincipal, savedUser.getId());
 
-        // Create response with user info
-        UserProfileResponseDto userResponse = UserProfileResponseDto.fromUser(user);
-        
-        log.debug("Login tokens generated for user: {}", user.getUsername());
+        // Create response with user info (using savedUser with potentially updated credits)
+        UserProfileResponseDto userResponse = UserProfileResponseDto.fromUser(savedUser);
+
+        log.debug("Login tokens generated for user: {}", savedUser.getUsername());
         return new LoginResponseDto(
             accessToken,
             refreshToken,

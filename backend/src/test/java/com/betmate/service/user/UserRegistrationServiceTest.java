@@ -1,6 +1,8 @@
 package com.betmate.service.user;
 
 import com.betmate.entity.user.User;
+import com.betmate.entity.user.UserSettings;
+import com.betmate.repository.user.UserSettingsRepository;
 import com.betmate.service.user.UserRegistrationService.RegistrationRequest;
 import com.betmate.service.user.UserRegistrationService.RegistrationValidation;
 import com.betmate.exception.user.UserRegistrationException;
@@ -26,7 +28,8 @@ class UserRegistrationServiceTest {
     private TestUserService userService;
     private TestPasswordEncoder passwordEncoder;
     private TestInputValidator inputValidator;
-    
+    private TestUserSettingsRepository userSettingsRepository;
+
     // Test data constants
     private static final String TEST_USERNAME = "testuser";
     private static final String TEST_EMAIL = "test@example.com";
@@ -34,7 +37,7 @@ class UserRegistrationServiceTest {
     private static final String TEST_ENCODED_PASSWORD = "encoded_password_hash";
     private static final String TEST_FIRST_NAME = "Test";
     private static final String TEST_LAST_NAME = "User";
-    
+
     private RegistrationRequest validRequest;
 
     @BeforeEach
@@ -43,8 +46,9 @@ class UserRegistrationServiceTest {
         userService = new TestUserService();
         passwordEncoder = new TestPasswordEncoder();
         inputValidator = new TestInputValidator();
-        
-        registrationService = new UserRegistrationService(userService, passwordEncoder, inputValidator);
+        userSettingsRepository = new TestUserSettingsRepository();
+
+        registrationService = new UserRegistrationService(userService, passwordEncoder, inputValidator, userSettingsRepository);
         
         // Create valid registration request
         validRequest = new RegistrationRequest(
@@ -171,6 +175,173 @@ class UserRegistrationServiceTest {
 
         public void setPasswordValidation(String password, InputValidator.PasswordValidationResult result) {
             passwordValidations.put(password, result);
+        }
+    }
+
+    private static class TestUserSettingsRepository implements UserSettingsRepository {
+        private UserSettings lastSavedSettings;
+        private final AtomicLong idGenerator = new AtomicLong(1);
+
+        @Override
+        public UserSettings save(UserSettings settings) {
+            // UserSettings uses userId as the ID (1:1 with User)
+            // No need to set ID here - it's set by User relationship
+            lastSavedSettings = settings;
+            return settings;
+        }
+
+        @Override
+        public Optional<UserSettings> findByUserId(Long userId) {
+            return Optional.empty();
+        }
+
+        @Override
+        public boolean existsByUserId(Long userId) {
+            return false;
+        }
+
+        @Override
+        public Optional<UserSettings> findById(Long id) {
+            return Optional.empty();
+        }
+
+        @Override
+        public boolean existsById(Long id) {
+            return false;
+        }
+
+        @Override
+        public List<UserSettings> findAll() {
+            return List.of();
+        }
+
+        @Override
+        public List<UserSettings> findAllById(Iterable<Long> ids) {
+            return List.of();
+        }
+
+        @Override
+        public <S extends UserSettings> List<S> saveAll(Iterable<S> entities) {
+            return List.of();
+        }
+
+        @Override
+        public long count() {
+            return 0;
+        }
+
+        @Override
+        public void deleteById(Long id) {
+        }
+
+        @Override
+        public void delete(UserSettings entity) {
+        }
+
+        @Override
+        public void deleteAllById(Iterable<? extends Long> ids) {
+        }
+
+        @Override
+        public void deleteAll(Iterable<? extends UserSettings> entities) {
+        }
+
+        @Override
+        public void deleteAll() {
+        }
+
+        @Override
+        public void flush() {
+        }
+
+        @Override
+        public <S extends UserSettings> S saveAndFlush(S entity) {
+            return entity;
+        }
+
+        @Override
+        public <S extends UserSettings> List<S> saveAllAndFlush(Iterable<S> entities) {
+            return List.of();
+        }
+
+        @Override
+        public void deleteAllInBatch(Iterable<UserSettings> entities) {
+        }
+
+        @Override
+        public void deleteAllByIdInBatch(Iterable<Long> ids) {
+        }
+
+        @Override
+        public void deleteAllInBatch() {
+        }
+
+        @Override
+        public UserSettings getOne(Long id) {
+            return null;
+        }
+
+        @Override
+        public UserSettings getById(Long id) {
+            return null;
+        }
+
+        @Override
+        public UserSettings getReferenceById(Long id) {
+            return null;
+        }
+
+        @Override
+        public <S extends UserSettings> Optional<S> findOne(org.springframework.data.domain.Example<S> example) {
+            return Optional.empty();
+        }
+
+        @Override
+        public <S extends UserSettings> List<S> findAll(org.springframework.data.domain.Example<S> example) {
+            return List.of();
+        }
+
+        @Override
+        public <S extends UserSettings> List<S> findAll(org.springframework.data.domain.Example<S> example, org.springframework.data.domain.Sort sort) {
+            return List.of();
+        }
+
+        @Override
+        public <S extends UserSettings> org.springframework.data.domain.Page<S> findAll(org.springframework.data.domain.Example<S> example, org.springframework.data.domain.Pageable pageable) {
+            return org.springframework.data.domain.Page.empty();
+        }
+
+        @Override
+        public <S extends UserSettings> long count(org.springframework.data.domain.Example<S> example) {
+            return 0;
+        }
+
+        @Override
+        public <S extends UserSettings> boolean exists(org.springframework.data.domain.Example<S> example) {
+            return false;
+        }
+
+        @Override
+        public <S extends UserSettings, R> R findBy(org.springframework.data.domain.Example<S> example, java.util.function.Function<org.springframework.data.repository.query.FluentQuery.FetchableFluentQuery<S>, R> queryFunction) {
+            return null;
+        }
+
+        @Override
+        public List<UserSettings> findAll(org.springframework.data.domain.Sort sort) {
+            return List.of();
+        }
+
+        @Override
+        public org.springframework.data.domain.Page<UserSettings> findAll(org.springframework.data.domain.Pageable pageable) {
+            return org.springframework.data.domain.Page.empty();
+        }
+
+        public UserSettings getLastSavedSettings() {
+            return lastSavedSettings;
+        }
+
+        public void reset() {
+            lastSavedSettings = null;
         }
     }
 
