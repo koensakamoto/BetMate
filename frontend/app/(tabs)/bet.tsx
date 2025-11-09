@@ -13,10 +13,10 @@ export default function Bet() {
   const insets = useSafeAreaInsets();
   const { refresh } = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState(0);
-  const tabs = ['My Bets', 'Discover'];
+  const tabs = ['My Bets']; // 'Discover' commented out - TODO: Implement guest/public betting
   const [searchQuery, setSearchQuery] = useState('');
   const [myBets, setMyBets] = useState<BetSummaryResponse[]>([]);
-  const [discoverBets, setDiscoverBets] = useState<BetSummaryResponse[]>([]);
+  // const [discoverBets, setDiscoverBets] = useState<BetSummaryResponse[]>([]); // Commented out - TODO: Implement guest/public betting
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -65,11 +65,12 @@ export default function Bet() {
       const myBetsData = await betService.getMyBets();
       setMyBets(myBetsData);
 
+      // TODO: Implement guest/public betting - Discover bets loading commented out
       // Load discover bets (all open bets excluding user's own and participated bets)
-      const openBets = await betService.getBetsByStatus('OPEN');
+      // const openBets = await betService.getBetsByStatus('OPEN');
       // Filter out bets the user has already participated in
-      const discoverableBets = openBets.filter(bet => !bet.hasUserParticipated);
-      setDiscoverBets(discoverableBets);
+      // const discoverableBets = openBets.filter(bet => !bet.hasUserParticipated);
+      // setDiscoverBets(discoverableBets);
 
       // Update cache timestamp
       lastFetchTime.current = Date.now();
@@ -149,9 +150,10 @@ export default function Bet() {
     return filteredMyBets.map(bet => transformBetData(bet));
   }, [filteredMyBets, transformBetData]);
 
-  const transformedDiscoverBets = useMemo(() => {
-    return discoverBets.map(bet => transformBetData(bet));
-  }, [discoverBets, transformBetData]);
+  // TODO: Implement guest/public betting - Discover bets transformation commented out
+  // const transformedDiscoverBets = useMemo(() => {
+  //   return discoverBets.map(bet => transformBetData(bet));
+  // }, [discoverBets, transformBetData]);
 
   // Memoize tab change handler to provide stable reference
   const handleTabChange = useCallback((index: number) => {
@@ -456,10 +458,12 @@ export default function Bet() {
                   );
                 })()}
               </>
-            ) : (
-              /* Discover Section */
+            )
+            /* TODO: Implement guest/public betting - Discover Section commented out */
+            /* : (
+              // Discover Section
               <>
-                {/* Discover Bets Feed */}
+                {/* Discover Bets Feed *\/}
                 {loading ? (
                   <>
                     <SkeletonBetCard />
@@ -512,7 +516,8 @@ export default function Bet() {
                   </View>
                 )}
               </>
-            )}
+            ) */
+            }
             
             {/* Additional spacing for scroll */}
             <View style={{ height: 60 }} />

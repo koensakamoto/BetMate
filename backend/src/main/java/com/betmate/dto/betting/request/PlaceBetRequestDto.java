@@ -9,7 +9,7 @@ import java.math.BigDecimal;
  */
 public class PlaceBetRequestDto {
 
-    @NotNull(message = "Chosen option is required")
+    // For non-prediction bets (BINARY, MULTIPLE_CHOICE)
     @Min(value = 1, message = "Chosen option must be between 1 and 4")
     @Max(value = 4, message = "Chosen option must be between 1 and 4")
     private Integer chosenOption;
@@ -21,12 +21,21 @@ public class PlaceBetRequestDto {
     @Size(max = 500, message = "Comment cannot exceed 500 characters")
     private String comment;
 
+    @Size(max = 500, message = "Predicted value cannot exceed 500 characters")
+    private String predictedValue;
+
     // Constructors
     public PlaceBetRequestDto() {}
 
     public PlaceBetRequestDto(Integer chosenOption, BigDecimal amount, String comment) {
         this.chosenOption = chosenOption;
         this.amount = amount;
+        this.comment = comment;
+    }
+
+    public PlaceBetRequestDto(BigDecimal amount, String predictedValue, String comment) {
+        this.amount = amount;
+        this.predictedValue = predictedValue;
         this.comment = comment;
     }
 
@@ -53,5 +62,13 @@ public class PlaceBetRequestDto {
 
     public void setComment(String comment) {
         this.comment = comment;
+    }
+
+    public String getPredictedValue() {
+        return predictedValue;
+    }
+
+    public void setPredictedValue(String predictedValue) {
+        this.predictedValue = predictedValue;
     }
 }

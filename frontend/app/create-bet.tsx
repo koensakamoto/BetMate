@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { betService, CreateBetRequest } from '../services/bet/betService';
+import { groupService, GroupMemberResponse } from '../services/group/groupService';
 import { haptic } from '../utils/haptics';
 import LoadingButton from '../components/common/LoadingButton';
 
@@ -32,13 +33,15 @@ export default function CreateBet() {
   const [betEndTime, setBetEndTime] = useState(roundToNearest15Minutes(new Date(Date.now() + 24 * 60 * 60 * 1000)));
   const [eventResolutionDate, setEventResolutionDate] = useState(roundToNearest15Minutes(new Date(Date.now() + 48 * 60 * 60 * 1000)));
   const [resolver, setResolver] = useState<'self' | 'specific' | 'multiple' | 'group'>('self');
-  const [selectedResolver, setSelectedResolver] = useState<string | null>(null);
-  const [selectedResolvers, setSelectedResolvers] = useState<string[]>([]);
+  const [selectedResolver, setSelectedResolver] = useState<number | null>(null);
+  const [selectedResolvers, setSelectedResolvers] = useState<number[]>([]);
   const [evidenceRequirements, setEvidenceRequirements] = useState('');
   const [showDatePicker, setShowDatePicker] = useState<'start' | 'end' | 'resolution' | null>(null);
   const [multipleChoiceOptions, setMultipleChoiceOptions] = useState(['', '']);
   const [overUnderLine, setOverUnderLine] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [groupMembers, setGroupMembers] = useState<GroupMemberResponse[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
 
   // Refs for TextInputs
   const titleRef = useRef<TextInput>(null);
@@ -61,6 +64,27 @@ export default function CreateBet() {
     { id: 'other', name: 'Other', icon: 'casino', color: '#64748B' }
   ];
 
+  // Fetch group members on mount
+  useEffect(() => {
+    const fetchGroupMembers = async () => {
+      if (!groupId) return;
+
+      setIsLoadingMembers(true);
+      try {
+        const members = await groupService.getGroupMembers(parseInt(groupId as string));
+        setGroupMembers(members);
+        console.log(`[CreateBet] Loaded ${members.length} group members`);
+      } catch (error) {
+        console.error('[CreateBet] Failed to fetch group members:', error);
+        Alert.alert('Error', 'Failed to load group members');
+      } finally {
+        setIsLoadingMembers(false);
+      }
+    };
+
+    fetchGroupMembers();
+  }, [groupId]);
+
   // Calculate completion percentage
   useEffect(() => {
     const fields = [
@@ -70,25 +94,17 @@ export default function CreateBet() {
       betType === 'MULTIPLE_CHOICE' ? multipleChoiceOptions.some(opt => opt.trim()) :
       betType === 'PREDICTION' ? 'prediction_bet' : overUnderLine.trim()
     ];
-    
+
     const completed = fields.filter(Boolean).length;
     const percentage = (completed / fields.length) * 100;
     setCompletionPercentage(percentage);
-    
+
     Animated.timing(progressAnim, {
       toValue: percentage / 100,
       duration: 300,
       useNativeDriver: false,
     }).start();
   }, [betTitle, selectedSport, stakeAmount, multipleChoiceOptions, overUnderLine, betType]);
-
-  const friends = [
-    { id: '1', username: 'mikeJohnson', name: 'Mike Johnson' },
-    { id: '2', username: 'sarahGamer', name: 'Sarah Chen' },
-    { id: '3', username: 'alexBets', name: 'Alex Rodriguez' },
-    { id: '4', username: 'emilyWins', name: 'Emily Davis' },
-    { id: '5', username: 'chrisPlay', name: 'Chris Wilson' }
-  ];
 
   const handleCreateBet = async () => {
     if (!betTitle.trim() || !selectedSport || !stakeAmount) {
@@ -104,15 +120,17 @@ export default function CreateBet() {
     }
 
 
+    /* COMMENTED OUT - TODO: Implement Over/Under bets later
     if (betType === 'OVER_UNDER' && !overUnderLine) {
       haptic.error();
       Alert.alert('Missing Line', 'Please enter the over/under line.');
       return;
     }
+    */
 
     Alert.alert(
       'Create Bet?',
-      `Create "${betTitle}" with $${stakeAmount} stake?`,
+      `Create "${betTitle}" with $${stakeAmount} entry fee?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -133,13 +151,15 @@ export default function CreateBet() {
                                  resolver === 'specific' ? 'ASSIGNED_RESOLVER' : 'CONSENSUS_VOTING',
                 bettingDeadline: betEndTime.toISOString(),
                 resolveDate: eventResolutionDate.toISOString(),
-                minimumBet: parseFloat(stakeAmount),
-                maximumBet: undefined, // TODO: Add max bet option to UI if needed
+                minimumBet: parseFloat(stakeAmount), // DEPRECATED: For backward compatibility
+                maximumBet: undefined, // DEPRECATED: For backward compatibility
+                fixedStakeAmount: parseFloat(stakeAmount), // NEW: Fixed-stake betting (everyone bets exactly this)
                 minimumVotesRequired: resolver === 'multiple' ? selectedResolvers.length : undefined,
                 allowCreatorVote: true, // TODO: Add this option to UI if needed
                 options: betType === 'MULTIPLE_CHOICE' ? multipleChoiceOptions.filter(opt => opt.trim()) :
-                        betType === 'PREDICTION' ? ['Prediction'] :
-                        betType === 'OVER_UNDER' ? [`Over ${overUnderLine}`, `Under ${overUnderLine}`] : undefined
+                        betType === 'PREDICTION' ? ['Prediction'] : undefined
+                        // COMMENTED OUT - TODO: Implement Over/Under bets later
+                        // betType === 'OVER_UNDER' ? [`Over ${overUnderLine}`, `Under ${overUnderLine}`] : undefined
               };
 
               const response = await betService.createBet(createBetRequest);
@@ -165,14 +185,14 @@ export default function CreateBet() {
     );
   };
 
-  const toggleResolverSelection = (friendId: string) => {
+  const toggleResolverSelection = (memberId: number) => {
     if (resolver === 'specific') {
-      setSelectedResolver(friendId);
+      setSelectedResolver(memberId);
     } else if (resolver === 'multiple') {
-      setSelectedResolvers(prev => 
-        prev.includes(friendId) 
-          ? prev.filter(id => id !== friendId)
-          : [...prev, friendId]
+      setSelectedResolvers(prev =>
+        prev.includes(memberId)
+          ? prev.filter(id => id !== memberId)
+          : [...prev, memberId]
       );
     }
   };
@@ -238,12 +258,12 @@ export default function CreateBet() {
     </TouchableOpacity>
   );
 
-  const ResolverItem = ({ friend, isMultiple = false }: { friend: any, isMultiple?: boolean }) => {
-    const isSelected = isMultiple ? selectedResolvers.includes(friend.id) : selectedResolver === friend.id;
-    
+  const ResolverItem = ({ member, isMultiple = false }: { member: GroupMemberResponse, isMultiple?: boolean }) => {
+    const isSelected = isMultiple ? selectedResolvers.includes(member.id) : selectedResolver === member.id;
+
     return (
       <TouchableOpacity
-        onPress={() => toggleResolverSelection(friend.id)}
+        onPress={() => toggleResolverSelection(member.id)}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -271,9 +291,9 @@ export default function CreateBet() {
             <MaterialIcons name="check" size={12} color="#000000" />
           )}
         </View>
-        
-        <Image 
-          source={icon}
+
+        <Image
+          source={member.profilePictureUrl ? { uri: member.profilePictureUrl } : icon}
           style={{
             width: 32,
             height: 32,
@@ -281,20 +301,20 @@ export default function CreateBet() {
             marginRight: 12
           }}
         />
-        
+
         <View style={{ flex: 1 }}>
           <Text style={{
             fontSize: 15,
             fontWeight: '600',
             color: '#ffffff'
           }}>
-            {friend.username}
+            {member.username}
           </Text>
           <Text style={{
             fontSize: 13,
             color: 'rgba(255, 255, 255, 0.6)'
           }}>
-            {friend.name}
+            {member.displayName || `${member.username}`}
           </Text>
         </View>
       </TouchableOpacity>
@@ -601,12 +621,14 @@ export default function CreateBet() {
               icon="gps-fixed"
             />
 
+            {/* COMMENTED OUT - TODO: Implement Over/Under bets later
             <BetTypeCard
               type="OVER_UNDER"
               title="Over/Under"
               description="Bet whether a value will be over or under a specific line (e.g., total goals > 2.5)"
               icon="balance"
             />
+            */}
           </View>
 
           {/* Bet Type Specific Fields */}
@@ -703,6 +725,7 @@ export default function CreateBet() {
             </>
           )}
 
+          {/* COMMENTED OUT - TODO: Implement Over/Under bets later
           {betType === 'OVER_UNDER' && (
             <>
               <Text style={{
@@ -738,6 +761,7 @@ export default function CreateBet() {
               </View>
             </>
           )}
+          */}
 
           {/* Betting Parameters */}
           <View style={{
@@ -768,7 +792,14 @@ export default function CreateBet() {
               color: 'rgba(255, 255, 255, 0.9)',
               marginBottom: 8
             }}>
-              Stake Amount <Text style={{ color: '#FF4757' }}>*</Text>
+              Entry Fee <Text style={{ color: '#FF4757' }}>*</Text>
+            </Text>
+            <Text style={{
+              fontSize: 12,
+              color: 'rgba(255, 255, 255, 0.6)',
+              marginBottom: 8
+            }}>
+              Everyone must bet exactly this amount to join
             </Text>
             <View style={{
               backgroundColor: 'rgba(255, 255, 255, 0.04)',
@@ -810,7 +841,7 @@ export default function CreateBet() {
                   }
                   setStakeAmount(filtered);
                 }}
-                placeholder="How much each participant bets"
+                placeholder="Fixed amount (everyone pays the same)"
                 placeholderTextColor="rgba(255, 255, 255, 0.4)"
                 keyboardType="decimal-pad"
                 returnKeyType="done"
@@ -1044,21 +1075,41 @@ export default function CreateBet() {
               }}>
                 {resolver === 'specific' ? 'Select Resolver' : 'Select Resolvers'}
               </Text>
-              
+
               <View style={{
                 backgroundColor: 'rgba(255, 255, 255, 0.03)',
                 borderRadius: 12,
                 padding: 16,
                 marginBottom: 16
               }}>
-                {friends.map((friend) => (
-                  <ResolverItem 
-                    key={friend.id} 
-                    friend={friend} 
-                    isMultiple={resolver === 'multiple'}
-                  />
-                ))}
-                
+                {isLoadingMembers ? (
+                  <Text style={{
+                    fontSize: 14,
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    textAlign: 'center',
+                    paddingVertical: 20
+                  }}>
+                    Loading members...
+                  </Text>
+                ) : groupMembers.length === 0 ? (
+                  <Text style={{
+                    fontSize: 14,
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    textAlign: 'center',
+                    paddingVertical: 20
+                  }}>
+                    No members found
+                  </Text>
+                ) : (
+                  groupMembers.map((member) => (
+                    <ResolverItem
+                      key={member.id}
+                      member={member}
+                      isMultiple={resolver === 'multiple'}
+                    />
+                  ))
+                )}
+
                 {((resolver === 'specific' && selectedResolver) || (resolver === 'multiple' && selectedResolvers.length > 0)) && (
                   <Text style={{
                     fontSize: 12,
@@ -1066,8 +1117,8 @@ export default function CreateBet() {
                     marginTop: 8,
                     textAlign: 'center'
                   }}>
-                    {resolver === 'specific' 
-                      ? '1 resolver selected' 
+                    {resolver === 'specific'
+                      ? '1 resolver selected'
                       : `${selectedResolvers.length} resolver${selectedResolvers.length !== 1 ? 's' : ''} selected`
                     }
                   </Text>

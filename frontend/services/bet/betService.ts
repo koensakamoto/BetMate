@@ -5,12 +5,13 @@ export interface CreateBetRequest {
   groupId: number;
   title: string;
   description?: string;
-  betType: 'MULTIPLE_CHOICE' | 'PREDICTION' | 'OVER_UNDER';
+  betType: 'MULTIPLE_CHOICE' | 'PREDICTION'; // | 'OVER_UNDER' (COMMENTED OUT - TODO: Implement later)
   resolutionMethod: 'CREATOR_ONLY' | 'ASSIGNED_RESOLVER' | 'CONSENSUS_VOTING';
   bettingDeadline: string; // ISO string
   resolveDate?: string; // ISO string
-  minimumBet: number;
-  maximumBet?: number;
+  minimumBet: number; // DEPRECATED: For backward compatibility with variable-stake bets
+  maximumBet?: number; // DEPRECATED: For backward compatibility with variable-stake bets
+  fixedStakeAmount?: number; // NEW: Fixed stake amount - everyone must bet exactly this amount
   minimumVotesRequired?: number;
   allowCreatorVote?: boolean;
   options?: string[];
@@ -41,8 +42,9 @@ export interface BetResponse {
   bettingDeadline: string;
   resolveDate?: string;
   resolvedAt?: string;
-  minimumBet: number;
-  maximumBet?: number;
+  minimumBet: number; // DEPRECATED: For backward compatibility with variable-stake bets
+  maximumBet?: number; // DEPRECATED: For backward compatibility with variable-stake bets
+  fixedStakeAmount?: number; // NEW: Fixed stake amount - everyone must bet exactly this amount
   totalPool: number;
   totalParticipants: number;
   minimumVotesRequired: number;
@@ -81,9 +83,10 @@ export interface BetSummaryResponse {
 }
 
 export interface PlaceBetRequest {
-  chosenOption: number;
+  chosenOption?: number; // For BINARY, MULTIPLE_CHOICE bets
   amount: number;
   comment?: string;
+  predictedValue?: string; // For PREDICTION bets
 }
 
 export interface BetParticipationResponse {
