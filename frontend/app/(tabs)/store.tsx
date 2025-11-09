@@ -7,8 +7,12 @@ import StoreCategoryTabs, { StoreCategory } from '../../components/store/StoreCa
 import StoreItem, { StoreItemData } from '../../components/store/StoreItem';
 import EarnCreditsModal from '../../components/store/EarnCreditsModal';
 import TransactionHistoryModal, { Transaction } from '../../components/store/TransactionHistoryModal';
-import { storeItems, EarnCreditsOption } from '../../components/store/storeData';
+import StoreItemDetailSheet from '../../components/store/StoreItemDetailSheet';
+import { EarnCreditsOption, Rarity, ItemType, ItemCategory } from '../../components/store/storeData';
 import { userService } from '../../services/user/userService';
+import { storeService, StoreItemResponse } from '../../services/store/storeService';
+import { transactionService } from '../../services/user/transactionService';
+import { dailyRewardService } from '../../services/user/dailyRewardService';
 import { useAuth } from '../../contexts/AuthContext';
 import { haptic } from '../../utils/haptics';
 import LoadingOverlay from '../../components/common/LoadingOverlay';
@@ -21,6 +25,8 @@ export default function Store() {
   const [earnCreditsModalVisible, setEarnCreditsModalVisible] = useState(false);
   const [transactionHistoryVisible, setTransactionHistoryVisible] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<StoreItemData | null>(null);
+  const [detailSheetVisible, setDetailSheetVisible] = useState(false);
 
   // Get user credits - use separate API call since AuthContext might not have latest credits
   const [userCredits, setUserCredits] = useState(0);
@@ -31,13 +37,16 @@ export default function Store() {
   const lastFetchTime = useRef<number>(0);
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-  // Debug logging to check what's in the user object
-  console.log('Store - Debug user object:', {
-    user: user,
-    userCredits: userCredits,
-    totalCredits: user?.totalCredits,
-    credits: user?.credits
+  // Store items state
+  const [storeItemsData, setStoreItemsData] = useState<Record<StoreCategory, StoreItemData[]>>({
+    'featured': [],
+    'risk': [],
+    'multipliers': [],
+    'tools': [],
+    'discounts': [],
+    'boosters': []
   });
+  const [fetchingItems, setFetchingItems] = useState(true);
 
   const fetchUserCredits = useCallback(async (isRefreshing: boolean = false) => {
     if (!isAuthenticated) {
@@ -68,69 +77,107 @@ export default function Store() {
     }
   }, [isAuthenticated, user]);
 
-  // Fetch latest user credits when component mounts or user changes
+  // Fetch store items from API
+  const fetchStoreItems = useCallback(async () => {
+    if (!isAuthenticated) {
+      setFetchingItems(false);
+      return;
+    }
+
+    try {
+      setFetchingItems(true);
+      const items = await storeService.getStoreItems();
+
+      // Convert API response to StoreItemData format and categorize
+      const categorizedItems: Record<StoreCategory, StoreItemData[]> = {
+        'featured': [],
+        'risk': [],
+        'multipliers': [],
+        'tools': [],
+        'discounts': [],
+        'boosters': []
+      };
+
+      items.forEach((item) => {
+        const storeItem: StoreItemData = {
+          id: String(item.id),
+          name: item.name,
+          description: item.description,
+          price: item.price,
+          icon: item.iconUrl || '',
+          itemType: item.itemType as any,
+          category: item.category as any,
+          rarity: item.rarity as any,
+          isOwned: item.userOwns || false,
+          isFeatured: item.isFeatured,
+          isLimitedTime: item.isLimitedTime,
+          availableUntil: item.availableUntil,
+          sortOrder: 0
+        };
+
+        // Add to featured if it's marked as featured
+        if (item.isFeatured) {
+          categorizedItems['featured'].push(storeItem);
+        }
+
+        // Categorize by category
+        const categoryMap: Record<string, StoreCategory> = {
+          'RISK_MANAGEMENT': 'risk',
+          'MULTIPLIERS': 'multipliers',
+          'BETTING_TOOLS': 'tools',
+          'DISCOUNTS': 'discounts',
+          'BOOSTERS': 'boosters'
+        };
+
+        const category = categoryMap[item.category];
+        if (category) {
+          categorizedItems[category].push(storeItem);
+        }
+      });
+
+      setStoreItemsData(categorizedItems);
+    } catch (error) {
+      console.error('Failed to fetch store items:', error);
+    } finally {
+      setFetchingItems(false);
+    }
+  }, [isAuthenticated]);
+
+  // Fetch latest user credits, store items, and transactions when component mounts
   useEffect(() => {
     fetchUserCredits(false);
-  }, [isAuthenticated, fetchUserCredits]);
+    fetchStoreItems();
+    fetchTransactions();
+  }, [isAuthenticated, fetchUserCredits, fetchStoreItems, fetchTransactions]);
 
   // Pull-to-refresh handler
   const onRefresh = useCallback(() => {
     fetchUserCredits(true);
-  }, [fetchUserCredits]);
+    fetchStoreItems();
+    fetchTransactions();
+  }, [fetchUserCredits, fetchStoreItems, fetchTransactions]);
 
-  // Mock transaction data - in real app this would come from API
-  const [transactions] = useState<Transaction[]>([
-    {
-      id: '1',
-      type: 'CREDIT',
-      amount: 500,
-      reason: 'Welcome bonus',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-      balanceBefore: 0,
-      balanceAfter: 500,
-      correlationId: 'welcome-123'
-    },
-    {
-      id: '2',
-      type: 'DEBIT',
-      amount: 75,
-      reason: 'Premium Avatar Purchase',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
-      balanceBefore: 500,
-      balanceAfter: 425,
-      correlationId: 'purchase-456'
-    },
-    {
-      id: '3',
-      type: 'TRANSFER_IN',
-      amount: 100,
-      reason: 'Transfer from @johnsmith',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2 days ago
-      balanceBefore: 325,
-      balanceAfter: 425,
-      correlationId: 'transfer-789'
-    },
-    {
-      id: '4',
-      type: 'CREDIT',
-      amount: 25,
-      reason: 'Daily login bonus',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(), // 3 days ago
-      balanceBefore: 300,
-      balanceAfter: 325,
-      correlationId: 'daily-bonus-101'
-    },
-    {
-      id: '5',
-      type: 'DEBIT',
-      amount: 200,
-      reason: 'Bet participation: NFL Chiefs vs Ravens',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(), // 5 days ago
-      balanceBefore: 500,
-      balanceAfter: 300,
-      correlationId: 'bet-123-456'
+  // Transaction data - fetched from API
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [fetchingTransactions, setFetchingTransactions] = useState(false);
+
+  // Fetch transactions from API
+  const fetchTransactions = useCallback(async () => {
+    if (!isAuthenticated) {
+      return;
     }
-  ]);
+
+    try {
+      setFetchingTransactions(true);
+      const transactionsData = await transactionService.getAllTransactions();
+      setTransactions(transactionsData);
+    } catch (error) {
+      console.error('Failed to fetch transactions:', error);
+      // Keep existing transactions on error
+    } finally {
+      setFetchingTransactions(false);
+    }
+  }, [isAuthenticated]);
 
   // Memoize purchase handler to provide stable reference to child components
   const handlePurchase = useCallback((item: StoreItemData) => {
@@ -144,13 +191,33 @@ export default function Store() {
             text: 'Buy',
             onPress: async () => {
               setIsPurchasing(true);
-              // Simulate API call delay
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              setUserCredits(prev => prev - item.price);
-              // In a real app, you'd update the item's owned status here
-              setIsPurchasing(false);
-              haptic.success();
-              Alert.alert('Purchase Successful!', `You now own ${item.name}`);
+              try {
+                // Parse item ID to number (currently stored as string in mock data)
+                const itemId = parseInt(item.id, 10);
+
+                // Call the real API
+                await storeService.purchaseItem(itemId, item.price);
+
+                // Refresh user credits and store items after successful purchase
+                await Promise.all([
+                  fetchUserCredits(false),
+                  fetchStoreItems()
+                ]);
+
+                haptic.success();
+                Alert.alert('Purchase Successful!', `You now own ${item.name}`);
+              } catch (error: any) {
+                console.error('Purchase failed:', error);
+                haptic.error();
+
+                // Show user-friendly error message
+                const errorMessage = error?.response?.data?.message ||
+                                    error?.message ||
+                                    'Failed to complete purchase. Please try again.';
+                Alert.alert('Purchase Failed', errorMessage);
+              } finally {
+                setIsPurchasing(false);
+              }
             }
           }
         ]
@@ -162,7 +229,7 @@ export default function Store() {
       haptic.error();
       Alert.alert('Insufficient Credits', `You need ${item.price - userCredits} more credits to purchase this item`);
     }
-  }, [userCredits]);
+  }, [userCredits, fetchUserCredits]);
 
   const handlePreview = useCallback((item: StoreItemData) => {
     Alert.alert(
@@ -183,10 +250,23 @@ export default function Store() {
   }, []);
 
   const handleTransactionHistory = useCallback(() => {
+    // Refresh transactions when opening the modal to ensure latest data
+    fetchTransactions();
     setTransactionHistoryVisible(true);
+  }, [fetchTransactions]);
+
+  const handleItemPress = useCallback((item: StoreItemData) => {
+    setSelectedItem(item);
+    setDetailSheetVisible(true);
   }, []);
 
-  const currentItems = storeItems[activeCategory] || [];
+  const handleCloseDetailSheet = useCallback(() => {
+    setDetailSheetVisible(false);
+    // Delay clearing selected item for smooth animation
+    setTimeout(() => setSelectedItem(null), 300);
+  }, []);
+
+  const currentItems = storeItemsData[activeCategory] || [];
 
   // Memoize renderStoreItem to prevent recreation on every render
   const renderStoreItem = useCallback(({ item, index }: { item: StoreItemData; index: number }) => (
@@ -198,9 +278,10 @@ export default function Store() {
         item={item}
         userCredits={userCredits}
         onPurchase={handlePurchase}
+        onPress={handleItemPress}
       />
     </View>
-  ), [userCredits, handlePurchase]);
+  ), [userCredits, handlePurchase, handleItemPress]);
 
   // Show loading while authentication is being checked
   if (isLoading) {
@@ -281,15 +362,13 @@ export default function Store() {
 
         {/* Items Grid */}
         <View style={{ paddingHorizontal: 20 }}>
-          {fetchingCredits ? (
+          {(fetchingCredits || fetchingItems) ? (
             <View style={{
               flexDirection: 'row',
               flexWrap: 'wrap',
               justifyContent: 'space-between',
               paddingBottom: 24
             }}>
-              <SkeletonStoreItem />
-              <SkeletonStoreItem />
               <SkeletonStoreItem />
               <SkeletonStoreItem />
               <SkeletonStoreItem />
@@ -307,7 +386,7 @@ export default function Store() {
                 columnWrapperStyle={{ justifyContent: 'space-between' }}
                 // Performance optimizations
                 getItemLayout={(data, index) => {
-                  const ITEM_HEIGHT = 220; // Estimated height of StoreItem card
+                  const ITEM_HEIGHT = 256; // Fixed height of StoreItem card (240) + marginBottom (16)
                   const ROW_INDEX = Math.floor(index / 2); // 2 columns
                   return {
                     length: ITEM_HEIGHT,
@@ -370,6 +449,15 @@ export default function Store() {
       <LoadingOverlay
         visible={isPurchasing}
         message="Processing purchase..."
+      />
+
+      {/* Store Item Detail Sheet */}
+      <StoreItemDetailSheet
+        visible={detailSheetVisible}
+        item={selectedItem}
+        userCredits={userCredits}
+        onClose={handleCloseDetailSheet}
+        onPurchase={handlePurchase}
       />
     </View>
   );

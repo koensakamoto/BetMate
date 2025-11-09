@@ -13,7 +13,9 @@
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
+        },
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to let you choose a profile picture.",
+        "NSCameraUsageDescription": "This app needs access to your camera to let you take a profile picture."
       },
       "bundleIdentifier": "com.anonymous.betmate"
     },
@@ -24,7 +26,12 @@
       },
       "edgeToEdgeEnabled": true,
       "usesCleartextTraffic": true,
-      "package": "com.anonymous.betmate"
+      "package": "com.anonymous.betmate",
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "CAMERA"
+      ]
     },
     "web": {
       "bundler": "metro",

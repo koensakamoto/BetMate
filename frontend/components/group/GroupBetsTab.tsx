@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import BetCard from '../bet/BetCard';
 import { betService, BetSummaryResponse } from '../../services/bet/betService';
@@ -68,7 +67,9 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
   };
 
   // Calculate time remaining until deadline - memoized for performance
-  const calculateTimeRemaining = useCallback((deadline: string): string => {
+  const calculateTimeRemaining = useCallback((deadline: string | null | undefined): string => {
+    if (!deadline) return 'N/A';
+
     const now = new Date();
     const deadlineDate = new Date(deadline);
     const diff = deadlineDate.getTime() - now.getTime();
@@ -85,20 +86,26 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
   }, []);
 
   // Transform backend bet data to frontend format - memoized for performance
-  const transformBetData = useCallback((bet: BetSummaryResponse) => ({
-    id: bet.id.toString(),
-    title: bet.title,
-    description: '',  // Description not in summary, would need full bet details
-    category: bet.betType,
-    categoryIcon: '🎯',  // Default icon
-    timeRemaining: calculateTimeRemaining(bet.bettingDeadline),
-    participantCount: bet.totalParticipants,
-    participantAvatars: [icon, icon, icon],  // Placeholder avatars
-    stakeAmount: Math.round(bet.totalPool / Math.max(bet.totalParticipants, 1)),
-    status: bet.status.toLowerCase() as 'open' | 'active' | 'closed',
-    isJoined: bet.hasUserParticipated,
-    creatorName: bet.creatorUsername
-  }), [calculateTimeRemaining]);
+  const transformBetData = useCallback((bet: BetSummaryResponse) => {
+    const bettingTimeRemaining = calculateTimeRemaining(bet.bettingDeadline);
+    const resolveTimeRemaining = calculateTimeRemaining(bet.resolveDate);
+
+    return {
+      id: bet.id.toString(),
+      title: bet.title,
+      description: '',  // Description not in summary, would need full bet details
+      category: bet.betType,
+      timeRemaining: bettingTimeRemaining,
+      resolveTimeRemaining: resolveTimeRemaining,
+      participantCount: bet.totalParticipants,
+      participantAvatars: [icon, icon, icon],  // Placeholder avatars
+      stakeAmount: Math.round(bet.totalPool / Math.max(bet.totalParticipants, 1)),
+      status: bet.status.toLowerCase() as 'open' | 'active' | 'resolved',
+      isJoined: bet.hasUserParticipated,
+      creatorName: bet.creatorUsername,
+      userStake: bet.userAmount
+    };
+  }, [calculateTimeRemaining]);
 
   // Filter bets based on selected filter - memoized to avoid recalculating on every render
   const filteredBets = useMemo(() => {
@@ -118,33 +125,37 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
 
   return (
     <View>
-      {/* Create Bet Button */}
+      {/* Create Bet Banner */}
       <TouchableOpacity
         onPress={handleCreateBet}
         style={{
-          backgroundColor: '#00D4AA',
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'center',
-          paddingVertical: 14,
-          paddingHorizontal: 20,
-          borderRadius: 12,
-          marginBottom: 20,
-          shadowColor: '#00D4AA',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 8,
-          elevation: 5
+          paddingVertical: 12,
+          paddingHorizontal: 0,
+          marginBottom: 24,
+          borderBottomWidth: 1,
+          borderBottomColor: 'rgba(255, 255, 255, 0.1)'
         }}
       >
-        <MaterialIcons name="add-circle" size={20} color="#000000" style={{ marginRight: 8 }} />
         <Text style={{
-          fontSize: 16,
-          fontWeight: '600',
-          color: '#000000'
-        }}>
-          Create New Bet
-        </Text>
+          fontSize: 20,
+          color: 'rgba(255, 255, 255, 0.4)',
+          marginRight: 12
+        }}>+</Text>
+
+        <View style={{ flex: 1 }}>
+          <Text style={{
+            fontSize: 16,
+            color: '#ffffff',
+            marginBottom: 2
+          }}>Create New Bet</Text>
+
+          <Text style={{
+            fontSize: 12,
+            color: 'rgba(255, 255, 255, 0.5)'
+          }}>Challenge friends with your predictions</Text>
+        </View>
       </TouchableOpacity>
 
       {/* Bet Filters */}

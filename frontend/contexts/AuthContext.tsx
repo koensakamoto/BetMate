@@ -185,22 +185,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const login = async (data: LoginData) => {
+    console.log('🔐 [AuthContext] Login function called', { email: data.email });
     try {
       setIsLoading(true);
       setError(null);
-      
+      console.log('🔐 [AuthContext] Calling authService.login...');
+
       const response = await authService.login({
         usernameOrEmail: data.email,
         password: data.password,
       });
 
+      console.log('✅ [AuthContext] Login response received:', {
+        userId: response.user.id,
+        username: response.user.username,
+        credits: response.user.totalCredits,
+        fullUser: response.user
+      });
+
       const transformedUser = transformUser(response.user);
+      console.log('✅ [AuthContext] User transformed, setting user state:', {
+        id: transformedUser.id,
+        username: transformedUser.username,
+        credits: transformedUser.credits
+      });
       setUser(transformedUser);
-      
+      console.log('✅ [AuthContext] User state updated successfully');
+
       debugLog('Login successful for user:', transformedUser.username);
     } catch (error) {
       const authError = handleAuthError(error);
       setError(authError);
+      setUser(null); // Clear user state on login failure
       errorLog('Login failed:', error);
       throw authError;
     } finally {
@@ -212,7 +228,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const response = await authService.signup({
         firstName: data.firstName,
         lastName: data.lastName,
@@ -223,11 +239,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const transformedUser = transformUser(response.user);
       setUser(transformedUser);
-      
+
       debugLog('Signup successful for user:', transformedUser.username);
     } catch (error) {
       const authError = handleAuthError(error);
       setError(authError);
+      setUser(null); // Clear user state on signup failure
       errorLog('Signup failed:', error);
       throw authError;
     } finally {

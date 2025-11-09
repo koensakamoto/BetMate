@@ -12,7 +12,7 @@ import {
   Dimensions
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MessageResponse, SendMessageRequest, MessageType } from '../../types/api';
 
@@ -44,15 +44,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const insets = useSafeAreaInsets();
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
   const [inputHeight, setInputHeight] = useState(36);
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Smooth animations for professional feel
-  const attachmentRotation = useRef(new Animated.Value(0)).current;
   const borderOpacity = useRef(new Animated.Value(0.1)).current;
+  const sendButtonScale = useRef(new Animated.Value(0.8)).current;
+  const inputContainerHeight = useRef(new Animated.Value(40)).current;
 
   // Auto-focus when replying or editing
   useEffect(() => {
@@ -76,6 +76,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const handleTextChange = useCallback((text: string) => {
     setMessage(text);
 
+    // Animate send button when text is entered/cleared
+    Animated.spring(sendButtonScale, {
+      toValue: text.trim().length > 0 ? 1 : 0.8,
+      useNativeDriver: true,
+      tension: 150,
+      friction: 8,
+    }).start();
+
     // Handle typing indicators
     if (onTyping && text.trim().length > 0) {
       onTyping(true);
@@ -95,7 +103,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
         clearTimeout(typingTimeoutRef.current);
       }
     }
-  }, [onTyping]);
+  }, [onTyping, sendButtonScale]);
 
   const handleSend = async () => {
     const trimmedMessage = message.trim();
@@ -103,7 +111,22 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
     // Haptic feedback and animation
     setIsSending(true);
-    
+
+    // Bounce animation on send button - like iMessage
+    Animated.sequence([
+      Animated.spring(sendButtonScale, {
+        toValue: 0.7,
+        useNativeDriver: true,
+        tension: 200,
+        friction: 5,
+      }),
+      Animated.spring(sendButtonScale, {
+        toValue: 0.8,
+        useNativeDriver: true,
+        tension: 150,
+        friction: 8,
+      })
+    ]).start();
 
     try {
       const request: SendMessageRequest = {
@@ -118,26 +141,35 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
       // Clear the input and reset states with smooth spring animation
       LayoutAnimation.configureNext({
-        duration: 250,
+        duration: 200,
         create: {
           type: LayoutAnimation.Types.spring,
           property: LayoutAnimation.Properties.opacity,
-          springDamping: 0.8,
+          springDamping: 0.9,
         },
         update: {
           type: LayoutAnimation.Types.spring,
-          springDamping: 0.8,
+          springDamping: 0.9,
         },
       });
       setMessage('');
       setInputHeight(36);
+
+      // Smooth height reset animation
+      Animated.spring(inputContainerHeight, {
+        toValue: 40,
+        useNativeDriver: false,
+        tension: 100,
+        friction: 10,
+      }).start();
+
       if (onTyping) onTyping(false);
       if (replyToMessage && onCancelReply) onCancelReply();
       if (editingMessage && onCancelEdit) onCancelEdit();
 
       // Dismiss keyboard smoothly
       Keyboard.dismiss();
-      
+
     } catch (error) {
       console.error('Failed to send message:', error);
       Alert.alert('Error', 'Failed to send message. Please try again.');
@@ -146,66 +178,47 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
   };
 
-  const handleAttachment = () => {
-    // Smooth spring animation for attachment button rotation
-    Animated.spring(attachmentRotation, {
-      toValue: showAttachmentOptions ? 0 : 1,
-      tension: 200,
-      friction: 15,
-      useNativeDriver: true,
-    }).start();
-
-    setShowAttachmentOptions(!showAttachmentOptions);
-  };
-
-  const handlePhotoAttachment = () => {
-    setShowAttachmentOptions(false);
-    attachmentRotation.setValue(0);
-    // TODO: Implement photo picker
-    Alert.alert('📷 Camera', 'Photo capture coming soon!');
-  };
-
-  const handleFileAttachment = () => {
-    setShowAttachmentOptions(false);
-    attachmentRotation.setValue(0);
-    // TODO: Implement file picker
-    Alert.alert('📎 Files', 'File attachments coming soon!');
-  };
 
   const handleContentSizeChange = (event: any) => {
     const { height } = event.nativeEvent.contentSize;
     const newHeight = Math.min(Math.max(height, 36), 100);
+
+    // Smooth spring animation for height changes - like iMessage
+    Animated.spring(inputContainerHeight, {
+      toValue: newHeight + 8,
+      useNativeDriver: false,
+      tension: 100,
+      friction: 10,
+    }).start();
+
     setInputHeight(newHeight);
   };
 
   const handleFocus = () => {
     setIsFocused(true);
-    // Smooth border animation on focus - like iMessage
-    Animated.timing(borderOpacity, {
+    // Smooth spring animation on focus - like iMessage
+    Animated.spring(borderOpacity, {
       toValue: 0.3,
-      duration: 200,
       useNativeDriver: false,
+      tension: 100,
+      friction: 8,
     }).start();
   };
 
   const handleBlur = () => {
     setIsFocused(false);
-    // Smooth border animation on blur
-    Animated.timing(borderOpacity, {
+    // Smooth spring animation on blur
+    Animated.spring(borderOpacity, {
       toValue: 0.1,
-      duration: 200,
       useNativeDriver: false,
+      tension: 100,
+      friction: 8,
     }).start();
   };
 
   const canSend = message.trim().length > 0 && !isSending && !disabled;
   const isEditing = !!editingMessage;
   const isReplying = !!replyToMessage;
-
-  const rotateInterpolation = attachmentRotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '45deg']
-  });
 
   return (
     <View style={{
@@ -270,48 +283,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
         </Animated.View>
       )}
 
-      {/* Attachment Options */}
-      {showAttachmentOptions && (
-        <Animated.View style={{
-          flexDirection: 'row',
-          justifyContent: 'space-around',
-          paddingVertical: 6,
-          marginBottom: 8
-        }}>
-          <TouchableOpacity
-            onPress={handlePhotoAttachment}
-            style={{
-              alignItems: 'center',
-              backgroundColor: 'rgba(255, 100, 150, 0.2)',
-              borderRadius: 16,
-              padding: 8,
-              minWidth: 48
-            }}
-          >
-            <Ionicons name="camera" size={20} color="#FF6496" />
-            <Text style={{ color: '#FF6496', fontSize: 10, marginTop: 2, fontWeight: '600' }}>
-              Camera
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            onPress={handleFileAttachment}
-            style={{
-              alignItems: 'center',
-              backgroundColor: 'rgba(100, 150, 255, 0.2)',
-              borderRadius: 16,
-              padding: 8,
-              minWidth: 48
-            }}
-          >
-            <Ionicons name="document" size={20} color="#6496FF" />
-            <Text style={{ color: '#6496FF', fontSize: 10, marginTop: 2, fontWeight: '600' }}>
-              Files
-            </Text>
-          </TouchableOpacity>
-        </Animated.View>
-      )}
-
       {/* Main input container with smooth animations */}
       <Animated.View style={{
         flexDirection: 'row',
@@ -320,44 +291,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
         borderRadius: 20,
         paddingHorizontal: 4,
         paddingVertical: 4,
-        borderWidth: 1,
-        borderColor: message.trim().length > 0
-          ? 'rgba(0, 212, 170, 0.3)'
-          : borderOpacity.interpolate({
-              inputRange: [0.1, 0.3],
-              outputRange: ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.3)']
-            }),
-        // Subtle shadow on focus for depth - like iMessage
-        shadowColor: '#00D4AA',
-        shadowOffset: { width: 0, height: isFocused ? 2 : 0 },
-        shadowOpacity: isFocused ? 0.15 : 0,
-        shadowRadius: isFocused ? 8 : 0,
-        elevation: isFocused ? 3 : 0
+        borderWidth: 0,
       }}>
-        {/* Attachment button */}
-        <TouchableOpacity
-          onPress={handleAttachment}
-          disabled={disabled}
-          style={{
-            marginLeft: 6,
-            marginRight: 2,
-            opacity: disabled ? 0.5 : 1,
-            padding: 6
-          }}
-        >
-          <Animated.View
-            style={{
-              transform: [{ rotate: rotateInterpolation }]
-            }}
-          >
-            <MaterialIcons
-              name="add"
-              size={20}
-              color={showAttachmentOptions ? '#00D4AA' : 'rgba(255, 255, 255, 0.7)'}
-            />
-          </Animated.View>
-        </TouchableOpacity>
-
         {/* Text input */}
         <TextInput
           ref={inputRef}
@@ -386,7 +321,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
           onSubmitEditing={handleSend}
         />
 
-        {/* Send button */}
+        {/* Send button with smooth scale animation */}
         <TouchableOpacity
           onPress={handleSend}
           disabled={!canSend}
@@ -396,14 +331,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
             paddingVertical: 2
           }}
         >
-          <View
+          <Animated.View
             style={{
               borderRadius: 16,
               width: 32,
               height: 32,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: canSend ? '#00D4AA' : 'rgba(255, 255, 255, 0.2)',
+              backgroundColor: canSend ? '#3B82F6' : 'rgba(255, 255, 255, 0.2)',
+              transform: [{ scale: sendButtonScale }],
             }}
           >
             {isSending ? (
@@ -415,7 +351,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
                 color="#FFFFFF"
               />
             )}
-          </View>
+          </Animated.View>
         </TouchableOpacity>
       </Animated.View>
     </View>

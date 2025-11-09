@@ -10,7 +10,8 @@ export interface StoreItemData {
   name: string;
   description: string;
   price: number;
-  emoji: string;
+  emoji?: string; // Deprecated, use icon instead
+  icon: string; // MaterialIcons name
   itemType: ItemType;
   category: ItemCategory;
   rarity: Rarity;
@@ -26,9 +27,10 @@ interface StoreItemProps {
   item: StoreItemData;
   userCredits: number;
   onPurchase: (item: StoreItemData) => void;
+  onPress?: (item: StoreItemData) => void;
 }
 
-function StoreItem({ item, userCredits, onPurchase }: StoreItemProps) {
+function StoreItem({ item, userCredits, onPurchase, onPress }: StoreItemProps) {
   const canAfford = userCredits >= item.price;
 
   // Memoize rarity colors to avoid recalculation on every render
@@ -60,24 +62,29 @@ function StoreItem({ item, userCredits, onPurchase }: StoreItemProps) {
   }, [item.rarity]);
 
   return (
-    <View
+    <TouchableOpacity
+      onPress={() => {
+        haptic.light();
+        onPress?.(item);
+      }}
+      activeOpacity={0.7}
       style={{
         backgroundColor: 'rgba(255, 255, 255, 0.02)',
-        borderRadius: 20,
-        padding: 20,
-        marginBottom: 20,
+        borderRadius: 16,
+        padding: 14,
+        marginBottom: 16,
         borderWidth: 1,
         borderColor: rarityStyles.color,
         opacity: item.isOwned ? 0.8 : 1,
         position: 'relative',
         shadowColor: rarityStyles.color,
-        shadowOffset: { width: 0, height: 6 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 4
+        shadowRadius: 8,
+        elevation: 3,
+        height: 240
       }}
     >
-
       {/* Rarity Indicator */}
       <View style={{
         position: 'absolute',
@@ -95,28 +102,24 @@ function StoreItem({ item, userCredits, onPurchase }: StoreItemProps) {
         zIndex: 1
       }} />
 
-      {/* Item Header */}
+      {/* Item Icon */}
       <View style={{
         alignItems: 'center',
         marginBottom: 16
       }}>
-        {/* Item Icon */}
         <View style={{
-          width: 68,
-          height: 68,
+          width: 72,
+          height: 72,
           backgroundColor: 'rgba(255, 255, 255, 0.06)',
-          borderRadius: 20,
+          borderRadius: 18,
           alignItems: 'center',
           justifyContent: 'center',
-          marginBottom: 16,
           borderWidth: 1,
           borderColor: 'rgba(255, 255, 255, 0.1)',
           position: 'relative'
         }}>
-          <Text style={{ fontSize: 32 }}>
-            {item.emoji}
-          </Text>
-          {/* Subtle rarity accent */}
+          <MaterialIcons name={item.icon as any} size={36} color={rarityStyles.color} />
+          {/* Rarity accent bar */}
           <View style={{
             position: 'absolute',
             bottom: -1,
@@ -124,89 +127,64 @@ function StoreItem({ item, userCredits, onPurchase }: StoreItemProps) {
             right: -1,
             height: 3,
             backgroundColor: rarityStyles.color,
-            borderBottomLeftRadius: 20,
-            borderBottomRightRadius: 20,
+            borderBottomLeftRadius: 18,
+            borderBottomRightRadius: 18,
             opacity: 0.8
           }} />
         </View>
+      </View>
 
-        {/* Item Info */}
+      {/* Item Info */}
+      <View style={{
+        marginBottom: 16,
+        height: 44
+      }}>
+        {/* Item Name */}
         <Text style={{
           fontSize: 15,
-          fontWeight: '600',
+          fontWeight: '700',
           color: '#ffffff',
-          marginBottom: 4,
           textAlign: 'center',
           letterSpacing: 0.2
-        }} numberOfLines={1}>
+        }} numberOfLines={2}>
           {item.name}
         </Text>
-        
-        <Text style={{
-          fontSize: 12,
-          color: 'rgba(255, 255, 255, 0.6)',
-          lineHeight: 16,
-          textAlign: 'center',
-          paddingHorizontal: 4
-        }} numberOfLines={2}>
-          {item.description}
-        </Text>
-
       </View>
 
       {/* Price and Action */}
       <View style={{
         alignItems: 'center',
-        gap: 12
+        gap: 8
       }}>
         {/* Price */}
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <MaterialIcons name="monetization-on" size={16} color="#FFD700" />
-          <View style={{ marginLeft: 4 }}>
-            {item.discount ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{
-                  fontSize: 12,
-                  color: 'rgba(255, 255, 255, 0.5)',
-                  textDecorationLine: 'line-through',
-                  marginRight: 6
-                }}>
-                  {item.price}
-                </Text>
-                <Text style={{
-                  fontSize: 18,
-                  fontWeight: '700',
-                  color: '#FFD700'
-                }}>
-                  {finalPrice}
-                </Text>
-              </View>
-            ) : (
-              <Text style={{
-                fontSize: 18,
-                fontWeight: '700',
-                color: '#FFD700'
-              }}>
-                {item.price}
-              </Text>
-            )}
-          </View>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center'
+        }}>
+          <MaterialIcons name="monetization-on" size={14} color="#FFD700" />
+          <Text style={{
+            fontSize: 16,
+            fontWeight: '700',
+            color: '#FFD700',
+            marginLeft: 4
+          }}>
+            {item.price}
+          </Text>
         </View>
 
         {/* Action Button */}
         {item.isOwned ? (
           <View style={{
             backgroundColor: 'rgba(0, 212, 170, 0.15)',
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            borderRadius: 16,
+            paddingHorizontal: 14,
+            paddingVertical: 7,
+            borderRadius: 12,
             flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center'
+            alignItems: 'center'
           }}>
-            <MaterialIcons name="check" size={14} color="#00D4AA" />
+            <MaterialIcons name="check" size={12} color="#00D4AA" />
             <Text style={{
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: '600',
               color: '#00D4AA',
               marginLeft: 4
@@ -222,30 +200,29 @@ function StoreItem({ item, userCredits, onPurchase }: StoreItemProps) {
               onPurchase(item);
             }}
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              paddingHorizontal: 16,
+              backgroundColor: canAfford ? '#00D4AA' : 'rgba(255, 255, 255, 0.08)',
+              paddingHorizontal: 18,
               paddingVertical: 8,
-              borderRadius: 16,
+              borderRadius: 12,
               alignItems: 'center',
-              borderWidth: 0.5,
+              borderWidth: canAfford ? 0 : 0.5,
               borderColor: 'rgba(255, 255, 255, 0.15)',
-              opacity: canAfford ? 1 : 0.4
+              minWidth: 70
             }}
             disabled={!canAfford}
             activeOpacity={0.7}
           >
             <Text style={{
               fontSize: 12,
-              fontWeight: '600',
-              color: canAfford ? '#ffffff' : 'rgba(255, 255, 255, 0.5)'
+              fontWeight: '700',
+              color: canAfford ? '#000000' : 'rgba(255, 255, 255, 0.5)'
             }}>
               Buy
             </Text>
           </TouchableOpacity>
         )}
       </View>
-
-    </View>
+    </TouchableOpacity>
   );
 }
 

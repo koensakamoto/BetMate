@@ -5,6 +5,16 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { groupService, GroupDetailResponse } from '../../../services/group/groupService';
 import { useAuth } from '../../../contexts/AuthContext';
+import { ENV } from '../../../config/env';
+
+// Helper function to convert relative image URL to absolute URL
+const getFullImageUrl = (relativePath: string | null | undefined): string | null => {
+  if (!relativePath) return null;
+  if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+    return relativePath;
+  }
+  return `${ENV.API_BASE_URL}${relativePath}`;
+};
 
 export default function GroupPreview() {
   const insets = useSafeAreaInsets();
@@ -13,6 +23,16 @@ export default function GroupPreview() {
   const [groupData, setGroupData] = useState<GroupDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
+
+  // Get group initials from name
+  const getGroupInitials = (name: string) => {
+    if (!name) return 'G';
+    const words = name.trim().split(/\s+/);
+    if (words.length === 1) {
+      return words[0].charAt(0).toUpperCase();
+    }
+    return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+  };
 
   // Fetch group data
   useEffect(() => {
@@ -115,28 +135,36 @@ export default function GroupPreview() {
             marginBottom: 24
           }}>
             {/* Group Image */}
-            <View style={{
-              width: 120,
-              height: 120,
-              borderRadius: 24,
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginBottom: 16
-            }}>
-              {groupData.groupImage ? (
-                <Image
-                  source={{ uri: groupData.groupImage }}
-                  style={{
-                    width: 120,
-                    height: 120,
-                    borderRadius: 24
-                  }}
-                />
-              ) : (
-                <MaterialIcons name="group" size={48} color="rgba(255, 255, 255, 0.6)" />
-              )}
-            </View>
+            {getFullImageUrl(groupData.groupPictureUrl) ? (
+              <Image
+                source={{ uri: getFullImageUrl(groupData.groupPictureUrl)! }}
+                style={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: 24,
+                  marginBottom: 16
+                }}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={{
+                width: 120,
+                height: 120,
+                borderRadius: 24,
+                backgroundColor: 'rgba(0, 212, 170, 0.2)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 16
+              }}>
+                <Text style={{
+                  fontSize: 48,
+                  fontWeight: '700',
+                  color: '#00D4AA'
+                }}>
+                  {getGroupInitials(groupData.groupName)}
+                </Text>
+              </View>
+            )}
 
             {/* Group Name */}
             <Text style={{
@@ -221,14 +249,14 @@ export default function GroupPreview() {
                   color: '#ffffff',
                   marginBottom: 4
                 }}>
-                  {groupData.totalBets || 0}
+                  {groupData.totalMessages || 0}
                 </Text>
                 <Text style={{
                   fontSize: 12,
                   color: 'rgba(255, 255, 255, 0.6)',
                   fontWeight: '500'
                 }}>
-                  Total Bets
+                  Messages
                 </Text>
               </View>
 

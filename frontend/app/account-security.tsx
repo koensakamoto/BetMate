@@ -112,11 +112,7 @@ export default function AccountSecurity() {
   );
 
   const handleChangePassword = () => {
-    Alert.alert(
-      'Change Password',
-      'You will be redirected to change your password.',
-      [{ text: 'OK' }]
-    );
+    router.push('/change-password');
   };
 
   const handleTwoFactor = () => {
@@ -252,9 +248,6 @@ export default function AccountSecurity() {
             description="Update your account password"
             onPress={handleChangePassword}
             icon="lock"
-            showStatus={true}
-            status="Last changed 3 months ago"
-            statusColor="rgba(255, 255, 255, 0.5)"
           />
           <SecurityItem
             title="Two-Factor Authentication"

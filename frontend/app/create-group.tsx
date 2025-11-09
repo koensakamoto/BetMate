@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, KeyboardAvoidingView, Platform, TextInput, Alert } from 'react-native';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, KeyboardAvoidingView, Platform, TextInput, Alert, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { groupService } from '../services/group/groupService';
 import { debugLog, errorLog } from '../config/env';
+
+const defaultIcon = require("../assets/images/icon.png");
 
 export default function CreateGroup() {
   const insets = useSafeAreaInsets();
@@ -14,7 +17,8 @@ export default function CreateGroup() {
     description: '',
     privacy: 'public' // 'public' or 'private'
   });
-  
+
+  const [groupPhoto, setGroupPhoto] = useState<string | null>(null);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [isCreating, setIsCreating] = useState(false);
 
@@ -24,6 +28,76 @@ export default function CreateGroup() {
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+  };
+
+  const pickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Sorry, we need camera roll permissions to select a group photo.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setGroupPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      errorLog('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Sorry, we need camera permissions to take a photo.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setGroupPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      errorLog('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  const showImagePicker = () => {
+    Alert.alert(
+      'Group Photo',
+      'How would you like to add a group photo?',
+      [
+        { text: 'Camera', onPress: takePhoto },
+        { text: 'Photo Library', onPress: pickImage },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
   };
 
   const validateForm = (): boolean => {
@@ -56,21 +130,33 @@ export default function CreateGroup() {
 
     try {
       setIsCreating(true);
-      
+
       const newGroup = await groupService.createGroup({
         groupName: formData.name.trim(),
         description: formData.description.trim(),
         privacy: formData.privacy === 'public' ? 'PUBLIC' : 'PRIVATE'
       });
-      
+
       debugLog('Group created successfully:', newGroup);
-      
+
+      // Upload group photo if selected
+      if (groupPhoto) {
+        try {
+          const fileName = groupPhoto.split('/').pop() || `group_${newGroup.id}_${Date.now()}.jpg`;
+          await groupService.uploadGroupPicture(newGroup.id, groupPhoto, fileName);
+          debugLog('Group photo uploaded successfully');
+        } catch (photoErr: any) {
+          errorLog('Failed to upload group photo:', photoErr);
+          // Don't fail the whole creation if photo upload fails
+        }
+      }
+
       Alert.alert(
         'Success',
         'Group created successfully!',
         [
-          { 
-            text: 'OK', 
+          {
+            text: 'OK',
             onPress: () => {
               // Navigate back to groups page and the useFocusEffect will refresh the data
               router.back();
@@ -141,6 +227,75 @@ export default function CreateGroup() {
               color: '#ffffff'
             }}>
               Create Group
+            </Text>
+          </View>
+
+          {/* Group Photo */}
+          <View style={{
+            alignItems: 'center',
+            marginBottom: 32
+          }}>
+            <TouchableOpacity
+              onPress={showImagePicker}
+              activeOpacity={0.8}
+            >
+              <View style={{
+                width: 100,
+                height: 100,
+                borderRadius: 50,
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                position: 'relative',
+                borderWidth: 2,
+                borderColor: 'rgba(0, 212, 170, 0.3)'
+              }}>
+                {groupPhoto ? (
+                  <Image
+                    source={{ uri: groupPhoto }}
+                    style={{
+                      width: 100,
+                      height: 100,
+                      borderRadius: 50
+                    }}
+                  />
+                ) : (
+                  <MaterialIcons
+                    name="groups"
+                    size={40}
+                    color="rgba(255, 255, 255, 0.4)"
+                  />
+                )}
+
+                {/* Camera icon overlay */}
+                <View style={{
+                  position: 'absolute',
+                  bottom: -2,
+                  right: -2,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: '#00D4AA',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderWidth: 2,
+                  borderColor: '#0a0a0f'
+                }}>
+                  <MaterialIcons
+                    name="camera-alt"
+                    size={14}
+                    color="#ffffff"
+                  />
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            <Text style={{
+              fontSize: 14,
+              color: 'rgba(255, 255, 255, 0.6)',
+              marginTop: 12
+            }}>
+              Tap to add group photo
             </Text>
           </View>
 

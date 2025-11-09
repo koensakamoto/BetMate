@@ -385,11 +385,24 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
 
     setIsUpdating(true);
     try {
-      // For now, we'll just simulate the photo upload
-      // In a real app, you'd upload the photo to your server first
-      
-      Alert.alert('Success', 'Group photo will be updated when backend photo upload is implemented!');
-      
+      // Extract filename from URI
+      const uriParts = selectedPhoto.split('/');
+      const fileName = uriParts[uriParts.length - 1];
+
+      // Upload the photo
+      const updatedGroup = await groupService.uploadGroupPicture(
+        groupData.id,
+        selectedPhoto,
+        fileName
+      );
+
+      // Notify parent component of update
+      if (onGroupUpdated) {
+        onGroupUpdated(updatedGroup);
+      }
+
+      Alert.alert('Success', 'Group photo updated successfully!');
+
       setShowEditPhotoModal(false);
       setSelectedPhoto(null);
     } catch (error) {
@@ -577,17 +590,6 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
           }
         />
       </SettingSection>
-
-      {/* Member Management */}
-      <SettingSection title="Member Management">
-        <SettingItem
-          materialIcon="person-add"
-          title="Pending Requests"
-          description="Review join requests"
-          onPress={() => {}}
-        />
-      </SettingSection>
-
 
       {/* Danger Zone */}
       <TouchableOpacity 

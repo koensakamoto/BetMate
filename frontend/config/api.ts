@@ -36,11 +36,16 @@ export const API_ENDPOINTS = {
   GROUP_CREATE: '/groups',
   GROUP_BY_ID: (id: number) => `/groups/${id}`,
   GROUP_UPDATE: (id: number) => `/groups/${id}`,
+  GROUP_PICTURE: (id: number) => `/groups/${id}/picture`,
   GROUP_MEMBERS: (id: number) => `/groups/${id}/members`,
   GROUP_PUBLIC: '/groups/public',
   GROUP_MY_GROUPS: '/groups/my-groups',
   GROUP_SEARCH: '/groups/search',
   GROUP_CHECK_NAME: '/groups/check-name',
+  GROUP_PENDING_REQUESTS: (groupId: number) => `/groups/${groupId}/pending-requests`,
+  GROUP_PENDING_REQUESTS_COUNT: (groupId: number) => `/groups/${groupId}/pending-requests/count`,
+  GROUP_APPROVE_REQUEST: (groupId: number, requestId: number) => `/groups/${groupId}/pending-requests/${requestId}/approve`,
+  GROUP_DENY_REQUEST: (groupId: number, requestId: number) => `/groups/${groupId}/pending-requests/${requestId}/deny`,
   
   // Bets
   BETS: '/bets',
@@ -53,6 +58,7 @@ export const API_ENDPOINTS = {
   USERS: '/users',
   USER_BY_ID: (id: number) => `/users/${id}`,
   USER_PROFILE: '/users/profile',
+  USER_PROFILE_PICTURE: '/users/profile/picture',
   USER_SEARCH: '/users/search',
   USER_STATS: (id: number) => `/users/${id}/stats`,
   

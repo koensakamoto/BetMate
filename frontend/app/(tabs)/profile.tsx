@@ -6,13 +6,25 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { userService, UserProfileResponse, UserStatistics } from '../../services/user/userService';
 import { friendshipService } from '../../services/friendship/friendshipService';
-import { debugLog, errorLog } from '../../config/env';
+import { debugLog, errorLog, ENV } from '../../config/env';
 import { NotificationIconButton } from '../../components/ui/NotificationBadge';
 import { SkeletonProfile } from '../../components/common/SkeletonCard';
 import { formatNumber, formatPercentage } from '../../utils/formatters';
-import { ACHIEVEMENTS } from '../../constants/profile';
+import { storeService, InventoryItemResponse } from '../../services/store/storeService';
+import InventoryItemDetailSheet from '../../components/store/InventoryItemDetailSheet';
 
 const icon = require("../../assets/images/icon.png");
+
+// Helper function to get full image URL
+const getFullImageUrl = (imageUrl: string | null | undefined): string | null => {
+  if (!imageUrl) return null;
+  // If it's already a full URL, return as-is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  // If it's a relative URL, prepend the base URL
+  return `${ENV.API_BASE_URL}${imageUrl}`;
+};
 
 export default function Profile() {
   const insets = useSafeAreaInsets();
@@ -24,7 +36,11 @@ export default function Profile() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const tabs = ['Stats', 'Achievements'];
+  const [inventory, setInventory] = useState<InventoryItemResponse[]>([]);
+  const [loadingInventory, setLoadingInventory] = useState(false);
+  const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItemResponse | null>(null);
+  const [inventoryDetailVisible, setInventoryDetailVisible] = useState(false);
+  const tabs = ['Stats', 'Inventory'];
 
   // Cache management: 5 minute cache
   const lastFetchTime = useRef<number>(0);
@@ -90,10 +106,43 @@ export default function Profile() {
     }
   };
 
+  // Fetch user inventory
+  const fetchInventory = useCallback(async () => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    try {
+      setLoadingInventory(true);
+      const items = await storeService.getUserInventory();
+      console.log('=== INVENTORY DEBUG ===');
+      console.log('First item:', items[0]);
+      console.log('Short description:', items[0]?.shortDescription);
+      console.log('Description:', items[0]?.description);
+      console.log('======================');
+      setInventory(items);
+      debugLog('User inventory loaded:', items);
+    } catch (err: any) {
+      errorLog('Failed to load inventory:', err);
+    } finally {
+      setLoadingInventory(false);
+    }
+  }, [isAuthenticated]);
+
+  // Fetch inventory when Inventory tab is active
+  useEffect(() => {
+    if (activeTab === 1 && isAuthenticated) {
+      fetchInventory();
+    }
+  }, [activeTab, isAuthenticated, fetchInventory]);
+
   // Pull-to-refresh handler
   const onRefresh = useCallback(() => {
     loadUserData(true);
-  }, []);
+    if (activeTab === 1) {
+      fetchInventory();
+    }
+  }, [activeTab, fetchInventory]);
 
 
   // Memoize detailed stats array to avoid recalculating on every render
@@ -122,6 +171,40 @@ export default function Profile() {
   const navigateToFriendsList = useCallback(() => {
     router.push('/friends-list');
   }, []);
+
+  const handleInventoryItemPress = useCallback((item: InventoryItemResponse) => {
+    setSelectedInventoryItem(item);
+    setInventoryDetailVisible(true);
+  }, []);
+
+  const handleCloseInventoryDetail = useCallback(() => {
+    setInventoryDetailVisible(false);
+    setTimeout(() => setSelectedInventoryItem(null), 300);
+  }, []);
+
+  const handleEquipItem = useCallback(async (item: InventoryItemResponse) => {
+    try {
+      await storeService.equipItem(item.id);
+      // Refresh inventory to get updated status
+      await fetchInventory();
+      handleCloseInventoryDetail();
+    } catch (error: any) {
+      errorLog('Failed to equip item:', error);
+      Alert.alert('Error', 'Failed to activate item. Please try again.');
+    }
+  }, [fetchInventory]);
+
+  const handleUnequipItem = useCallback(async (item: InventoryItemResponse) => {
+    try {
+      await storeService.unequipItem(item.id);
+      // Refresh inventory to get updated status
+      await fetchInventory();
+      handleCloseInventoryDetail();
+    } catch (error: any) {
+      errorLog('Failed to unequip item:', error);
+      Alert.alert('Error', 'Failed to deactivate item. Please try again.');
+    }
+  }, [fetchInventory]);
 
   // Show loading while checking authentication or loading profile data
   if (authLoading || isLoading) {
@@ -268,14 +351,34 @@ export default function Profile() {
           {/* Avatar & Basic Info */}
           <View style={{ alignItems: 'center', marginBottom: 20 }}>
             <View style={{ position: 'relative', marginBottom: 12 }}>
-              <Image 
-                source={icon}
-                style={{ 
-                  width: 90, 
-                  height: 90, 
-                  borderRadius: 45
-                }}
-              />
+              {getFullImageUrl(userProfile?.profileImageUrl) ? (
+                <Image
+                  source={{ uri: getFullImageUrl(userProfile?.profileImageUrl)! }}
+                  style={{
+                    width: 90,
+                    height: 90,
+                    borderRadius: 45
+                  }}
+                  defaultSource={icon}
+                />
+              ) : (
+                <View style={{
+                  width: 90,
+                  height: 90,
+                  borderRadius: 45,
+                  backgroundColor: 'rgba(0, 212, 170, 0.2)',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}>
+                  <Text style={{
+                    fontSize: 32,
+                    fontWeight: '700',
+                    color: '#00D4AA'
+                  }}>
+                    {userProfile?.firstName?.charAt(0).toUpperCase() || ''}{userProfile?.lastName?.charAt(0).toUpperCase() || ''}
+                  </Text>
+                </View>
+              )}
               {/* Subtle ring indicator */}
               <View style={{
                 position: 'absolute',
@@ -602,7 +705,7 @@ export default function Profile() {
           )}
 
           {activeTab === 1 && (
-            /* Achievements Tab */
+            /* Inventory Tab */
             <View>
               <Text style={{
                 fontSize: 16,
@@ -610,58 +713,203 @@ export default function Profile() {
                 color: '#ffffff',
                 marginBottom: 16
               }}>
-                Achievements
+                My Items
               </Text>
-              
-              <View style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                gap: 12
-              }}>
-                {ACHIEVEMENTS.map((achievement, index) => (
-                  <View key={index} style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                    padding: 16,
-                    borderRadius: 12,
-                    width: '47%',
-                    alignItems: 'center'
+
+              {loadingInventory ? (
+                <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                  <ActivityIndicator size="large" color="#00D4AA" />
+                </View>
+              ) : inventory.length === 0 ? (
+                <View style={{
+                  alignItems: 'center',
+                  paddingVertical: 60
+                }}>
+                  <MaterialIcons name="inventory-2" size={48} color="rgba(255, 255, 255, 0.3)" />
+                  <Text style={{
+                    fontSize: 16,
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    textAlign: 'center',
+                    marginTop: 16,
+                    fontWeight: '500'
                   }}>
-                    <View style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: achievement.color,
-                      marginBottom: 12,
-                      justifyContent: 'center',
-                      alignItems: 'center'
-                    }}>
-                      <Text style={{ fontSize: 18 }}>🏆</Text>
-                    </View>
-                    <Text style={{
-                      fontSize: 14,
-                      fontWeight: '600',
-                      color: '#ffffff',
-                      textAlign: 'center',
-                      marginBottom: 4
-                    }}>
-                      {achievement.title}
-                    </Text>
-                    <Text style={{
-                      fontSize: 12,
-                      color: 'rgba(255, 255, 255, 0.5)',
-                      textAlign: 'center'
-                    }}>
-                      {achievement.desc}
-                    </Text>
-                  </View>
-                ))}
-              </View>
+                    No items yet
+                  </Text>
+                  <Text style={{
+                    fontSize: 14,
+                    color: 'rgba(255, 255, 255, 0.4)',
+                    textAlign: 'center',
+                    marginTop: 8
+                  }}>
+                    Visit the store to purchase items
+                  </Text>
+                </View>
+              ) : (
+                <View style={{
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  gap: 12
+                }}>
+                  {inventory.map((item) => {
+                    // Map rarity to enhanced colors and icons
+                    const rarityConfig: Record<string, { bgColor: string; borderColor: string; textColor: string; icon: string }> = {
+                      'COMMON': {
+                        bgColor: 'rgba(156, 163, 175, 0.1)',
+                        borderColor: 'rgba(156, 163, 175, 0.3)',
+                        textColor: '#9CA3AF',
+                        icon: '⚪'
+                      },
+                      'UNCOMMON': {
+                        bgColor: 'rgba(16, 185, 129, 0.1)',
+                        borderColor: 'rgba(16, 185, 129, 0.3)',
+                        textColor: '#10B981',
+                        icon: '🟢'
+                      },
+                      'RARE': {
+                        bgColor: 'rgba(59, 130, 246, 0.1)',
+                        borderColor: 'rgba(59, 130, 246, 0.4)',
+                        textColor: '#3B82F6',
+                        icon: '🔵'
+                      },
+                      'EPIC': {
+                        bgColor: 'rgba(139, 92, 246, 0.1)',
+                        borderColor: 'rgba(139, 92, 246, 0.4)',
+                        textColor: '#8B5CF6',
+                        icon: '🟣'
+                      },
+                      'LEGENDARY': {
+                        bgColor: 'rgba(245, 158, 11, 0.15)',
+                        borderColor: 'rgba(245, 158, 11, 0.5)',
+                        textColor: '#F59E0B',
+                        icon: '🟡'
+                      }
+                    };
+                    const config = rarityConfig[item.rarity] || {
+                      bgColor: 'rgba(255, 255, 255, 0.03)',
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      textColor: '#ffffff',
+                      icon: '⚪'
+                    };
+
+                    // Use iconUrl from API (it contains the MaterialIcons name)
+                    const iconName = item.iconUrl || 'stars';
+
+                    return (
+                      <TouchableOpacity
+                        key={item.id}
+                        onPress={() => handleInventoryItemPress(item)}
+                        activeOpacity={0.7}
+                        style={{
+                          backgroundColor: config.bgColor,
+                          padding: 14,
+                          borderRadius: 16,
+                          width: '47%',
+                          borderWidth: item.isEquipped ? 2 : 1,
+                          borderColor: item.isEquipped ? '#00D4AA' : config.borderColor,
+                          position: 'relative',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        {/* Equipped Badge - Top Right */}
+                        {item.isEquipped && (
+                          <View style={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            backgroundColor: '#00D4AA',
+                            paddingHorizontal: 6,
+                            paddingVertical: 3,
+                            borderRadius: 6,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 3,
+                            zIndex: 1
+                          }}>
+                            <MaterialIcons name="check-circle" size={10} color="#000000" />
+                            <Text style={{
+                              fontSize: 9,
+                              fontWeight: '700',
+                              color: '#000000',
+                              textTransform: 'uppercase',
+                              letterSpacing: 0.3
+                            }}>
+                              Active
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* Icon Container */}
+                        <View style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: 28,
+                          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                          marginBottom: 12,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          alignSelf: 'center',
+                          borderWidth: 2,
+                          borderColor: config.borderColor
+                        }}>
+                          <MaterialIcons name={iconName as any} size={28} color={config.textColor} />
+                        </View>
+
+                        {/* Item Name */}
+                        <Text style={{
+                          fontSize: 13,
+                          fontWeight: '700',
+                          color: '#ffffff',
+                          textAlign: 'center',
+                          marginBottom: 6,
+                          lineHeight: 16
+                        }} numberOfLines={2}>
+                          {item.itemName}
+                        </Text>
+
+                        {/* Item Description */}
+                        <Text style={{
+                          fontSize: 10,
+                          color: 'rgba(255, 255, 255, 0.5)',
+                          textAlign: 'center',
+                          lineHeight: 14,
+                          paddingHorizontal: 4
+                        }} numberOfLines={2}>
+                          {item.shortDescription || item.description}
+                        </Text>
+
+                        {/* Subtle glow effect for equipped items */}
+                        {item.isEquipped && (
+                          <View style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: 'rgba(0, 212, 170, 0.03)',
+                            borderRadius: 16,
+                            pointerEvents: 'none'
+                          }} />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
             </View>
           )}
 
         </View>
 
       </ScrollView>
+
+      {/* Inventory Item Detail Sheet */}
+      <InventoryItemDetailSheet
+        visible={inventoryDetailVisible}
+        item={selectedInventoryItem}
+        onClose={handleCloseInventoryDetail}
+        onEquip={handleEquipItem}
+        onUnequip={handleUnequipItem}
+      />
     </View>
   );
 }

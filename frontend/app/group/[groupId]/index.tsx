@@ -5,8 +5,18 @@ import GroupMemberView from '../../../components/group/GroupMemberView';
 import GroupPreview from '../../../components/group/GroupPreview';
 import { groupService, GroupDetailResponse } from '../../../services/group/groupService';
 import { useAuth } from '../../../contexts/AuthContext';
+import { ENV } from '../../../config/env';
 
 const icon = require("../../../assets/images/icon.png");
+
+// Helper function to convert relative image URL to absolute URL
+const getFullImageUrl = (relativePath: string | null | undefined): string | null => {
+  if (!relativePath) return null;
+  if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+    return relativePath;
+  }
+  return `${ENV.API_BASE_URL}${relativePath}`;
+};
 
 export default function GroupDetails() {
   console.log(`🚀 [GroupDetails] === COMPONENT START ===`);
@@ -218,10 +228,11 @@ export default function GroupDetails() {
         : 'Loading...',
       isAdmin: currentGroupData?.userRole === 'ADMIN' || false,
       isMember: currentGroupData?.isUserMember || true, // Assume member to show UI
-      image: currentGroupData?.groupPictureUrl || icon,
+      image: getFullImageUrl(currentGroupData?.groupPictureUrl),
       totalBets: currentGroupData?.totalMessages || 0,
       userPosition: null, // Not available in API
-      groupAchievements: 8 // Placeholder
+      groupAchievements: 8, // Placeholder
+      userRole: currentGroupData?.userRole // Add userRole field for GroupMemberView
     };
 
     console.log(`🔄 [GroupDetails] 8. useMemo groupData calculation completed:`, {

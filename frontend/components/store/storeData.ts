@@ -47,11 +47,12 @@ export enum Rarity {
 export const storeItems: Record<StoreCategory, StoreItemData[]> = {
   'featured': [
     {
-      id: 'diamond-hands',
+      id: '1',
       name: 'Diamond Hands',
       description: '1.5x payout on ALL bets for 24 hours. Stacks with other bonuses. Active immediately.',
       price: 400,
       emoji: '💎',
+      icon: 'diamond',
       itemType: ItemType.MULTIPLIER,
       category: ItemCategory.MULTIPLIERS,
       rarity: Rarity.LEGENDARY,
@@ -60,11 +61,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 1
     },
     {
-      id: 'sure-shot',
+      id: '2',
       name: 'Sure Shot',
       description: 'Place a bet with ZERO risk. Win = full payout, Lose = stake refunded. One-time use.',
       price: 400,
       emoji: '🎯',
+      icon: 'gps-fixed',
       itemType: ItemType.SURE_SHOT,
       category: ItemCategory.BETTING_TOOLS,
       rarity: Rarity.LEGENDARY,
@@ -73,11 +75,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 2
     },
     {
-      id: 'triple-threat',
+      id: '3',
       name: 'Triple Threat',
       description: '3x payout on your next winning bet. Cannot stack with other multipliers. One-time use.',
       price: 600,
       emoji: '3️⃣',
+      icon: 'looks-3',
       itemType: ItemType.MULTIPLIER,
       category: ItemCategory.MULTIPLIERS,
       rarity: Rarity.LEGENDARY,
@@ -86,11 +89,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 3
     },
     {
-      id: 'vip-pass-30',
+      id: '4',
       name: 'VIP Pass (30 Days)',
       description: '10% discount on all bet stakes for 30 days. Full payouts on wins. Stackable with other discounts.',
       price: 1000,
       emoji: '💳',
+      icon: 'card-membership',
       itemType: ItemType.VIP_PASS,
       category: ItemCategory.DISCOUNTS,
       rarity: Rarity.LEGENDARY,
@@ -104,11 +108,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
 
   'risk': [
     {
-      id: 'bet-insurance-basic',
+      id: '5',
       name: 'Bet Insurance (Basic)',
       description: 'Get 25% of stake back if you lose. One-time use. Must activate before bet closes.',
       price: 100,
       emoji: '🛡️',
+      icon: 'shield',
       itemType: ItemType.BET_INSURANCE,
       category: ItemCategory.RISK_MANAGEMENT,
       rarity: Rarity.UNCOMMON,
@@ -116,11 +121,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 1
     },
     {
-      id: 'bet-insurance-premium',
+      id: '6',
       name: 'Bet Insurance (Premium)',
       description: 'Get 50% of stake back if you lose. One-time use. Must activate before bet closes.',
       price: 200,
       emoji: '🛡️',
+      icon: 'shield',
       itemType: ItemType.BET_INSURANCE,
       category: ItemCategory.RISK_MANAGEMENT,
       rarity: Rarity.RARE,
@@ -128,11 +134,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 2
     },
     {
-      id: 'freeze-card',
+      id: '7',
       name: 'Freeze Card',
       description: 'Pause a bet and withdraw your stake. Must use within 1 hour of placing bet. Forfeit 10% fee.',
       price: 175,
       emoji: '⏸️',
+      icon: 'pause-circle-outline',
       itemType: ItemType.FREEZE_CARD,
       category: ItemCategory.RISK_MANAGEMENT,
       rarity: Rarity.RARE,
@@ -140,11 +147,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 3
     },
     {
-      id: 'hedge-helper',
+      id: '8',
       name: 'Hedge Helper',
       description: 'Place a counter-bet at 50% off stake. Guarantee some return regardless of outcome. One-time use.',
       price: 200,
       emoji: '🔐',
+      icon: 'security',
       itemType: ItemType.HEDGE_HELPER,
       category: ItemCategory.RISK_MANAGEMENT,
       rarity: Rarity.RARE,
@@ -152,11 +160,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 4
     },
     {
-      id: 'mulligan-token',
+      id: '9',
       name: 'Mulligan Token',
       description: 'Change your bet choice AFTER deadline. Must use before bet is resolved. One-time use.',
       price: 300,
       emoji: '🔄',
+      icon: 'refresh',
       itemType: ItemType.MULLIGAN_TOKEN,
       category: ItemCategory.RISK_MANAGEMENT,
       rarity: Rarity.EPIC,
@@ -164,11 +173,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 5
     },
     {
-      id: 'bet-insurance-elite',
+      id: '10',
       name: 'Bet Insurance (Elite)',
       description: 'Get 75% of stake back if you lose. One-time use. Must activate before bet closes.',
       price: 350,
       emoji: '🛡️',
+      icon: 'shield',
       itemType: ItemType.BET_INSURANCE,
       category: ItemCategory.RISK_MANAGEMENT,
       rarity: Rarity.EPIC,
@@ -179,11 +189,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
 
   'multipliers': [
     {
-      id: 'credit-booster',
+      id: '11',
       name: 'Credit Booster',
       description: 'Earn 25% more credits from all sources. Includes bet winnings, daily rewards, challenges. Active for 48 hours.',
       price: 150,
       emoji: '💸',
+      icon: 'attach-money',
       itemType: ItemType.CREDIT_BOOSTER,
       category: ItemCategory.MULTIPLIERS,
       rarity: Rarity.RARE,
@@ -191,11 +202,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 1
     },
     {
-      id: 'hot-streak-amplifier',
+      id: '12',
       name: 'Hot Streak Amplifier',
       description: 'Increases multiplier for each consecutive win. Win 2: 1.2x, Win 3: 1.5x, Win 4+: 2x. Lasts 7 days or until you lose.',
       price: 250,
       emoji: '🔥',
+      icon: 'local-fire-department',
       itemType: ItemType.MULTIPLIER,
       category: ItemCategory.MULTIPLIERS,
       rarity: Rarity.EPIC,
@@ -203,11 +215,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 2
     },
     {
-      id: 'double-down',
+      id: '13',
       name: 'Double Down',
       description: '2x payout on your next winning bet. Stackable with other bonuses. Expires after one bet (win or lose).',
       price: 300,
       emoji: '2️⃣',
+      icon: 'looks-two',
       itemType: ItemType.MULTIPLIER,
       category: ItemCategory.MULTIPLIERS,
       rarity: Rarity.EPIC,
@@ -215,11 +228,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 3
     },
     {
-      id: 'diamond-hands-multi',
+      id: '1',
       name: 'Diamond Hands',
       description: '1.5x payout on ALL bets for 24 hours. Stacks with other bonuses. Active immediately.',
       price: 400,
       emoji: '💎',
+      icon: 'diamond',
       itemType: ItemType.MULTIPLIER,
       category: ItemCategory.MULTIPLIERS,
       rarity: Rarity.LEGENDARY,
@@ -227,11 +241,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 4
     },
     {
-      id: 'lightning-round',
+      id: '14',
       name: 'Lightning Round',
       description: '5x payout on next win, but lose 2x stake if wrong. High risk, high reward. One-time use.',
       price: 500,
       emoji: '⚡',
+      icon: 'flash-on',
       itemType: ItemType.MULTIPLIER,
       category: ItemCategory.MULTIPLIERS,
       rarity: Rarity.LEGENDARY,
@@ -239,11 +254,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 5
     },
     {
-      id: 'triple-threat-multi',
+      id: '3',
       name: 'Triple Threat',
       description: '3x payout on your next winning bet. Cannot stack with other multipliers. Expires after one bet.',
       price: 600,
       emoji: '3️⃣',
+      icon: 'looks-3',
       itemType: ItemType.MULTIPLIER,
       category: ItemCategory.MULTIPLIERS,
       rarity: Rarity.LEGENDARY,
@@ -254,11 +270,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
 
   'tools': [
     {
-      id: 'time-extension',
+      id: '15',
       name: 'Time Extension',
       description: 'Extend betting deadline by 1 hour (for yourself only). Gives you more time to decide. One-time use per bet.',
       price: 150,
       emoji: '⏱️',
+      icon: 'schedule',
       itemType: ItemType.TIME_EXTENSION,
       category: ItemCategory.BETTING_TOOLS,
       rarity: Rarity.RARE,
@@ -266,11 +283,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 1
     },
     {
-      id: 'side-bet-creator',
+      id: '16',
       name: 'Side Bet Creator',
       description: 'Create a side bet within an existing bet. Earn credits if others join your side bet. 3 uses per purchase.',
       price: 200,
       emoji: '🎪',
+      icon: 'casino',
       itemType: ItemType.SIDE_BET_CREATOR,
       category: ItemCategory.BETTING_TOOLS,
       rarity: Rarity.EPIC,
@@ -278,11 +296,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 2
     },
     {
-      id: 'sure-shot-tool',
+      id: '2',
       name: 'Sure Shot',
       description: 'Place a bet with ZERO risk. If you win, get full payout. If you lose, stake is refunded. One-time use.',
       price: 400,
       emoji: '🎯',
+      icon: 'gps-fixed',
       itemType: ItemType.SURE_SHOT,
       category: ItemCategory.BETTING_TOOLS,
       rarity: Rarity.LEGENDARY,
@@ -293,11 +312,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
 
   'discounts': [
     {
-      id: 'half-price-ticket',
+      id: '17',
       name: 'Half-Price Ticket',
       description: 'Next bet stake costs 50% less. Still get full payout if you win. One-time use.',
       price: 80,
       emoji: '🎟️',
+      icon: 'local-offer',
       itemType: ItemType.DISCOUNT_TICKET,
       category: ItemCategory.DISCOUNTS,
       rarity: Rarity.UNCOMMON,
@@ -305,11 +325,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 1
     },
     {
-      id: 'free-entry-pass',
+      id: '18',
       name: 'Free Entry Pass',
       description: 'Enter any bet completely free (0 stake). Win the full payout if correct. One-time use.',
       price: 150,
       emoji: '🎫',
+      icon: 'confirmation-number',
       itemType: ItemType.DISCOUNT_TICKET,
       category: ItemCategory.DISCOUNTS,
       rarity: Rarity.RARE,
@@ -317,11 +338,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 2
     },
     {
-      id: 'refund-voucher',
+      id: '19',
       name: 'Refund Voucher',
       description: 'Get your stake back on next bet (win or lose). You keep winnings if you win. One-time use.',
       price: 200,
       emoji: '🎁',
+      icon: 'card-giftcard',
       itemType: ItemType.DISCOUNT_TICKET,
       category: ItemCategory.DISCOUNTS,
       rarity: Rarity.RARE,
@@ -329,11 +351,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 3
     },
     {
-      id: 'vip-pass-7',
+      id: '20',
       name: 'VIP Pass (7 Days)',
       description: '10% discount on all bet stakes for 7 days. Full payouts on wins. Stackable with other discounts.',
       price: 300,
       emoji: '💳',
+      icon: 'card-membership',
       itemType: ItemType.VIP_PASS,
       category: ItemCategory.DISCOUNTS,
       rarity: Rarity.EPIC,
@@ -341,11 +364,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 4
     },
     {
-      id: 'vip-pass-30-disc',
+      id: '4',
       name: 'VIP Pass (30 Days)',
       description: '10% discount on all bet stakes for 30 days. Full payouts on wins. Stackable with other discounts.',
       price: 1000,
       emoji: '💳',
+      icon: 'card-membership',
       itemType: ItemType.VIP_PASS,
       category: ItemCategory.DISCOUNTS,
       rarity: Rarity.LEGENDARY,
@@ -356,11 +380,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
 
   'boosters': [
     {
-      id: 'challenge-booster',
+      id: '21',
       name: 'Challenge Booster',
       description: 'Earn 50% more from completed challenges. Active for 7 days.',
       price: 150,
       emoji: '🏅',
+      icon: 'emoji-events',
       itemType: ItemType.CHALLENGE_BOOSTER,
       category: ItemCategory.BOOSTERS,
       rarity: Rarity.RARE,
@@ -368,11 +393,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 1
     },
     {
-      id: 'daily-bonus-doubler',
+      id: '22',
       name: 'Daily Bonus Doubler',
       description: '2x daily login rewards for 14 days. Stacks with streaks.',
       price: 200,
       emoji: '🎁',
+      icon: 'card-giftcard',
       itemType: ItemType.DAILY_BOOSTER,
       category: ItemCategory.BOOSTERS,
       rarity: Rarity.EPIC,
@@ -380,11 +406,12 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 2
     },
     {
-      id: 'referral-multiplier',
+      id: '23',
       name: 'Referral Multiplier',
       description: 'Earn 2x credits from friend referrals. Active for 30 days. Stacks with normal referral bonus.',
       price: 300,
       emoji: '👥',
+      icon: 'group',
       itemType: ItemType.REFERRAL_BOOSTER,
       category: ItemCategory.BOOSTERS,
       rarity: Rarity.EPIC,
@@ -453,16 +480,6 @@ export const earnCreditsOptions: EarnCreditsOption[] = [
     credits: 50,
     emoji: '⭐',
     type: 'action',
-    isCompleted: false,
-    isAvailable: true
-  },
-  {
-    id: 'streak-bonus',
-    title: '7-Day Streak Bonus',
-    description: 'Login for 7 consecutive days',
-    credits: 200,
-    emoji: '🔥',
-    type: 'challenge',
     isCompleted: false,
     isAvailable: true
   }
