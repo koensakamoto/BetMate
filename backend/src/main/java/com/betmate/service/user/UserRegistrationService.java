@@ -1,7 +1,9 @@
 package com.betmate.service.user;
 
 import com.betmate.entity.user.User;
+import com.betmate.entity.user.UserSettings;
 import com.betmate.exception.user.UserRegistrationException;
+import com.betmate.repository.user.UserSettingsRepository;
 import com.betmate.validation.InputValidator;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -27,22 +29,35 @@ public class UserRegistrationService {
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final InputValidator inputValidator;
+    private final UserSettingsRepository userSettingsRepository;
 
     @Autowired
-    public UserRegistrationService(UserService userService, PasswordEncoder passwordEncoder, InputValidator inputValidator) {
+    public UserRegistrationService(
+            UserService userService,
+            PasswordEncoder passwordEncoder,
+            InputValidator inputValidator,
+            UserSettingsRepository userSettingsRepository) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.inputValidator = inputValidator;
+        this.userSettingsRepository = userSettingsRepository;
     }
 
     /**
      * Registers a new user with validation and uniqueness checks.
+     * Also creates default UserSettings with PUBLIC profile visibility.
      */
     public User registerUser(@Valid RegistrationRequest request) {
         validateRegistrationRequest(request);
-        
+
         User user = createUserFromRequest(request);
-        return userService.saveUser(user);
+        User savedUser = userService.saveUser(user);
+
+        // Create default settings for the new user with PUBLIC profile
+        UserSettings settings = UserSettings.createDefaultSettings(savedUser);
+        userSettingsRepository.save(settings);
+
+        return savedUser;
     }
 
     /**

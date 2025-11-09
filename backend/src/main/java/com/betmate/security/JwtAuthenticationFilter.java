@@ -45,9 +45,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final List<String> PUBLIC_ENDPOINTS = Arrays.asList(
         "/api/auth/login",
         "/api/auth/refresh",
-        "/api/auth/change-password",
         "/api/auth/logout",
-        // Note: /api/auth/me requires authentication and is NOT in this list
+        // Note: /api/auth/me and /api/auth/change-password require authentication and are NOT in this list
         "/api/users/register",
         "/api/users/availability/**",
         "/api/files/**",

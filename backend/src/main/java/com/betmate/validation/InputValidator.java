@@ -70,47 +70,29 @@ public class InputValidator {
             );
         }
         
-        // Check for required character types
-        int strengthScore = 0;
+        // Check for required character types: uppercase, lowercase, and digit
         StringBuilder requirements = new StringBuilder();
-        
+
         if (!HAS_LOWERCASE.matcher(password).find()) {
             requirements.append("lowercase letter, ");
-        } else {
-            strengthScore++;
         }
-        
+
         if (!HAS_UPPERCASE.matcher(password).find()) {
             requirements.append("uppercase letter, ");
-        } else {
-            strengthScore++;
         }
-        
+
         if (!HAS_DIGIT.matcher(password).find()) {
             requirements.append("number, ");
-        } else {
-            strengthScore++;
         }
-        
-        if (!HAS_SPECIAL_CHAR.matcher(password).find()) {
-            requirements.append("special character, ");
-        } else {
-            strengthScore++;
-        }
-        
-        // Require at least 3 out of 4 character types
-        if (strengthScore < 3) {
+
+        // All three character types are required
+        if (requirements.length() > 0) {
             String missing = requirements.toString().replaceAll(", $", "");
             return PasswordValidationResult.invalid(
-                "Password must contain at least 3 of the following: " + missing
+                "Password must contain: " + missing
             );
         }
-        
-        // Check for common weak patterns
-        if (isWeakPassword(password)) {
-            return PasswordValidationResult.invalid("Password is too common or predictable");
-        }
-        
+
         return PasswordValidationResult.valid();
     }
 

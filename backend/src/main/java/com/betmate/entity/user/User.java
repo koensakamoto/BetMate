@@ -76,6 +76,8 @@ public class User {
 
     private LocalDateTime lastLoginAt;
 
+    private LocalDateTime lastDailyRewardClaimedAt;
+
     @Column(nullable = false)
     private Integer failedLoginAttempts = 0;
 
@@ -197,6 +199,9 @@ public class User {
 
     public LocalDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+
+    public LocalDateTime getLastDailyRewardClaimedAt() { return lastDailyRewardClaimedAt; }
+    public void setLastDailyRewardClaimedAt(LocalDateTime lastDailyRewardClaimedAt) { this.lastDailyRewardClaimedAt = lastDailyRewardClaimedAt; }
 
     public Integer getFailedLoginAttempts() { return failedLoginAttempts; }
     public void setFailedLoginAttempts(Integer failedLoginAttempts) { this.failedLoginAttempts = failedLoginAttempts; }

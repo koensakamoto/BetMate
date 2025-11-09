@@ -2,6 +2,7 @@ package com.betmate.service.security;
 
 import com.betmate.entity.user.User;
 import com.betmate.exception.AuthenticationException;
+import com.betmate.service.user.DailyLoginRewardService;
 import com.betmate.service.user.UserService;
 import com.betmate.validation.InputValidator;
 import jakarta.validation.constraints.NotBlank;
@@ -32,19 +33,22 @@ public class AuthenticationService {
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final InputValidator inputValidator;
-    
+    private final DailyLoginRewardService dailyLoginRewardService;
+
     // Configurable security settings
     @Value("${security.auth.max-failed-attempts:5}")
     private int maxFailedAttempts;
-    
+
     @Value("${security.auth.lockout-duration-minutes:15}")
     private int lockoutDurationMinutes;
 
     @Autowired
-    public AuthenticationService(UserService userService, PasswordEncoder passwordEncoder, InputValidator inputValidator) {
+    public AuthenticationService(UserService userService, PasswordEncoder passwordEncoder,
+                                 InputValidator inputValidator, DailyLoginRewardService dailyLoginRewardService) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.inputValidator = inputValidator;
+        this.dailyLoginRewardService = dailyLoginRewardService;
     }
 
     /**
@@ -201,10 +205,24 @@ public class AuthenticationService {
     }
 
     private void handleSuccessfulLogin(User user) {
+        log.info("=== SUCCESSFUL LOGIN HANDLER START === User: {}, Username: {}", user.getId(), user.getUsername());
         user.setFailedLoginAttempts(0);
         user.setAccountLockedUntil(null);
         user.setLastLoginAt(LocalDateTime.now());
-        userService.saveUser(user);
+        User savedUser = userService.saveUser(user);
+        log.info("User saved after login - User: {}, LastLoginAt: {}", savedUser.getId(), savedUser.getLastLoginAt());
+
+        // Award daily login reward if eligible
+        log.info("=== ATTEMPTING DAILY LOGIN REWARD === User: {}", savedUser.getId());
+        try {
+            DailyLoginRewardService.DailyRewardResult result = dailyLoginRewardService.checkAndAwardDailyReward(savedUser);
+            log.info("=== DAILY LOGIN REWARD RESULT === User: {}, WasAwarded: {}, Amount: {}, ClaimedAt: {}",
+                savedUser.getId(), result.wasAwarded(), result.amountAwarded(), result.claimedAt());
+        } catch (Exception e) {
+            // Log error but don't fail login if reward fails
+            log.error("=== DAILY LOGIN REWARD FAILED === User: {}, Error: {}", savedUser.getId(), e.getMessage(), e);
+        }
+        log.info("=== SUCCESSFUL LOGIN HANDLER END === User: {}", savedUser.getId());
     }
 
     // Result object for authentication attempts

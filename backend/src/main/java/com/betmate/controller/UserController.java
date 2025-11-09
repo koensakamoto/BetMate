@@ -11,6 +11,7 @@ import com.betmate.entity.user.Transaction;
 import com.betmate.entity.user.User;
 import com.betmate.service.FileStorageService;
 import com.betmate.service.security.UserDetailsServiceImpl;
+import com.betmate.service.user.DailyLoginRewardService;
 import com.betmate.service.user.TransactionService;
 import com.betmate.service.user.UserRegistrationService;
 import com.betmate.service.user.UserService;
@@ -45,16 +46,18 @@ public class UserController {
     private final UserStatisticsService userStatisticsService;
     private final FileStorageService fileStorageService;
     private final TransactionService transactionService;
+    private final DailyLoginRewardService dailyLoginRewardService;
 
     @Autowired
     public UserController(UserService userService, UserRegistrationService userRegistrationService,
                          UserStatisticsService userStatisticsService, FileStorageService fileStorageService,
-                         TransactionService transactionService) {
+                         TransactionService transactionService, DailyLoginRewardService dailyLoginRewardService) {
         this.userService = userService;
         this.userRegistrationService = userRegistrationService;
         this.userStatisticsService = userStatisticsService;
         this.fileStorageService = fileStorageService;
         this.transactionService = transactionService;
+        this.dailyLoginRewardService = dailyLoginRewardService;
     }
 
     // ==========================================
@@ -325,6 +328,27 @@ public class UserController {
             Page<TransactionResponseDto> transactionDtos = transactions.map(TransactionResponseDto::fromTransaction);
 
             return ResponseEntity.ok(transactionDtos);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get daily reward status for current user.
+     */
+    @GetMapping("/daily-reward-status")
+    public ResponseEntity<?> getDailyRewardStatus() {
+        try {
+            UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
+            if (userPrincipal == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            User user = userService.getUserById(userPrincipal.getUserId());
+            DailyLoginRewardService.DailyRewardStatus status = dailyLoginRewardService.getDailyRewardStatus(user);
+
+            return ResponseEntity.ok(status);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

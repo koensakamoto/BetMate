@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
     })
     public ApiResponse<Void> handleAuthenticationExceptions(RuntimeException ex, HttpServletRequest request) {
         log.warn("Authentication failed for request {}: {}", request.getRequestURI(), ex.getMessage());
-        return createErrorResponse(HttpStatus.UNAUTHORIZED, "Authentication Failed", "Invalid credentials", request.getRequestURI());
+        return createErrorResponse(HttpStatus.UNAUTHORIZED, "Authentication Failed", ex.getMessage(), request.getRequestURI());
     }
 
     /**
