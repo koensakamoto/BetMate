@@ -44,6 +44,7 @@ export default function GroupConfig() {
         description: updatedGroup.description ?? prev.description,
         privacy: updatedGroup.privacy ?? prev.privacy,
         autoApproveMembers: updatedGroup.autoApproveMembers ?? false,
+        groupPictureUrl: updatedGroup.groupPictureUrl ?? prev.groupPictureUrl,
         ...(updatedGroup.memberCount !== undefined && { memberCount: updatedGroup.memberCount }),
         ...(updatedGroup.updatedAt !== undefined && { updatedAt: updatedGroup.updatedAt }),
       };

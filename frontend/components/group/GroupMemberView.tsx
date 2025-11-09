@@ -8,6 +8,7 @@ import GroupBetsTab from './GroupBetsTab';
 import GroupStatsTab from './GroupStatsTab';
 import GroupMembersTab from './GroupMembersTab';
 import GroupSettingsTab from './GroupSettingsTab';
+import { groupService } from '../../services/group/groupService';
 
 interface GroupMemberViewProps {
   groupData: {
@@ -21,12 +22,23 @@ interface GroupMemberViewProps {
     userPosition: number;
     groupAchievements: number;
     isAdmin: boolean;
+    userRole?: string;
   };
 }
 
 const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGroupData }) => {
   const insets = useSafeAreaInsets();
   const searchParams = useLocalSearchParams();
+
+  // Get group initials from name
+  const getGroupInitials = useCallback((name: string) => {
+    if (!name) return 'G';
+    const words = name.trim().split(/\s+/);
+    if (words.length === 1) {
+      return words[0].charAt(0).toUpperCase();
+    }
+    return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+  }, []);
 
   // Determine initial tab from URL parameter
   const getInitialTab = () => {
@@ -53,7 +65,11 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
   const [groupData, setGroupData] = useState(initialGroupData);
   const [refreshing, setRefreshing] = useState(false);
   const [forceRefreshCounter, setForceRefreshCounter] = useState(0);
+  const [pendingRequestCount, setPendingRequestCount] = useState(0);
   const tabs = ['Chat', 'Bets', 'People'];
+
+  // Check if user is admin or officer
+  const isAdminOrOfficer = groupData.userRole === 'ADMIN' || groupData.userRole === 'OFFICER';
 
   // Sync local state with incoming props when they change
   useEffect(() => {
@@ -76,6 +92,30 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
       autoApproveMembers: updatedGroup.autoApproveMembers
     }));
   }, []);
+
+  // Fetch pending request count (admin/officer only)
+  const fetchPendingRequestCount = useCallback(async () => {
+    if (!isAdminOrOfficer) {
+      setPendingRequestCount(0);
+      return;
+    }
+
+    try {
+      const groupId = typeof groupData.id === 'string' ? parseInt(groupData.id) : parseInt(groupData.id[0]);
+      const count = await groupService.getPendingRequestCount(groupId);
+      setPendingRequestCount(count);
+    } catch (error) {
+      console.error('Error fetching pending request count:', error);
+      setPendingRequestCount(0);
+    }
+  }, [groupData.id, isAdminOrOfficer]);
+
+  // Fetch pending request count on mount and when refreshing
+  useEffect(() => {
+    if (isAdminOrOfficer) {
+      fetchPendingRequestCount();
+    }
+  }, [isAdminOrOfficer, forceRefreshCounter, fetchPendingRequestCount]);
 
   // Pull-to-refresh handler
   const onRefresh = useCallback(() => {
@@ -141,15 +181,35 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <Image
-                source={groupData.image}
-                style={{
+              {typeof groupData.image === 'string' || (groupData.image && groupData.image.uri) ? (
+                <Image
+                  source={typeof groupData.image === 'string' ? { uri: groupData.image } : groupData.image}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    marginRight: 12
+                  }}
+                />
+              ) : (
+                <View style={{
                   width: 36,
                   height: 36,
                   borderRadius: 10,
-                  marginRight: 12
-                }}
-              />
+                  marginRight: 12,
+                  backgroundColor: 'rgba(0, 212, 170, 0.2)',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}>
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '700',
+                    color: '#00D4AA'
+                  }}>
+                    {getGroupInitials(groupData.name)}
+                  </Text>
+                </View>
+              )}
               <Text style={{
                 fontSize: 18,
                 fontWeight: '700',
@@ -194,6 +254,9 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
         }}>
           {tabs.map((tab, index) => {
             const isActive = index === activeTab;
+            const isPeopleTab = tab === 'People';
+            const showBadge = isPeopleTab && isAdminOrOfficer && pendingRequestCount > 0;
+
             return (
               <TouchableOpacity
                 key={tab}
@@ -203,16 +266,41 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                   borderBottomWidth: isActive ? 2 : 0,
                   borderBottomColor: '#ffffff',
                   flex: 1,
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  position: 'relative'
                 }}
               >
-                <Text style={{
-                  fontSize: 14,
-                  fontWeight: isActive ? '600' : '400',
-                  color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'
-                }} numberOfLines={1}>
-                  {tab}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: isActive ? '600' : '400',
+                    color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'
+                  }} numberOfLines={1}>
+                    {tab}
+                  </Text>
+
+                  {/* Badge for pending requests */}
+                  {showBadge && (
+                    <View style={{
+                      backgroundColor: '#00D4AA',
+                      borderRadius: 10,
+                      minWidth: 18,
+                      height: 18,
+                      paddingHorizontal: 5,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginLeft: 6
+                    }}>
+                      <Text style={{
+                        fontSize: 11,
+                        fontWeight: '700',
+                        color: '#000000'
+                      }}>
+                        {pendingRequestCount > 99 ? '99+' : pendingRequestCount}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </TouchableOpacity>
             );
           })}

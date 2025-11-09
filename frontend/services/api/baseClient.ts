@@ -173,16 +173,23 @@ export const apiClient = createApiClient();
 
 // Utility function to handle API responses with proper typing
 export const handleApiResponse = <T>(response: AxiosResponse<ApiResponse<T> | T>): T => {
-  // Check if response has the ApiResponse wrapper format with nested data
-  if (typeof response.data === 'object' && response.data !== null && 'data' in response.data && 'success' in response.data) {
+  // Check if response has the ApiResponse wrapper format
+  if (typeof response.data === 'object' && response.data !== null && 'success' in response.data) {
     const apiResponse = response.data as ApiResponse<T>;
+
+    // Check if request was unsuccessful
     if (!apiResponse.success) {
       throw new ApiError(
-        response.status,
-        apiResponse.error || apiResponse.message || 'API request failed'
+        (apiResponse as any).statusCode || response.status,
+        apiResponse.message || apiResponse.error || 'API request failed'
       );
     }
-    return apiResponse.data as T;
+
+    // Return data if present, otherwise return undefined for void responses
+    if ('data' in apiResponse) {
+      return apiResponse.data as T;
+    }
+    return undefined as T;
   }
 
   // Backend returns data directly (no wrapper), so return it as-is

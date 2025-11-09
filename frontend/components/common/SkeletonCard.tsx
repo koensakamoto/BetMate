@@ -141,25 +141,29 @@ export function SkeletonStoreItem() {
         width: '48%',
         backgroundColor: 'rgba(255, 255, 255, 0.03)',
         borderRadius: 16,
-        padding: 16,
+        padding: 14,
         marginBottom: 16,
         borderWidth: 0.5,
         borderColor: 'rgba(255, 255, 255, 0.08)',
+        height: 240
       }}
     >
       {/* Icon */}
-      <SkeletonCard width={60} height={60} borderRadius={16} style={{ marginBottom: 12 }} />
+      <View style={{ alignItems: 'center', marginBottom: 16 }}>
+        <SkeletonCard width={72} height={72} borderRadius={18} />
+      </View>
 
       {/* Title */}
-      <SkeletonCard width="100%" height={18} borderRadius={8} style={{ marginBottom: 6 }} />
+      <SkeletonCard width="90%" height={16} borderRadius={8} style={{ marginBottom: 16, alignSelf: 'center' }} />
 
-      {/* Description */}
-      <SkeletonCard width="80%" height={14} borderRadius={8} style={{ marginBottom: 12 }} />
+      {/* Price */}
+      <View style={{ alignItems: 'center', marginBottom: 8 }}>
+        <SkeletonCard width={60} height={20} borderRadius={8} />
+      </View>
 
-      {/* Footer */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <SkeletonCard width={60} height={24} borderRadius={8} />
-        <SkeletonCard width={50} height={28} borderRadius={14} />
+      {/* Button */}
+      <View style={{ alignItems: 'center' }}>
+        <SkeletonCard width={70} height={32} borderRadius={12} />
       </View>
     </View>
   );

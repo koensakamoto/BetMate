@@ -27,9 +27,8 @@ export default function CreateBet() {
   const [betTitle, setBetTitle] = useState('');
   const [betDescription, setBetDescription] = useState('');
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
-  const [betType, setBetType] = useState<'multiple_choice' | 'exact_value' | 'over_under'>('multiple_choice');
+  const [betType, setBetType] = useState<'MULTIPLE_CHOICE' | 'PREDICTION' | 'OVER_UNDER'>('MULTIPLE_CHOICE');
   const [stakeAmount, setStakeAmount] = useState('');
-  const [betStartTime, setBetStartTime] = useState(roundToNearest15Minutes(new Date()));
   const [betEndTime, setBetEndTime] = useState(roundToNearest15Minutes(new Date(Date.now() + 24 * 60 * 60 * 1000)));
   const [eventResolutionDate, setEventResolutionDate] = useState(roundToNearest15Minutes(new Date(Date.now() + 48 * 60 * 60 * 1000)));
   const [resolver, setResolver] = useState<'self' | 'specific' | 'multiple' | 'group'>('self');
@@ -53,14 +52,13 @@ export default function CreateBet() {
   const progressAnim = new Animated.Value(0);
 
   const sports = [
-    { id: 'sports', name: 'Sports', icon: '⚽', color: '#4CAF50' },
-    { id: 'crypto', name: 'Crypto', icon: '₿', color: '#FF9500' },
-    { id: 'stocks', name: 'Stocks', icon: '📈', color: '#007AFF' },
-    { id: 'politics', name: 'Politics', icon: '🗳️', color: '#8B5CF6' },
-    { id: 'entertainment', name: 'Entertainment', icon: '🎬', color: '#FF69B4' },
-    { id: 'weather', name: 'Weather', icon: '🌤️', color: '#34D399' },
-    { id: 'gaming', name: 'Gaming', icon: '🎮', color: '#F59E0B' },
-    { id: 'other', name: 'Other', icon: '🎲', color: '#64748B' }
+    { id: 'sports', name: 'Sports', icon: 'sports-soccer', color: '#4CAF50' },
+    { id: 'crypto', name: 'Crypto', icon: 'currency-bitcoin', color: '#FF9500' },
+    { id: 'stocks', name: 'Stocks', icon: 'trending-up', color: '#007AFF' },
+    { id: 'politics', name: 'Politics', icon: 'how-to-vote', color: '#8B5CF6' },
+    { id: 'entertainment', name: 'Entertainment', icon: 'movie', color: '#FF69B4' },
+    { id: 'gaming', name: 'Gaming', icon: 'sports-esports', color: '#F59E0B' },
+    { id: 'other', name: 'Other', icon: 'casino', color: '#64748B' }
   ];
 
   // Calculate completion percentage
@@ -69,8 +67,8 @@ export default function CreateBet() {
       betTitle.trim(),
       selectedSport,
       stakeAmount.trim(),
-      betType === 'multiple_choice' ? multipleChoiceOptions.some(opt => opt.trim()) : 
-      betType === 'exact_value' ? 'exact_value_bet' : overUnderLine.trim()
+      betType === 'MULTIPLE_CHOICE' ? multipleChoiceOptions.some(opt => opt.trim()) :
+      betType === 'PREDICTION' ? 'prediction_bet' : overUnderLine.trim()
     ];
     
     const completed = fields.filter(Boolean).length;
@@ -99,14 +97,14 @@ export default function CreateBet() {
       return;
     }
 
-    if (betType === 'multiple_choice' && multipleChoiceOptions.some(opt => !opt.trim())) {
+    if (betType === 'MULTIPLE_CHOICE' && multipleChoiceOptions.some(opt => !opt.trim())) {
       haptic.error();
       Alert.alert('Missing Options', 'Please fill in all multiple choice options.');
       return;
     }
 
 
-    if (betType === 'over_under' && !overUnderLine) {
+    if (betType === 'OVER_UNDER' && !overUnderLine) {
       haptic.error();
       Alert.alert('Missing Line', 'Please enter the over/under line.');
       return;
@@ -130,8 +128,7 @@ export default function CreateBet() {
                 groupId: betGroupId,
                 title: betTitle,
                 description: betDescription || undefined,
-                betType: betType === 'multiple_choice' ? 'MULTIPLE_CHOICE' :
-                         betType === 'exact_value' ? 'PREDICTION' : 'OVER_UNDER',
+                betType: betType,
                 resolutionMethod: resolver === 'self' ? 'CREATOR_ONLY' :
                                  resolver === 'specific' ? 'ASSIGNED_RESOLVER' : 'CONSENSUS_VOTING',
                 bettingDeadline: betEndTime.toISOString(),
@@ -140,9 +137,9 @@ export default function CreateBet() {
                 maximumBet: undefined, // TODO: Add max bet option to UI if needed
                 minimumVotesRequired: resolver === 'multiple' ? selectedResolvers.length : undefined,
                 allowCreatorVote: true, // TODO: Add this option to UI if needed
-                options: betType === 'multiple_choice' ? multipleChoiceOptions.filter(opt => opt.trim()) :
-                        betType === 'exact_value' ? ['Prediction'] :
-                        betType === 'over_under' ? ['Over', 'Under'] : undefined
+                options: betType === 'MULTIPLE_CHOICE' ? multipleChoiceOptions.filter(opt => opt.trim()) :
+                        betType === 'PREDICTION' ? ['Prediction'] :
+                        betType === 'OVER_UNDER' ? [`Over ${overUnderLine}`, `Under ${overUnderLine}`] : undefined
               };
 
               const response = await betService.createBet(createBetRequest);
@@ -217,7 +214,12 @@ export default function CreateBet() {
       activeOpacity={0.7}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-        <Text style={{ fontSize: 20, marginRight: 10 }}>{icon}</Text>
+        <MaterialIcons
+          name={icon as any}
+          size={20}
+          color={betType === type ? '#00D4AA' : '#ffffff'}
+          style={{ marginRight: 10 }}
+        />
         <Text style={{
           fontSize: 16,
           fontWeight: '600',
@@ -548,7 +550,12 @@ export default function CreateBet() {
                     alignItems: 'center'
                   }}
                 >
-                  <Text style={{ fontSize: 14, marginRight: 6 }}>{sport.icon}</Text>
+                  <MaterialIcons
+                    name={sport.icon as any}
+                    size={14}
+                    color={selectedSport === sport.id ? sport.color : '#ffffff'}
+                    style={{ marginRight: 6 }}
+                  />
                   <Text style={{
                     fontSize: 13,
                     fontWeight: '600',
@@ -580,30 +587,30 @@ export default function CreateBet() {
               Bet Type & Options
             </Text>
             
-            <BetTypeCard 
-              type="multiple_choice"
+            <BetTypeCard
+              type="MULTIPLE_CHOICE"
               title="Multiple Choice"
               description="Participants choose from predefined options (e.g., Team A wins, Team B wins, Draw)"
-              icon="📝"
+              icon="ballot"
             />
-            
-            <BetTypeCard 
-              type="exact_value"
-              title="Exact Value"
+
+            <BetTypeCard
+              type="PREDICTION"
+              title="Prediction"
               description="Predict a specific number or outcome (e.g., final score will be 3-1)"
-              icon="🎯"
+              icon="gps-fixed"
             />
-            
-            <BetTypeCard 
-              type="over_under"
+
+            <BetTypeCard
+              type="OVER_UNDER"
               title="Over/Under"
               description="Bet whether a value will be over or under a specific line (e.g., total goals > 2.5)"
-              icon="⚖️"
+              icon="balance"
             />
           </View>
 
           {/* Bet Type Specific Fields */}
-          {betType === 'multiple_choice' && (
+          {betType === 'MULTIPLE_CHOICE' && (
             <>
               <Text style={{
                 fontSize: 13,
@@ -675,7 +682,7 @@ export default function CreateBet() {
             </>
           )}
 
-          {betType === 'exact_value' && (
+          {betType === 'PREDICTION' && (
             <>
               <Text style={{
                 fontSize: 13,
@@ -696,7 +703,7 @@ export default function CreateBet() {
             </>
           )}
 
-          {betType === 'over_under' && (
+          {betType === 'OVER_UNDER' && (
             <>
               <Text style={{
                 fontSize: 13,
@@ -822,48 +829,7 @@ export default function CreateBet() {
             Bet Timing
           </Text>
 
-          {/* Start Time */}
-          <Text style={{
-            fontSize: 13,
-            fontWeight: '500',
-            color: 'rgba(255, 255, 255, 0.8)',
-            marginBottom: 4
-          }}>
-            Bet Start Time <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontWeight: '400' }}>(Optional)</Text>
-          </Text>
-          <Text style={{
-            fontSize: 12,
-            color: 'rgba(255, 255, 255, 0.5)',
-            marginBottom: 6
-          }}>
-            When participants can start joining this bet
-          </Text>
-          <TouchableOpacity
-            onPress={() => setShowDatePicker('start')}
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.06)',
-              borderRadius: 8,
-              borderWidth: 0.5,
-              borderColor: 'rgba(255, 255, 255, 0.15)',
-              paddingHorizontal: 12,
-              paddingVertical: 12,
-              marginBottom: 16,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}
-          >
-            <Text style={{
-              fontSize: 15,
-              color: '#ffffff',
-              fontWeight: '400'
-            }}>
-              {formatDateTime(betStartTime)}
-            </Text>
-            <MaterialIcons name="access-time" size={20} color="rgba(255, 255, 255, 0.5)" />
-          </TouchableOpacity>
-
-          {/* End Time */}
+          {/* Join Deadline */}
           <Text style={{
             fontSize: 13,
             fontWeight: '500',
@@ -1159,8 +1125,7 @@ export default function CreateBet() {
                     <Text style={{ fontSize: 16, color: '#00D4AA', fontWeight: '600' }}>Cancel</Text>
                   </TouchableOpacity>
                   <Text style={{ fontSize: 18, color: '#ffffff', fontWeight: '600' }}>
-                    {showDatePicker === 'start' ? 'Start Time' : 
-                     showDatePicker === 'end' ? 'End Time' : 'Resolution Date'}
+                    {showDatePicker === 'end' ? 'Join Deadline' : 'Resolution Date'}
                   </Text>
                   <TouchableOpacity onPress={() => setShowDatePicker(null)}>
                     <Text style={{ fontSize: 16, color: '#00D4AA', fontWeight: '600' }}>Done</Text>
@@ -1168,17 +1133,14 @@ export default function CreateBet() {
                 </View>
                 
                 <DateTimePicker
-                  value={showDatePicker === 'start' ? betStartTime :
-                        showDatePicker === 'end' ? betEndTime : eventResolutionDate}
+                  value={showDatePicker === 'end' ? betEndTime : eventResolutionDate}
                   mode="datetime"
                   display="spinner"
                   minuteInterval={15}
                   onChange={(event, selectedDate) => {
                     if (selectedDate) {
                       const roundedDate = roundToNearest15Minutes(selectedDate);
-                      if (showDatePicker === 'start') {
-                        setBetStartTime(roundedDate);
-                      } else if (showDatePicker === 'end') {
+                      if (showDatePicker === 'end') {
                         setBetEndTime(roundedDate);
                       } else {
                         setEventResolutionDate(roundedDate);

@@ -315,10 +315,15 @@ export default function BetDetails() {
       setBetData(updatedBet);
 
       haptic.success();
-      Alert.alert('Success', `Bet placed successfully!\nAmount: $${amount}\nOption: ${selectedOption}`);
-
-      // Navigate back to the group page
-      router.push(`/groups/${betData.groupId}`);
+      Alert.alert('Success', `Bet placed successfully!\nAmount: $${amount}\nOption: ${selectedOption}`, [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Navigate back to the group page with Bets tab active
+            router.push(`/(tabs)/group/${betData.groupId}?tab=1`);
+          }
+        }
+      ]);
 
     } catch (error) {
       console.error('=== BET PLACEMENT ERROR ===');

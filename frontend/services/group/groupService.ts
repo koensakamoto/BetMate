@@ -2,6 +2,14 @@ import { BaseApiService } from '../api/baseService';
 import { API_ENDPOINTS } from '../../config/api';
 
 // Group DTOs matching backend
+export interface MemberPreview {
+  id: number;
+  username: string;
+  firstName: string;
+  lastName: string;
+  profileImageUrl?: string;
+}
+
 export interface GroupCreationRequest {
   groupName: string;
   description: string;
@@ -32,6 +40,7 @@ export interface GroupSummaryResponse {
   lastMessageAt?: string;
   createdAt: string;
   isUserMember: boolean;
+  memberPreviews?: MemberPreview[];
 }
 
 export interface GroupDetailResponse extends GroupSummaryResponse {
@@ -52,6 +61,15 @@ export interface GroupMemberResponse {
   totalBets: number;
   totalWins: number;
   totalLosses: number;
+}
+
+export interface PendingRequestResponse {
+  requestId: number;
+  userId: number;
+  username: string;
+  displayName?: string;
+  profilePictureUrl?: string;
+  requestedAt: string;
 }
 
 export class GroupService extends BaseApiService {
@@ -144,6 +162,60 @@ export class GroupService extends BaseApiService {
    */
   async updateMemberRole(groupId: number, memberId: number, newRole: 'MEMBER' | 'OFFICER'): Promise<GroupMemberResponse> {
     return this.put<GroupMemberResponse>(`/groups/${groupId}/members/${memberId}/role`, { role: newRole });
+  }
+
+  /**
+   * Upload group picture
+   */
+  async uploadGroupPicture(groupId: number, imageUri: string, fileName: string): Promise<GroupDetailResponse> {
+    const formData = new FormData();
+
+    // Create file object for the image
+    const fileToUpload: any = {
+      uri: imageUri,
+      type: 'image/jpeg',
+      name: fileName
+    };
+
+    formData.append('file', fileToUpload);
+
+    return this.post<GroupDetailResponse>(
+      API_ENDPOINTS.GROUP_PICTURE(groupId),
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
+      }
+    );
+  }
+
+  /**
+   * Get all pending join requests for a group (admin/officer only)
+   */
+  async getPendingRequests(groupId: number): Promise<PendingRequestResponse[]> {
+    return this.get<PendingRequestResponse[]>(API_ENDPOINTS.GROUP_PENDING_REQUESTS(groupId));
+  }
+
+  /**
+   * Get count of pending join requests for a group (admin/officer only)
+   */
+  async getPendingRequestCount(groupId: number): Promise<number> {
+    return this.get<number>(API_ENDPOINTS.GROUP_PENDING_REQUESTS_COUNT(groupId));
+  }
+
+  /**
+   * Approve a pending join request (admin/officer only)
+   */
+  async approvePendingRequest(groupId: number, requestId: number): Promise<void> {
+    return this.post<void>(API_ENDPOINTS.GROUP_APPROVE_REQUEST(groupId, requestId), {});
+  }
+
+  /**
+   * Deny/reject a pending join request (admin/officer only)
+   */
+  async denyPendingRequest(groupId: number, requestId: number): Promise<void> {
+    return this.post<void>(API_ENDPOINTS.GROUP_DENY_REQUEST(groupId, requestId), {});
   }
 }
 

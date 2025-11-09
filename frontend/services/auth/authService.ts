@@ -66,20 +66,40 @@ export class AuthService extends BaseApiService {
    * Login user and store tokens
    */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
+    console.log('🔐 [AuthService] Login attempt starting...', {
+      usernameOrEmail: credentials.usernameOrEmail,
+      endpoint: API_ENDPOINTS.LOGIN
+    });
+
     try {
+      console.log('🔐 [AuthService] Sending login request to backend...');
       const response = await this.post<LoginResponse>(
         API_ENDPOINTS.LOGIN,
         credentials
       );
 
+      console.log('✅ [AuthService] Login successful! Response:', {
+        userId: response.user?.id,
+        username: response.user?.username,
+        hasAccessToken: !!response.accessToken,
+        hasRefreshToken: !!response.refreshToken,
+        expiresIn: response.expiresIn,
+        userCredits: response.user?.totalCredits
+      });
+
       // Store tokens securely
+      console.log('💾 [AuthService] Storing tokens...');
       await tokenStorage.setTokens(
         response.accessToken,
         response.refreshToken
       );
+      console.log('✅ [AuthService] Tokens stored successfully');
 
       return response;
     } catch (error) {
+      console.error('❌ [AuthService] Login failed:', error);
+      // Clear any existing tokens on login failure
+      await tokenStorage.clearTokens();
       throw error;
     }
   }
@@ -103,6 +123,8 @@ export class AuthService extends BaseApiService {
 
       return loginResponse;
     } catch (error) {
+      // Clear any existing tokens on signup failure
+      await tokenStorage.clearTokens();
       throw error;
     }
   }

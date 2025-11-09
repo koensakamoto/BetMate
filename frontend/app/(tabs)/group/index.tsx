@@ -5,9 +5,18 @@ import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import GroupCard from "../../../components/group/groupcard";
 import { groupService, type GroupSummaryResponse } from '../../../services/group/groupService';
-import { debugLog, errorLog } from '../../../config/env';
+import { debugLog, errorLog, ENV } from '../../../config/env';
 import { haptic } from '../../../utils/haptics';
 import { SkeletonGroupCard } from '../../../components/common/SkeletonCard';
+
+// Helper function to convert relative image URL to absolute URL
+const getFullImageUrl = (relativePath: string | null | undefined): string | null => {
+  if (!relativePath) return null;
+  if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+    return relativePath;
+  }
+  return `${ENV.API_BASE_URL}${relativePath}`;
+};
 const icon = require("../../../assets/images/icon.png");
 
 
@@ -48,6 +57,12 @@ export default function Group() {
       setMyGroups(myGroupsData);
       setPublicGroups(publicGroupsData);
       debugLog('Groups refreshed - My groups:', myGroupsData, 'Public groups:', publicGroupsData);
+
+      // Debug memberPreviews
+      console.log('🔍 [GroupIndex] My groups member previews check:');
+      myGroupsData.forEach(g => {
+        console.log(`  - ${g.groupName}: memberPreviews =`, g.memberPreviews, `(${g.memberPreviews?.length || 0} members)`);
+      });
 
       // Update cache timestamp
       lastFetchTime.current = Date.now();
@@ -346,12 +361,12 @@ export default function Group() {
                 ) : (
                   groupsToDisplay.map((group, index) => (
                     <View key={group.id} style={{ width: '48%', marginBottom: 16 }}>
-                      <GroupCard 
+                      <GroupCard
                         name={group.groupName}
-                        img={group.groupPictureUrl ? { uri: group.groupPictureUrl } : icon}
+                        img={getFullImageUrl(group.groupPictureUrl) ? { uri: getFullImageUrl(group.groupPictureUrl)! } : undefined}
                         description={group.description || 'No description available'}
                         memberCount={group.memberCount}
-                        memberAvatars={[icon, icon, icon]} // TODO: Replace with actual member avatars when available
+                        memberPreviews={group.memberPreviews}
                         isJoined={group.isUserMember}
                         groupId={group.id.toString()}
                       />
@@ -394,12 +409,12 @@ export default function Group() {
                 ) : (
                   groupsToDisplay.map((group, index) => (
                     <View key={group.id} style={{ width: '48%', marginBottom: 16 }}>
-                      <GroupCard 
+                      <GroupCard
                         name={group.groupName}
-                        img={group.groupPictureUrl ? { uri: group.groupPictureUrl } : icon}
+                        img={getFullImageUrl(group.groupPictureUrl) ? { uri: getFullImageUrl(group.groupPictureUrl)! } : undefined}
                         description={group.description || 'No description available'}
                         memberCount={group.memberCount}
-                        memberAvatars={[icon, icon, icon]} // TODO: Replace with actual member avatars when available
+                        memberPreviews={group.memberPreviews}
                         isJoined={group.isUserMember}
                         groupId={group.id.toString()}
                       />

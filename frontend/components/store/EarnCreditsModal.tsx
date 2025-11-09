@@ -1,8 +1,7 @@
 import React from 'react';
-import { Text, View, TouchableOpacity, ScrollView, Modal, LinearGradient } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { earnCreditsOptions, EarnCreditsOption } from './storeData';
-import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 
 interface EarnCreditsModalProps {
   visible: boolean;
@@ -13,11 +12,11 @@ interface EarnCreditsModalProps {
 export default function EarnCreditsModal({ visible, onClose, onEarnCredits }: EarnCreditsModalProps) {
   const getCategoryColor = (type: string) => {
     switch(type) {
-      case 'daily': return { primary: '#00D4AA', secondary: '#00A087', gradient: ['#00D4AA', '#00A087'] };
-      case 'action': return { primary: '#007AFF', secondary: '#0051D5', gradient: ['#007AFF', '#0051D5'] };
-      case 'social': return { primary: '#8B5CF6', secondary: '#6D28D9', gradient: ['#8B5CF6', '#6D28D9'] };
-      case 'challenge': return { primary: '#FFD700', secondary: '#FFA500', gradient: ['#FFD700', '#FFA500'] };
-      default: return { primary: '#00D4AA', secondary: '#00A087', gradient: ['#00D4AA', '#00A087'] };
+      case 'daily': return { primary: '#00D4AA', secondary: 'rgba(0, 212, 170, 0.6)', bg: 'rgba(0, 212, 170, 0.08)' };
+      case 'action': return { primary: '#3B82F6', secondary: 'rgba(59, 130, 246, 0.6)', bg: 'rgba(59, 130, 246, 0.08)' };
+      case 'social': return { primary: '#A78BFA', secondary: 'rgba(167, 139, 250, 0.6)', bg: 'rgba(167, 139, 250, 0.08)' };
+      case 'challenge': return { primary: '#F59E0B', secondary: 'rgba(245, 158, 11, 0.6)', bg: 'rgba(245, 158, 11, 0.08)' };
+      default: return { primary: '#00D4AA', secondary: 'rgba(0, 212, 170, 0.6)', bg: 'rgba(0, 212, 170, 0.08)' };
     }
   };
 
@@ -47,166 +46,155 @@ export default function EarnCreditsModal({ visible, onClose, onEarnCredits }: Ea
         key={option.id}
         onPress={() => isActionable ? onEarnCredits(option) : null}
         style={{
-          marginBottom: 12,
+          marginBottom: 10,
           overflow: 'hidden',
-          borderRadius: 20,
+          borderRadius: 16,
         }}
-        activeOpacity={0.85}
+        activeOpacity={0.7}
         disabled={!isActionable}
       >
         <View style={{
-          backgroundColor: option.isCompleted ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.06)',
-          borderRadius: 20,
-          padding: 18,
+          backgroundColor: option.isCompleted ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.05)',
+          borderRadius: 16,
+          padding: 16,
           borderWidth: 1,
-          borderColor: option.isCompleted ? 'rgba(255, 255, 255, 0.06)' : `${colors.primary}20`,
-          opacity: option.isCompleted ? 0.6 : 1,
+          borderColor: option.isCompleted ? 'rgba(255, 255, 255, 0.05)' : `${colors.primary}15`,
+          opacity: option.isCompleted ? 0.5 : 1,
         }}>
           <View style={{
             flexDirection: 'row',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'space-between'
           }}>
             {/* Left side - Icon and info */}
             <View style={{
               flexDirection: 'row',
-              alignItems: 'center',
+              alignItems: 'flex-start',
               flex: 1
             }}>
-              {/* Icon with gradient background */}
+              {/* Icon with colored background */}
               <View style={{
-                width: 60,
-                height: 60,
-                borderRadius: 18,
-                marginRight: 14,
-                overflow: 'hidden',
-                shadowColor: colors.primary,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: option.isCompleted ? 0 : 0.3,
-                shadowRadius: 8,
-                elevation: 5,
+                width: 48,
+                height: 48,
+                borderRadius: 12,
+                marginRight: 12,
+                backgroundColor: option.isCompleted ? 'rgba(255, 255, 255, 0.04)' : colors.bg,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: option.isCompleted ? 'rgba(255, 255, 255, 0.06)' : `${colors.primary}30`,
               }}>
-                <ExpoLinearGradient
-                  colors={option.isCompleted ? ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)'] : colors.gradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <Text style={{ fontSize: 30 }}>
-                    {option.emoji}
-                  </Text>
-                </ExpoLinearGradient>
+                <MaterialIcons
+                  name={getCategoryIcon(option.type) as any}
+                  size={24}
+                  color={option.isCompleted ? 'rgba(255, 255, 255, 0.4)' : colors.primary}
+                />
               </View>
 
               {/* Info */}
               <View style={{ flex: 1, marginRight: 12 }}>
-                <Text style={{
-                  fontSize: 17,
-                  fontWeight: '700',
-                  color: '#ffffff',
-                  marginBottom: 4,
-                  letterSpacing: 0.3
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 6
                 }}>
-                  {option.title}
-                </Text>
+                  <Text style={{
+                    fontSize: 16,
+                    fontWeight: '600',
+                    color: '#ffffff',
+                    letterSpacing: 0.2,
+                    flex: 1
+                  }}>
+                    {option.title}
+                  </Text>
+                  {/* Credits badge inline with title */}
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: option.isCompleted ? 'rgba(255, 255, 255, 0.1)' : colors.bg,
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 8,
+                    marginLeft: 8,
+                    borderWidth: 1,
+                    borderColor: option.isCompleted ? 'rgba(255, 255, 255, 0.15)' : `${colors.primary}25`
+                  }}>
+                    <MaterialIcons name="monetization-on" size={14} color={option.isCompleted ? 'rgba(255, 255, 255, 0.6)' : colors.primary} />
+                    <Text style={{
+                      fontSize: 13,
+                      fontWeight: '700',
+                      color: option.isCompleted ? 'rgba(255, 255, 255, 0.6)' : colors.primary,
+                      marginLeft: 3
+                    }}>
+                      +{option.credits}
+                    </Text>
+                  </View>
+                </View>
 
                 <Text style={{
                   fontSize: 13,
-                  color: 'rgba(255, 255, 255, 0.65)',
-                  marginBottom: 6,
-                  lineHeight: 18
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  lineHeight: 18,
+                  marginBottom: 8
                 }}>
                   {option.description}
                 </Text>
 
-                {/* Credits badge inline */}
-                <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: 'rgba(255, 215, 0, 0.12)',
-                  paddingHorizontal: 10,
-                  paddingVertical: 5,
-                  borderRadius: 10,
-                  alignSelf: 'flex-start',
-                  borderWidth: 1,
-                  borderColor: 'rgba(255, 215, 0, 0.25)'
-                }}>
-                  <MaterialIcons name="monetization-on" size={15} color="#FFD700" />
-                  <Text style={{
-                    fontSize: 14,
-                    fontWeight: '700',
-                    color: '#FFD700',
-                    marginLeft: 4
+                {/* Action button below description */}
+                {option.isCompleted ? (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    alignSelf: 'flex-start'
                   }}>
-                    +{option.credits}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Right side - Status/Action */}
-            <View style={{ alignItems: 'center' }}>
-              {option.isCompleted ? (
-                <View style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 24,
-                  backgroundColor: 'rgba(0, 212, 170, 0.15)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 2,
-                  borderColor: 'rgba(0, 212, 170, 0.4)'
-                }}>
-                  <MaterialIcons name="check-circle" size={28} color="#00D4AA" />
-                </View>
-              ) : option.isAvailable ? (
-                <View style={{
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                  shadowColor: colors.primary,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.4,
-                  shadowRadius: 6,
-                  elevation: 4,
-                }}>
-                  <ExpoLinearGradient
-                    colors={colors.gradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 10,
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
+                    <MaterialIcons name="check-circle" size={16} color="#00D4AA" />
                     <Text style={{
-                      fontSize: 13,
+                      fontSize: 12,
+                      fontWeight: '600',
+                      color: '#00D4AA',
+                      marginLeft: 4
+                    }}>
+                      Completed
+                    </Text>
+                  </View>
+                ) : option.isAvailable ? (
+                  <View style={{
+                    borderRadius: 8,
+                    backgroundColor: colors.bg,
+                    paddingHorizontal: 12,
+                    paddingVertical: 7,
+                    borderWidth: 1,
+                    borderColor: `${colors.primary}40`,
+                    alignSelf: 'flex-start'
+                  }}>
+                    <Text style={{
+                      fontSize: 12,
                       fontWeight: '700',
-                      color: '#000000',
+                      color: colors.primary,
                       letterSpacing: 0.5
                     }}>
-                      CLAIM
+                      Claim Reward
                     </Text>
-                  </ExpoLinearGradient>
-                </View>
-              ) : (
-                <View style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 12,
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  borderWidth: 1,
-                  borderColor: 'rgba(255, 255, 255, 0.1)'
-                }}>
-                  <MaterialIcons name="lock" size={20} color="rgba(255, 255, 255, 0.4)" />
-                </View>
-              )}
+                  </View>
+                ) : (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    alignSelf: 'flex-start'
+                  }}>
+                    <MaterialIcons name="lock" size={14} color="rgba(255, 255, 255, 0.4)" />
+                    <Text style={{
+                      fontSize: 12,
+                      fontWeight: '600',
+                      color: 'rgba(255, 255, 255, 0.4)',
+                      marginLeft: 4
+                    }}>
+                      Locked
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
         </View>
@@ -216,54 +204,32 @@ export default function EarnCreditsModal({ visible, onClose, onEarnCredits }: Ea
 
   const renderSection = (type: string, options: EarnCreditsOption[]) => {
     const colors = getCategoryColor(type);
-    const iconName = getCategoryIcon(type);
 
     return (
-      <View key={type} style={{ marginBottom: 28 }}>
+      <View key={type} style={{ marginBottom: 32 }}>
         {/* Section header */}
         <View style={{
           flexDirection: 'row',
           alignItems: 'center',
-          marginBottom: 14,
+          marginBottom: 12,
           paddingHorizontal: 4
         }}>
           <View style={{
-            width: 32,
-            height: 32,
-            borderRadius: 10,
-            backgroundColor: `${colors.primary}20`,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 10,
-            borderWidth: 1,
-            borderColor: `${colors.primary}40`
-          }}>
-            <MaterialIcons name={iconName as any} size={18} color={colors.primary} />
-          </View>
+            width: 3,
+            height: 14,
+            borderRadius: 2,
+            backgroundColor: colors.primary,
+            marginRight: 8
+          }} />
           <Text style={{
-            fontSize: 18,
+            fontSize: 13,
             fontWeight: '700',
-            color: '#ffffff',
-            textTransform: 'capitalize',
-            letterSpacing: 0.5
+            color: colors.primary,
+            textTransform: 'uppercase',
+            letterSpacing: 1.2,
           }}>
             {type}
           </Text>
-          <View style={{
-            marginLeft: 10,
-            paddingHorizontal: 8,
-            paddingVertical: 3,
-            borderRadius: 8,
-            backgroundColor: `${colors.primary}15`
-          }}>
-            <Text style={{
-              fontSize: 11,
-              fontWeight: '700',
-              color: colors.primary
-            }}>
-              {options.filter(o => !o.isCompleted).length} Available
-            </Text>
-          </View>
         </View>
 
         {/* Options */}
@@ -271,9 +237,6 @@ export default function EarnCreditsModal({ visible, onClose, onEarnCredits }: Ea
       </View>
     );
   };
-
-  const totalCredits = earnCreditsOptions.reduce((sum, opt) => sum + (opt.isCompleted ? opt.credits : 0), 0);
-  const availableCredits = earnCreditsOptions.reduce((sum, opt) => sum + (opt.isAvailable && !opt.isCompleted ? opt.credits : 0), 0);
 
   return (
     <Modal
@@ -286,20 +249,15 @@ export default function EarnCreditsModal({ visible, onClose, onEarnCredits }: Ea
         flex: 1,
         backgroundColor: '#0a0a0f'
       }}>
-        {/* Enhanced Header with Gradient */}
-        <View style={{ overflow: 'hidden' }}>
-          <ExpoLinearGradient
-            colors={['rgba(0, 212, 170, 0.15)', 'rgba(0, 212, 170, 0.05)', 'transparent']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={{
-              paddingTop: 60,
-              paddingBottom: 24,
-              paddingHorizontal: 20,
-              borderBottomWidth: 1,
-              borderBottomColor: 'rgba(255, 255, 255, 0.08)'
-            }}
-          >
+        {/* Enhanced Header */}
+        <View style={{
+          paddingTop: 60,
+          paddingBottom: 24,
+          paddingHorizontal: 20,
+          borderBottomWidth: 1,
+          borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+          backgroundColor: '#0a0a0f'
+        }}>
             {/* Title and Close Button Row */}
             <View style={{
               flexDirection: 'row',
@@ -342,78 +300,6 @@ export default function EarnCreditsModal({ visible, onClose, onEarnCredits }: Ea
               </TouchableOpacity>
             </View>
 
-            {/* Stats Cards */}
-            <View style={{
-              flexDirection: 'row',
-              gap: 12
-            }}>
-              {/* Earned Today */}
-              <View style={{
-                flex: 1,
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                borderRadius: 16,
-                padding: 14,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.1)'
-              }}>
-                <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginBottom: 6
-                }}>
-                  <MaterialIcons name="check-circle" size={18} color="#00D4AA" />
-                  <Text style={{
-                    fontSize: 12,
-                    color: 'rgba(255, 255, 255, 0.6)',
-                    marginLeft: 6,
-                    fontWeight: '600'
-                  }}>
-                    Earned
-                  </Text>
-                </View>
-                <Text style={{
-                  fontSize: 24,
-                  fontWeight: '800',
-                  color: '#00D4AA'
-                }}>
-                  {totalCredits}
-                </Text>
-              </View>
-
-              {/* Available to Earn */}
-              <View style={{
-                flex: 1,
-                backgroundColor: 'rgba(255, 215, 0, 0.08)',
-                borderRadius: 16,
-                padding: 14,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 215, 0, 0.2)'
-              }}>
-                <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginBottom: 6
-                }}>
-                  <MaterialIcons name="monetization-on" size={18} color="#FFD700" />
-                  <Text style={{
-                    fontSize: 12,
-                    color: 'rgba(255, 255, 255, 0.6)',
-                    marginLeft: 6,
-                    fontWeight: '600'
-                  }}>
-                    Available
-                  </Text>
-                </View>
-                <Text style={{
-                  fontSize: 24,
-                  fontWeight: '800',
-                  color: '#FFD700'
-                }}>
-                  {availableCredits}
-                </Text>
-              </View>
-            </View>
-          </ExpoLinearGradient>
         </View>
 
         {/* Content */}
@@ -426,36 +312,6 @@ export default function EarnCreditsModal({ visible, onClose, onEarnCredits }: Ea
           {Object.entries(groupedOptions).map(([type, options]) =>
             renderSection(type, options)
           )}
-
-          {/* Footer note */}
-          <View style={{
-            backgroundColor: 'rgba(139, 92, 246, 0.08)',
-            borderRadius: 16,
-            padding: 18,
-            marginTop: 12,
-            borderWidth: 1,
-            borderColor: 'rgba(139, 92, 246, 0.2)',
-            alignItems: 'center'
-          }}>
-            <MaterialIcons name="auto-awesome" size={24} color="#8B5CF6" style={{ marginBottom: 8 }} />
-            <Text style={{
-              fontSize: 15,
-              fontWeight: '600',
-              color: '#ffffff',
-              textAlign: 'center',
-              marginBottom: 4
-            }}>
-              More rewards coming soon!
-            </Text>
-            <Text style={{
-              fontSize: 13,
-              color: 'rgba(255, 255, 255, 0.6)',
-              textAlign: 'center',
-              lineHeight: 18
-            }}>
-              Stay tuned for special events and bonus opportunities
-            </Text>
-          </View>
         </ScrollView>
       </View>
     </Modal>

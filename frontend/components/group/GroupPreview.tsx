@@ -11,13 +11,32 @@ interface GroupPreviewProps {
     description: string;
     memberCount: number;
     createdDate: string;
-    image: any;
+    image: string | null;
     totalBets: number;
   };
 }
 
 const GroupPreview: React.FC<GroupPreviewProps> = ({ groupData }) => {
   const insets = useSafeAreaInsets();
+
+  // Debug logging
+  console.log('[GroupPreview] Rendering with groupData:', {
+    id: groupData.id,
+    name: groupData.name,
+    image: groupData.image,
+    imageType: typeof groupData.image,
+    hasImage: !!groupData.image
+  });
+
+  // Get group initials from name
+  const getGroupInitials = (name: string) => {
+    if (!name) return 'G';
+    const words = name.trim().split(/\s+/);
+    if (words.length === 1) {
+      return words[0].charAt(0).toUpperCase();
+    }
+    return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
@@ -54,16 +73,37 @@ const GroupPreview: React.FC<GroupPreviewProps> = ({ groupData }) => {
             alignItems: 'center',
             marginBottom: 32
           }}>
-            <Image 
-              source={groupData.image} 
-              style={{
+            {groupData.image ? (
+              <Image
+                source={{ uri: groupData.image }}
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 20,
+                  marginBottom: 16
+                }}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={{
                 width: 80,
                 height: 80,
                 borderRadius: 20,
-                marginBottom: 16
-              }}
-            />
-            
+                marginBottom: 16,
+                backgroundColor: 'rgba(0, 212, 170, 0.2)',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                <Text style={{
+                  fontSize: 32,
+                  fontWeight: '700',
+                  color: '#00D4AA'
+                }}>
+                  {getGroupInitials(groupData.name)}
+                </Text>
+              </View>
+            )}
+
             <Text style={{
               fontSize: 24,
               fontWeight: '700',

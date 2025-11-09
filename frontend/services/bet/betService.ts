@@ -5,7 +5,7 @@ export interface CreateBetRequest {
   groupId: number;
   title: string;
   description?: string;
-  betType: 'BINARY' | 'MULTIPLE_CHOICE' | 'PREDICTION' | 'OVER_UNDER';
+  betType: 'MULTIPLE_CHOICE' | 'PREDICTION' | 'OVER_UNDER';
   resolutionMethod: 'CREATOR_ONLY' | 'ASSIGNED_RESOLVER' | 'CONSENSUS_VOTING';
   bettingDeadline: string; // ISO string
   resolveDate?: string; // ISO string
@@ -70,6 +70,14 @@ export interface BetSummaryResponse {
   totalParticipants: number;
   createdAt: string;
   hasUserParticipated: boolean;
+  userAmount?: number;
+  participantPreviews?: {
+    id: number;
+    username: string;
+    firstName: string;
+    lastName: string;
+    profileImageUrl?: string;
+  }[];
 }
 
 export interface PlaceBetRequest {

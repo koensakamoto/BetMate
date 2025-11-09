@@ -196,12 +196,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       <TouchableOpacity
         onLongPress={handleLongPress}
         style={{
-          backgroundColor: isOwnMessage ? '#00D4AA' : '#1f2937',
+          backgroundColor: isOwnMessage ? '#3B82F6' : '#1f2937',
           borderRadius: 16,
-          paddingHorizontal: 14,
-          paddingVertical: 10,
-          maxWidth: '85%',
-          minWidth: 60
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          maxWidth: '80%',
+          alignSelf: isOwnMessage ? 'flex-end' : 'flex-start'
         }}
       >
         {/* Message type indicator */}
@@ -251,75 +251,88 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         {/* Message content */}
         <Text style={{
           color: isOwnMessage ? '#ffffff' : '#f3f4f6',
-          fontSize: 16,
-          lineHeight: 22
+          fontSize: 15,
+          lineHeight: 20
         }}>
           {message.content}
         </Text>
 
-        {/* Message metadata */}
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginTop: 6,
-          justifyContent: 'flex-end'
-        }}>
-          {message.isEdited && (
-            <>
+        {/* Compact metadata - only show edited indicator and reply count */}
+        {(message.isEdited || message.replyCount > 0) && (
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginTop: 6,
+            justifyContent: 'flex-end'
+          }}>
+            {message.isEdited && (
               <Text style={{
-                color: isOwnMessage ? '#c7d2fe' : '#9ca3af',
+                color: isOwnMessage ? 'rgba(255, 255, 255, 0.6)' : '#9ca3af',
                 fontSize: 11,
                 fontStyle: 'italic'
               }}>
                 edited
               </Text>
+            )}
+            {message.replyCount > 0 && (
+              <>
+                {message.isEdited && (
+                  <Text style={{
+                    color: isOwnMessage ? 'rgba(255, 255, 255, 0.6)' : '#9ca3af',
+                    fontSize: 11,
+                    marginHorizontal: 4
+                  }}>
+                    •
+                  </Text>
+                )}
+                <MaterialIcons name="reply" size={12} color={isOwnMessage ? 'rgba(255, 255, 255, 0.6)' : '#9ca3af'} />
+                <Text style={{
+                  color: isOwnMessage ? 'rgba(255, 255, 255, 0.6)' : '#9ca3af',
+                  fontSize: 11,
+                  marginLeft: 2
+                }}>
+                  {message.replyCount}
+                </Text>
+              </>
+            )}
+          </View>
+        )}
+      </TouchableOpacity>
+
+      {/* Timestamp and sender name below bubble */}
+      {isLastInSequence && (
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginTop: 4,
+          marginLeft: isOwnMessage ? 0 : 14,
+          marginRight: isOwnMessage ? 14 : 0
+        }}>
+          {!isOwnMessage && (
+            <>
               <Text style={{
-                color: isOwnMessage ? '#c7d2fe' : '#9ca3af',
+                color: '#6b7280',
                 fontSize: 11,
-                marginHorizontal: 4
+                fontWeight: '500'
+              }}>
+                {message.senderDisplayName}
+              </Text>
+              <Text style={{
+                color: '#6b7280',
+                fontSize: 11,
+                marginHorizontal: 6
               }}>
                 •
               </Text>
             </>
           )}
           <Text style={{
-            color: isOwnMessage ? '#c7d2fe' : '#9ca3af',
+            color: '#6b7280',
             fontSize: 11
           }}>
             {formatTime(message.createdAt)}
           </Text>
-          {message.replyCount > 0 && (
-            <>
-              <Text style={{
-                color: isOwnMessage ? '#c7d2fe' : '#9ca3af',
-                fontSize: 11,
-                marginHorizontal: 4
-              }}>
-                •
-              </Text>
-              <MaterialIcons name="reply" size={12} color={isOwnMessage ? '#c7d2fe' : '#9ca3af'} />
-              <Text style={{
-                color: isOwnMessage ? '#c7d2fe' : '#9ca3af',
-                fontSize: 11,
-                marginLeft: 2
-              }}>
-                {message.replyCount}
-              </Text>
-            </>
-          )}
         </View>
-      </TouchableOpacity>
-
-      {/* Sender name (for other users' messages) */}
-      {!isOwnMessage && isLastInSequence && (
-        <Text style={{
-          color: '#8b8b8b',
-          fontSize: 12,
-          marginTop: 4,
-          marginLeft: 14
-        }}>
-          {message.senderDisplayName}
-        </Text>
       )}
     </View>
   );

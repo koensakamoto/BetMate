@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Text, View, TouchableOpacity, ScrollView, Modal, Alert, TextInput, Share, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, Modal, Alert, TextInput, Share, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { groupService, type GroupMemberResponse } from '../../services/group/groupService';
-import { debugLog, errorLog } from '../../config/env';
+import { groupService, type GroupMemberResponse, type PendingRequestResponse } from '../../services/group/groupService';
+import { debugLog, errorLog, ENV } from '../../config/env';
 
 interface GroupMembersTabProps {
   groupData: {
     id: string | string[];
     memberCount: number;
+    userRole?: string;
   };
   forceRefresh?: number; // Increment this to force a refresh
 }
@@ -27,6 +28,8 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
   const [usernameToInvite, setUsernameToInvite] = useState('');
   const [isInviting, setIsInviting] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
+  const [pendingRequests, setPendingRequests] = useState<PendingRequestResponse[]>([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const memberFilters = ['All', 'Admins', 'Officers'];
 
   // Cache management: 5 minute cache
@@ -36,6 +39,36 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
   const isCacheValid = useCallback(() => {
     return (Date.now() - lastFetchTime.current) < CACHE_DURATION;
   }, []);
+
+  // Check if user is admin or officer
+  const isAdminOrOfficer = useMemo(() => {
+    return groupData.userRole === 'ADMIN' || groupData.userRole === 'OFFICER';
+  }, [groupData.userRole]);
+
+  // Fetch pending join requests (admin/officer only)
+  const fetchPendingRequests = useCallback(async () => {
+    if (!isAdminOrOfficer) return;
+
+    setIsLoadingRequests(true);
+    try {
+      const groupId = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
+      debugLog('Fetching pending requests for group ID:', groupId);
+      const requests = await groupService.getPendingRequests(Number(groupId));
+
+      if (Array.isArray(requests)) {
+        setPendingRequests(requests);
+        debugLog('Pending requests fetched successfully:', requests);
+      } else {
+        setPendingRequests([]);
+      }
+    } catch (error: any) {
+      errorLog('Error fetching pending requests:', error);
+      setPendingRequests([]);
+    } finally {
+      setIsLoadingRequests(false);
+    }
+  }, [groupData.id, isAdminOrOfficer]);
+
 
   // Fetch group members with caching
   const fetchMembers = useCallback(async () => {
@@ -97,8 +130,16 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
     if (forceRefresh && forceRefresh > 0) {
       debugLog('Force refresh triggered for members');
       fetchMembers();
+      fetchPendingRequests();
     }
-  }, [forceRefresh, fetchMembers]);
+  }, [forceRefresh, fetchMembers, fetchPendingRequests]);
+
+  // Fetch pending requests on mount if user is admin/officer
+  useEffect(() => {
+    if (isAdminOrOfficer && groupData.id) {
+      fetchPendingRequests();
+    }
+  }, [groupData.id, isAdminOrOfficer, fetchPendingRequests]);
 
   // Filter members based on selected filter - memoized to avoid recalculating on every render
   const filteredMembers = useMemo(() => {
@@ -177,6 +218,17 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
     return `${diffDays} days ago`;
   };
 
+  // Helper function to get full image URL
+  const getFullImageUrl = (relativePath: string | null | undefined): string | null => {
+    if (!relativePath) return null;
+    // If it's already a full URL, return as is
+    if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+      return relativePath;
+    }
+    // Otherwise, prepend the API base URL
+    return `${ENV.API_BASE_URL}${relativePath}`;
+  };
+
   // Helper functions for invite functionality
   const generateInviteLink = () => {
     const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
@@ -229,41 +281,105 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
 
   return (
     <View>
-      {/* Member Count Header */}
+      {/* Action Buttons Row */}
       <View style={{
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-        marginTop: 16
+        gap: 10,
+        marginBottom: 20
       }}>
-        <Text style={{
-          fontSize: 18,
-          fontWeight: '600',
-          color: '#ffffff'
-        }}>
-          Members ({groupData.memberCount})
-        </Text>
+        {/* Pending Requests Button - Always visible for admins/officers */}
+        {isAdminOrOfficer && (
+          <View style={{ flex: 1 }}>
+            <TouchableOpacity
+              onPress={() => {
+                const groupId = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
+                router.push(`/group/${groupId}/pending-requests`);
+              }}
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                borderRadius: 10,
+                height: 44,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                opacity: pendingRequests.length === 0 ? 0.5 : 1
+              }}
+            >
+              <MaterialIcons name="notifications-none" size={18} color="rgba(255, 255, 255, 0.9)" />
+              <Text style={{
+                fontSize: 14,
+                fontWeight: '500',
+                color: 'rgba(255, 255, 255, 0.9)',
+                marginLeft: 6
+              }}>
+                Requests
+              </Text>
+              {/* Badge showing count */}
+              <View style={{
+                marginLeft: 6,
+                backgroundColor: pendingRequests.length > 0 ? '#00D4AA' : 'rgba(255, 255, 255, 0.2)',
+                borderRadius: 8,
+                minWidth: 16,
+                height: 16,
+                paddingHorizontal: 4,
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                <Text style={{
+                  fontSize: 10,
+                  fontWeight: '600',
+                  color: pendingRequests.length > 0 ? '#000000' : 'rgba(255, 255, 255, 0.6)'
+                }}>
+                  {pendingRequests.length > 9 ? '9+' : pendingRequests.length}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
 
-        <TouchableOpacity
-          onPress={() => {
-            console.log('🎯 Invite button pressed, opening modal');
-            setShowInviteModal(true);
-          }}
-          style={{
-            backgroundColor: 'rgba(0, 212, 170, 0.15)',
-            width: 36,
-            height: 36,
-            borderRadius: 8,
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}>
-          <MaterialIcons name="person-add" size={18} color="#00D4AA" />
-        </TouchableOpacity>
+        {/* Invite Members Button - Always visible */}
+        <View style={{ flex: 1 }}>
+          <TouchableOpacity
+            onPress={() => {
+              console.log('🎯 Invite button pressed, opening modal');
+              setShowInviteModal(true);
+            }}
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              borderRadius: 10,
+              height: 44,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <MaterialIcons name="person-add-alt" size={18} color="rgba(255, 255, 255, 0.9)" />
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '500',
+              color: 'rgba(255, 255, 255, 0.9)',
+              marginLeft: 6
+            }}>
+              Invite
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
+      {/* Member Count Header */}
+      <Text style={{
+        fontSize: 15,
+        fontWeight: '500',
+        color: 'rgba(255, 255, 255, 0.5)',
+        marginBottom: 16,
+        letterSpacing: 0.3
+      }}>
+        {groupData.memberCount} members
+      </Text>
+
       {/* Member Filters */}
-      <View style={{ marginBottom: 20 }}>
+      <View style={{ marginBottom: 16 }}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -309,7 +425,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
         <Text style={{
           color: 'rgba(255, 255, 255, 0.6)',
           textAlign: 'center',
-          marginTop: 20
+          marginTop: 8
         }}>
           Loading members...
         </Text>
@@ -320,7 +436,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
           borderColor: 'rgba(255, 0, 0, 0.3)',
           borderRadius: 8,
           padding: 16,
-          marginTop: 20
+          marginTop: 8
         }}>
           <Text style={{
             color: '#ff6b6b',
@@ -380,8 +496,8 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
           borderWidth: 0.5,
           borderColor: 'rgba(255, 255, 255, 0.08)',
           borderRadius: 12,
-          padding: 16,
-          marginBottom: 12,
+          padding: 14,
+          marginBottom: 10,
           flexDirection: 'row',
           alignItems: 'center'
         }}>
@@ -393,16 +509,30 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
             backgroundColor: isOnline(member) ? 'rgba(0, 212, 170, 0.2)' : 'rgba(255, 255, 255, 0.12)',
             justifyContent: 'center',
             alignItems: 'center',
-            marginRight: 16,
-            position: 'relative'
+            marginRight: 12,
+            position: 'relative',
+            overflow: 'hidden',
+            borderWidth: member.profilePictureUrl ? 2 : 0,
+            borderColor: isOnline(member) ? '#00D4AA' : 'rgba(255, 255, 255, 0.2)'
           }}>
-            <Text style={{
-              fontSize: 18,
-              fontWeight: '700',
-              color: isOnline(member) ? '#00D4AA' : '#ffffff'
-            }}>
-              {getDisplayName(member).charAt(0).toUpperCase()}
-            </Text>
+            {getFullImageUrl(member.profilePictureUrl) ? (
+              <Image
+                source={{ uri: getFullImageUrl(member.profilePictureUrl)! }}
+                style={{
+                  width: '100%',
+                  height: '100%'
+                }}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '700',
+                color: isOnline(member) ? '#00D4AA' : '#ffffff'
+              }}>
+                {getDisplayName(member).charAt(0).toUpperCase()}
+              </Text>
+            )}
 
             {/* Online Indicator */}
             {isOnline(member) && (
@@ -507,7 +637,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
           )}
 
           {/* Show More Button */}
-          {filteredMembers.length < groupData.memberCount && (
+          {members.length < groupData.memberCount && (
             <TouchableOpacity style={{
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
               paddingVertical: 14,

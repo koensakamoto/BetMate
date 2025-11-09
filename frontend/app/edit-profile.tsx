@@ -8,9 +8,20 @@ import { userService, UserProfileResponse, UserProfileUpdateRequest } from '../s
 import AuthInput from '../components/auth/AuthInput';
 import AuthButton from '../components/auth/AuthButton';
 import { useAuth } from '../contexts/AuthContext';
-import { debugLog, errorLog } from '../config/env';
+import { debugLog, errorLog, ENV } from '../config/env';
 
 const defaultIcon = require("../assets/images/icon.png");
+
+// Helper function to get full image URL
+const getFullImageUrl = (imageUrl: string | null | undefined): string | null => {
+  if (!imageUrl) return null;
+  // If it's already a full URL, return as-is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  // If it's a relative URL, prepend the base URL
+  return `${ENV.API_BASE_URL}${imageUrl}`;
+};
 
 export default function EditProfile() {
   const insets = useSafeAreaInsets();
@@ -43,14 +54,10 @@ export default function EditProfile() {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const profile = await userService.getCurrentUserProfile();
-      console.log('=== EDIT PROFILE DEBUG ===');
-      console.log('Profile loaded:', profile);
-      console.log('Profile.bio:', profile.bio);
-      console.log('=== END DEBUG ===');
       setUserProfile(profile);
-      
+
       // Pre-fill form with current data
       setFormData({
         firstName: profile.firstName || '',
@@ -58,7 +65,7 @@ export default function EditProfile() {
         bio: profile.bio || ''
       });
       setProfileImage(profile.profileImageUrl || null);
-      
+
       debugLog('User profile loaded for editing:', profile);
     } catch (err: any) {
       errorLog('Failed to load user profile:', err);
@@ -71,7 +78,7 @@ export default function EditProfile() {
   const pickImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (status !== 'granted') {
         Alert.alert(
           'Permission Required',
@@ -88,8 +95,8 @@ export default function EditProfile() {
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets[0]) {
-        setProfileImage(result.assets[0].uri);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        await uploadImage(result.assets[0].uri);
       }
     } catch (error) {
       errorLog('Error picking image:', error);
@@ -100,7 +107,7 @@ export default function EditProfile() {
   const takePhoto = async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      
+
       if (status !== 'granted') {
         Alert.alert(
           'Permission Required',
@@ -111,17 +118,42 @@ export default function EditProfile() {
       }
 
       const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets[0]) {
-        setProfileImage(result.assets[0].uri);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        await uploadImage(result.assets[0].uri);
       }
     } catch (error) {
       errorLog('Error taking photo:', error);
       Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  const uploadImage = async (uri: string) => {
+    try {
+      setIsSaving(true);
+
+      // Extract filename from URI
+      const fileName = uri.split('/').pop() || `profile_${Date.now()}.jpg`;
+
+      // Upload the image
+      const updatedProfile = await userService.uploadProfilePicture(uri, fileName);
+
+      // Update local state
+      setUserProfile(updatedProfile);
+      setProfileImage(updatedProfile.profileImageUrl || null);
+
+      Alert.alert('Success', 'Profile picture updated successfully');
+    } catch (err: any) {
+      errorLog('Failed to upload profile picture:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to upload profile picture. Please try again.';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -161,43 +193,33 @@ export default function EditProfile() {
   };
 
   const handleSave = async () => {
-    console.log('=== SAVE BUTTON CLICKED ===');
-    console.log('Form validation result:', validateForm());
-    
     if (!validateForm()) {
-      console.log('Form validation failed, not saving');
       return;
     }
 
     try {
       setIsSaving(true);
       setError(null);
-      
+
       const updateData: UserProfileUpdateRequest = {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         bio: formData.bio.trim()
       };
-      
-      console.log('=== FRONTEND DEBUG START ===');
-      console.log('Sending update request:', updateData);
-      console.log('Current form data:', formData);
-      
+
       const updatedProfile = await userService.updateProfile(updateData);
-      console.log('Received updated profile:', updatedProfile);
-      console.log('=== FRONTEND DEBUG END ===');
       debugLog('Profile updated successfully:', updatedProfile);
-      
+
       // Update local state with the new profile data
       setUserProfile(updatedProfile);
-      
+
       Alert.alert(
         'Success',
         'Profile updated successfully',
         [
-          { 
-            text: 'OK', 
-            onPress: () => router.back() 
+          {
+            text: 'OK',
+            onPress: () => router.back()
           }
         ]
       );
@@ -247,11 +269,6 @@ export default function EditProfile() {
   if (!isAuthenticated) {
     return null;
   }
-
-  console.log('=== RENDER DEBUG ===');
-  console.log('formData.bio at render:', formData.bio);
-  console.log('formData:', formData);
-  console.log('=== END RENDER DEBUG ===');
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
@@ -332,16 +349,36 @@ export default function EditProfile() {
             }}
           >
             <View style={{ position: 'relative', marginRight: 16 }}>
-              <Image
-                source={profileImage ? { uri: profileImage } : defaultIcon}
-                style={{ 
-                  width: 60, 
-                  height: 60, 
+              {getFullImageUrl(profileImage) ? (
+                <Image
+                  source={{ uri: getFullImageUrl(profileImage)! }}
+                  style={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: 30,
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                  }}
+                  resizeMode="cover"
+                  defaultSource={defaultIcon}
+                />
+              ) : (
+                <View style={{
+                  width: 60,
+                  height: 60,
                   borderRadius: 30,
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)'
-                }}
-                resizeMode="cover"
-              />
+                  backgroundColor: 'rgba(0, 212, 170, 0.2)',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}>
+                  <Text style={{
+                    fontSize: 20,
+                    fontWeight: '700',
+                    color: '#00D4AA'
+                  }}>
+                    {formData.firstName.charAt(0).toUpperCase() || ''}{formData.lastName.charAt(0).toUpperCase() || ''}
+                  </Text>
+                </View>
+              )}
               <View style={{
                 position: 'absolute',
                 bottom: -2,

@@ -7,8 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import BetCard from '../../components/bet/BetCard';
 import { betService, BetSummaryResponse } from '../../services/bet/betService';
 import { SkeletonBetCard } from '../../components/common/SkeletonCard';
-
-const icon = require("../../assets/images/icon.png");
+import * as Haptics from 'expo-haptics';
 
 export default function Bet() {
   const insets = useSafeAreaInsets();
@@ -90,7 +89,9 @@ export default function Bet() {
   }, []);
 
   // Calculate time remaining until deadline - memoized for performance
-  const calculateTimeRemaining = useCallback((deadline: string): string => {
+  const calculateTimeRemaining = useCallback((deadline: string | null | undefined): string => {
+    if (!deadline) return 'N/A';
+
     const now = new Date();
     const deadlineDate = new Date(deadline);
     const diff = deadlineDate.getTime() - now.getTime();
@@ -107,20 +108,26 @@ export default function Bet() {
   }, []);
 
   // Transform backend bet data to frontend format - memoized for performance
-  const transformBetData = useCallback((bet: BetSummaryResponse) => ({
-    id: bet.id.toString(),
-    title: bet.title,
-    description: '',  // Description not in summary, would need full bet details
-    category: bet.betType,
-    categoryIcon: '🎯',  // Default icon
-    timeRemaining: calculateTimeRemaining(bet.bettingDeadline),
-    participantCount: bet.totalParticipants,
-    participantAvatars: [icon, icon, icon],  // Placeholder avatars
-    stakeAmount: Math.round(bet.totalPool / Math.max(bet.totalParticipants, 1)),
-    status: bet.status.toLowerCase() as 'open' | 'active' | 'closed',
-    isJoined: bet.hasUserParticipated,
-    creatorName: bet.creatorUsername
-  }), [calculateTimeRemaining]);
+  const transformBetData = useCallback((bet: BetSummaryResponse) => {
+    const bettingTimeRemaining = calculateTimeRemaining(bet.bettingDeadline);
+    const resolveTimeRemaining = calculateTimeRemaining(bet.resolveDate);
+
+    return {
+      id: bet.id.toString(),
+      title: bet.title,
+      description: '',  // Description not in summary, would need full bet details
+      category: bet.betType,
+      timeRemaining: bettingTimeRemaining,
+      resolveTimeRemaining: resolveTimeRemaining,
+      participantCount: bet.totalParticipants,
+      participantPreviews: bet.participantPreviews,
+      stakeAmount: Math.round(bet.totalPool / Math.max(bet.totalParticipants, 1)),
+      status: bet.status.toLowerCase() as 'open' | 'active' | 'resolved',
+      isJoined: bet.hasUserParticipated,
+      creatorName: bet.creatorUsername,
+      userStake: bet.userAmount
+    };
+  }, [calculateTimeRemaining]);
 
   // Filter my bets based on selected filter - memoized to avoid recalculating on every render
   const filteredMyBets = useMemo(() => {
@@ -148,13 +155,13 @@ export default function Bet() {
 
   // Memoize tab change handler to provide stable reference
   const handleTabChange = useCallback((index: number) => {
-    haptic.selection();
+    Haptics.selectionAsync();
     setActiveTab(index);
   }, []);
 
   // Memoize filter change handler to provide stable reference
   const handleFilterChange = useCallback((filter: 'all' | 'active' | 'resolved') => {
-    haptic.selection();
+    Haptics.selectionAsync();
     setMyBetsFilter(filter);
   }, []);
 
@@ -391,39 +398,6 @@ export default function Bet() {
             {activeTab === 0 ? (
               /* My Bets Section */
               <>
-                {/* Create Bet Banner */}
-                <TouchableOpacity 
-                  onPress={() => router.push('/create-bet')}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingVertical: 12,
-                    paddingHorizontal: 0,
-                    marginBottom: 24,
-                    borderBottomWidth: 1,
-                    borderBottomColor: 'rgba(255, 255, 255, 0.1)'
-                  }}
-                >
-                  <Text style={{
-                    fontSize: 20,
-                    color: 'rgba(255, 255, 255, 0.4)',
-                    marginRight: 12
-                  }}>+</Text>
-                  
-                  <View style={{ flex: 1 }}>
-                    <Text style={{
-                      fontSize: 16,
-                      color: '#ffffff',
-                      marginBottom: 2
-                    }}>Create New Bet</Text>
-                    
-                    <Text style={{
-                      fontSize: 12,
-                      color: 'rgba(255, 255, 255, 0.5)'
-                    }}>Challenge friends with your predictions</Text>
-                  </View>
-                </TouchableOpacity>
-
                 {/* My Bets Feed */}
                 {loading ? (
                   <>
@@ -437,6 +411,7 @@ export default function Bet() {
                       <BetCard
                         key={bet.id}
                         {...bet}
+                        showJoinedIndicator={false}
                       />
                     ))
                   ) : (
