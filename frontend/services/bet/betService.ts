@@ -52,6 +52,7 @@ export interface BetResponse {
   fulfillmentStatus?: 'PENDING' | 'PARTIALLY_FULFILLED' | 'FULFILLED'; // NEW: Fulfillment tracking status
   loserClaimedFulfilledAt?: string; // NEW: When loser claimed they fulfilled
   loserFulfillmentProofUrl?: string; // NEW: Photo proof from loser
+  loserFulfillmentProofDescription?: string; // NEW: Text description from loser
   allWinnersConfirmedAt?: string; // NEW: When all winners confirmed
   totalPool: number;
   totalParticipants: number;
@@ -137,6 +138,7 @@ export interface FulfillmentDetails {
   confirmationCount: number;
   loserClaimedAt?: string;
   loserProofUrl?: string;
+  loserProofDescription?: string;
   allWinnersConfirmedAt?: string;
   winners: WinnerInfo[];
   losers: LoserInfo[];
@@ -164,6 +166,7 @@ export interface WinnerConfirmation {
 
 export interface LoserClaimRequest {
   proofUrl?: string;
+  proofDescription?: string;
 }
 
 export interface WinnerConfirmRequest {
@@ -235,8 +238,8 @@ class BetService extends BaseApiService {
   }
 
   // Loser claims they have fulfilled the stake (optional)
-  async loserClaimFulfilled(betId: number, proofUrl?: string): Promise<string> {
-    const request: LoserClaimRequest = { proofUrl };
+  async loserClaimFulfilled(betId: number, proofUrl?: string, proofDescription?: string): Promise<string> {
+    const request: LoserClaimRequest = { proofUrl, proofDescription };
     return this.post<string, LoserClaimRequest>(`/${betId}/fulfillment/loser-claim`, request);
   }
 

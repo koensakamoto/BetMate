@@ -72,9 +72,10 @@ public class BetFulfillmentService {
      * @param betId the bet ID
      * @param userId the loser user ID
      * @param proofUrl optional URL to proof (photo, etc.)
+     * @param proofDescription optional text description of the proof
      * @throws BetFulfillmentException if validation fails
      */
-    public void loserClaimFulfilled(@NotNull Long betId, @NotNull Long userId, String proofUrl) {
+    public void loserClaimFulfilled(@NotNull Long betId, @NotNull Long userId, String proofUrl, String proofDescription) {
         Bet bet = betRepository.findById(betId)
                 .orElseThrow(() -> new BetFulfillmentException("Bet not found: " + betId));
 
@@ -96,6 +97,9 @@ public class BetFulfillmentService {
         bet.setLoserClaimedFulfilledAt(LocalDateTime.now());
         if (proofUrl != null && !proofUrl.trim().isEmpty()) {
             bet.setLoserFulfillmentProofUrl(proofUrl);
+        }
+        if (proofDescription != null && !proofDescription.trim().isEmpty()) {
+            bet.setLoserFulfillmentProofDescription(proofDescription);
         }
 
         betRepository.save(bet);

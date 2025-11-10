@@ -1,4 +1,4 @@
-import { Text, View, Image, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator, Alert, RefreshControl } from "react-native";
+import { Text, View, Image, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator, Alert, RefreshControl, Modal } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { router, useFocusEffect } from 'expo-router';
@@ -12,6 +12,8 @@ import { SkeletonProfile } from '../../components/common/SkeletonCard';
 import { formatNumber, formatPercentage } from '../../utils/formatters';
 import { storeService, InventoryItemResponse } from '../../services/store/storeService';
 import InventoryItemDetailSheet from '../../components/store/InventoryItemDetailSheet';
+import { betService, BetSummaryResponse } from '../../services/bet/betService';
+import { FulfillmentTracker } from '../../components/bet/FulfillmentTracker';
 
 const icon = require("../../assets/images/icon.png");
 
@@ -40,7 +42,11 @@ export default function Profile() {
   const [loadingInventory, setLoadingInventory] = useState(false);
   const [selectedInventoryItem, setSelectedInventoryItem] = useState<InventoryItemResponse | null>(null);
   const [inventoryDetailVisible, setInventoryDetailVisible] = useState(false);
-  const tabs = ['Stats', 'Inventory'];
+  const [unfulfilledBets, setUnfulfilledBets] = useState<BetSummaryResponse[]>([]);
+  const [loadingUnfulfilledBets, setLoadingUnfulfilledBets] = useState(false);
+  const [selectedBetForFulfillment, setSelectedBetForFulfillment] = useState<BetSummaryResponse | null>(null);
+  const [fulfillmentModalVisible, setFulfillmentModalVisible] = useState(false);
+  const tabs = ['Stats', 'Inventory', 'Owed Stakes'];
 
   // Cache management: 5 minute cache
   const lastFetchTime = useRef<number>(0);
@@ -129,6 +135,31 @@ export default function Profile() {
     }
   }, [isAuthenticated]);
 
+  // Fetch user unfulfilled bets
+  const fetchUnfulfilledBets = useCallback(async () => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    try {
+      setLoadingUnfulfilledBets(true);
+      const allBets = await betService.getMyBets();
+      // Filter for unfulfilled social bets only
+      // Unfulfilled means: status is RESOLVED and fulfillmentStatus is PENDING or PARTIALLY_FULFILLED
+      const unfulfilled = allBets.filter(bet =>
+        bet.status === 'RESOLVED' &&
+        bet.stakeType === 'SOCIAL' &&
+        (bet.fulfillmentStatus === 'PENDING' || bet.fulfillmentStatus === 'PARTIALLY_FULFILLED')
+      );
+      setUnfulfilledBets(unfulfilled);
+      debugLog('Unfulfilled bets loaded:', unfulfilled);
+    } catch (err: any) {
+      errorLog('Failed to load unfulfilled bets:', err);
+    } finally {
+      setLoadingUnfulfilledBets(false);
+    }
+  }, [isAuthenticated]);
+
   // Fetch inventory when Inventory tab is active
   useEffect(() => {
     if (activeTab === 1 && isAuthenticated) {
@@ -136,13 +167,22 @@ export default function Profile() {
     }
   }, [activeTab, isAuthenticated, fetchInventory]);
 
+  // Fetch unfulfilled bets when Unfulfilled tab is active
+  useEffect(() => {
+    if (activeTab === 2 && isAuthenticated) {
+      fetchUnfulfilledBets();
+    }
+  }, [activeTab, isAuthenticated, fetchUnfulfilledBets]);
+
   // Pull-to-refresh handler
   const onRefresh = useCallback(() => {
     loadUserData(true);
     if (activeTab === 1) {
       fetchInventory();
+    } else if (activeTab === 2) {
+      fetchUnfulfilledBets();
     }
-  }, [activeTab, fetchInventory]);
+  }, [activeTab, fetchInventory, fetchUnfulfilledBets]);
 
 
   // Memoize detailed stats array to avoid recalculating on every render
@@ -898,6 +938,251 @@ export default function Profile() {
             </View>
           )}
 
+          {activeTab === 2 && (
+            /* Owed Stakes Tab */
+            <View>
+              <Text style={{
+                fontSize: 16,
+                fontWeight: '600',
+                color: '#ffffff',
+                marginBottom: 16
+              }}>
+                Owed Stakes
+              </Text>
+
+              {loadingUnfulfilledBets ? (
+                <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                  <ActivityIndicator size="large" color="#00D4AA" />
+                </View>
+              ) : unfulfilledBets.length === 0 ? (
+                <View style={{
+                  alignItems: 'center',
+                  paddingVertical: 60
+                }}>
+                  <MaterialIcons name="check-circle-outline" size={48} color="rgba(255, 255, 255, 0.3)" />
+                  <Text style={{
+                    fontSize: 16,
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    textAlign: 'center',
+                    marginTop: 16,
+                    fontWeight: '500'
+                  }}>
+                    All caught up!
+                  </Text>
+                  <Text style={{
+                    fontSize: 14,
+                    color: 'rgba(255, 255, 255, 0.4)',
+                    textAlign: 'center',
+                    marginTop: 8
+                  }}>
+                    No stakes to fulfill
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ gap: 12 }}>
+                  {unfulfilledBets.map((bet) => {
+                    // Determine if user is a loser (lost the bet)
+                    const userIsLoser = bet.userChoice && bet.outcome && bet.userChoice !== bet.outcome;
+
+                    // Determine card state based on user role and fulfillment status
+                    let cardState: 'TO_DO' | 'WAITING' | 'COMPLETED';
+                    let badgeConfig: {
+                      bgColor: string;
+                      textColor: string;
+                      text: string;
+                    };
+
+                    if (bet.fulfillmentStatus === 'FULFILLED') {
+                      cardState = 'COMPLETED';
+                      badgeConfig = {
+                        bgColor: 'rgba(0, 212, 170, 0.1)',
+                        textColor: '#00D4AA',
+                        text: 'Completed'
+                      };
+                    } else if (userIsLoser && bet.fulfillmentStatus === 'PENDING') {
+                      cardState = 'TO_DO';
+                      badgeConfig = {
+                        bgColor: 'rgba(239, 68, 68, 0.1)',
+                        textColor: '#EF4444',
+                        text: 'To-Do'
+                      };
+                    } else {
+                      cardState = 'WAITING';
+                      badgeConfig = {
+                        bgColor: 'rgba(255, 255, 255, 0.05)',
+                        textColor: 'rgba(255, 255, 255, 0.7)',
+                        text: 'Waiting'
+                      };
+                    }
+
+                    return (
+                      <TouchableOpacity
+                        key={bet.id}
+                        onPress={() => {
+                          setSelectedBetForFulfillment(bet);
+                          setFulfillmentModalVisible(true);
+                        }}
+                        activeOpacity={0.7}
+                        style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                          borderWidth: 1,
+                          borderColor: 'rgba(255, 255, 255, 0.1)',
+                          borderRadius: 12,
+                          padding: 16,
+                          position: 'relative'
+                        }}
+                      >
+                        {/* Fulfillment Status Badge */}
+                        <View
+                          style={{
+                            position: 'absolute',
+                            top: 12,
+                            right: 12,
+                            backgroundColor: badgeConfig.bgColor,
+                            paddingHorizontal: 10,
+                            paddingVertical: 5,
+                            borderRadius: 6
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              fontWeight: '700',
+                              color: badgeConfig.textColor
+                            }}
+                          >
+                            {badgeConfig.text}
+                          </Text>
+                        </View>
+
+                        {/* Bet Title */}
+                        <Text
+                          style={{
+                            fontSize: 16,
+                            fontWeight: '700',
+                            color: '#ffffff',
+                            marginBottom: 8,
+                            paddingRight: 80
+                          }}
+                          numberOfLines={2}
+                        >
+                          {bet.title}
+                        </Text>
+
+                        {/* Social Stake Description */}
+                        <View
+                          style={{
+                            backgroundColor: 'rgba(0, 212, 170, 0.08)',
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderRadius: 8,
+                            marginBottom: 12
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              color: '#00D4AA',
+                              fontWeight: '600'
+                            }}
+                          >
+                            {bet.socialStakeDescription || 'Social bet'}
+                          </Text>
+                        </View>
+
+                        {/* Group Name & Participants */}
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 12
+                          }}
+                        >
+                          {/* Group */}
+                          <View
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 4,
+                              flex: 1
+                            }}
+                          >
+                            <MaterialIcons
+                              name="groups"
+                              size={14}
+                              color="rgba(255, 255, 255, 0.5)"
+                            />
+                            <Text
+                              style={{
+                                fontSize: 12,
+                                color: 'rgba(255, 255, 255, 0.6)'
+                              }}
+                              numberOfLines={1}
+                            >
+                              {bet.groupName}
+                            </Text>
+                          </View>
+
+                          {/* Participants */}
+                          <View
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 4
+                            }}
+                          >
+                            <MaterialIcons
+                              name="people"
+                              size={14}
+                              color="rgba(255, 255, 255, 0.5)"
+                            />
+                            <Text
+                              style={{
+                                fontSize: 12,
+                                color: 'rgba(255, 255, 255, 0.6)'
+                              }}
+                            >
+                              {bet.totalParticipants}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Tap to view indicator */}
+                        <View
+                          style={{
+                            marginTop: 12,
+                            paddingTop: 12,
+                            borderTopWidth: 0.5,
+                            borderTopColor: 'rgba(255, 255, 255, 0.1)',
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              color: 'rgba(255, 255, 255, 0.4)',
+                              fontWeight: '600',
+                              marginRight: 4
+                            }}
+                          >
+                            Tap to view fulfillment details
+                          </Text>
+                          <MaterialIcons
+                            name="arrow-forward"
+                            size={12}
+                            color="rgba(255, 255, 255, 0.4)"
+                          />
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          )}
+
         </View>
 
       </ScrollView>
@@ -910,6 +1195,73 @@ export default function Profile() {
         onEquip={handleEquipItem}
         onUnequip={handleUnequipItem}
       />
+
+      {/* Fulfillment Details Modal */}
+      <Modal
+        visible={fulfillmentModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setFulfillmentModalVisible(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          justifyContent: 'flex-end'
+        }}>
+          <View style={{
+            backgroundColor: '#0a0a0f',
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            paddingTop: 20,
+            paddingBottom: insets.bottom + 20,
+            maxHeight: '90%'
+          }}>
+            {/* Header with close button */}
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingHorizontal: 20,
+              marginBottom: 16
+            }}>
+              <Text style={{
+                fontSize: 20,
+                fontWeight: '700',
+                color: '#ffffff'
+              }}>
+                {selectedBetForFulfillment?.title}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setFulfillmentModalVisible(false)}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}
+              >
+                <MaterialIcons name="close" size={20} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={{ paddingHorizontal: 20 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {selectedBetForFulfillment && (
+                <FulfillmentTracker
+                  betId={selectedBetForFulfillment.id}
+                  betTitle={selectedBetForFulfillment.title}
+                  socialStakeDescription={selectedBetForFulfillment.socialStakeDescription || ''}
+                  onRefresh={fetchUnfulfilledBets}
+                />
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

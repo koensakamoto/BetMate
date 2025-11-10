@@ -2,6 +2,8 @@ package com.betmate.dto.betting.response;
 
 import com.betmate.dto.group.response.MemberPreviewDto;
 import com.betmate.entity.betting.Bet;
+import com.betmate.entity.betting.BetStakeType;
+import com.betmate.entity.betting.FulfillmentStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,6 +32,12 @@ public class BetSummaryResponseDto {
     private Integer totalParticipants;
 
     private LocalDateTime createdAt;
+
+    // Stake information
+    private BetStakeType stakeType;
+    private BigDecimal fixedStakeAmount;
+    private String socialStakeDescription;
+    private FulfillmentStatus fulfillmentStatus;
 
     // User context
     private Boolean hasUserParticipated;
@@ -177,5 +185,37 @@ public class BetSummaryResponseDto {
 
     public void setParticipantPreviews(List<MemberPreviewDto> participantPreviews) {
         this.participantPreviews = participantPreviews;
+    }
+
+    public BetStakeType getStakeType() {
+        return stakeType;
+    }
+
+    public void setStakeType(BetStakeType stakeType) {
+        this.stakeType = stakeType;
+    }
+
+    public BigDecimal getFixedStakeAmount() {
+        return fixedStakeAmount;
+    }
+
+    public void setFixedStakeAmount(BigDecimal fixedStakeAmount) {
+        this.fixedStakeAmount = fixedStakeAmount;
+    }
+
+    public String getSocialStakeDescription() {
+        return socialStakeDescription;
+    }
+
+    public void setSocialStakeDescription(String socialStakeDescription) {
+        this.socialStakeDescription = socialStakeDescription;
+    }
+
+    public FulfillmentStatus getFulfillmentStatus() {
+        return fulfillmentStatus;
+    }
+
+    public void setFulfillmentStatus(FulfillmentStatus fulfillmentStatus) {
+        this.fulfillmentStatus = fulfillmentStatus;
     }
 }

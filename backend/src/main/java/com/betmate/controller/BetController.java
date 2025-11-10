@@ -181,13 +181,12 @@ public class BetController {
         User currentUser = userService.getUserByUsername(authentication.getName())
             .orElseThrow(() -> new RuntimeException("User not found"));
         
-        // Get user's ACTIVE participations and extract the bets
+        // Get user's participations and extract the bets (including ACTIVE, WON, LOST, etc.)
         List<BetParticipation> participations = betParticipationService.getUserParticipations(currentUser);
         System.out.println("DEBUG: User " + currentUser.getUsername() + " has " + participations.size() + " total participations");
-        
-        // Filter to only ACTIVE participations for "My Bets" 
+
+        // Include all participation statuses (ACTIVE, WON, LOST) for "My Bets"
         List<Bet> bets = participations.stream()
-            .filter(p -> p.getStatus() == BetParticipation.ParticipationStatus.ACTIVE)
             .map(BetParticipation::getBet)
             .distinct()
             .toList();
@@ -467,6 +466,14 @@ public class BetController {
         response.setFixedStakeAmount(bet.getFixedStakeAmount());  // NEW: Fixed-stake betting
         response.setStakeType(bet.getStakeType());  // NEW: Stake type (CREDIT/SOCIAL)
         response.setSocialStakeDescription(bet.getSocialStakeDescription());  // NEW: Social stake description
+
+        // Fulfillment tracking fields
+        response.setFulfillmentStatus(bet.getFulfillmentStatus());
+        response.setLoserClaimedFulfilledAt(bet.getLoserClaimedFulfilledAt());
+        response.setLoserFulfillmentProofUrl(bet.getLoserFulfillmentProofUrl());
+        response.setLoserFulfillmentProofDescription(bet.getLoserFulfillmentProofDescription());
+        response.setAllWinnersConfirmedAt(bet.getAllWinnersConfirmedAt());
+
         response.setTotalPool(bet.getTotalPool());
         response.setTotalParticipants(bet.getTotalParticipants());
         response.setMinimumVotesRequired(bet.getMinimumVotesRequired());
@@ -509,12 +516,12 @@ public class BetController {
         if (hasParticipated) {
             betParticipationService.getUserParticipation(currentUser, bet.getId())
                 .ifPresent(participation -> {
-                    // Convert integer option (1,2,3,4) to BetOutcome enum
+                    // Convert integer option (0,1,2,3) to BetOutcome enum (0-indexed)
                     Bet.BetOutcome userChoice = switch (participation.getChosenOption()) {
-                        case 1 -> Bet.BetOutcome.OPTION_1;
-                        case 2 -> Bet.BetOutcome.OPTION_2;
-                        case 3 -> Bet.BetOutcome.OPTION_3;
-                        case 4 -> Bet.BetOutcome.OPTION_4;
+                        case 0 -> Bet.BetOutcome.OPTION_1;
+                        case 1 -> Bet.BetOutcome.OPTION_2;
+                        case 2 -> Bet.BetOutcome.OPTION_3;
+                        case 3 -> Bet.BetOutcome.OPTION_4;
                         default -> null;
                     };
                     response.setUserChoice(userChoice);
@@ -542,7 +549,13 @@ public class BetController {
         response.setTotalPool(bet.getTotalPool());
         response.setTotalParticipants(bet.getTotalParticipants());
         response.setCreatedAt(bet.getCreatedAt());
-        
+
+        // Set stake information
+        response.setStakeType(bet.getStakeType());
+        response.setFixedStakeAmount(bet.getFixedStakeAmount());
+        response.setSocialStakeDescription(bet.getSocialStakeDescription());
+        response.setFulfillmentStatus(bet.getFulfillmentStatus());
+
         // Set user context - check if current user has participated in this bet
         boolean hasParticipated = betParticipationService.hasUserParticipated(currentUser, bet.getId());
         response.setHasUserParticipated(hasParticipated);
@@ -551,12 +564,12 @@ public class BetController {
         if (hasParticipated) {
             betParticipationService.getUserParticipation(currentUser, bet.getId())
                 .ifPresent(participation -> {
-                    // Convert integer option (1,2,3,4) to BetOutcome enum
+                    // Convert integer option (0,1,2,3) to BetOutcome enum (0-indexed)
                     Bet.BetOutcome userChoice = switch (participation.getChosenOption()) {
-                        case 1 -> Bet.BetOutcome.OPTION_1;
-                        case 2 -> Bet.BetOutcome.OPTION_2;
-                        case 3 -> Bet.BetOutcome.OPTION_3;
-                        case 4 -> Bet.BetOutcome.OPTION_4;
+                        case 0 -> Bet.BetOutcome.OPTION_1;
+                        case 1 -> Bet.BetOutcome.OPTION_2;
+                        case 2 -> Bet.BetOutcome.OPTION_3;
+                        case 3 -> Bet.BetOutcome.OPTION_4;
                         default -> null;
                     };
                     response.setUserChoice(userChoice);
@@ -626,7 +639,8 @@ public class BetController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         String proofUrl = request != null ? request.proofUrl() : null;
-        betFulfillmentService.loserClaimFulfilled(betId, currentUser.getId(), proofUrl);
+        String proofDescription = request != null ? request.proofDescription() : null;
+        betFulfillmentService.loserClaimFulfilled(betId, currentUser.getId(), proofUrl, proofDescription);
 
         return ResponseEntity.ok("Fulfillment claimed successfully");
     }
@@ -649,7 +663,7 @@ public class BetController {
     }
 
     // Request DTOs for fulfillment endpoints
-    public record LoserClaimRequest(String proofUrl) {}
+    public record LoserClaimRequest(String proofUrl, String proofDescription) {}
     public record WinnerConfirmRequest(String notes) {}
 
     /**
