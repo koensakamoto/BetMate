@@ -491,16 +491,24 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
         <>
           {/* Members List */}
           {filteredMembers.map((member, index) => (
-        <View key={member.id} style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.02)',
-          borderWidth: 0.5,
-          borderColor: 'rgba(255, 255, 255, 0.08)',
-          borderRadius: 12,
-          padding: 14,
-          marginBottom: 10,
-          flexDirection: 'row',
-          alignItems: 'center'
-        }}>
+        <TouchableOpacity
+          key={member.id}
+          onPress={() => {
+            const groupId = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
+            router.push(`/group/${groupId}/member/${member.id}`);
+          }}
+          activeOpacity={0.7}
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.02)',
+            borderWidth: 0.5,
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+            borderRadius: 12,
+            padding: 14,
+            marginBottom: 10,
+            flexDirection: 'row',
+            alignItems: 'center'
+          }}
+        >
           {/* Avatar */}
           <View style={{
             width: 48,
@@ -599,30 +607,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
               Joined {formatJoinDate(member.joinedAt)}
             </Text>
           </View>
-
-          {/* Member Actions */}
-          <TouchableOpacity
-            onPress={() => {
-              const groupId = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
-              router.push(`/group/${groupId}/member/${member.id}`);
-            }}
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 8,
-              marginLeft: 12
-            }}
-          >
-            <Text style={{
-              color: '#ffffff',
-              fontSize: 12,
-              fontWeight: '600'
-            }}>
-              Manage
-            </Text>
-          </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
           ))}
 
           {/* Empty State */}

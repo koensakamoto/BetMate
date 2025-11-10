@@ -161,36 +161,64 @@ public class GroupMembershipService {
 
     /**
      * Removes a user from a group (admin action).
-     * 
+     *
      * @param actor the user performing the removal
      * @param userToRemove the user being removed
      * @param group the group
      */
     public void removeMember(@NotNull User actor, @NotNull User userToRemove, @NotNull Group group) {
-        // Validate actor has permission to remove members
+        // Validate actor has permission to remove members (admin or officer)
         if (!permissionService.canRemoveMembers(actor, group)) {
             throw new GroupMembershipException("Insufficient permissions to remove members");
         }
-        
+
         // Prevent self-removal (use leaveGroup instead)
         if (actor.equals(userToRemove)) {
             throw new GroupMembershipException("Use leaveGroup to remove yourself");
         }
-        
-        // Use atomic operation to prevent race conditions
-        LocalDateTime leftAt = LocalDateTime.now();
-        int rowsUpdated = membershipRepository.atomicRemoveMember(userToRemove, group, leftAt);
-        
-        if (rowsUpdated == 0) {
-            // Check if user exists but is last admin
-            Optional<GroupMembership> membership = membershipRepository.findByUserAndGroupAndIsActiveTrue(userToRemove, group);
-            if (membership.isEmpty()) {
-                throw new GroupMembershipException("User is not a member of this group");
-            } else {
+
+        // Get actor's and target's memberships
+        Optional<GroupMembership> actorMembershipOpt = membershipRepository.findByUserAndGroupAndIsActiveTrue(actor, group);
+        Optional<GroupMembership> targetMembershipOpt = membershipRepository.findByUserAndGroupAndIsActiveTrue(userToRemove, group);
+
+        if (actorMembershipOpt.isEmpty()) {
+            throw new GroupMembershipException("Actor is not a member of this group");
+        }
+
+        if (targetMembershipOpt.isEmpty()) {
+            throw new GroupMembershipException("User is not a member of this group");
+        }
+
+        GroupMembership actorMembership = actorMembershipOpt.get();
+        GroupMembership targetMembership = targetMembershipOpt.get();
+
+        // Enforce role-based restrictions:
+        // - Admins can remove anyone
+        // - Officers can only remove regular members (not other officers or admins)
+        if (actorMembership.getRole() == GroupMembership.MemberRole.OFFICER) {
+            if (targetMembership.getRole() == GroupMembership.MemberRole.ADMIN ||
+                targetMembership.getRole() == GroupMembership.MemberRole.OFFICER) {
+                throw new GroupMembershipException("Officers can only remove regular members, not admins or other officers");
+            }
+        }
+
+        // Check if target is an admin and if they're the last admin
+        if (targetMembership.getRole() == GroupMembership.MemberRole.ADMIN) {
+            long adminCount = membershipRepository.findByGroupAndRole(group, GroupMembership.MemberRole.ADMIN)
+                .stream()
+                .filter(GroupMembership::getIsActive)
+                .count();
+
+            if (adminCount <= 1) {
                 throw new GroupMembershipException("Cannot remove user - user is the only admin");
             }
         }
-        
+
+        // Directly update the membership
+        targetMembership.setIsActive(false);
+        targetMembership.setLeftAt(LocalDateTime.now());
+        membershipRepository.save(targetMembership);
+
         // Update group member count
         long memberCount = membershipRepository.countActiveMembers(group);
         groupService.updateMemberCount(group.getId(), (int) memberCount);
