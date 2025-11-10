@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
-import { CheckCircle, Clock, Users } from 'lucide-react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { betService, FulfillmentDetails } from '../../services/bet/betService';
 import { useAuth } from '../../contexts/AuthContext';
+import { ENV } from '../../config/env';
 
 interface FulfillmentTrackerProps {
   betId: number;
@@ -25,6 +26,24 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
   useEffect(() => {
     loadFulfillmentDetails();
   }, [betId]);
+
+  // Get full image URL helper
+  const getFullImageUrl = useCallback((imageUrl: string | null | undefined): string | null => {
+    if (!imageUrl) return null;
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    return `${ENV.API_BASE_URL}${imageUrl}`;
+  }, []);
+
+  // Get user initials from display name
+  const getUserInitials = useCallback((displayName: string) => {
+    const nameParts = displayName.trim().split(/\s+/);
+    if (nameParts.length >= 2) {
+      return nameParts[0].charAt(0).toUpperCase() + nameParts[1].charAt(0).toUpperCase();
+    }
+    return displayName.charAt(0).toUpperCase();
+  }, []);
 
   const loadFulfillmentDetails = async () => {
     try {
@@ -92,7 +111,13 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
 
   if (loading) {
     return (
-      <View className="bg-gray-800 rounded-lg p-4">
+      <View style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)'
+      }}>
         <ActivityIndicator size="small" color="#10b981" />
       </View>
     );
@@ -129,15 +154,22 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
   };
 
   return (
-    <View className="bg-gray-800 rounded-lg p-4 space-y-4">
+    <View style={{
+      backgroundColor: 'rgba(255, 255, 255, 0.02)',
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.05)',
+      gap: 16
+    }}>
       {/* Header */}
-      <View className="flex-row items-center justify-between">
-        <Text className="text-lg font-semibold text-white">Stake Fulfillment</Text>
-        <View className="flex-row items-center space-x-2">
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ fontSize: 18, fontWeight: '600', color: '#ffffff' }}>Stake Status</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           {fulfillmentDetails.status === 'FULFILLED' ? (
-            <CheckCircle size={20} color="#10b981" />
+            <MaterialIcons name="check-circle" size={20} color="#10b981" />
           ) : (
-            <Clock size={20} color="#fbbf24" />
+            <MaterialIcons name="schedule" size={20} color="#fbbf24" />
           )}
           <Text className={`font-medium ${getStatusColor()}`}>
             {getStatusText()}
@@ -146,16 +178,31 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
       </View>
 
       {/* Stake Description */}
-      <View className="bg-gray-700 rounded-lg p-3">
-        <Text className="text-sm text-gray-400 mb-1">Stake:</Text>
-        <Text className="text-white font-medium">{socialStakeDescription}</Text>
+      <View style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        borderRadius: 8,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.08)'
+      }}>
+        <Text style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.6)', marginBottom: 4 }}>Stake:</Text>
+        <Text style={{ color: '#ffffff', fontWeight: '500' }}>{socialStakeDescription}</Text>
       </View>
 
       {/* Progress */}
-      <View className="flex-row items-center justify-between bg-gray-700 rounded-lg p-3">
-        <View className="flex-row items-center space-x-2">
-          <Users size={18} color="#9ca3af" />
-          <Text className="text-gray-300">
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        borderRadius: 8,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.08)'
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <MaterialIcons name="groups" size={18} color="#9ca3af" />
+          <Text style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
             {fulfillmentDetails.confirmationCount} of {fulfillmentDetails.totalWinners} winners confirmed
           </Text>
         </View>
@@ -164,57 +211,112 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
       {/* Winners List */}
       {fulfillmentDetails.winners.length > 0 && (
         <View>
-          <Text className="text-sm font-medium text-gray-400 mb-2">Winners</Text>
-          {fulfillmentDetails.winners.map((winner) => (
-            <View
-              key={winner.userId}
-              className="flex-row items-center justify-between bg-gray-700 rounded-lg p-3 mb-2"
-            >
-              <View className="flex-row items-center space-x-3">
-                {winner.profilePhotoUrl ? (
-                  <Image
-                    source={{ uri: winner.profilePhotoUrl }}
-                    className="w-8 h-8 rounded-full"
-                  />
-                ) : (
-                  <View className="w-8 h-8 rounded-full bg-gray-600" />
+          <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255, 255, 255, 0.6)', marginBottom: 8 }}>Winners</Text>
+          {fulfillmentDetails.winners.map((winner) => {
+            const fullImageUrl = getFullImageUrl(winner.profilePhotoUrl);
+            return (
+              <View
+                key={winner.userId}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 8,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.08)'
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  {fullImageUrl ? (
+                    <Image
+                      source={{ uri: fullImageUrl }}
+                      style={{ width: 32, height: 32, borderRadius: 16 }}
+                    />
+                  ) : (
+                    <View style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Text style={{ color: '#10b981', fontSize: 12, fontWeight: '600' }}>
+                        {getUserInitials(winner.displayName)}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={{ color: '#ffffff' }}>{winner.displayName}</Text>
+                </View>
+                {winner.hasConfirmed && (
+                  <MaterialIcons name="check-circle" size={18} color="#10b981" />
                 )}
-                <Text className="text-white">{winner.displayName}</Text>
               </View>
-              {winner.hasConfirmed && (
-                <CheckCircle size={18} color="#10b981" />
-              )}
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
 
       {/* Losers List */}
       {fulfillmentDetails.losers.length > 0 && (
         <View>
-          <Text className="text-sm font-medium text-gray-400 mb-2">Losers</Text>
-          {fulfillmentDetails.losers.map((loser) => (
-            <View
-              key={loser.userId}
-              className="flex-row items-center space-x-3 bg-gray-700 rounded-lg p-3 mb-2"
-            >
-              {loser.profilePhotoUrl ? (
-                <Image
-                  source={{ uri: loser.profilePhotoUrl }}
-                  className="w-8 h-8 rounded-full"
-                />
-              ) : (
-                <View className="w-8 h-8 rounded-full bg-gray-600" />
-              )}
-              <Text className="text-white">{loser.displayName}</Text>
-            </View>
-          ))}
+          <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255, 255, 255, 0.6)', marginBottom: 8 }}>Losers</Text>
+          {fulfillmentDetails.losers.map((loser) => {
+            const fullImageUrl = getFullImageUrl(loser.profilePhotoUrl);
+            return (
+              <View
+                key={loser.userId}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: 8,
+                  padding: 12,
+                  marginBottom: 8,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.08)'
+                }}
+              >
+                {fullImageUrl ? (
+                  <Image
+                    source={{ uri: fullImageUrl }}
+                    style={{ width: 32, height: 32, borderRadius: 16 }}
+                  />
+                ) : (
+                  <View style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '600' }}>
+                      {getUserInitials(loser.displayName)}
+                    </Text>
+                  </View>
+                )}
+                <Text style={{ color: '#ffffff' }}>{loser.displayName}</Text>
+              </View>
+            );
+          })}
           {fulfillmentDetails.loserClaimedAt && (
-            <View className="bg-blue-900/30 border border-blue-500 rounded-lg p-3 mt-2">
-              <Text className="text-blue-300 text-sm">
+            <View style={{
+              backgroundColor: 'rgba(59, 130, 246, 0.15)',
+              borderWidth: 1,
+              borderColor: 'rgba(59, 130, 246, 0.3)',
+              borderRadius: 8,
+              padding: 12,
+              marginTop: 8
+            }}>
+              <Text style={{ color: '#60a5fa', fontSize: 13 }}>
                 Loser has claimed they fulfilled the stake
               </Text>
-              <Text className="text-gray-400 text-xs mt-1">
+              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 11, marginTop: 4 }}>
                 {new Date(fulfillmentDetails.loserClaimedAt).toLocaleDateString()}
               </Text>
             </View>
@@ -227,12 +329,17 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
         <TouchableOpacity
           onPress={handleLoserClaim}
           disabled={submitting}
-          className="bg-blue-600 rounded-lg p-4"
+          style={{
+            backgroundColor: '#2563eb',
+            borderRadius: 8,
+            padding: 16
+          }}
+          activeOpacity={0.8}
         >
           {submitting ? (
             <ActivityIndicator size="small" color="#ffffff" />
           ) : (
-            <Text className="text-white font-semibold text-center">
+            <Text style={{ color: '#ffffff', fontWeight: '600', textAlign: 'center' }}>
               I have fulfilled the stake
             </Text>
           )}
@@ -243,21 +350,32 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
         <TouchableOpacity
           onPress={handleWinnerConfirm}
           disabled={submitting}
-          className="bg-green-600 rounded-lg p-4"
+          style={{
+            backgroundColor: '#059669',
+            borderRadius: 8,
+            padding: 16
+          }}
+          activeOpacity={0.8}
         >
           {submitting ? (
             <ActivityIndicator size="small" color="#ffffff" />
           ) : (
-            <Text className="text-white font-semibold text-center">
-              Confirm I received the stake
+            <Text style={{ color: '#ffffff', fontWeight: '600', textAlign: 'center' }}>
+              Mark as Received
             </Text>
           )}
         </TouchableOpacity>
       )}
 
       {currentUserIsWinner && currentUserHasConfirmed && (
-        <View className="bg-green-900/30 border border-green-500 rounded-lg p-3">
-          <Text className="text-green-300 text-center">
+        <View style={{
+          backgroundColor: 'rgba(16, 185, 129, 0.15)',
+          borderWidth: 1,
+          borderColor: 'rgba(16, 185, 129, 0.3)',
+          borderRadius: 8,
+          padding: 12
+        }}>
+          <Text style={{ color: '#34d399', textAlign: 'center' }}>
             You have confirmed receipt of the stake
           </Text>
         </View>
@@ -265,11 +383,17 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
 
       {/* Completion Message */}
       {fulfillmentDetails.status === 'FULFILLED' && fulfillmentDetails.allWinnersConfirmedAt && (
-        <View className="bg-green-900/30 border border-green-500 rounded-lg p-4">
-          <Text className="text-green-300 text-center font-medium">
+        <View style={{
+          backgroundColor: 'rgba(16, 185, 129, 0.15)',
+          borderWidth: 1,
+          borderColor: 'rgba(16, 185, 129, 0.3)',
+          borderRadius: 8,
+          padding: 16
+        }}>
+          <Text style={{ color: '#34d399', textAlign: 'center', fontWeight: '500' }}>
             All winners have confirmed! Stake fulfilled.
           </Text>
-          <Text className="text-gray-400 text-center text-xs mt-1">
+          <Text style={{ color: 'rgba(255, 255, 255, 0.6)', textAlign: 'center', fontSize: 11, marginTop: 4 }}>
             Completed on {new Date(fulfillmentDetails.allWinnersConfirmedAt).toLocaleDateString()}
           </Text>
         </View>
