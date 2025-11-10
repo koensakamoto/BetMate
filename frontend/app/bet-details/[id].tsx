@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { betService, BetResponse } from '../../services/bet/betService';
 import BetResolutionModal from '../../components/bet/BetResolutionModal';
+import { FulfillmentTracker } from '../../components/bet/FulfillmentTracker';
 import { authService } from '../../services/auth/authService';
 import { useAuth } from '../../contexts/AuthContext';
 import { haptic } from '../../utils/haptics';
@@ -553,11 +554,31 @@ export default function BetDetails() {
             )}
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>Bet Amount</Text>
-              <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '600' }}>
-                {betData.fixedStakeAmount ? `$${betData.fixedStakeAmount} (Fixed)` : 'Variable'}
+              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
+                {betData.stakeType === 'SOCIAL' ? 'Stake Type' : 'Bet Amount'}
+              </Text>
+              <Text style={{ color: betData.stakeType === 'SOCIAL' ? '#FF9F00' : '#00D4AA', fontSize: 14, fontWeight: '600' }}>
+                {betData.stakeType === 'SOCIAL' ? 'Social' : (betData.fixedStakeAmount ? `$${betData.fixedStakeAmount} (Fixed)` : 'Variable')}
               </Text>
             </View>
+
+            {betData.stakeType === 'SOCIAL' && betData.socialStakeDescription && (
+              <View style={{
+                marginTop: 12,
+                backgroundColor: 'rgba(255, 159, 0, 0.08)',
+                borderRadius: 8,
+                padding: 12,
+                borderWidth: 1,
+                borderColor: 'rgba(255, 159, 0, 0.2)'
+              }}>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 12, marginBottom: 4 }}>
+                  What's at stake:
+                </Text>
+                <Text style={{ color: '#FF9F00', fontSize: 14, fontWeight: '500' }}>
+                  {betData.socialStakeDescription}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -735,88 +756,125 @@ export default function BetDetails() {
           borderWidth: 1,
           borderColor: 'rgba(255, 255, 255, 0.08)'
         }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-            <Text style={{
-              fontSize: 16,
-              fontWeight: '600',
-              color: '#ffffff',
-              flex: 1
-            }}>
-              {betData.fixedStakeAmount ? 'Entry Fee' : 'Your Bet Amount'}
-            </Text>
-            {betData.fixedStakeAmount && (
+          {betData.stakeType === 'SOCIAL' ? (
+            <>
+              <Text style={{
+                fontSize: 16,
+                fontWeight: '600',
+                color: '#ffffff',
+                marginBottom: 12
+              }}>
+                Social Bet
+              </Text>
               <View style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 6
+                backgroundColor: 'rgba(255, 159, 0, 0.08)',
+                borderRadius: 12,
+                padding: 16,
+                borderWidth: 1,
+                borderColor: 'rgba(255, 159, 0, 0.2)'
+              }}>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 12, marginBottom: 6 }}>
+                  What's at stake:
+                </Text>
+                <Text style={{ color: '#FF9F00', fontSize: 16, fontWeight: '600' }}>
+                  {betData.socialStakeDescription || 'Fun stakes - no credits involved'}
+                </Text>
+              </View>
+              <Text style={{
+                fontSize: 12,
+                color: 'rgba(255, 255, 255, 0.5)',
+                marginTop: 12,
+                fontStyle: 'italic'
+              }}>
+                No credits required - just for fun!
+              </Text>
+            </>
+          ) : (
+            <>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: '#ffffff',
+                  flex: 1
+                }}>
+                  {betData.fixedStakeAmount ? 'Entry Fee' : 'Your Bet Amount'}
+                </Text>
+                {betData.fixedStakeAmount && (
+                  <View style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 6
+                  }}>
+                    <Text style={{
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      fontSize: 12,
+                      fontWeight: '500'
+                    }}>Fixed</Text>
+                  </View>
+                )}
+              </View>
+
+              {betData.fixedStakeAmount && (
+                <Text style={{
+                  fontSize: 12,
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  marginBottom: 12
+                }}>
+                  Everyone must bet exactly this amount
+                </Text>
+              )}
+
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: betData.fixedStakeAmount ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.08)',
+                borderRadius: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                borderWidth: betData.fixedStakeAmount ? 0 : 1,
+                borderColor: betData.fixedStakeAmount ? 'transparent' : (isValidBetAmount() ? 'rgba(0, 212, 170, 0.3)' : 'rgba(255, 255, 255, 0.2)')
               }}>
                 <Text style={{
-                  color: 'rgba(255, 255, 255, 0.6)',
-                  fontSize: 12,
-                  fontWeight: '500'
-                }}>Fixed</Text>
-              </View>
-            )}
-          </View>
+                  color: '#00D4AA',
+                  fontSize: 18,
+                  fontWeight: '600',
+                  marginRight: 8
+                }}>$</Text>
 
-          {betData.fixedStakeAmount && (
-            <Text style={{
-              fontSize: 12,
-              color: 'rgba(255, 255, 255, 0.5)',
-              marginBottom: 12
-            }}>
-              Everyone must bet exactly this amount
-            </Text>
-          )}
-
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: betData.fixedStakeAmount ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.08)',
-            borderRadius: 12,
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-            borderWidth: betData.fixedStakeAmount ? 0 : 1,
-            borderColor: betData.fixedStakeAmount ? 'transparent' : (isValidBetAmount() ? 'rgba(0, 212, 170, 0.3)' : 'rgba(255, 255, 255, 0.2)')
-          }}>
-            <Text style={{
-              color: '#00D4AA',
-              fontSize: 18,
-              fontWeight: '600',
-              marginRight: 8
-            }}>$</Text>
-
-            <TextInput
-              style={{
-                flex: 1,
-                color: betData.fixedStakeAmount ? 'rgba(255, 255, 255, 0.7)' : '#ffffff',
-                fontSize: 18,
-                fontWeight: '600',
-                padding: 0
-              }}
-              value={getBetAmountForDisplay()}
-              onChangeText={setUserBetAmount}
-              placeholder={betData.fixedStakeAmount ? betData.fixedStakeAmount.toString() : '0'}
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                <TextInput
+                  style={{
+                    flex: 1,
+                    color: betData.fixedStakeAmount ? 'rgba(255, 255, 255, 0.7)' : '#ffffff',
+                    fontSize: 18,
+                    fontWeight: '600',
+                    padding: 0
+                  }}
+                  value={getBetAmountForDisplay()}
+                  onChangeText={setUserBetAmount}
+                  placeholder={betData.fixedStakeAmount ? betData.fixedStakeAmount.toString() : '0'}
+                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
               keyboardType="numeric"
               editable={!betData.fixedStakeAmount}
               selectTextOnFocus={!betData.fixedStakeAmount}
             />
 
-            {betData.fixedStakeAmount && (
-              <MaterialIcons name="lock" size={18} color="rgba(255, 255, 255, 0.4)" />
-            )}
-          </View>
+                {betData.fixedStakeAmount && (
+                  <MaterialIcons name="lock" size={18} color="rgba(255, 255, 255, 0.4)" />
+                )}
+              </View>
 
-          {!betData.fixedStakeAmount && userBetAmount && !isValidBetAmount() && (
-            <Text style={{
-              color: '#FF6B6B',
-              fontSize: 12,
-              marginTop: 8
-            }}>
-              Please enter a valid amount
-            </Text>
+              {!betData.fixedStakeAmount && userBetAmount && !isValidBetAmount() && (
+                <Text style={{
+                  color: '#FF6B6B',
+                  fontSize: 12,
+                  marginTop: 8
+                }}>
+                  Please enter a valid amount
+                </Text>
+              )}
+            </>
           )}
         </View>
 
@@ -867,6 +925,18 @@ export default function BetDetails() {
             )}
           </View>
         </View>
+
+        {/* Fulfillment Tracking - Show only for RESOLVED SOCIAL bets */}
+        {betData.status === 'RESOLVED' && betData.stakeType === 'SOCIAL' && betData.socialStakeDescription && (
+          <View style={{ marginHorizontal: 20, marginBottom: 20 }}>
+            <FulfillmentTracker
+              betId={betData.id}
+              betTitle={betData.title}
+              socialStakeDescription={betData.socialStakeDescription}
+              onRefresh={loadBetDetails}
+            />
+          </View>
+        )}
 
         {/* Action Buttons */}
         {betData.status === 'OPEN' && !betData.hasUserParticipated && (

@@ -43,6 +43,8 @@ interface BetCardProps {
   participantCount: number;
   participantPreviews?: ParticipantPreview[];
   stakeAmount: number;
+  stakeType?: 'CREDIT' | 'SOCIAL'; // Type of stake
+  socialStakeDescription?: string; // Description for social bets
   yourPosition?: string;
   status: 'open' | 'active' | 'resolved';
   isJoined: boolean;
@@ -50,6 +52,7 @@ interface BetCardProps {
   resolution?: string;
   showJoinedIndicator?: boolean; // Defaults to true if not provided
   userStake?: number; // User's personal stake amount if they've joined
+  fulfillmentStatus?: 'PENDING' | 'PARTIALLY_FULFILLED' | 'FULFILLED'; // For resolved social bets
 }
 
 function BetCard({
@@ -62,13 +65,16 @@ function BetCard({
   participantCount,
   participantPreviews,
   stakeAmount,
+  stakeType = 'CREDIT',
+  socialStakeDescription,
   yourPosition,
   status,
   isJoined,
   creatorName,
   resolution,
   showJoinedIndicator = true,
-  userStake
+  userStake,
+  fulfillmentStatus
 }: BetCardProps) {
 
   const handlePress = useCallback(() => {
@@ -90,6 +96,29 @@ function BetCard({
       return imageUrl;
     }
     return `${ENV.API_BASE_URL}${imageUrl}`;
+  }, []);
+
+  // Get fulfillment badge colors and text
+  const getFulfillmentBadgeColor = useCallback((status: string) => {
+    switch (status) {
+      case 'FULFILLED':
+        return { bg: 'rgba(16, 185, 129, 0.15)', text: '#10b981', border: 'rgba(16, 185, 129, 0.3)' };
+      case 'PARTIALLY_FULFILLED':
+        return { bg: 'rgba(251, 191, 36, 0.15)', text: '#fbbf24', border: 'rgba(251, 191, 36, 0.3)' };
+      default:
+        return { bg: 'rgba(156, 163, 175, 0.15)', text: '#9ca3af', border: 'rgba(156, 163, 175, 0.3)' };
+    }
+  }, []);
+
+  const getFulfillmentBadgeText = useCallback((status: string) => {
+    switch (status) {
+      case 'FULFILLED':
+        return 'Fulfilled';
+      case 'PARTIALLY_FULFILLED':
+        return 'Partial';
+      default:
+        return 'Pending';
+    }
   }, []);
 
   return (
@@ -135,47 +164,83 @@ function BetCard({
         </View>
 
         {/* Time & Stake */}
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{
-            fontSize: 14,
-            color: '#ffffff',
-            fontWeight: '600',
-            marginBottom: 4
-          }}>
-            ${userStake !== undefined ? userStake : stakeAmount}
-          </Text>
-          {userStake !== undefined ? (
-            <Text style={{
-              fontSize: 10,
-              color: 'rgba(255, 255, 255, 0.5)',
-              marginBottom: 4,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5
-            }}>
-              your stake
-            </Text>
-          ) : status === 'active' && resolveTimeRemaining ? (
-            <Text style={{
-              fontSize: 10,
-              color: 'rgba(255, 255, 255, 0.5)',
-              marginBottom: 4,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5
-            }}>
-              resolves in
-            </Text>
+        <View style={{ alignItems: 'flex-end', maxWidth: '40%' }}>
+          {stakeType === 'SOCIAL' ? (
+            <>
+              <View style={{
+                backgroundColor: 'rgba(255, 159, 0, 0.15)',
+                borderRadius: 6,
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                marginBottom: 4
+              }}>
+                <Text style={{
+                  fontSize: 10,
+                  color: '#FF9F00',
+                  fontWeight: '600',
+                  textTransform: 'uppercase'
+                }}>
+                  Social
+                </Text>
+              </View>
+              <Text style={{
+                fontSize: 11,
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontWeight: '500',
+                textAlign: 'right'
+              }} numberOfLines={2}>
+                {socialStakeDescription}
+              </Text>
+            </>
           ) : (
-            <Text style={{
-              fontSize: 10,
-              color: 'rgba(255, 255, 255, 0.5)',
-              marginBottom: 4,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5
-            }}>
-              closes in
-            </Text>
+            <>
+              <Text style={{
+                fontSize: 14,
+                color: '#ffffff',
+                fontWeight: '600',
+                marginBottom: 4
+              }}>
+                ${userStake !== undefined ? userStake : stakeAmount}
+              </Text>
+              {userStake !== undefined ? (
+                <Text style={{
+                  fontSize: 10,
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  marginBottom: 4,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5
+                }}>
+                  your stake
+                </Text>
+              ) : status === 'active' && resolveTimeRemaining ? (
+                <Text style={{
+                  fontSize: 10,
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  marginBottom: 4,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5
+                }}>
+                  resolves in
+                </Text>
+              ) : (
+                <Text style={{
+                  fontSize: 10,
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  marginBottom: 4,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5
+                }}>
+                  closes in
+                </Text>
+              )}
+            </>
           )}
-          <Text style={{
+        </View>
+      </View>
+
+      {/* Description/Category Badge */}
+      <View style={{ marginBottom: 12 }}>
+        <Text style={{
             fontSize: 13,
             color: (status === 'active' && resolveTimeRemaining ? resolveTimeRemaining : timeRemaining).includes('h') &&
                    !(status === 'active' && resolveTimeRemaining ? resolveTimeRemaining : timeRemaining).includes('d') ?
@@ -184,7 +249,6 @@ function BetCard({
           }}>
             {status === 'active' && resolveTimeRemaining ? resolveTimeRemaining : timeRemaining}
           </Text>
-        </View>
       </View>
 
       {/* Footer */}
@@ -277,22 +341,45 @@ function BetCard({
         </View>
 
         {/* Status Indicator */}
-        {isJoined && showJoinedIndicator && (
-          <View style={{
-            backgroundColor: 'rgba(0, 212, 170, 0.15)',
-            paddingHorizontal: 12,
-            paddingVertical: 6,
-            borderRadius: 16
-          }}>
-            <Text style={{
-              fontSize: 12,
-              fontWeight: '600',
-              color: '#00D4AA'
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {/* Fulfillment Status Badge - Show for resolved social bets */}
+          {status === 'resolved' && stakeType === 'SOCIAL' && fulfillmentStatus && (
+            <View style={{
+              backgroundColor: getFulfillmentBadgeColor(fulfillmentStatus).bg,
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: getFulfillmentBadgeColor(fulfillmentStatus).border
             }}>
-              Joined
-            </Text>
-          </View>
-        )}
+              <Text style={{
+                fontSize: 11,
+                fontWeight: '600',
+                color: getFulfillmentBadgeColor(fulfillmentStatus).text
+              }}>
+                {getFulfillmentBadgeText(fulfillmentStatus)}
+              </Text>
+            </View>
+          )}
+
+          {/* Joined Indicator */}
+          {isJoined && showJoinedIndicator && (
+            <View style={{
+              backgroundColor: 'rgba(0, 212, 170, 0.15)',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 16
+            }}>
+              <Text style={{
+                fontSize: 12,
+                fontWeight: '600',
+                color: '#00D4AA'
+              }}>
+                Joined
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );

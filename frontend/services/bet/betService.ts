@@ -11,7 +11,9 @@ export interface CreateBetRequest {
   resolveDate?: string; // ISO string
   minimumBet: number; // DEPRECATED: For backward compatibility with variable-stake bets
   maximumBet?: number; // DEPRECATED: For backward compatibility with variable-stake bets
-  fixedStakeAmount?: number; // NEW: Fixed stake amount - everyone must bet exactly this amount
+  fixedStakeAmount?: number; // NEW: Fixed stake amount - everyone must bet exactly this amount (for CREDIT bets)
+  stakeType?: 'CREDIT' | 'SOCIAL'; // NEW: Type of stake - CREDIT uses in-game credits, SOCIAL is fun stakes
+  socialStakeDescription?: string; // NEW: Description for social bets (e.g., "Loser buys pizza")
   minimumVotesRequired?: number;
   allowCreatorVote?: boolean;
   options?: string[];
@@ -44,7 +46,13 @@ export interface BetResponse {
   resolvedAt?: string;
   minimumBet: number; // DEPRECATED: For backward compatibility with variable-stake bets
   maximumBet?: number; // DEPRECATED: For backward compatibility with variable-stake bets
-  fixedStakeAmount?: number; // NEW: Fixed stake amount - everyone must bet exactly this amount
+  fixedStakeAmount?: number; // NEW: Fixed stake amount - everyone must bet exactly this amount (for CREDIT bets)
+  stakeType?: 'CREDIT' | 'SOCIAL'; // NEW: Type of stake - CREDIT uses in-game credits, SOCIAL is fun stakes
+  socialStakeDescription?: string; // NEW: Description for social bets (e.g., "Loser buys pizza")
+  fulfillmentStatus?: 'PENDING' | 'PARTIALLY_FULFILLED' | 'FULFILLED'; // NEW: Fulfillment tracking status
+  loserClaimedFulfilledAt?: string; // NEW: When loser claimed they fulfilled
+  loserFulfillmentProofUrl?: string; // NEW: Photo proof from loser
+  allWinnersConfirmedAt?: string; // NEW: When all winners confirmed
   totalPool: number;
   totalParticipants: number;
   minimumVotesRequired: number;
@@ -68,6 +76,9 @@ export interface BetSummaryResponse {
   groupName: string;
   bettingDeadline: string;
   resolveDate?: string;
+  stakeType?: 'CREDIT' | 'SOCIAL'; // NEW: Type of stake
+  fixedStakeAmount?: number; // For CREDIT bets
+  socialStakeDescription?: string; // For SOCIAL bets
   totalPool: number;
   totalParticipants: number;
   createdAt: string;
@@ -113,6 +124,50 @@ export interface ResolveBetRequest {
 export interface VoteOnResolutionRequest {
   outcome: string;
   reasoning: string;
+}
+
+// Fulfillment tracking interfaces
+export interface FulfillmentDetails {
+  betId: number;
+  betTitle: string;
+  socialStakeDescription: string;
+  status: 'PENDING' | 'PARTIALLY_FULFILLED' | 'FULFILLED';
+  totalWinners: number;
+  totalLosers: number;
+  confirmationCount: number;
+  loserClaimedAt?: string;
+  loserProofUrl?: string;
+  allWinnersConfirmedAt?: string;
+  winners: WinnerInfo[];
+  losers: LoserInfo[];
+  confirmations: WinnerConfirmation[];
+}
+
+export interface WinnerInfo {
+  userId: number;
+  displayName: string;
+  profilePhotoUrl?: string;
+  hasConfirmed: boolean;
+}
+
+export interface LoserInfo {
+  userId: number;
+  displayName: string;
+  profilePhotoUrl?: string;
+}
+
+export interface WinnerConfirmation {
+  winnerId: number;
+  confirmedAt: string;
+  notes?: string;
+}
+
+export interface LoserClaimRequest {
+  proofUrl?: string;
+}
+
+export interface WinnerConfirmRequest {
+  notes?: string;
 }
 
 class BetService extends BaseApiService {
@@ -168,6 +223,27 @@ class BetService extends BaseApiService {
   async voteOnResolution(betId: number, outcome: string, reasoning: string): Promise<BetResponse> {
     const request: VoteOnResolutionRequest = { outcome, reasoning };
     return this.post<BetResponse, VoteOnResolutionRequest>(`/${betId}/vote`, request);
+  }
+
+  // ==========================================
+  // FULFILLMENT TRACKING METHODS
+  // ==========================================
+
+  // Get fulfillment details for a social bet
+  async getFulfillmentDetails(betId: number): Promise<FulfillmentDetails> {
+    return this.get<FulfillmentDetails>(`/${betId}/fulfillment`);
+  }
+
+  // Loser claims they have fulfilled the stake (optional)
+  async loserClaimFulfilled(betId: number, proofUrl?: string): Promise<string> {
+    const request: LoserClaimRequest = { proofUrl };
+    return this.post<string, LoserClaimRequest>(`/${betId}/fulfillment/loser-claim`, request);
+  }
+
+  // Winner confirms they received the stake
+  async winnerConfirmFulfilled(betId: number, notes?: string): Promise<string> {
+    const request: WinnerConfirmRequest = { notes };
+    return this.post<string, WinnerConfirmRequest>(`/${betId}/fulfillment/winner-confirm`, request);
   }
 }
 

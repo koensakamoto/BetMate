@@ -131,17 +131,42 @@ public class Bet {
 
     /**
      * Whether fulfillment of the social stake should be tracked
-     * For future feature: tracking if winner received their stake
+     * Auto-set to true for all SOCIAL bets
      */
     @Column(nullable = false)
     private Boolean stakeFulfillmentRequired = false;
 
     /**
-     * When the social stake was marked as fulfilled
-     * For future feature: recording stake completion
+     * Current fulfillment status tracking
+     * PENDING: No winners have confirmed
+     * PARTIALLY_FULFILLED: Some winners have confirmed
+     * FULFILLED: All winners have confirmed
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 50)
+    private FulfillmentStatus fulfillmentStatus = FulfillmentStatus.PENDING;
+
+    /**
+     * When loser(s) claimed they fulfilled the stake (optional)
+     * Losers can optionally mark when they've completed the stake
      */
     @Column
-    private LocalDateTime stakeFulfilledAt;
+    private LocalDateTime loserClaimedFulfilledAt;
+
+    /**
+     * Optional photo proof URL from loser
+     * Path to image uploaded as proof of fulfillment
+     */
+    @Column(length = 500)
+    private String loserFulfillmentProofUrl;
+
+    /**
+     * When ALL winners confirmed receipt of their stakes
+     * Bet is fully settled when this is set
+     * Renamed from stakeFulfilledAt for clarity
+     */
+    @Column
+    private LocalDateTime allWinnersConfirmedAt;
 
     // ==========================================
     // POOL TRACKING
@@ -387,12 +412,36 @@ public class Bet {
         this.stakeFulfillmentRequired = stakeFulfillmentRequired;
     }
 
-    public LocalDateTime getStakeFulfilledAt() {
-        return stakeFulfilledAt;
+    public FulfillmentStatus getFulfillmentStatus() {
+        return fulfillmentStatus;
     }
 
-    public void setStakeFulfilledAt(LocalDateTime stakeFulfilledAt) {
-        this.stakeFulfilledAt = stakeFulfilledAt;
+    public void setFulfillmentStatus(FulfillmentStatus fulfillmentStatus) {
+        this.fulfillmentStatus = fulfillmentStatus;
+    }
+
+    public LocalDateTime getLoserClaimedFulfilledAt() {
+        return loserClaimedFulfilledAt;
+    }
+
+    public void setLoserClaimedFulfilledAt(LocalDateTime loserClaimedFulfilledAt) {
+        this.loserClaimedFulfilledAt = loserClaimedFulfilledAt;
+    }
+
+    public String getLoserFulfillmentProofUrl() {
+        return loserFulfillmentProofUrl;
+    }
+
+    public void setLoserFulfillmentProofUrl(String loserFulfillmentProofUrl) {
+        this.loserFulfillmentProofUrl = loserFulfillmentProofUrl;
+    }
+
+    public LocalDateTime getAllWinnersConfirmedAt() {
+        return allWinnersConfirmedAt;
+    }
+
+    public void setAllWinnersConfirmedAt(LocalDateTime allWinnersConfirmedAt) {
+        this.allWinnersConfirmedAt = allWinnersConfirmedAt;
     }
 
     public BigDecimal getTotalPool() {

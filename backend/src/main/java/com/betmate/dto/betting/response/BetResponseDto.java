@@ -3,6 +3,7 @@ package com.betmate.dto.betting.response;
 import com.betmate.dto.user.response.UserProfileResponseDto;
 import com.betmate.entity.betting.Bet;
 import com.betmate.entity.betting.BetStakeType;
+import com.betmate.entity.betting.FulfillmentStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -33,6 +34,13 @@ public class BetResponseDto {
     private BigDecimal fixedStakeAmount;  // NEW: For fixed-stake bets
     private BetStakeType stakeType;  // NEW: Stake type (CREDIT/SOCIAL)
     private String socialStakeDescription;  // NEW: Social stake description
+
+    // Fulfillment tracking (for social bets)
+    private FulfillmentStatus fulfillmentStatus;
+    private LocalDateTime loserClaimedFulfilledAt;
+    private String loserFulfillmentProofUrl;
+    private LocalDateTime allWinnersConfirmedAt;
+
     private BigDecimal totalPool;
     private Integer totalParticipants;
     
@@ -293,5 +301,37 @@ public class BetResponseDto {
 
     public void setCanUserResolve(Boolean canUserResolve) {
         this.canUserResolve = canUserResolve;
+    }
+
+    public FulfillmentStatus getFulfillmentStatus() {
+        return fulfillmentStatus;
+    }
+
+    public void setFulfillmentStatus(FulfillmentStatus fulfillmentStatus) {
+        this.fulfillmentStatus = fulfillmentStatus;
+    }
+
+    public LocalDateTime getLoserClaimedFulfilledAt() {
+        return loserClaimedFulfilledAt;
+    }
+
+    public void setLoserClaimedFulfilledAt(LocalDateTime loserClaimedFulfilledAt) {
+        this.loserClaimedFulfilledAt = loserClaimedFulfilledAt;
+    }
+
+    public String getLoserFulfillmentProofUrl() {
+        return loserFulfillmentProofUrl;
+    }
+
+    public void setLoserFulfillmentProofUrl(String loserFulfillmentProofUrl) {
+        this.loserFulfillmentProofUrl = loserFulfillmentProofUrl;
+    }
+
+    public LocalDateTime getAllWinnersConfirmedAt() {
+        return allWinnersConfirmedAt;
+    }
+
+    public void setAllWinnersConfirmedAt(LocalDateTime allWinnersConfirmedAt) {
+        this.allWinnersConfirmedAt = allWinnersConfirmedAt;
     }
 }
