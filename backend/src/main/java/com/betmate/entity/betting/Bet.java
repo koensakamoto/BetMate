@@ -161,6 +161,12 @@ public class Bet {
     private String loserFulfillmentProofUrl;
 
     /**
+     * Optional text description from loser explaining the proof
+     */
+    @Column(columnDefinition = "TEXT")
+    private String loserFulfillmentProofDescription;
+
+    /**
      * When ALL winners confirmed receipt of their stakes
      * Bet is fully settled when this is set
      * Renamed from stakeFulfilledAt for clarity
@@ -434,6 +440,14 @@ public class Bet {
 
     public void setLoserFulfillmentProofUrl(String loserFulfillmentProofUrl) {
         this.loserFulfillmentProofUrl = loserFulfillmentProofUrl;
+    }
+
+    public String getLoserFulfillmentProofDescription() {
+        return loserFulfillmentProofDescription;
+    }
+
+    public void setLoserFulfillmentProofDescription(String loserFulfillmentProofDescription) {
+        this.loserFulfillmentProofDescription = loserFulfillmentProofDescription;
     }
 
     public LocalDateTime getAllWinnersConfirmedAt() {

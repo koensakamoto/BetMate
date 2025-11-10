@@ -39,6 +39,7 @@ public class BetResponseDto {
     private FulfillmentStatus fulfillmentStatus;
     private LocalDateTime loserClaimedFulfilledAt;
     private String loserFulfillmentProofUrl;
+    private String loserFulfillmentProofDescription;
     private LocalDateTime allWinnersConfirmedAt;
 
     private BigDecimal totalPool;
@@ -325,6 +326,14 @@ public class BetResponseDto {
 
     public void setLoserFulfillmentProofUrl(String loserFulfillmentProofUrl) {
         this.loserFulfillmentProofUrl = loserFulfillmentProofUrl;
+    }
+
+    public String getLoserFulfillmentProofDescription() {
+        return loserFulfillmentProofDescription;
+    }
+
+    public void setLoserFulfillmentProofDescription(String loserFulfillmentProofDescription) {
+        this.loserFulfillmentProofDescription = loserFulfillmentProofDescription;
     }
 
     public LocalDateTime getAllWinnersConfirmedAt() {
