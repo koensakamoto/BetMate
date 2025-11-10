@@ -458,9 +458,9 @@ export default function Bet() {
                   );
                 })()}
               </>
-            )
-            /* TODO: Implement guest/public betting - Discover Section commented out */
-            /* : (
+            ) : null}
+            {/* TODO: Implement guest/public betting - Discover Section commented out
+            : (
               // Discover Section
               <>
                 {/* Discover Bets Feed *\/}
@@ -516,9 +516,9 @@ export default function Bet() {
                   </View>
                 )}
               </>
-            ) */
-            }
-            
+            )
+            */}
+
             {/* Additional spacing for scroll */}
             <View style={{ height: 60 }} />
           </View>

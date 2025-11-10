@@ -2,6 +2,7 @@ package com.betmate.service.bet;
 
 import com.betmate.entity.betting.Bet;
 import com.betmate.entity.betting.BetStakeType;
+import com.betmate.entity.betting.FulfillmentStatus;
 import com.betmate.entity.group.Group;
 import com.betmate.entity.user.User;
 import com.betmate.event.betting.BetCreatedEvent;
@@ -142,6 +143,10 @@ public class BetCreationService {
         } else if (stakeType == BetStakeType.SOCIAL) {
             // Social bet: set social stake description
             bet.setSocialStakeDescription(request.socialStakeDescription());
+
+            // Auto-enable fulfillment tracking for all social bets
+            bet.setStakeFulfillmentRequired(true);
+            bet.setFulfillmentStatus(FulfillmentStatus.PENDING);
         }
 
         // Financial settings (deprecated for backward compatibility)

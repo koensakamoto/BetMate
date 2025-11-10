@@ -29,7 +29,9 @@ export default function CreateBet() {
   const [betDescription, setBetDescription] = useState('');
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [betType, setBetType] = useState<'MULTIPLE_CHOICE' | 'PREDICTION' | 'OVER_UNDER'>('MULTIPLE_CHOICE');
+  const [stakeType, setStakeType] = useState<'CREDIT' | 'SOCIAL'>('CREDIT');
   const [stakeAmount, setStakeAmount] = useState('');
+  const [socialStakeDescription, setSocialStakeDescription] = useState('');
   const [betEndTime, setBetEndTime] = useState(roundToNearest15Minutes(new Date(Date.now() + 24 * 60 * 60 * 1000)));
   const [eventResolutionDate, setEventResolutionDate] = useState(roundToNearest15Minutes(new Date(Date.now() + 48 * 60 * 60 * 1000)));
   const [resolver, setResolver] = useState<'self' | 'specific' | 'multiple' | 'group'>('self');
@@ -87,10 +89,12 @@ export default function CreateBet() {
 
   // Calculate completion percentage
   useEffect(() => {
+    const hasValidStake = stakeType === 'CREDIT' ? stakeAmount.trim() : socialStakeDescription.trim();
+
     const fields = [
       betTitle.trim(),
       selectedSport,
-      stakeAmount.trim(),
+      hasValidStake,
       betType === 'MULTIPLE_CHOICE' ? multipleChoiceOptions.some(opt => opt.trim()) :
       betType === 'PREDICTION' ? 'prediction_bet' : overUnderLine.trim()
     ];
@@ -104,10 +108,13 @@ export default function CreateBet() {
       duration: 300,
       useNativeDriver: false,
     }).start();
-  }, [betTitle, selectedSport, stakeAmount, multipleChoiceOptions, overUnderLine, betType]);
+  }, [betTitle, selectedSport, stakeAmount, socialStakeDescription, stakeType, multipleChoiceOptions, overUnderLine, betType]);
 
   const handleCreateBet = async () => {
-    if (!betTitle.trim() || !selectedSport || !stakeAmount) {
+    // Validate stake based on type
+    const hasValidStake = stakeType === 'CREDIT' ? stakeAmount.trim() : socialStakeDescription.trim();
+
+    if (!betTitle.trim() || !selectedSport || !hasValidStake) {
       haptic.error();
       Alert.alert('Missing Information', 'Please fill in all required fields.');
       return;
@@ -128,9 +135,13 @@ export default function CreateBet() {
     }
     */
 
+    const confirmMessage = stakeType === 'CREDIT'
+      ? `Create "${betTitle}" with $${stakeAmount} entry fee?`
+      : `Create "${betTitle}" with social stake: ${socialStakeDescription}?`;
+
     Alert.alert(
       'Create Bet?',
-      `Create "${betTitle}" with $${stakeAmount} entry fee?`,
+      confirmMessage,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -151,9 +162,11 @@ export default function CreateBet() {
                                  resolver === 'specific' ? 'ASSIGNED_RESOLVER' : 'CONSENSUS_VOTING',
                 bettingDeadline: betEndTime.toISOString(),
                 resolveDate: eventResolutionDate.toISOString(),
-                minimumBet: parseFloat(stakeAmount), // DEPRECATED: For backward compatibility
+                stakeType: stakeType, // NEW: Stake type (CREDIT or SOCIAL)
+                minimumBet: stakeType === 'CREDIT' ? parseFloat(stakeAmount) : undefined, // DEPRECATED: Only for CREDIT bets
                 maximumBet: undefined, // DEPRECATED: For backward compatibility
-                fixedStakeAmount: parseFloat(stakeAmount), // NEW: Fixed-stake betting (everyone bets exactly this)
+                fixedStakeAmount: stakeType === 'CREDIT' ? parseFloat(stakeAmount) : undefined, // NEW: Fixed-stake betting (for CREDIT bets)
+                socialStakeDescription: stakeType === 'SOCIAL' ? socialStakeDescription : undefined, // NEW: Social stake description
                 minimumVotesRequired: resolver === 'multiple' ? selectedResolvers.length : undefined,
                 allowCreatorVote: true, // TODO: Add this option to UI if needed
                 options: betType === 'MULTIPLE_CHOICE' ? multipleChoiceOptions.filter(opt => opt.trim()) :
@@ -770,7 +783,7 @@ export default function CreateBet() {
             padding: 20,
             marginBottom: 20,
             borderWidth: 1,
-            borderColor: stakeAmount.trim() ? 'rgba(0, 212, 170, 0.3)' : 'rgba(255, 255, 255, 0.06)'
+            borderColor: (stakeType === 'CREDIT' ? stakeAmount.trim() : socialStakeDescription.trim()) ? 'rgba(0, 212, 170, 0.3)' : 'rgba(255, 255, 255, 0.06)'
           }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
               <Text style={{
@@ -781,72 +794,182 @@ export default function CreateBet() {
               }}>
                 Betting Parameters
               </Text>
-              {stakeAmount.trim() && (
+              {(stakeType === 'CREDIT' ? stakeAmount.trim() : socialStakeDescription.trim()) && (
                 <MaterialIcons name="check-circle" size={20} color="#00D4AA" />
               )}
             </View>
 
+            {/* Stake Type Toggle */}
             <Text style={{
               fontSize: 14,
               fontWeight: '600',
               color: 'rgba(255, 255, 255, 0.9)',
               marginBottom: 8
             }}>
-              Entry Fee <Text style={{ color: '#FF4757' }}>*</Text>
-            </Text>
-            <Text style={{
-              fontSize: 12,
-              color: 'rgba(255, 255, 255, 0.6)',
-              marginBottom: 8
-            }}>
-              Everyone must bet exactly this amount to join
+              Stake Type <Text style={{ color: '#FF4757' }}>*</Text>
             </Text>
             <View style={{
+              flexDirection: 'row',
               backgroundColor: 'rgba(255, 255, 255, 0.04)',
               borderRadius: 12,
-              borderWidth: 1,
-              borderColor: stakeAmount.trim() ? '#00D4AA' : 'rgba(255, 255, 255, 0.1)',
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-              flexDirection: 'row',
-              alignItems: 'center'
+              padding: 4,
+              marginBottom: 16
             }}>
-              <Text style={{
-                fontSize: 16,
-                color: 'rgba(255, 255, 255, 0.6)',
-                marginRight: 8
-              }}>
-                $
-              </Text>
-              <TextInput
-                ref={stakeRef}
+              <TouchableOpacity
+                onPress={() => setStakeType('CREDIT')}
                 style={{
                   flex: 1,
-                  fontSize: 16,
-                  color: '#ffffff',
-                  fontWeight: '400'
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  backgroundColor: stakeType === 'CREDIT' ? '#00D4AA' : 'transparent',
+                  alignItems: 'center'
                 }}
-                value={stakeAmount}
-                onChangeText={(text) => {
-                  // Only allow numbers and one decimal point
-                  const filtered = text.replace(/[^0-9.]/g, '');
-                  // Ensure only one decimal point
-                  const parts = filtered.split('.');
-                  if (parts.length > 2) {
-                    return;
-                  }
-                  // Limit to 2 decimal places
-                  if (parts[1] && parts[1].length > 2) {
-                    return;
-                  }
-                  setStakeAmount(filtered);
+              >
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: stakeType === 'CREDIT' ? '#000000' : 'rgba(255, 255, 255, 0.6)'
+                }}>
+                  Credits
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setStakeType('SOCIAL')}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  backgroundColor: stakeType === 'SOCIAL' ? '#00D4AA' : 'transparent',
+                  alignItems: 'center'
                 }}
-                placeholder="Fixed amount (everyone pays the same)"
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                keyboardType="decimal-pad"
-                returnKeyType="done"
-              />
+              >
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: stakeType === 'SOCIAL' ? '#000000' : 'rgba(255, 255, 255, 0.6)'
+                }}>
+                  Social
+                </Text>
+              </TouchableOpacity>
             </View>
+
+            {/* Conditional Stake Inputs */}
+            {stakeType === 'CREDIT' ? (
+              <>
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  marginBottom: 8
+                }}>
+                  Entry Fee <Text style={{ color: '#FF4757' }}>*</Text>
+                </Text>
+                <Text style={{
+                  fontSize: 12,
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  marginBottom: 8
+                }}>
+                  Everyone must bet exactly this amount to join
+                </Text>
+                <View style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: stakeAmount.trim() ? '#00D4AA' : 'rgba(255, 255, 255, 0.1)',
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  flexDirection: 'row',
+                  alignItems: 'center'
+                }}>
+                  <Text style={{
+                    fontSize: 16,
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    marginRight: 8
+                  }}>
+                    $
+                  </Text>
+                  <TextInput
+                    ref={stakeRef}
+                    style={{
+                      flex: 1,
+                      fontSize: 16,
+                      color: '#ffffff',
+                      fontWeight: '400'
+                    }}
+                    value={stakeAmount}
+                    onChangeText={(text) => {
+                      // Only allow numbers and one decimal point
+                      const filtered = text.replace(/[^0-9.]/g, '');
+                      // Ensure only one decimal point
+                      const parts = filtered.split('.');
+                      if (parts.length > 2) {
+                        return;
+                      }
+                      // Limit to 2 decimal places
+                      if (parts[1] && parts[1].length > 2) {
+                        return;
+                      }
+                      setStakeAmount(filtered);
+                    }}
+                    placeholder="Fixed amount (everyone pays the same)"
+                    placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                    keyboardType="decimal-pad"
+                    returnKeyType="done"
+                  />
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  marginBottom: 8
+                }}>
+                  Social Stake <Text style={{ color: '#FF4757' }}>*</Text>
+                </Text>
+                <Text style={{
+                  fontSize: 12,
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  marginBottom: 8
+                }}>
+                  What's at stake? (e.g., "Loser buys pizza", "Winner picks next movie")
+                </Text>
+                <View style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: socialStakeDescription.trim() ? '#00D4AA' : 'rgba(255, 255, 255, 0.1)',
+                  paddingHorizontal: 16,
+                  paddingVertical: 14
+                }}>
+                  <TextInput
+                    style={{
+                      fontSize: 16,
+                      color: '#ffffff',
+                      fontWeight: '400',
+                      minHeight: 80
+                    }}
+                    value={socialStakeDescription}
+                    onChangeText={setSocialStakeDescription}
+                    placeholder="E.g., Loser buys winner coffee"
+                    placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                    multiline
+                    numberOfLines={3}
+                    maxLength={500}
+                    returnKeyType="done"
+                  />
+                </View>
+                <Text style={{
+                  fontSize: 11,
+                  color: 'rgba(255, 255, 255, 0.4)',
+                  marginTop: 4,
+                  textAlign: 'right'
+                }}>
+                  {socialStakeDescription.length}/500
+                </Text>
+              </>
+            )}
           </View>
 
           {/* Bet Timing */}
@@ -1132,11 +1255,11 @@ export default function CreateBet() {
             title="Create Bet"
             onPress={handleCreateBet}
             loading={isCreating}
-            disabled={!(betTitle.trim() && selectedSport && stakeAmount)}
+            disabled={!(betTitle.trim() && selectedSport && (stakeType === 'CREDIT' ? stakeAmount.trim() : socialStakeDescription.trim()))}
             style={{
               marginTop: 32,
               marginBottom: 20,
-              shadowColor: (betTitle.trim() && selectedSport && stakeAmount && !isCreating) ? '#00D4AA' : 'transparent',
+              shadowColor: (betTitle.trim() && selectedSport && (stakeType === 'CREDIT' ? stakeAmount.trim() : socialStakeDescription.trim()) && !isCreating) ? '#00D4AA' : 'transparent',
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
               shadowRadius: 8,

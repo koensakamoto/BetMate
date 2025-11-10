@@ -18,6 +18,7 @@ import com.betmate.service.bet.BetService;
 import com.betmate.service.bet.BetCreationService;
 import com.betmate.service.bet.BetParticipationService;
 import com.betmate.service.bet.BetResolutionService;
+import com.betmate.service.bet.BetFulfillmentService;
 import com.betmate.entity.betting.BetParticipation;
 import com.betmate.service.group.GroupService;
 import com.betmate.service.group.GroupMembershipService;
@@ -48,6 +49,7 @@ public class BetController {
     private final BetCreationService betCreationService;
     private final BetParticipationService betParticipationService;
     private final BetResolutionService betResolutionService;
+    private final BetFulfillmentService betFulfillmentService;
     private final GroupService groupService;
     private final GroupMembershipService groupMembershipService;
     private final UserService userService;
@@ -57,6 +59,7 @@ public class BetController {
                         BetCreationService betCreationService,
                         BetParticipationService betParticipationService,
                         BetResolutionService betResolutionService,
+                        BetFulfillmentService betFulfillmentService,
                         GroupService groupService,
                         GroupMembershipService groupMembershipService,
                         UserService userService) {
@@ -64,6 +67,7 @@ public class BetController {
         this.betCreationService = betCreationService;
         this.betParticipationService = betParticipationService;
         this.betResolutionService = betResolutionService;
+        this.betFulfillmentService = betFulfillmentService;
         this.groupService = groupService;
         this.groupMembershipService = groupMembershipService;
         this.userService = userService;
@@ -591,6 +595,62 @@ public class BetController {
 
         return response;
     }
+
+    // ==========================================
+    // FULFILLMENT TRACKING ENDPOINTS
+    // ==========================================
+
+    /**
+     * Get fulfillment details for a social bet.
+     */
+    @GetMapping("/{betId}/fulfillment")
+    public ResponseEntity<BetFulfillmentService.FulfillmentDetails> getFulfillmentDetails(
+            @PathVariable Long betId,
+            Authentication authentication) {
+        User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        BetFulfillmentService.FulfillmentDetails details = betFulfillmentService.getFulfillmentDetails(betId);
+        return ResponseEntity.ok(details);
+    }
+
+    /**
+     * Loser claims they have fulfilled the social stake (optional).
+     */
+    @PostMapping("/{betId}/fulfillment/loser-claim")
+    public ResponseEntity<String> loserClaimFulfilled(
+            @PathVariable Long betId,
+            @RequestBody(required = false) LoserClaimRequest request,
+            Authentication authentication) {
+        User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String proofUrl = request != null ? request.proofUrl() : null;
+        betFulfillmentService.loserClaimFulfilled(betId, currentUser.getId(), proofUrl);
+
+        return ResponseEntity.ok("Fulfillment claimed successfully");
+    }
+
+    /**
+     * Winner confirms they received the social stake.
+     */
+    @PostMapping("/{betId}/fulfillment/winner-confirm")
+    public ResponseEntity<String> winnerConfirmFulfilled(
+            @PathVariable Long betId,
+            @RequestBody(required = false) WinnerConfirmRequest request,
+            Authentication authentication) {
+        User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String notes = request != null ? request.notes() : null;
+        betFulfillmentService.winnerConfirmFulfilled(betId, currentUser.getId(), notes);
+
+        return ResponseEntity.ok("Fulfillment confirmed successfully");
+    }
+
+    // Request DTOs for fulfillment endpoints
+    public record LoserClaimRequest(String proofUrl) {}
+    public record WinnerConfirmRequest(String notes) {}
 
     /**
      * Helper method to convert string outcomes to BetOutcome enum.
