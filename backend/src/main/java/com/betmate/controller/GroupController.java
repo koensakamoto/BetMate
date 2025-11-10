@@ -193,6 +193,34 @@ public class GroupController {
     }
 
     /**
+     * Remove a member from the group.
+     */
+    @DeleteMapping("/{groupId}/members/{memberId}")
+    public ResponseEntity<Void> removeMember(
+            @PathVariable Long groupId,
+            @PathVariable Long memberId,
+            Authentication authentication) {
+
+        System.out.println("🗑️ [DEBUG] Remove member endpoint called - GroupId: " + groupId + ", MemberId: " + memberId);
+
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        Group group = groupService.getGroupById(groupId);
+        User memberToRemove = userService.getUserById(memberId);
+
+        System.out.println("🗑️ [DEBUG] Current user: " + currentUser.getUsername() + " (ID: " + currentUser.getId() + ")");
+        System.out.println("🗑️ [DEBUG] Member to remove: " + memberToRemove.getUsername() + " (ID: " + memberToRemove.getId() + ")");
+        System.out.println("🗑️ [DEBUG] Group: " + group.getGroupName() + " (ID: " + group.getId() + ")");
+
+        // Remove the member
+        groupMembershipService.removeMember(currentUser, memberToRemove, group);
+
+        System.out.println("🗑️ [DEBUG] Member removal successful");
+
+        return ResponseEntity.ok().build();
+    }
+
+    /**
      * Get group details by ID.
      * This endpoint must be LAST to avoid conflicts with specific endpoints.
      */

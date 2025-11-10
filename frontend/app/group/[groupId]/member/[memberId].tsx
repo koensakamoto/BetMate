@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StatusBar, Alert, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StatusBar, Alert, Image, ScrollView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { groupService, type GroupMemberResponse, type GroupDetailResponse } from '../../../../services/group/groupService';
+import { userService, type UserProfileResponse, type UserStatistics } from '../../../../services/user/userService';
 import { useAuth } from '../../../../contexts/AuthContext';
 
 export default function ManageMember() {
@@ -13,6 +14,8 @@ export default function ManageMember() {
 
   const [member, setMember] = useState<GroupMemberResponse | null>(null);
   const [groupData, setGroupData] = useState<GroupDetailResponse | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfileResponse | null>(null);
+  const [userStats, setUserStats] = useState<UserStatistics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -44,10 +47,12 @@ export default function ManageMember() {
       const numericGroupId = Array.isArray(groupId) ? parseInt(groupId[0]) : parseInt(groupId as string);
       const numericMemberId = Array.isArray(memberId) ? parseInt(memberId[0]) : parseInt(memberId as string);
 
-      // Fetch group data and members to find the specific member
-      const [groupResponse, membersResponse] = await Promise.all([
+      // Fetch group data, members, user profile, and user stats
+      const [groupResponse, membersResponse, userProfileResponse, userStatsResponse] = await Promise.all([
         groupService.getGroupById(numericGroupId),
-        groupService.getGroupMembers(numericGroupId)
+        groupService.getGroupMembers(numericGroupId),
+        userService.getUserById(numericMemberId),
+        userService.getUserStatistics(numericMemberId)
       ]);
 
       const targetMember = membersResponse.find(m => m.id === numericMemberId);
@@ -60,6 +65,8 @@ export default function ManageMember() {
 
       setGroupData(groupResponse);
       setMember(targetMember);
+      setUserProfile(userProfileResponse);
+      setUserStats(userStatsResponse);
     } catch (error) {
       console.error('Failed to fetch data:', error);
       Alert.alert('Error', 'Failed to load member data');
@@ -300,14 +307,13 @@ export default function ManageMember() {
       <View style={{
         paddingTop: insets.top + 16,
         paddingHorizontal: 20,
-        paddingBottom: 20,
+        paddingBottom: 16,
         borderBottomWidth: 0.5,
         borderBottomColor: 'rgba(255, 255, 255, 0.1)'
       }}>
         <View style={{
           flexDirection: 'row',
-          alignItems: 'center',
-          marginBottom: 20
+          alignItems: 'center'
         }}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -330,198 +336,363 @@ export default function ManageMember() {
               fontWeight: '700',
               color: '#ffffff'
             }}>
-              Manage Member
-            </Text>
-            <Text style={{
-              fontSize: 14,
-              color: 'rgba(255, 255, 255, 0.6)',
-              marginTop: 2
-            }}>
               {getDisplayName(member)}
             </Text>
           </View>
         </View>
       </View>
 
-      {/* Member Profile Card */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-        <View style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.02)',
-          borderWidth: 0.5,
-          borderColor: 'rgba(255, 255, 255, 0.08)',
-          borderRadius: 16,
-          padding: 20,
-          marginBottom: 24
-        }}>
-          {/* Avatar and Basic Info */}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
+
+        {/* Profile Header */}
+        <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
           <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginBottom: 20
+            backgroundColor: 'rgba(255, 255, 255, 0.02)',
+            borderWidth: 0.5,
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+            borderRadius: 16,
+            padding: 20,
+            marginBottom: 16
           }}>
+            {/* Avatar and Basic Info */}
             <View style={{
-              width: 64,
-              height: 64,
-              borderRadius: 32,
-              backgroundColor: isOnline(member) ? 'rgba(0, 212, 170, 0.2)' : 'rgba(255, 255, 255, 0.12)',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginRight: 16,
-              position: 'relative'
+              flexDirection: 'row',
+              alignItems: 'center'
             }}>
-              <Text style={{
-                fontSize: 24,
-                fontWeight: '700',
-                color: isOnline(member) ? '#00D4AA' : '#ffffff'
-              }}>
-                {getDisplayName(member).charAt(0).toUpperCase()}
-              </Text>
-
-              {/* Online Indicator */}
-              {isOnline(member) && (
-                <View style={{
-                  position: 'absolute',
-                  bottom: 4,
-                  right: 4,
-                  width: 16,
-                  height: 16,
-                  borderRadius: 8,
-                  backgroundColor: '#00D4AA',
-                  borderWidth: 3,
-                  borderColor: '#0a0a0f'
-                }} />
-              )}
-            </View>
-
-            <View style={{ flex: 1 }}>
               <View style={{
-                flexDirection: 'row',
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: isOnline(member) ? 'rgba(0, 212, 170, 0.2)' : 'rgba(255, 255, 255, 0.12)',
+                justifyContent: 'center',
                 alignItems: 'center',
-                marginBottom: 4
+                marginRight: 16,
+                position: 'relative'
               }}>
+                <Text style={{
+                  fontSize: 24,
+                  fontWeight: '700',
+                  color: isOnline(member) ? '#00D4AA' : '#ffffff'
+                }}>
+                  {getDisplayName(member).charAt(0).toUpperCase()}
+                </Text>
+
+                {/* Online Indicator */}
+                {isOnline(member) && (
+                  <View style={{
+                    position: 'absolute',
+                    bottom: 4,
+                    right: 4,
+                    width: 16,
+                    height: 16,
+                    borderRadius: 8,
+                    backgroundColor: '#00D4AA',
+                    borderWidth: 3,
+                    borderColor: '#0a0a0f'
+                  }} />
+                )}
+              </View>
+
+              <View style={{ flex: 1 }}>
                 <Text style={{
                   fontSize: 20,
                   fontWeight: '600',
                   color: '#ffffff',
-                  marginRight: 12
+                  marginBottom: 4
                 }}>
                   {getDisplayName(member)}
                 </Text>
 
-                {(member.role === 'ADMIN' || member.role === 'OFFICER') && (
-                  <View style={{
-                    backgroundColor: member.role === 'ADMIN' ? 'rgba(255, 215, 0, 0.2)' : 'rgba(0, 212, 170, 0.2)',
-                    paddingHorizontal: 8,
-                    paddingVertical: 3,
-                    borderRadius: 6
-                  }}>
-                    <Text style={{
-                      fontSize: 11,
-                      fontWeight: '600',
-                      color: member.role === 'ADMIN' ? '#FFD700' : '#00D4AA'
-                    }}>
-                      {member.role}
-                    </Text>
-                  </View>
-                )}
-              </View>
+                <Text style={{
+                  fontSize: 14,
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  marginBottom: 2
+                }}>
+                  @{member.username}
+                </Text>
 
+                <Text style={{
+                  fontSize: 12,
+                  color: isOnline(member) ? '#00D4AA' : 'rgba(255, 255, 255, 0.5)',
+                  fontWeight: isOnline(member) ? '600' : '400'
+                }}>
+                  {formatLastActivity(member)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Bio */}
+            {userProfile?.bio && (
+              <View style={{
+                marginTop: 16,
+                paddingTop: 16,
+                borderTopWidth: 0.5,
+                borderTopColor: 'rgba(255, 255, 255, 0.1)'
+              }}>
+                <Text style={{
+                  fontSize: 14,
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  lineHeight: 20
+                }}>
+                  {userProfile.bio}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Overall Statistics */}
+          {userStats && (
+            <View style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.02)',
+              borderWidth: 0.5,
+              borderColor: 'rgba(255, 255, 255, 0.08)',
+              borderRadius: 16,
+              padding: 20,
+              marginBottom: 16
+            }}>
+              <Text style={{
+                fontSize: 16,
+                fontWeight: '600',
+                color: '#ffffff',
+                marginBottom: 16
+              }}>
+                Overall Statistics
+              </Text>
+
+              <View style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                gap: 16
+              }}>
+                <View style={{ alignItems: 'center', minWidth: '30%' }}>
+                  <Text style={{
+                    fontSize: 20,
+                    fontWeight: '700',
+                    color: '#ffffff',
+                    marginBottom: 4
+                  }}>
+                    {userStats.totalGames}
+                  </Text>
+                  <Text style={{
+                    fontSize: 12,
+                    color: 'rgba(255, 255, 255, 0.6)'
+                  }}>
+                    Total Games
+                  </Text>
+                </View>
+
+                <View style={{ alignItems: 'center', minWidth: '30%' }}>
+                  <Text style={{
+                    fontSize: 20,
+                    fontWeight: '700',
+                    color: '#00D4AA',
+                    marginBottom: 4
+                  }}>
+                    {userStats.winCount}
+                  </Text>
+                  <Text style={{
+                    fontSize: 12,
+                    color: 'rgba(255, 255, 255, 0.6)'
+                  }}>
+                    Wins
+                  </Text>
+                </View>
+
+                <View style={{ alignItems: 'center', minWidth: '30%' }}>
+                  <Text style={{
+                    fontSize: 20,
+                    fontWeight: '700',
+                    color: '#FF3B30',
+                    marginBottom: 4
+                  }}>
+                    {userStats.lossCount}
+                  </Text>
+                  <Text style={{
+                    fontSize: 12,
+                    color: 'rgba(255, 255, 255, 0.6)'
+                  }}>
+                    Losses
+                  </Text>
+                </View>
+
+                <View style={{ alignItems: 'center', minWidth: '30%' }}>
+                  <Text style={{
+                    fontSize: 20,
+                    fontWeight: '700',
+                    color: '#00D4AA',
+                    marginBottom: 4
+                  }}>
+                    {(userStats.winRate * 100).toFixed(0)}%
+                  </Text>
+                  <Text style={{
+                    fontSize: 12,
+                    color: 'rgba(255, 255, 255, 0.6)'
+                  }}>
+                    Win Rate
+                  </Text>
+                </View>
+
+                <View style={{ alignItems: 'center', minWidth: '30%' }}>
+                  <Text style={{
+                    fontSize: 20,
+                    fontWeight: '700',
+                    color: '#FFB800',
+                    marginBottom: 4
+                  }}>
+                    {userStats.currentStreak}
+                  </Text>
+                  <Text style={{
+                    fontSize: 12,
+                    color: 'rgba(255, 255, 255, 0.6)'
+                  }}>
+                    Current Streak
+                  </Text>
+                </View>
+
+                <View style={{ alignItems: 'center', minWidth: '30%' }}>
+                  <Text style={{
+                    fontSize: 20,
+                    fontWeight: '700',
+                    color: '#FFB800',
+                    marginBottom: 4
+                  }}>
+                    {userStats.longestStreak}
+                  </Text>
+                  <Text style={{
+                    fontSize: 12,
+                    color: 'rgba(255, 255, 255, 0.6)'
+                  }}>
+                    Longest Streak
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Group-Specific Section */}
+          <View style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.02)',
+            borderWidth: 0.5,
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+            borderRadius: 16,
+            padding: 20,
+            marginBottom: 16
+          }}>
+            <Text style={{
+              fontSize: 16,
+              fontWeight: '600',
+              color: '#ffffff',
+              marginBottom: 16
+            }}>
+              Group Details
+            </Text>
+
+            {/* Role Badge */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: 16
+            }}>
               <Text style={{
                 fontSize: 14,
                 color: 'rgba(255, 255, 255, 0.6)',
-                marginBottom: 2
+                marginRight: 12
               }}>
-                @{member.username}
+                Role:
               </Text>
+              <View style={{
+                backgroundColor: member.role === 'ADMIN' ? 'rgba(255, 215, 0, 0.2)' : member.role === 'OFFICER' ? 'rgba(0, 212, 170, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 6
+              }}>
+                <Text style={{
+                  fontSize: 12,
+                  fontWeight: '600',
+                  color: member.role === 'ADMIN' ? '#FFD700' : member.role === 'OFFICER' ? '#00D4AA' : '#ffffff'
+                }}>
+                  {member.role}
+                </Text>
+              </View>
+            </View>
 
-              <Text style={{
-                fontSize: 12,
-                color: isOnline(member) ? '#00D4AA' : 'rgba(255, 255, 255, 0.5)',
-                fontWeight: isOnline(member) ? '600' : '400'
-              }}>
-                {formatLastActivity(member)}
-              </Text>
+            {/* Group Stats */}
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              paddingTop: 16,
+              borderTopWidth: 0.5,
+              borderTopColor: 'rgba(255, 255, 255, 0.1)'
+            }}>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{
+                  fontSize: 18,
+                  fontWeight: '700',
+                  color: '#ffffff',
+                  marginBottom: 4
+                }}>
+                  {member.totalBets}
+                </Text>
+                <Text style={{
+                  fontSize: 12,
+                  color: 'rgba(255, 255, 255, 0.6)'
+                }}>
+                  Group Bets
+                </Text>
+              </View>
+
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{
+                  fontSize: 18,
+                  fontWeight: '700',
+                  color: '#00D4AA',
+                  marginBottom: 4
+                }}>
+                  {member.totalWins}
+                </Text>
+                <Text style={{
+                  fontSize: 12,
+                  color: 'rgba(255, 255, 255, 0.6)'
+                }}>
+                  Group Wins
+                </Text>
+              </View>
+
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{
+                  fontSize: 18,
+                  fontWeight: '700',
+                  color: '#FF3B30',
+                  marginBottom: 4
+                }}>
+                  {member.totalLosses}
+                </Text>
+                <Text style={{
+                  fontSize: 12,
+                  color: 'rgba(255, 255, 255, 0.6)'
+                }}>
+                  Group Losses
+                </Text>
+              </View>
+
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '700',
+                  color: '#ffffff',
+                  marginBottom: 4
+                }}>
+                  {formatJoinDate(member.joinedAt)}
+                </Text>
+                <Text style={{
+                  fontSize: 12,
+                  color: 'rgba(255, 255, 255, 0.6)'
+                }}>
+                  Joined
+                </Text>
+              </View>
             </View>
           </View>
-
-          {/* Member Stats */}
-          <View style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginBottom: 20,
-            paddingTop: 16,
-            borderTopWidth: 0.5,
-            borderTopColor: 'rgba(255, 255, 255, 0.1)'
-          }}>
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{
-                fontSize: 18,
-                fontWeight: '700',
-                color: '#ffffff',
-                marginBottom: 2
-              }}>
-                {member.totalBets}
-              </Text>
-              <Text style={{
-                fontSize: 12,
-                color: 'rgba(255, 255, 255, 0.6)'
-              }}>
-                Total Bets
-              </Text>
-            </View>
-
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{
-                fontSize: 18,
-                fontWeight: '700',
-                color: '#00D4AA',
-                marginBottom: 2
-              }}>
-                {member.totalWins}
-              </Text>
-              <Text style={{
-                fontSize: 12,
-                color: 'rgba(255, 255, 255, 0.6)'
-              }}>
-                Wins
-              </Text>
-            </View>
-
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{
-                fontSize: 18,
-                fontWeight: '700',
-                color: '#FF3B30',
-                marginBottom: 2
-              }}>
-                {member.totalLosses}
-              </Text>
-              <Text style={{
-                fontSize: 12,
-                color: 'rgba(255, 255, 255, 0.6)'
-              }}>
-                Losses
-              </Text>
-            </View>
-
-            <View style={{ alignItems: 'center' }}>
-              <Text style={{
-                fontSize: 18,
-                fontWeight: '700',
-                color: '#ffffff',
-                marginBottom: 2
-              }}>
-                {formatJoinDate(member.joinedAt)}
-              </Text>
-              <Text style={{
-                fontSize: 12,
-                color: 'rgba(255, 255, 255, 0.6)'
-              }}>
-                Joined
-              </Text>
-            </View>
-          </View>
-        </View>
 
         {/* Management Actions */}
         {canManageMembers && member.id !== user?.id && (
@@ -654,7 +825,8 @@ export default function ManageMember() {
           </View>
         )}
 
-      </View>
+        </View>
+      </ScrollView>
     </View>
   );
 }

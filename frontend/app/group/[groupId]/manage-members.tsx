@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, StatusBar, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, TextInput, StatusBar, Alert, Pressable } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -560,223 +560,152 @@ export default function ManageMembers() {
 
       {/* Members List */}
       <ScrollView style={{ flex: 1, paddingHorizontal: 20 }}>
-        {filteredMembers.map((member) => (
-          <View
-            key={member.id}
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.02)',
-              borderWidth: 0.5,
-              borderColor: 'rgba(255, 255, 255, 0.08)',
-              borderRadius: 12,
-              padding: 16,
-              marginVertical: 6,
-              flexDirection: 'row',
-              alignItems: 'center'
-            }}
-          >
-            {/* Selection checkbox (only for admins/officers) */}
-            {canManageMembers && (
-              <TouchableOpacity
-                onPress={() => toggleMemberSelection(member.id)}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 4,
-                  borderWidth: 2,
-                  borderColor: selectedMembers.has(member.id) ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
-                  backgroundColor: selectedMembers.has(member.id) ? '#00D4AA' : 'transparent',
-                  marginRight: 12,
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}
-              >
-                {selectedMembers.has(member.id) && (
-                  <MaterialIcons name="check" size={16} color="#000000" />
-                )}
-              </TouchableOpacity>
-            )}
+        {filteredMembers.map((member) => {
+          const handleCardPress = () => {
+            const numericGroupId = Array.isArray(groupId) ? groupId[0] : groupId;
+            const path = `/group/${numericGroupId}/member/${member.id}`;
+            router.push(path);
+          };
 
-            {/* Avatar */}
-            <View style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              backgroundColor: isOnline(member) ? 'rgba(0, 212, 170, 0.2)' : 'rgba(255, 255, 255, 0.12)',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginRight: 16,
-              position: 'relative'
-            }}>
-              <Text style={{
-                fontSize: 18,
-                fontWeight: '700',
-                color: isOnline(member) ? '#00D4AA' : '#ffffff'
-              }}>
-                {getDisplayName(member).charAt(0).toUpperCase()}
-              </Text>
-
-              {/* Online Indicator */}
-              {isOnline(member) && (
-                <View style={{
-                  position: 'absolute',
-                  bottom: 2,
-                  right: 2,
-                  width: 12,
-                  height: 12,
-                  borderRadius: 6,
-                  backgroundColor: '#00D4AA',
-                  borderWidth: 2,
-                  borderColor: '#0a0a0f'
-                }} />
-              )}
-            </View>
-
-            {/* Member Info */}
-            <View style={{ flex: 1 }}>
-              <View style={{
+          return (
+            <TouchableOpacity
+              key={member.id}
+              onPress={handleCardPress}
+              activeOpacity={0.7}
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                borderWidth: 0.5,
+                borderColor: 'rgba(255, 255, 255, 0.08)',
+                borderRadius: 12,
+                padding: 16,
+                marginVertical: 6,
                 flexDirection: 'row',
-                alignItems: 'center',
-                marginBottom: 4
-              }}>
-                <Text style={{
-                  fontSize: 16,
-                  fontWeight: '600',
-                  color: '#ffffff',
-                  marginRight: 8
-                }}>
-                  {getDisplayName(member)}
-                </Text>
+                alignItems: 'center'
+              }}
+            >
+              {/* Selection checkbox (only for admins/officers managing others) */}
+              {canManageMembers && member.id !== user?.id && (
+                <TouchableOpacity
+                  onPress={() => toggleMemberSelection(member.id)}
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 4,
+                    borderWidth: 2,
+                    borderColor: selectedMembers.has(member.id) ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
+                    backgroundColor: selectedMembers.has(member.id) ? '#00D4AA' : 'transparent',
+                    marginRight: 12,
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}
+                >
+                  {selectedMembers.has(member.id) && (
+                    <MaterialIcons name="check" size={16} color="#000000" />
+                  )}
+                </TouchableOpacity>
+              )}
 
-                {(member.role === 'ADMIN' || member.role === 'OFFICER') && (
-                  <View style={{
-                    backgroundColor: member.role === 'ADMIN' ? 'rgba(255, 215, 0, 0.2)' : 'rgba(0, 212, 170, 0.2)',
-                    paddingHorizontal: 6,
-                    paddingVertical: 2,
-                    borderRadius: 4
+              {/* Member Info Area */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, marginRight: 8 }}>
+                {/* Avatar */}
+                <View style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 24,
+                  backgroundColor: isOnline(member) ? 'rgba(0, 212, 170, 0.2)' : 'rgba(255, 255, 255, 0.12)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: 12,
+                  position: 'relative',
+                  flexShrink: 0
+                }}>
+                  <Text style={{
+                    fontSize: 18,
+                    fontWeight: '700',
+                    color: isOnline(member) ? '#00D4AA' : '#ffffff'
                   }}>
-                    <Text style={{
-                      fontSize: 10,
-                      fontWeight: '600',
-                      color: member.role === 'ADMIN' ? '#FFD700' : '#00D4AA'
-                    }}>
-                      {member.role}
+                    {getDisplayName(member).charAt(0).toUpperCase()}
+                  </Text>
+
+                  {/* Online Indicator */}
+                  {isOnline(member) && (
+                    <View style={{
+                      position: 'absolute',
+                      bottom: 2,
+                      right: 2,
+                      width: 12,
+                      height: 12,
+                      borderRadius: 6,
+                      backgroundColor: '#00D4AA',
+                      borderWidth: 2,
+                      borderColor: '#0a0a0f'
+                    }} />
+                  )}
+                </View>
+
+                {/* Member Info */}
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    marginBottom: 4
+                  }}>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: '600',
+                        color: '#ffffff',
+                        marginRight: 8
+                      }}
+                      numberOfLines={1}
+                    >
+                      {getDisplayName(member)}
                     </Text>
+
+                    {(member.role === 'ADMIN' || member.role === 'OFFICER') && (
+                      <View style={{
+                        backgroundColor: member.role === 'ADMIN' ? 'rgba(255, 215, 0, 0.2)' : 'rgba(0, 212, 170, 0.2)',
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 4,
+                        flexShrink: 0
+                      }}>
+                        <Text style={{
+                          fontSize: 10,
+                          fontWeight: '600',
+                          color: member.role === 'ADMIN' ? '#FFD700' : '#00D4AA'
+                        }}>
+                          {member.role}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                )}
+
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      marginBottom: 2
+                    }}
+                    numberOfLines={1}
+                  >
+                    @{member.username}
+                  </Text>
+
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: 'rgba(255, 255, 255, 0.5)'
+                    }}
+                    numberOfLines={1}
+                  >
+                    {member.totalBets} bets • {member.totalWins}W {member.totalLosses}L
+                  </Text>
+                </View>
               </View>
-
-              <Text style={{
-                fontSize: 13,
-                color: 'rgba(255, 255, 255, 0.6)',
-                marginBottom: 2
-              }}>
-                @{member.username}
-              </Text>
-
-              <Text style={{
-                fontSize: 12,
-                color: 'rgba(255, 255, 255, 0.5)'
-              }}>
-                {member.totalBets} bets • {member.totalWins}W {member.totalLosses}L
-              </Text>
-            </View>
-
-            {/* Action Buttons */}
-            {canManageMembers && member.id !== user?.id && (
-              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                {/* Promote/Demote Button */}
-                {((currentUserRole === 'ADMIN' && (member.role === 'MEMBER' || member.role === 'OFFICER')) ||
-                  (currentUserRole === 'OFFICER' && member.role === 'MEMBER')) && (
-                  <TouchableOpacity
-                    onPress={() => member.role === 'MEMBER' ? handlePromoteToOfficer(member) : handleDemoteToMember(member)}
-                    style={{
-                      backgroundColor: member.role === 'MEMBER' ? 'rgba(0, 212, 170, 0.15)' : 'rgba(255, 165, 0, 0.15)',
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderRadius: 6,
-                      borderWidth: 0.5,
-                      borderColor: member.role === 'MEMBER' ? 'rgba(0, 212, 170, 0.3)' : 'rgba(255, 165, 0, 0.3)'
-                    }}
-                  >
-                    <Text style={{
-                      color: member.role === 'MEMBER' ? '#00D4AA' : '#FFA500',
-                      fontSize: 11,
-                      fontWeight: '600'
-                    }}>
-                      {member.role === 'MEMBER' ? 'Promote' : 'Demote'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Remove Button */}
-                {((currentUserRole === 'ADMIN') ||
-                  (currentUserRole === 'OFFICER' && member.role === 'MEMBER')) && (
-                  <TouchableOpacity
-                    onPress={() => handleRemoveMember(member)}
-                    style={{
-                      backgroundColor: 'rgba(255, 59, 48, 0.15)',
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderRadius: 6,
-                      borderWidth: 0.5,
-                      borderColor: 'rgba(255, 59, 48, 0.3)'
-                    }}
-                  >
-                    <Text style={{
-                      color: '#FF3B30',
-                      fontSize: 11,
-                      fontWeight: '600'
-                    }}>
-                      Remove
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* View Profile Button (for members you can't manage) */}
-                {(!canManageMembers || member.id === user?.id) && (
-                  <TouchableOpacity
-                    onPress={() => router.push(`/profile/${member.id}`)}
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderRadius: 6
-                    }}
-                  >
-                    <Text style={{
-                      color: '#ffffff',
-                      fontSize: 11,
-                      fontWeight: '600'
-                    }}>
-                      View
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-
-            {/* View Profile for non-managers */}
-            {!canManageMembers && (
-              <TouchableOpacity
-                onPress={() => router.push(`/profile/${member.id}`)}
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  paddingHorizontal: 8,
-                  paddingVertical: 4,
-                  borderRadius: 6
-                }}
-              >
-                <Text style={{
-                  color: '#ffffff',
-                  fontSize: 11,
-                  fontWeight: '600'
-                }}>
-                  View
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        ))}
+            </TouchableOpacity>
+          );
+        })}
 
         {/* Empty State */}
         {filteredMembers.length === 0 && (
