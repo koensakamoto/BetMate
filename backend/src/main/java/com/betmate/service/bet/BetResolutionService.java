@@ -39,6 +39,7 @@ public class BetResolutionService {
     private final BetResolverRepository betResolverRepository;
     private final BetResolutionVoteRepository betResolutionVoteRepository;
     private final BetParticipationRepository betParticipationRepository;
+    private final BetParticipationService betParticipationService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
@@ -47,11 +48,13 @@ public class BetResolutionService {
             BetResolverRepository betResolverRepository,
             BetResolutionVoteRepository betResolutionVoteRepository,
             BetParticipationRepository betParticipationRepository,
+            BetParticipationService betParticipationService,
             ApplicationEventPublisher eventPublisher) {
         this.betRepository = betRepository;
         this.betResolverRepository = betResolverRepository;
         this.betResolutionVoteRepository = betResolutionVoteRepository;
         this.betParticipationRepository = betParticipationRepository;
+        this.betParticipationService = betParticipationService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -110,16 +113,14 @@ public class BetResolutionService {
             }
         }
 
-        // Mark selected users as winners
+        // Mark selected users as winners (but don't settle yet - just set the status)
         for (BetParticipation participation : allParticipations) {
             if (winnerUserIds.contains(participation.getUserId())) {
-                // This is a winner - calculate their winnings
-                // For now, use a simple proportional payout
+                // This is a winner
                 participation.setStatus(BetParticipation.ParticipationStatus.WON);
             } else {
                 // This is a loser
                 participation.setStatus(BetParticipation.ParticipationStatus.LOST);
-                participation.setActualWinnings(BigDecimal.ZERO);
             }
             betParticipationRepository.save(participation);
         }
@@ -127,6 +128,9 @@ public class BetResolutionService {
         // Mark bet as resolved (use OPTION_1 as placeholder since there's no specific option)
         bet.resolve(Bet.BetOutcome.OPTION_1);
         bet = betRepository.save(bet);
+
+        // Settle all participations (calculate winnings, update user stats)
+        betParticipationService.settleParticipationsForResolvedBet(bet);
 
         // Publish bet resolved event for notifications
         publishBetResolvedEvent(bet);
@@ -141,9 +145,12 @@ public class BetResolutionService {
         if (!bet.isCreator(resolver)) {
             throw new BetResolutionException("Only the bet creator can resolve this bet");
         }
-        
+
         bet.resolve(outcome);
         bet = betRepository.save(bet);
+
+        // Settle all participations (calculate winnings, update user stats)
+        betParticipationService.settleParticipationsForResolvedBet(bet);
 
         // Publish bet resolved event for notifications
         publishBetResolvedEvent(bet);
@@ -158,13 +165,16 @@ public class BetResolutionService {
         BetResolver betResolver = betResolverRepository
             .findByBetAndResolverAndIsActiveTrue(bet, resolver)
             .orElseThrow(() -> new BetResolutionException("User is not authorized to resolve this bet"));
-        
+
         if (!betResolver.canResolveIndependently()) {
             throw new BetResolutionException("Resolver can only vote, cannot resolve independently");
         }
-        
+
         bet.resolve(outcome);
         bet = betRepository.save(bet);
+
+        // Settle all participations (calculate winnings, update user stats)
+        betParticipationService.settleParticipationsForResolvedBet(bet);
 
         // Publish bet resolved event for notifications
         publishBetResolvedEvent(bet);
@@ -422,6 +432,9 @@ public class BetResolutionService {
         if (winningVotes > totalVotes / 2) {
             bet.resolve(winningOutcome);
             bet = betRepository.save(bet);
+
+            // Settle all participations (calculate winnings, update user stats)
+            betParticipationService.settleParticipationsForResolvedBet(bet);
 
             // Publish bet resolved event for notifications
             publishBetResolvedEvent(bet);

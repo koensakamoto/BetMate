@@ -200,22 +200,41 @@ public class BetParticipationService {
      */
     public void resolveBetParticipations(@NotNull Long betId, @NotNull Bet.BetOutcome outcome) {
         Bet bet = betService.getBetById(betId);
-        
+
         if (bet.getStatus() != Bet.BetStatus.CLOSED) {
             throw new BetParticipationException("Bet must be closed before resolving participations");
         }
-        
+
         List<BetParticipation> participations = participationRepository.findByBet(bet);
-        
+
         for (BetParticipation participation : participations) {
             if (participation.getStatus() == BetParticipation.ParticipationStatus.ACTIVE) {
                 resolveParticipation(participation, bet, outcome);
             }
         }
-        
+
         // Mark bet as resolved
         bet.resolve(outcome);
         betService.saveBet(bet);
+    }
+
+    /**
+     * Settles all participations for an already-resolved bet.
+     * This method handles:
+     * - Calculating and crediting winnings
+     * - Updating user statistics (wins, losses, streaks)
+     * - Decrementing active bets count
+     *
+     * NOTE: This should be called after the bet has already been resolved.
+     */
+    public void settleParticipationsForResolvedBet(@NotNull Bet bet) {
+        List<BetParticipation> participations = participationRepository.findByBet(bet);
+
+        for (BetParticipation participation : participations) {
+            if (participation.getStatus() == BetParticipation.ParticipationStatus.ACTIVE) {
+                resolveParticipation(participation, bet, bet.getOutcome());
+            }
+        }
     }
 
     /**

@@ -77,6 +77,46 @@ public class FileStorageService {
     }
 
     /**
+     * Store a bet fulfillment proof photo
+     * @param file The multipart file to store
+     * @param betId The bet ID for organizing files
+     * @param userId The user ID for organizing files
+     * @return The filename of the stored file
+     */
+    public String storeFulfillmentProof(MultipartFile file, Long betId, Long userId) {
+        // Validate file
+        validateFile(file);
+
+        // Get original filename and extension
+        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
+        String fileExtension = getFileExtension(originalFileName);
+
+        // Generate unique filename: bet_betId_userId_timestamp_uuid.ext
+        String fileName = String.format("bet_%d_user_%d_%d_%s.%s",
+            betId,
+            userId,
+            System.currentTimeMillis(),
+            UUID.randomUUID().toString().substring(0, 8),
+            fileExtension
+        );
+
+        try {
+            // Check for invalid characters
+            if (fileName.contains("..")) {
+                throw new RuntimeException("Invalid file path: " + fileName);
+            }
+
+            // Copy file to target location
+            Path targetLocation = this.fileStorageLocation.resolve(fileName);
+            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+
+            return fileName;
+        } catch (IOException ex) {
+            throw new RuntimeException("Could not store file " + fileName, ex);
+        }
+    }
+
+    /**
      * Delete a profile picture file
      * @param fileName The filename to delete
      */

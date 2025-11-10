@@ -23,6 +23,7 @@ import com.betmate.entity.betting.BetParticipation;
 import com.betmate.service.group.GroupService;
 import com.betmate.service.group.GroupMembershipService;
 import com.betmate.service.user.UserService;
+import com.betmate.service.FileStorageService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -32,6 +33,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +55,7 @@ public class BetController {
     private final GroupService groupService;
     private final GroupMembershipService groupMembershipService;
     private final UserService userService;
+    private final FileStorageService fileStorageService;
 
     @Autowired
     public BetController(BetService betService,
@@ -62,7 +65,8 @@ public class BetController {
                         BetFulfillmentService betFulfillmentService,
                         GroupService groupService,
                         GroupMembershipService groupMembershipService,
-                        UserService userService) {
+                        UserService userService,
+                        FileStorageService fileStorageService) {
         this.betService = betService;
         this.betCreationService = betCreationService;
         this.betParticipationService = betParticipationService;
@@ -71,6 +75,7 @@ public class BetController {
         this.groupService = groupService;
         this.groupMembershipService = groupMembershipService;
         this.userService = userService;
+        this.fileStorageService = fileStorageService;
     }
 
     /**
@@ -625,6 +630,29 @@ public class BetController {
 
         BetFulfillmentService.FulfillmentDetails details = betFulfillmentService.getFulfillmentDetails(betId);
         return ResponseEntity.ok(details);
+    }
+
+    /**
+     * Upload fulfillment proof photo.
+     */
+    @PostMapping("/{betId}/fulfillment/upload-proof")
+    public ResponseEntity<?> uploadFulfillmentProof(
+            @PathVariable Long betId,
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) {
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            String fileName = fileStorageService.storeFulfillmentProof(file, betId, currentUser.getId());
+            String proofUrl = "/api/files/profile-pictures/" + fileName;
+
+            return ResponseEntity.ok(proofUrl);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to upload proof photo: " + e.getMessage());
+        }
     }
 
     /**
