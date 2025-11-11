@@ -160,6 +160,16 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles group membership exceptions.
+     */
+    @ExceptionHandler(com.betmate.exception.group.GroupMembershipException.class)
+    public ApiResponse<Void> handleGroupMembershipException(
+            com.betmate.exception.group.GroupMembershipException ex, HttpServletRequest request) {
+        log.warn("Group membership error for request {}: {}", request.getRequestURI(), ex.getMessage());
+        return createErrorResponse(HttpStatus.BAD_REQUEST, "Group Membership Error", ex.getMessage(), request.getRequestURI());
+    }
+
+    /**
      * Handles all other unexpected exceptions.
      */
     @ExceptionHandler(Exception.class)

@@ -248,6 +248,33 @@ class BetService extends BaseApiService {
     const request: WinnerConfirmRequest = { notes };
     return this.post<string, WinnerConfirmRequest>(`/${betId}/fulfillment/winner-confirm`, request);
   }
+
+  // Upload fulfillment proof photo
+  async uploadFulfillmentProof(betId: number, imageUri: string, fileName: string): Promise<string> {
+    const getContentType = (filename: string): string => {
+      const ext = filename.split('.').pop()?.toLowerCase();
+      const typeMap: Record<string, string> = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp',
+      };
+      return typeMap[ext || ''] || 'image/jpeg';
+    };
+
+    const formData = new FormData();
+    const file: any = {
+      uri: imageUri,
+      type: getContentType(fileName),
+      name: fileName,
+    };
+    formData.append('file', file);
+
+    return this.post<string, FormData>(`/${betId}/fulfillment/upload-proof`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  }
 }
 
 export const betService = new BetService();

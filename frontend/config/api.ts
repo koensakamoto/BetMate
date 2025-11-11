@@ -42,6 +42,7 @@ export const API_ENDPOINTS = {
   GROUP_MY_GROUPS: '/groups/my-groups',
   GROUP_SEARCH: '/groups/search',
   GROUP_CHECK_NAME: '/groups/check-name',
+  GROUP_JOIN: (groupId: number) => `/groups/${groupId}/join`,
   GROUP_PENDING_REQUESTS: (groupId: number) => `/groups/${groupId}/pending-requests`,
   GROUP_PENDING_REQUESTS_COUNT: (groupId: number) => `/groups/${groupId}/pending-requests/count`,
   GROUP_APPROVE_REQUEST: (groupId: number, requestId: number) => `/groups/${groupId}/pending-requests/${requestId}/approve`,

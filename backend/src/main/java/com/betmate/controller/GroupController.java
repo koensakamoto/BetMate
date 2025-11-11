@@ -221,6 +221,26 @@ public class GroupController {
     }
 
     /**
+     * Join a group.
+     * For PUBLIC groups with auto-approve, user joins immediately as MEMBER.
+     * For PRIVATE groups or groups without auto-approve, creates a pending request.
+     */
+    @PostMapping("/{groupId}/join")
+    public ResponseEntity<Void> joinGroup(
+            @PathVariable Long groupId,
+            Authentication authentication) {
+
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        Group group = groupService.getGroupById(groupId);
+
+        // Join the group (service handles auto-approve logic)
+        groupMembershipService.joinGroup(currentUser, group);
+
+        return ResponseEntity.ok().build();
+    }
+
+    /**
      * Get group details by ID.
      * This endpoint must be LAST to avoid conflicts with specific endpoints.
      */

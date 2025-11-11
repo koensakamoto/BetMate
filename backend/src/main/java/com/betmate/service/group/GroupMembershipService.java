@@ -67,9 +67,54 @@ public class GroupMembershipService {
     
     /**
      * Adds a user to a group as a regular member (convenience method).
+     * Handles auto-approve logic:
+     * - PUBLIC groups with auto-approve: User joins immediately as APPROVED member
+     * - PRIVATE groups or groups without auto-approve: Creates PENDING request
      */
     public GroupMembership joinGroup(@NotNull User user, @NotNull Group group) {
-        return joinGroup(user, group, GroupMembership.MemberRole.MEMBER);
+        // Check if already a member or has pending request
+        if (membershipRepository.existsByUserAndGroup(user, group)) {
+            throw new GroupMembershipException("User already has a membership or pending request for this group");
+        }
+
+        // Can't join inactive or deleted groups
+        if (!group.getIsActive() || group.isDeleted()) {
+            throw new GroupMembershipException("Cannot join inactive or deleted groups");
+        }
+
+        // Check if group is full (only for immediate joins, not pending requests)
+        if (group.isFull() && group.getPrivacy() == Group.Privacy.PUBLIC && group.getAutoApproveMembers()) {
+            throw new GroupMembershipException("Group is full");
+        }
+
+        GroupMembership membership = new GroupMembership();
+        membership.setUser(user);
+        membership.setGroup(group);
+        membership.setRole(GroupMembership.MemberRole.MEMBER);
+
+        // Determine if auto-approve based on group settings
+        boolean shouldAutoApprove = group.getPrivacy() == Group.Privacy.PUBLIC &&
+                                     group.getAutoApproveMembers();
+
+        if (shouldAutoApprove) {
+            // Immediate approval for PUBLIC groups with auto-approve
+            membership.setStatus(GroupMembership.MembershipStatus.APPROVED);
+            membership.setIsActive(true);
+        } else {
+            // Pending request for PRIVATE groups or groups without auto-approve
+            membership.setStatus(GroupMembership.MembershipStatus.PENDING);
+            membership.setIsActive(false);
+        }
+
+        GroupMembership savedMembership = membershipRepository.save(membership);
+
+        // Only update member count if approved immediately
+        if (shouldAutoApprove) {
+            long memberCount = membershipRepository.countActiveMembers(group);
+            groupService.updateMemberCount(group.getId(), (int) memberCount);
+        }
+
+        return savedMembership;
     }
     
     /**

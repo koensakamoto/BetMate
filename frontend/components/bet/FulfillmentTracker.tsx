@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image, ActivityIndicator, Alert, TextInput, Modal, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, Alert, TextInput, Modal, ScrollView, Linking, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { betService, FulfillmentDetails } from '../../services/bet/betService';
@@ -62,13 +62,48 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
   };
 
   const pickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    // First check current permission status
+    const { status: currentStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
 
-    if (!permissionResult.granted) {
-      Alert.alert('Permission Required', 'Please allow access to your photo library to upload proof');
-      return;
+    let finalStatus = currentStatus;
+
+    // If not granted, request permission
+    if (currentStatus !== 'granted') {
+      const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      finalStatus = status;
+
+      if (status !== 'granted') {
+        if (!canAskAgain) {
+          // Permission was denied previously and user can't be asked again
+          Alert.alert(
+            'Permission Required',
+            'Photo library access was denied. Please enable it in your device Settings:\n\nSettings > BetMate > Photos',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Open Settings',
+                onPress: () => {
+                  // On iOS, this opens the app settings
+                  if (Platform.OS === 'ios') {
+                    Linking.openURL('app-settings:');
+                  } else {
+                    Linking.openSettings();
+                  }
+                }
+              }
+            ]
+          );
+        } else {
+          Alert.alert(
+            'Permission Required',
+            'Please allow access to your photo library to upload proof photos'
+          );
+        }
+        return;
+      }
     }
 
+    // Permission granted, open picker
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -88,7 +123,16 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
   const submitProof = async () => {
     try {
       setSubmitting(true);
-      await betService.loserClaimFulfilled(betId, proofPhoto || undefined, proofDescription || undefined);
+
+      // Upload photo first if provided
+      let uploadedProofUrl: string | undefined = undefined;
+      if (proofPhoto) {
+        const fileName = proofPhoto.split('/').pop() || `proof_${Date.now()}.jpg`;
+        uploadedProofUrl = await betService.uploadFulfillmentProof(betId, proofPhoto, fileName);
+      }
+
+      // Submit fulfillment claim with proof URL and description
+      await betService.loserClaimFulfilled(betId, uploadedProofUrl, proofDescription || undefined);
       await loadFulfillmentDetails();
       onRefresh?.();
       setShowProofModal(false);
