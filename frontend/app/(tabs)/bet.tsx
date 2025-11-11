@@ -130,20 +130,34 @@ export default function Bet() {
     };
   }, [calculateTimeRemaining]);
 
-  // Filter my bets based on selected filter - memoized to avoid recalculating on every render
+  // Filter my bets based on selected filter and search query - memoized to avoid recalculating on every render
   const filteredMyBets = useMemo(() => {
     return myBets.filter(bet => {
+      // Status filter
+      let matchesStatus = false;
       switch (myBetsFilter) {
         case 'active':
-          return bet.status === 'OPEN' || bet.status === 'ACTIVE';
+          matchesStatus = bet.status === 'OPEN' || bet.status === 'ACTIVE';
+          break;
         case 'resolved':
-          return bet.status === 'CLOSED' || bet.status === 'RESOLVED';
+          matchesStatus = bet.status === 'CLOSED' || bet.status === 'RESOLVED';
+          break;
         case 'all':
         default:
-          return true;
+          matchesStatus = true;
       }
+
+      // Search filter - search across title, creator, group name, and bet type
+      const matchesSearch = searchQuery.length === 0 ||
+        bet.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        bet.creatorUsername.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (bet.groupName && bet.groupName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        bet.betType.toLowerCase().includes(searchQuery.toLowerCase());
+
+      // Both filters must match
+      return matchesStatus && matchesSearch;
     });
-  }, [myBets, myBetsFilter]);
+  }, [myBets, myBetsFilter, searchQuery]);
 
   // Memoize transformed bet arrays to avoid recalculating on every render
   const transformedMyBets = useMemo(() => {

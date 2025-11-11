@@ -43,6 +43,7 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
     List<GroupMembership> findUserAdminMemberships(@Param("user") User user);
     
     // Membership status checks
+    boolean existsByUserAndGroup(User user, Group group);
     boolean existsByUserAndGroupAndIsActiveTrue(User user, Group group);
 
     @Query("SELECT COUNT(gm) FROM GroupMembership gm WHERE gm.group = :group AND gm.isActive = true")

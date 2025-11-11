@@ -217,6 +217,15 @@ export class GroupService extends BaseApiService {
   async denyPendingRequest(groupId: number, requestId: number): Promise<void> {
     return this.post<void>(API_ENDPOINTS.GROUP_DENY_REQUEST(groupId, requestId), {});
   }
+
+  /**
+   * Join a group
+   * For PUBLIC groups with auto-approve, user joins immediately.
+   * For PRIVATE groups or groups without auto-approve, creates a pending request.
+   */
+  async joinGroup(groupId: number): Promise<void> {
+    return this.post<void>(API_ENDPOINTS.GROUP_JOIN(groupId), {});
+  }
 }
 
 // Export singleton instance

@@ -43,8 +43,8 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
            "LOWER(g.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     List<Group> searchGroups(@Param("searchTerm") String searchTerm);
     
-    // Public groups for discovery
-    @Query("SELECT g FROM Group g WHERE g.privacy = 'PUBLIC' AND g.isActive = true AND g.deletedAt IS NULL")
+    // Public and Private groups for discovery (INVITE_ONLY excluded)
+    @Query("SELECT g FROM Group g WHERE g.privacy IN ('PUBLIC', 'PRIVATE') AND g.isActive = true AND g.deletedAt IS NULL")
     List<Group> findPublicGroups();
     
     // Most active groups
