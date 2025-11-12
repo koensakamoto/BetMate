@@ -29,17 +29,23 @@ public class DailyLoginRewardService {
 
     private final UserService userService;
     private final UserCreditService userCreditService;
+    private final ActiveEffectsService activeEffectsService;
 
     @Autowired
-    public DailyLoginRewardService(UserService userService, UserCreditService userCreditService) {
+    public DailyLoginRewardService(UserService userService,
+                                  UserCreditService userCreditService,
+                                  ActiveEffectsService activeEffectsService) {
         this.userService = userService;
         this.userCreditService = userCreditService;
+        this.activeEffectsService = activeEffectsService;
     }
 
     /**
      * Checks if user is eligible for daily reward and awards it if eligible.
-     * Awards 10 credits if 24 hours (1440 minutes) have passed since last claim.
-     * Uses minute-level precision to ensure exactly 24 hours, not just 24 complete hour blocks.
+     * Awards 10 credits (or 20 if user has an active daily bonus doubler) if 24 hours (1440 minutes)
+     * have passed since last claim. Uses minute-level precision to ensure exactly 24 hours,
+     * not just 24 complete hour blocks.
+     * If a doubler is used, consumes one use from the active doubler.
      *
      * @param user The user to check and award
      * @return DailyRewardResult containing whether reward was awarded and details
@@ -66,18 +72,29 @@ public class DailyLoginRewardService {
             return new DailyRewardResult(false, null, freshUser.getLastDailyRewardClaimedAt());
         }
 
-        // Award credits
-        log.info("=== AWARDING DAILY LOGIN REWARD === User: {}, Amount: {}, CurrentBalance: {}, CorrelationId: {}",
-            freshUser.getId(), DAILY_REWARD_AMOUNT, freshUser.getCreditBalance(), correlationId);
+        // Check for active daily bonus doubler
+        boolean hasActiveDoubler = activeEffectsService.hasActiveDailyDoubler(freshUser);
+        BigDecimal rewardAmount = hasActiveDoubler ? DAILY_REWARD_AMOUNT.multiply(new BigDecimal("2")) : DAILY_REWARD_AMOUNT;
+
+        log.info("=== AWARDING DAILY LOGIN REWARD === User: {}, BaseAmount: {}, HasDoubler: {}, FinalAmount: {}, CurrentBalance: {}, CorrelationId: {}",
+            freshUser.getId(), DAILY_REWARD_AMOUNT, hasActiveDoubler, rewardAmount, freshUser.getCreditBalance(), correlationId);
 
         try {
-            log.info("Calling userCreditService.addCredits - User: {}, Amount: {}", freshUser.getId(), DAILY_REWARD_AMOUNT);
+            // Award credits
+            log.info("Calling userCreditService.addCredits - User: {}, Amount: {}", freshUser.getId(), rewardAmount);
+            String creditReason = hasActiveDoubler ? "Daily login bonus (2x doubled!)" : "Daily login bonus";
             User updatedUser = userCreditService.addCredits(
                 freshUser.getId(),
-                DAILY_REWARD_AMOUNT,
-                "Daily login bonus"
+                rewardAmount,
+                creditReason
             );
             log.info("Credits added successfully - User: {}, NewBalance: {}", updatedUser.getId(), updatedUser.getCreditBalance());
+
+            // Consume doubler use if it was applied
+            if (hasActiveDoubler) {
+                boolean consumed = activeEffectsService.consumeDoublerUse(updatedUser);
+                log.info("Daily bonus doubler consumed - User: {}, Success: {}", updatedUser.getId(), consumed);
+            }
 
             // Update last claimed timestamp
             LocalDateTime now = LocalDateTime.now();
@@ -86,10 +103,10 @@ public class DailyLoginRewardService {
             updatedUser = userService.saveUser(updatedUser);
             log.info("User saved with new lastDailyRewardClaimedAt - User: {}, Timestamp: {}", updatedUser.getId(), updatedUser.getLastDailyRewardClaimedAt());
 
-            log.info("=== DAILY LOGIN REWARD AWARDED SUCCESSFULLY === User: {}, Amount: {}, NewBalance: {}, ClaimedAt: {}, CorrelationId: {}",
-                updatedUser.getId(), DAILY_REWARD_AMOUNT, updatedUser.getCreditBalance(), now, correlationId);
+            log.info("=== DAILY LOGIN REWARD AWARDED SUCCESSFULLY === User: {}, Amount: {}, Doubled: {}, NewBalance: {}, ClaimedAt: {}, CorrelationId: {}",
+                updatedUser.getId(), rewardAmount, hasActiveDoubler, updatedUser.getCreditBalance(), now, correlationId);
 
-            return new DailyRewardResult(true, DAILY_REWARD_AMOUNT, now);
+            return new DailyRewardResult(true, rewardAmount, now);
         } catch (Exception e) {
             log.error("=== ERROR AWARDING DAILY REWARD === User: {}, Error: {}, CorrelationId: {}",
                 freshUser.getId(), e.getMessage(), correlationId, e);

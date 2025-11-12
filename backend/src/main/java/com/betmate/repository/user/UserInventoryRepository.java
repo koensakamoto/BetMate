@@ -26,6 +26,7 @@ public interface UserInventoryRepository extends JpaRepository<UserInventory, Lo
     
     // Item type queries
     List<UserInventory> findByUserAndStoreItem_ItemType(User user, StoreItem.ItemType itemType);
+    List<UserInventory> findByUserAndIsActiveTrueAndStoreItem_ItemType(User user, StoreItem.ItemType itemType);
     List<UserInventory> findByUserAndStoreItem_Category(User user, StoreItem.ItemCategory category);
     
     // Equipped items
@@ -90,4 +91,8 @@ public interface UserInventoryRepository extends JpaRepository<UserInventory, Lo
     
     // Category-based counting for validation
     Long countByUserAndStoreItem_CategoryAndIsActiveTrue(User user, StoreItem.ItemCategory category);
+
+    // Booster expiration queries
+    @Query("SELECT ui FROM UserInventory ui WHERE ui.isActive = true AND ui.expiresAt IS NOT NULL AND ui.expiresAt < :now")
+    List<UserInventory> findExpiredBoosters(@Param("now") LocalDateTime now);
 }

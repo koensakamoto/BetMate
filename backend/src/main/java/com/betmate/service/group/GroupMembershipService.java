@@ -49,19 +49,20 @@ public class GroupMembershipService {
         if (!permissionService.canJoinGroup(user, group)) {
             throw new GroupMembershipException("User cannot join this group");
         }
-        
+
         GroupMembership membership = new GroupMembership();
         membership.setUser(user);
         membership.setGroup(group);
         membership.setRole(role);
+        membership.setStatus(GroupMembership.MembershipStatus.APPROVED);
         membership.setIsActive(true);
-        
+
         GroupMembership savedMembership = membershipRepository.save(membership);
-        
+
         // Update group member count
         long memberCount = membershipRepository.countActiveMembers(group);
         groupService.updateMemberCount(group.getId(), (int) memberCount);
-        
+
         return savedMembership;
     }
     
@@ -143,9 +144,24 @@ public class GroupMembershipService {
 
     /**
      * Adds creator membership when group is created.
+     * Bypasses permission checks since the creator should always be able to join their own group.
      */
     public GroupMembership addCreatorMembership(@NotNull Group group, @NotNull User creator) {
-        return joinGroup(creator, group, GroupMembership.MemberRole.ADMIN);
+        // Create membership directly without permission checks
+        GroupMembership membership = new GroupMembership();
+        membership.setUser(creator);
+        membership.setGroup(group);
+        membership.setRole(GroupMembership.MemberRole.ADMIN);
+        membership.setStatus(GroupMembership.MembershipStatus.APPROVED);
+        membership.setIsActive(true);
+
+        GroupMembership savedMembership = membershipRepository.save(membership);
+
+        // Update group member count
+        long memberCount = membershipRepository.countActiveMembers(group);
+        groupService.updateMemberCount(group.getId(), (int) memberCount);
+
+        return savedMembership;
     }
 
     /**

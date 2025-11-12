@@ -118,13 +118,17 @@ export default function Profile() {
     try {
       setLoadingInventory(true);
       const items = await storeService.getUserInventory();
+
+      // Defensive filtering: exclude booster items (should already be filtered by backend)
+      const filteredItems = items.filter(item => !item.itemType.endsWith('_BOOSTER'));
+
       console.log('=== INVENTORY DEBUG ===');
-      console.log('First item:', items[0]);
-      console.log('Short description:', items[0]?.shortDescription);
-      console.log('Description:', items[0]?.description);
+      console.log('First item:', filteredItems[0]);
+      console.log('Short description:', filteredItems[0]?.shortDescription);
+      console.log('Description:', filteredItems[0]?.description);
       console.log('======================');
-      setInventory(items);
-      debugLog('User inventory loaded:', items);
+      setInventory(filteredItems);
+      debugLog('User inventory loaded:', filteredItems);
     } catch (err: any) {
       errorLog('Failed to load inventory:', err);
     } finally {
@@ -582,31 +586,23 @@ export default function Profile() {
           {activeTab === 0 && (
             /* Stats Tab - Comprehensive betting statistics */
             <View>
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: '#ffffff',
-                marginBottom: 16
-              }}>
-                Betting Performance
-              </Text>
-              
-              {/* Performance Overview Cards */}
+              {/* Performance Overview */}
               <View style={{
                 flexDirection: 'row',
-                marginBottom: 20,
+                marginBottom: 16,
                 gap: 12
               }}>
+                {/* Win Rate */}
                 <View style={{
                   flex: 1,
-                  backgroundColor: 'rgba(0, 212, 170, 0.1)',
+                  backgroundColor: 'rgba(0, 212, 170, 0.08)',
                   padding: 16,
-                  borderRadius: 12,
+                  borderRadius: 16,
                   borderWidth: 1,
                   borderColor: 'rgba(0, 212, 170, 0.2)'
                 }}>
                   <Text style={{
-                    fontSize: 20,
+                    fontSize: 24,
                     fontWeight: '700',
                     color: '#00D4AA',
                     marginBottom: 4
@@ -620,15 +616,18 @@ export default function Profile() {
                     Win Rate
                   </Text>
                 </View>
-                
+
+                {/* Total Bets */}
                 <View style={{
                   flex: 1,
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
                   padding: 16,
-                  borderRadius: 12
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.08)'
                 }}>
                   <Text style={{
-                    fontSize: 20,
+                    fontSize: 24,
                     fontWeight: '700',
                     color: '#ffffff',
                     marginBottom: 4
@@ -643,22 +642,24 @@ export default function Profile() {
                   </Text>
                 </View>
               </View>
-              
+
               {/* Win/Loss Summary */}
               <View style={{
                 flexDirection: 'row',
-                marginBottom: 20,
+                marginBottom: 16,
                 gap: 12
               }}>
                 <View style={{
                   flex: 1,
-                  backgroundColor: 'rgba(0, 212, 170, 0.05)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
                   padding: 16,
-                  borderRadius: 12,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.08)',
                   alignItems: 'center'
                 }}>
                   <Text style={{
-                    fontSize: 24,
+                    fontSize: 28,
                     fontWeight: '700',
                     color: '#00D4AA',
                     marginBottom: 4
@@ -672,16 +673,18 @@ export default function Profile() {
                     Wins
                   </Text>
                 </View>
-                
+
                 <View style={{
                   flex: 1,
-                  backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
                   padding: 16,
-                  borderRadius: 12,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.08)',
                   alignItems: 'center'
                 }}>
                   <Text style={{
-                    fontSize: 24,
+                    fontSize: 28,
                     fontWeight: '700',
                     color: '#EF4444',
                     marginBottom: 4
@@ -697,12 +700,14 @@ export default function Profile() {
                 </View>
               </View>
 
-              {/* Detailed Stats */}
+              {/* Additional Stats */}
               <View style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                borderRadius: 12,
+                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                borderRadius: 16,
                 padding: 16,
-                marginBottom: 20
+                marginBottom: 20,
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.08)'
               }}>
                 <Text style={{
                   fontSize: 15,
@@ -710,33 +715,52 @@ export default function Profile() {
                   color: '#ffffff',
                   marginBottom: 16
                 }}>
-                  Detailed Statistics
+                  Statistics
                 </Text>
-                
-                {detailedStats.map((stat, index) => (
-                  <View key={index} style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    paddingVertical: 8,
-                    borderBottomWidth: index < 5 ? 0.5 : 0,
-                    borderBottomColor: 'rgba(255, 255, 255, 0.1)'
+
+                <View style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingVertical: 8,
+                  borderBottomWidth: 0.5,
+                  borderBottomColor: 'rgba(255, 255, 255, 0.1)'
+                }}>
+                  <Text style={{
+                    fontSize: 14,
+                    color: 'rgba(255, 255, 255, 0.8)'
                   }}>
-                    <Text style={{
-                      fontSize: 14,
-                      color: 'rgba(255, 255, 255, 0.8)'
-                    }}>
-                      {stat.label}
-                    </Text>
-                    <Text style={{
-                      fontSize: 14,
-                      fontWeight: '600',
-                      color: stat.color
-                    }}>
-                      {stat.value}
-                    </Text>
-                  </View>
-                ))}
+                    Best Streak
+                  </Text>
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '600',
+                    color: '#00D4AA'
+                  }}>
+                    {formatNumber(userStats?.longestStreak)}
+                  </Text>
+                </View>
+
+                <View style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingVertical: 8
+                }}>
+                  <Text style={{
+                    fontSize: 14,
+                    color: 'rgba(255, 255, 255, 0.8)'
+                  }}>
+                    Current Streak
+                  </Text>
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '600',
+                    color: '#ffffff'
+                  }}>
+                    {formatNumber(userStats?.currentStreak)}
+                  </Text>
+                </View>
               </View>
             </View>
           )}

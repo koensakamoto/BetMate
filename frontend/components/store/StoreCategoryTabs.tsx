@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View, TouchableOpacity, ScrollView } from 'react-native';
 
-export type StoreCategory = 'featured' | 'risk' | 'multipliers' | 'tools' | 'discounts' | 'boosters';
+export type StoreCategory = 'risk' | 'multipliers' | 'tools' | 'discounts' | 'boosters';
 
 interface StoreCategoryTabsProps {
   activeCategory: StoreCategory;
@@ -9,7 +9,6 @@ interface StoreCategoryTabsProps {
 }
 
 const categories = [
-  { id: 'featured' as StoreCategory, name: 'Featured' },
   { id: 'risk' as StoreCategory, name: 'Risk Management' },
   { id: 'multipliers' as StoreCategory, name: 'Multipliers' },
   { id: 'tools' as StoreCategory, name: 'Betting Tools' },

@@ -341,32 +341,51 @@ export default function InventoryItemDetailSheet({
             gap: 12,
             backgroundColor: '#1a1a1f'
           }}>
-            {/* Equip/Unequip Button */}
-            <TouchableOpacity
-              onPress={handleToggleEquip}
-              style={{
-                backgroundColor: item.isEquipped ? 'rgba(239, 68, 68, 0.15)' : '#00D4AA',
+            {/* Equip/Unequip Button - hidden for booster items */}
+            {!item.itemType.endsWith('_BOOSTER') ? (
+              <TouchableOpacity
+                onPress={handleToggleEquip}
+                style={{
+                  backgroundColor: item.isEquipped ? 'rgba(239, 68, 68, 0.15)' : '#00D4AA',
+                  borderRadius: 16,
+                  paddingVertical: 16,
+                  alignItems: 'center',
+                  shadowColor: item.isEquipped ? 'transparent' : '#00D4AA',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
+                  borderWidth: item.isEquipped ? 1 : 0,
+                  borderColor: item.isEquipped ? 'rgba(239, 68, 68, 0.4)' : 'transparent'
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '700',
+                  color: item.isEquipped ? '#EF4444' : '#000000'
+                }}>
+                  {item.isEquipped ? 'Unequip Item' : 'Activate Item'}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.04)',
                 borderRadius: 16,
                 paddingVertical: 16,
                 alignItems: 'center',
-                shadowColor: item.isEquipped ? 'transparent' : '#00D4AA',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 8,
-                borderWidth: item.isEquipped ? 1 : 0,
-                borderColor: item.isEquipped ? 'rgba(239, 68, 68, 0.4)' : 'transparent'
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '700',
-                color: item.isEquipped ? '#EF4444' : '#000000'
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.08)'
               }}>
-                {item.isEquipped ? 'Unequip Item' : 'Activate Item'}
-              </Text>
-            </TouchableOpacity>
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: 'rgba(255, 255, 255, 0.6)'
+                }}>
+                  This item activates automatically upon purchase
+                </Text>
+              </View>
+            )}
 
             {/* Close Button */}
             <TouchableOpacity

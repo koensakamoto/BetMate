@@ -8,6 +8,7 @@ import StoreItem, { StoreItemData } from '../../components/store/StoreItem';
 import EarnCreditsModal from '../../components/store/EarnCreditsModal';
 import TransactionHistoryModal, { Transaction } from '../../components/store/TransactionHistoryModal';
 import StoreItemDetailSheet from '../../components/store/StoreItemDetailSheet';
+import { DoublerSuccessModal } from '../../components/store/DoublerSuccessModal';
 import { EarnCreditsOption, Rarity, ItemType, ItemCategory } from '../../components/store/storeData';
 import { userService } from '../../services/user/userService';
 import { storeService, StoreItemResponse } from '../../services/store/storeService';
@@ -21,12 +22,13 @@ import { SkeletonStoreItem } from '../../components/common/SkeletonCard';
 export default function Store() {
   const insets = useSafeAreaInsets();
   const { user, isAuthenticated, isLoading } = useAuth();
-  const [activeCategory, setActiveCategory] = useState<StoreCategory>('featured');
+  const [activeCategory, setActiveCategory] = useState<StoreCategory>('risk');
   const [earnCreditsModalVisible, setEarnCreditsModalVisible] = useState(false);
   const [transactionHistoryVisible, setTransactionHistoryVisible] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<StoreItemData | null>(null);
   const [detailSheetVisible, setDetailSheetVisible] = useState(false);
+  const [doublerSuccessVisible, setDoublerSuccessVisible] = useState(false);
 
   // Get user credits - use separate API call since AuthContext might not have latest credits
   const [userCredits, setUserCredits] = useState(0);
@@ -39,7 +41,6 @@ export default function Store() {
 
   // Store items state
   const [storeItemsData, setStoreItemsData] = useState<Record<StoreCategory, StoreItemData[]>>({
-    'featured': [],
     'risk': [],
     'multipliers': [],
     'tools': [],
@@ -86,11 +87,13 @@ export default function Store() {
 
     try {
       setFetchingItems(true);
-      const items = await storeService.getStoreItems();
+      const [items, activeDoubler] = await Promise.all([
+        storeService.getStoreItems(),
+        storeService.getActiveDoublerStatus()
+      ]);
 
       // Convert API response to StoreItemData format and categorize
       const categorizedItems: Record<StoreCategory, StoreItemData[]> = {
-        'featured': [],
         'risk': [],
         'multipliers': [],
         'tools': [],
@@ -112,13 +115,11 @@ export default function Store() {
           isFeatured: item.isFeatured,
           isLimitedTime: item.isLimitedTime,
           availableUntil: item.availableUntil,
-          sortOrder: 0
+          sortOrder: 0,
+          // Add active doubler status if this is the daily booster
+          usesRemaining: item.itemType === 'DAILY_BOOSTER' && activeDoubler ? activeDoubler.usesRemaining : undefined,
+          activatedAt: item.itemType === 'DAILY_BOOSTER' && activeDoubler ? activeDoubler.activatedAt : undefined
         };
-
-        // Add to featured if it's marked as featured
-        if (item.isFeatured) {
-          categorizedItems['featured'].push(storeItem);
-        }
 
         // Categorize by category
         const categoryMap: Record<string, StoreCategory> = {
@@ -205,7 +206,13 @@ export default function Store() {
                 ]);
 
                 haptic.success();
-                Alert.alert('Purchase Successful!', `You now own ${item.name}`);
+
+                // Show custom modal for Daily Bonus Doubler, standard alert for others
+                if (item.itemType === 'DAILY_BOOSTER') {
+                  setDoublerSuccessVisible(true);
+                } else {
+                  Alert.alert('Purchase Successful!', `You now own ${item.name}`);
+                }
               } catch (error: any) {
                 console.error('Purchase failed:', error);
                 haptic.error();
@@ -458,6 +465,12 @@ export default function Store() {
         userCredits={userCredits}
         onClose={handleCloseDetailSheet}
         onPurchase={handlePurchase}
+      />
+
+      {/* Doubler Success Modal */}
+      <DoublerSuccessModal
+        visible={doublerSuccessVisible}
+        onClose={() => setDoublerSuccessVisible(false)}
       />
     </View>
   );

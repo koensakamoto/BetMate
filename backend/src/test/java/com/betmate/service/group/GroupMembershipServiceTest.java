@@ -180,7 +180,7 @@ class GroupMembershipServiceTest {
 
     @Test
     void addCreatorMembership_Success() {
-        when(permissionService.canJoinGroup(testUser, testGroup)).thenReturn(true);
+        // No permission check needed - creator always gets added
         when(membershipRepository.save(any(GroupMembership.class))).thenReturn(testMembership);
         when(membershipRepository.countActiveMembers(testGroup)).thenReturn(1L);
         doNothing().when(groupService).updateMemberCount(anyLong(), anyInt());
@@ -188,7 +188,7 @@ class GroupMembershipServiceTest {
         GroupMembership result = membershipService.addCreatorMembership(testGroup, testUser);
 
         assertNotNull(result);
-        verify(membershipRepository).save(argThat(membership -> 
+        verify(membershipRepository).save(argThat(membership ->
             membership.getRole() == GroupMembership.MemberRole.ADMIN));
     }
 
