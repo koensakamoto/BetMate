@@ -15,7 +15,7 @@ export default function CreateGroup() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    privacy: 'public' // 'public' or 'private'
+    privacy: 'public' // 'public', 'private', or 'secret'
   });
 
   const [groupPhoto, setGroupPhoto] = useState<string | null>(null);
@@ -134,7 +134,7 @@ export default function CreateGroup() {
       const newGroup = await groupService.createGroup({
         groupName: formData.name.trim(),
         description: formData.description.trim(),
-        privacy: formData.privacy === 'public' ? 'PUBLIC' : 'PRIVATE'
+        privacy: formData.privacy === 'public' ? 'PUBLIC' : formData.privacy === 'private' ? 'PRIVATE' : 'SECRET'
       });
 
       debugLog('Group created successfully:', newGroup);
@@ -475,7 +475,8 @@ export default function CreateGroup() {
                 borderColor: formData.privacy === 'private' ? '#00D4AA' : 'rgba(255, 255, 255, 0.1)',
                 borderRadius: 12,
                 paddingHorizontal: 16,
-                paddingVertical: 16
+                paddingVertical: 16,
+                marginBottom: 12
               }}
             >
               <View style={{
@@ -510,7 +511,58 @@ export default function CreateGroup() {
                   fontSize: 12,
                   color: 'rgba(255, 255, 255, 0.6)'
                 }}>
-                  Only invited members can join
+                  Visible in search, requires approval to join
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Invite Only Option */}
+            <TouchableOpacity
+              onPress={() => updateField('privacy', 'secret')}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderWidth: 1,
+                borderColor: formData.privacy === 'secret' ? '#00D4AA' : 'rgba(255, 255, 255, 0.1)',
+                borderRadius: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 16
+              }}
+            >
+              <View style={{
+                width: 20,
+                height: 20,
+                borderRadius: 10,
+                borderWidth: 2,
+                borderColor: formData.privacy === 'secret' ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
+                backgroundColor: formData.privacy === 'secret' ? '#00D4AA' : 'transparent',
+                marginRight: 12,
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                {formData.privacy === 'secret' && (
+                  <View style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: '#000000'
+                  }} />
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{
+                  fontSize: 16,
+                  color: '#ffffff',
+                  marginBottom: 2
+                }}>
+                  Invite Only
+                </Text>
+                <Text style={{
+                  fontSize: 12,
+                  color: 'rgba(255, 255, 255, 0.6)'
+                }}>
+                  Hidden from discovery, invite only
                 </Text>
               </View>
             </TouchableOpacity>

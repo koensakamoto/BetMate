@@ -21,6 +21,8 @@ export interface StoreItemData {
   isLimitedTime?: boolean;
   availableUntil?: string;
   sortOrder?: number;
+  usesRemaining?: number;
+  activatedAt?: string;
 }
 
 interface StoreItemProps {
@@ -174,24 +176,62 @@ function StoreItem({ item, userCredits, onPurchase, onPress }: StoreItemProps) {
 
         {/* Action Button */}
         {item.isOwned ? (
-          <View style={{
-            backgroundColor: 'rgba(0, 212, 170, 0.15)',
-            paddingHorizontal: 14,
-            paddingVertical: 7,
-            borderRadius: 12,
-            flexDirection: 'row',
-            alignItems: 'center'
-          }}>
-            <MaterialIcons name="check" size={12} color="#00D4AA" />
-            <Text style={{
-              fontSize: 11,
-              fontWeight: '600',
-              color: '#00D4AA',
-              marginLeft: 4
+          // Show active status for Daily Bonus Doublers
+          item.itemType === ItemType.DAILY_BOOSTER && item.usesRemaining && item.usesRemaining > 0 ? (
+            <View style={{
+              backgroundColor: 'rgba(0, 212, 170, 0.2)',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: '#00D4AA',
+              alignItems: 'center',
+              shadowColor: '#00D4AA',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.3,
+              shadowRadius: 4,
+              elevation: 3
             }}>
-              Owned
-            </Text>
-          </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                <MaterialIcons name="flash-on" size={14} color="#00D4AA" />
+                <Text style={{
+                  fontSize: 11,
+                  fontWeight: '700',
+                  color: '#00D4AA',
+                  marginLeft: 2
+                }}>
+                  ACTIVE
+                </Text>
+              </View>
+              <Text style={{
+                fontSize: 10,
+                fontWeight: '500',
+                color: 'rgba(0, 212, 170, 0.8)'
+              }}>
+                {item.usesRemaining} {item.usesRemaining === 1 ? 'day' : 'days'}
+              </Text>
+            </View>
+          ) : (
+            // Standard owned badge for other items
+            <View style={{
+              backgroundColor: 'rgba(0, 212, 170, 0.15)',
+              paddingHorizontal: 14,
+              paddingVertical: 7,
+              borderRadius: 12,
+              flexDirection: 'row',
+              alignItems: 'center'
+            }}>
+              <MaterialIcons name="check" size={12} color="#00D4AA" />
+              <Text style={{
+                fontSize: 11,
+                fontWeight: '600',
+                color: '#00D4AA',
+                marginLeft: 4
+              }}>
+                Owned
+              </Text>
+            </View>
+          )
         ) : (
           <TouchableOpacity
             onPress={(e) => {

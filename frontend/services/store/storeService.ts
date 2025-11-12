@@ -44,6 +44,9 @@ export interface InventoryItemResponse {
   usageCount: number;
   lastUsedAt?: string;
   isActive: boolean;
+  activatedAt?: string;
+  usesRemaining?: number;
+  expiresAt?: string;
 }
 
 export class StoreService extends BaseApiService {
@@ -103,6 +106,20 @@ export class StoreService extends BaseApiService {
    */
   async unequipItem(inventoryId: number): Promise<void> {
     return this.post<void>(`${API_ENDPOINTS.STORE}/inventory/remove`, { inventoryId });
+  }
+
+  /**
+   * Get active daily bonus doubler from user's inventory
+   */
+  async getActiveDoublerStatus(): Promise<InventoryItemResponse | null> {
+    const inventory = await this.getUserInventory();
+    const activeDoubler = inventory.find(item =>
+      item.itemType === 'DAILY_BOOSTER' &&
+      item.isActive &&
+      item.usesRemaining !== undefined &&
+      item.usesRemaining > 0
+    );
+    return activeDoubler || null;
   }
 }
 

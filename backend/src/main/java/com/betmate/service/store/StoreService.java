@@ -8,6 +8,7 @@ import com.betmate.repository.user.UserInventoryRepository;
 import com.betmate.exception.store.StoreItemNotFoundException;
 import com.betmate.exception.store.StoreOperationException;
 import com.betmate.service.user.UserCreditService;
+import com.betmate.service.user.ActiveEffectsService;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -32,14 +33,17 @@ public class StoreService {
     private final StoreItemRepository storeItemRepository;
     private final UserInventoryRepository userInventoryRepository;
     private final UserCreditService userCreditService;
+    private final ActiveEffectsService activeEffectsService;
 
     @Autowired
     public StoreService(StoreItemRepository storeItemRepository,
                        UserInventoryRepository userInventoryRepository,
-                       UserCreditService userCreditService) {
+                       UserCreditService userCreditService,
+                       ActiveEffectsService activeEffectsService) {
         this.storeItemRepository = storeItemRepository;
         this.userInventoryRepository = userInventoryRepository;
         this.userCreditService = userCreditService;
+        this.activeEffectsService = activeEffectsService;
     }
 
     // ==========================================
@@ -153,8 +157,14 @@ public class StoreService {
 
         // Create inventory entry using the static factory method
         UserInventory inventory = UserInventory.createPurchase(user, item, pricePaid);
+        UserInventory savedInventory = userInventoryRepository.save(inventory);
 
-        return userInventoryRepository.save(inventory);
+        // Auto-activate daily bonus doublers
+        if (item.getItemType() == StoreItem.ItemType.DAILY_BOOSTER) {
+            activeEffectsService.activateDailyDoubler(user, savedInventory);
+        }
+
+        return savedInventory;
     }
 
     /**
@@ -165,17 +175,24 @@ public class StoreService {
         if (!item.isAvailableForPurchase()) {
             throw new StoreOperationException("Item is not available for purchase");
         }
-        
+
         // Check if user already owns the item
         if (doesUserOwnItem(user, item.getId())) {
             throw new StoreOperationException("User already owns this item");
         }
-        
+
+        // Prevent purchasing daily doubler if user already has one active
+        if (item.getItemType() == StoreItem.ItemType.DAILY_BOOSTER) {
+            if (activeEffectsService.hasActiveDailyDoubler(user)) {
+                throw new StoreOperationException("You already have an active daily bonus doubler. Wait for it to expire before purchasing another.");
+            }
+        }
+
         // Validate price
         if (pricePaid.compareTo(item.getPrice()) != 0) {
             throw new StoreOperationException("Price mismatch. Expected: " + item.getPrice() + ", Provided: " + pricePaid);
         }
-        
+
         // TODO: Check user balance when user credit system is implemented
         // if (user.getBalance().compareTo(pricePaid) < 0) {
         //     throw new StoreOperationException("Insufficient balance");

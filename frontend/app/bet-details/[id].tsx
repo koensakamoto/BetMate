@@ -158,7 +158,7 @@ export default function BetDetails() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'OPEN': return '#00D4AA';
-      case 'CLOSED': return '#FFA500';
+      case 'CLOSED': return '#6B7280';
       case 'RESOLVED': return '#6B7280';
       default: return '#6B7280';
     }
@@ -440,7 +440,7 @@ export default function BetDetails() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header Section */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+        <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
             <TouchableOpacity
               onPress={handleBackPress}
@@ -488,7 +488,7 @@ export default function BetDetails() {
             fontSize: 24,
             fontWeight: '700',
             color: '#ffffff',
-            lineHeight: 30,
+            lineHeight: 32,
             marginBottom: 12
           }}>
             {betData.title}
@@ -497,7 +497,7 @@ export default function BetDetails() {
           <Text style={{
             fontSize: 16,
             color: 'rgba(255, 255, 255, 0.8)',
-            lineHeight: 22
+            lineHeight: 24
           }}>
             {betData.description}
           </Text>
@@ -506,10 +506,10 @@ export default function BetDetails() {
         {/* Essential Details Card */}
         <View style={{
           backgroundColor: 'rgba(255, 255, 255, 0.04)',
-          borderRadius: 16,
+          borderRadius: 18,
           marginHorizontal: 20,
-          marginBottom: 20,
-          padding: 20,
+          marginBottom: 24,
+          padding: 24,
           borderWidth: 1,
           borderColor: 'rgba(255, 255, 255, 0.08)'
         }}>
@@ -557,7 +557,7 @@ export default function BetDetails() {
               <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
                 {betData.stakeType === 'SOCIAL' ? 'Stake Type' : 'Bet Amount'}
               </Text>
-              <Text style={{ color: betData.stakeType === 'SOCIAL' ? '#FF9F00' : '#00D4AA', fontSize: 14, fontWeight: '600' }}>
+              <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '600' }}>
                 {betData.stakeType === 'SOCIAL' ? 'Social' : (betData.fixedStakeAmount ? `$${betData.fixedStakeAmount} (Fixed)` : 'Variable')}
               </Text>
             </View>
@@ -565,16 +565,16 @@ export default function BetDetails() {
             {betData.stakeType === 'SOCIAL' && betData.socialStakeDescription && (
               <View style={{
                 marginTop: 12,
-                backgroundColor: 'rgba(255, 159, 0, 0.08)',
+                backgroundColor: 'rgba(0, 212, 170, 0.08)',
                 borderRadius: 8,
                 padding: 12,
                 borderWidth: 1,
-                borderColor: 'rgba(255, 159, 0, 0.2)'
+                borderColor: 'rgba(0, 212, 170, 0.2)'
               }}>
                 <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 12, marginBottom: 4 }}>
                   What's at stake:
                 </Text>
-                <Text style={{ color: '#FF9F00', fontSize: 14, fontWeight: '500' }}>
+                <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '500' }}>
                   {betData.socialStakeDescription}
                 </Text>
               </View>
@@ -585,10 +585,10 @@ export default function BetDetails() {
         {/* Betting Options Section */}
         <View style={{
           backgroundColor: 'rgba(255, 255, 255, 0.04)',
-          borderRadius: 16,
+          borderRadius: 18,
           marginHorizontal: 20,
-          marginBottom: 20,
-          padding: 20,
+          marginBottom: 24,
+          padding: 24,
           borderWidth: 1,
           borderColor: 'rgba(255, 255, 255, 0.08)'
         }}>
@@ -598,7 +598,7 @@ export default function BetDetails() {
             color: '#ffffff',
             marginBottom: 16
           }}>
-            Your Selection
+            {betData.hasUserParticipated ? 'Your Selection' : 'Bet Options'}
           </Text>
 
 
@@ -608,15 +608,17 @@ export default function BetDetails() {
                 <TouchableOpacity
                   key={index}
                   onPress={() => handleOptionSelect(option)}
+                  disabled={betData.status !== 'OPEN'}
                   style={{
                     backgroundColor: selectedOption === option ? 'rgba(0, 212, 170, 0.1)' : 'rgba(255, 255, 255, 0.03)',
-                    borderRadius: 12,
+                    borderRadius: 14,
                     padding: 16,
                     borderWidth: selectedOption === option ? 2 : 1,
                     borderColor: selectedOption === option ? '#00D4AA' : 'rgba(255, 255, 255, 0.06)',
                     flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    opacity: betData.status !== 'OPEN' ? 0.6 : 1
                   }}
                 >
                   <Text style={{
@@ -645,14 +647,16 @@ export default function BetDetails() {
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity
                 onPress={() => handleOptionSelect('Yes')}
+                disabled={betData.status !== 'OPEN'}
                 style={{
                   flex: 1,
                   backgroundColor: selectedOption === 'Yes' ? 'rgba(0, 212, 170, 0.1)' : 'rgba(255, 255, 255, 0.03)',
-                  borderRadius: 12,
+                  borderRadius: 14,
                   padding: 16,
                   borderWidth: selectedOption === 'Yes' ? 2 : 1,
                   borderColor: selectedOption === 'Yes' ? '#00D4AA' : 'rgba(255, 255, 255, 0.06)',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  opacity: betData.status !== 'OPEN' ? 0.6 : 1
                 }}
               >
                 <Text style={{
@@ -666,14 +670,16 @@ export default function BetDetails() {
 
               <TouchableOpacity
                 onPress={() => handleOptionSelect('No')}
+                disabled={betData.status !== 'OPEN'}
                 style={{
                   flex: 1,
                   backgroundColor: selectedOption === 'No' ? 'rgba(255, 59, 48, 0.1)' : 'rgba(255, 255, 255, 0.03)',
-                  borderRadius: 12,
+                  borderRadius: 14,
                   padding: 16,
                   borderWidth: selectedOption === 'No' ? 2 : 1,
                   borderColor: selectedOption === 'No' ? '#FF3B30' : 'rgba(255, 255, 255, 0.06)',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  opacity: betData.status !== 'OPEN' ? 0.6 : 1
                 }}
               >
                 <Text style={{
@@ -703,12 +709,14 @@ export default function BetDetails() {
                   color: '#ffffff',
                   fontSize: 14,
                   borderWidth: customValue ? 1 : 0,
-                  borderColor: customValue ? 'rgba(0, 212, 170, 0.3)' : 'transparent'
+                  borderColor: customValue ? 'rgba(0, 212, 170, 0.3)' : 'transparent',
+                  opacity: betData.status !== 'OPEN' ? 0.6 : 1
                 }}
                 value={customValue}
                 onChangeText={setCustomValue}
                 placeholder="Enter your prediction"
                 placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                editable={betData.status === 'OPEN'}
               />
             </View>
           )}
@@ -717,10 +725,10 @@ export default function BetDetails() {
         {/* Participants Overview */}
         <View style={{
           backgroundColor: 'rgba(255, 255, 255, 0.04)',
-          borderRadius: 16,
+          borderRadius: 18,
           marginHorizontal: 20,
-          marginBottom: 20,
-          padding: 20,
+          marginBottom: 24,
+          padding: 24,
           borderWidth: 1,
           borderColor: 'rgba(255, 255, 255, 0.08)'
         }}>
@@ -749,10 +757,10 @@ export default function BetDetails() {
         {/* Bet Amount Section */}
         <View style={{
           backgroundColor: 'rgba(255, 255, 255, 0.04)',
-          borderRadius: 16,
+          borderRadius: 18,
           marginHorizontal: 20,
-          marginBottom: 20,
-          padding: 20,
+          marginBottom: 24,
+          padding: 24,
           borderWidth: 1,
           borderColor: 'rgba(255, 255, 255, 0.08)'
         }}>
@@ -767,16 +775,16 @@ export default function BetDetails() {
                 Social Bet
               </Text>
               <View style={{
-                backgroundColor: 'rgba(255, 159, 0, 0.08)',
+                backgroundColor: 'rgba(0, 212, 170, 0.08)',
                 borderRadius: 12,
                 padding: 16,
                 borderWidth: 1,
-                borderColor: 'rgba(255, 159, 0, 0.2)'
+                borderColor: 'rgba(0, 212, 170, 0.2)'
               }}>
                 <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 12, marginBottom: 6 }}>
                   What's at stake:
                 </Text>
-                <Text style={{ color: '#FF9F00', fontSize: 16, fontWeight: '600' }}>
+                <Text style={{ color: '#00D4AA', fontSize: 16, fontWeight: '600' }}>
                   {betData.socialStakeDescription || 'Fun stakes - no credits involved'}
                 </Text>
               </View>
@@ -798,7 +806,7 @@ export default function BetDetails() {
                   color: '#ffffff',
                   flex: 1
                 }}>
-                  {betData.fixedStakeAmount ? 'Entry Fee' : 'Your Bet Amount'}
+                  {betData.fixedStakeAmount ? 'Entry Fee' : (betData.hasUserParticipated ? 'Your Bet Amount' : 'Bet Amount')}
                 </Text>
                 {betData.fixedStakeAmount && (
                   <View style={{
@@ -834,7 +842,8 @@ export default function BetDetails() {
                 paddingHorizontal: 16,
                 paddingVertical: 12,
                 borderWidth: betData.fixedStakeAmount ? 0 : 1,
-                borderColor: betData.fixedStakeAmount ? 'transparent' : (isValidBetAmount() ? 'rgba(0, 212, 170, 0.3)' : 'rgba(255, 255, 255, 0.2)')
+                borderColor: betData.fixedStakeAmount ? 'transparent' : (isValidBetAmount() ? 'rgba(0, 212, 170, 0.3)' : 'rgba(255, 255, 255, 0.2)'),
+                opacity: betData.status !== 'OPEN' ? 0.6 : 1
               }}>
                 <Text style={{
                   color: '#00D4AA',
@@ -856,8 +865,8 @@ export default function BetDetails() {
                   placeholder={betData.fixedStakeAmount ? betData.fixedStakeAmount.toString() : '0'}
                   placeholderTextColor="rgba(255, 255, 255, 0.4)"
               keyboardType="numeric"
-              editable={!betData.fixedStakeAmount}
-              selectTextOnFocus={!betData.fixedStakeAmount}
+              editable={!betData.fixedStakeAmount && betData.status === 'OPEN'}
+              selectTextOnFocus={!betData.fixedStakeAmount && betData.status === 'OPEN'}
             />
 
                 {betData.fixedStakeAmount && (
@@ -881,10 +890,10 @@ export default function BetDetails() {
         {/* Resolution Information */}
         <View style={{
           backgroundColor: 'rgba(255, 255, 255, 0.04)',
-          borderRadius: 16,
+          borderRadius: 18,
           marginHorizontal: 20,
-          marginBottom: 20,
-          padding: 20,
+          marginBottom: 24,
+          padding: 24,
           borderWidth: 1,
           borderColor: 'rgba(255, 255, 255, 0.08)'
         }}>
@@ -918,7 +927,7 @@ export default function BetDetails() {
                 <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 12, marginBottom: 4 }}>
                   Evidence Requirements:
                 </Text>
-                <Text style={{ color: '#ffffff', fontSize: 14, lineHeight: 20 }}>
+                <Text style={{ color: '#ffffff', fontSize: 14, lineHeight: 22 }}>
                   {betData.evidenceDescription}
                 </Text>
               </View>
@@ -970,7 +979,7 @@ export default function BetDetails() {
           }}>
             <View style={{
               backgroundColor: 'rgba(0, 212, 170, 0.15)',
-              borderRadius: 12,
+              borderRadius: 14,
               paddingVertical: 16,
               alignItems: 'center',
               borderWidth: 1,
@@ -1000,11 +1009,11 @@ export default function BetDetails() {
             <TouchableOpacity
               onPress={() => setShowResolutionModal(true)}
               style={{
-                backgroundColor: '#FF9500',
-                borderRadius: 12,
+                backgroundColor: '#00D4AA',
+                borderRadius: 14,
                 paddingVertical: 16,
                 alignItems: 'center',
-                shadowColor: '#FF9500',
+                shadowColor: '#00D4AA',
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.3,
                 shadowRadius: 8,

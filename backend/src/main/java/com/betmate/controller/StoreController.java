@@ -245,7 +245,29 @@ public class StoreController {
         response.setUsageCount(0L); // Usage count tracking not implemented in entity yet
         response.setLastUsedAt(inventoryItem.getLastUsedAt());
         response.setIsActive(inventoryItem.getIsActive());
-        
+
+        // Set booster/consumable fields
+        response.setActivatedAt(inventoryItem.getActivatedAt());
+
+        // For time-based boosters (null usesRemaining), calculate days from expiresAt
+        if (inventoryItem.getUsesRemaining() == null && inventoryItem.getExpiresAt() != null) {
+            // Calculate days remaining from expiration date
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            java.time.LocalDateTime expiresAt = inventoryItem.getExpiresAt();
+
+            if (expiresAt.isAfter(now)) {
+                long hoursRemaining = java.time.Duration.between(now, expiresAt).toHours();
+                int daysRemaining = (int) Math.ceil(hoursRemaining / 24.0);
+                response.setUsesRemaining(daysRemaining);
+            } else {
+                response.setUsesRemaining(0);
+            }
+        } else {
+            response.setUsesRemaining(inventoryItem.getUsesRemaining());
+        }
+
+        response.setExpiresAt(inventoryItem.getExpiresAt());
+
         return response;
     }
 

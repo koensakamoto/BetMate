@@ -3,6 +3,7 @@ package com.betmate.entity.user;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.betmate.entity.store.StoreItem;
@@ -61,13 +62,23 @@ public class UserInventory {
     // ==========================================
     // ITEM USAGE
     // ==========================================
-    
+
     @Column(nullable = false)
     private Boolean isEquipped = false;
 
     private LocalDateTime lastUsedAt;
 
     private LocalDateTime equippedAt;
+
+    // ==========================================
+    // BOOSTER/CONSUMABLE TRACKING
+    // ==========================================
+
+    private LocalDateTime activatedAt;
+
+    private Integer usesRemaining;
+
+    private LocalDateTime expiresAt;
 
     // ==========================================
     // SYSTEM FIELDS
@@ -173,6 +184,31 @@ public class UserInventory {
     
     public void setEquippedAt(LocalDateTime equippedAt) {
         this.equippedAt = equippedAt;
+    }
+
+    // Booster/Consumable Tracking
+    public LocalDateTime getActivatedAt() {
+        return activatedAt;
+    }
+
+    public void setActivatedAt(LocalDateTime activatedAt) {
+        this.activatedAt = activatedAt;
+    }
+
+    public Integer getUsesRemaining() {
+        return usesRemaining;
+    }
+
+    public void setUsesRemaining(Integer usesRemaining) {
+        this.usesRemaining = usesRemaining;
+    }
+
+    public LocalDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(LocalDateTime expiresAt) {
+        this.expiresAt = expiresAt;
     }
 
     // System Fields
@@ -385,7 +421,7 @@ public class UserInventory {
 
     /**
      * Creates a new inventory entry for a user purchasing a store item.
-     * 
+     *
      * @param user the user making the purchase
      * @param storeItem the item being purchased
      * @param actualPrice the price paid (may differ from current store price)
@@ -396,13 +432,103 @@ public class UserInventory {
         inventory.setUser(user);
         inventory.setStoreItem(storeItem);
         inventory.setPurchasePrice(actualPrice);
-        
+
         // Auto-equip certain types of items if user doesn't have any equipped
         if (inventory.isEquippableItem()) {
             // Note: In a real implementation, you'd check if user has other items of this type equipped
             // For now, we'll leave isEquipped as false and let the service layer handle it
         }
-        
+
         return inventory;
+    }
+
+    // ==========================================
+    // BOOSTER/CONSUMABLE UTILITY METHODS
+    // ==========================================
+
+    /**
+     * Checks if this is an active booster (use-based or time-based).
+     *
+     * @return true if booster is active and valid
+     */
+    public boolean isActiveBooster() {
+        if (!isActive || activatedAt == null) {
+            return false;
+        }
+
+        // Time-based booster (has expiresAt, no usesRemaining)
+        if (expiresAt != null && usesRemaining == null) {
+            return expiresAt.isAfter(LocalDateTime.now());
+        }
+
+        // Use-based booster (has usesRemaining)
+        if (usesRemaining != null && usesRemaining > 0) {
+            // Also check expiration if set
+            return expiresAt == null || expiresAt.isAfter(LocalDateTime.now());
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks if booster has remaining uses.
+     *
+     * @return true if uses remaining > 0
+     */
+    public boolean hasUsesRemaining() {
+        return usesRemaining != null && usesRemaining > 0;
+    }
+
+    /**
+     * Activates this booster with specified number of uses.
+     *
+     * @param initialUses number of uses this booster should have
+     */
+    public void activateBooster(int initialUses) {
+        this.activatedAt = LocalDateTime.now();
+        this.usesRemaining = initialUses;
+        this.isActive = true;
+    }
+
+    /**
+     * Activates this booster for a specified duration in days.
+     * Used for time-based boosters like Daily Bonus Doublers.
+     * Expiration is set to 11:59:59 PM on the last day for better UX.
+     *
+     * @param durationDays number of days this booster should be active
+     */
+    public void activateBoosterForDuration(int durationDays) {
+        this.activatedAt = LocalDateTime.now();
+        // Expire at 11:59:59 PM on the last day for better UX
+        LocalDate purchaseDate = LocalDate.now();
+        LocalDate expirationDate = purchaseDate.plusDays(durationDays);
+        this.expiresAt = expirationDate.atTime(23, 59, 59);
+        this.isActive = true;
+        // Set usesRemaining to null for time-based boosters (not use-based)
+        this.usesRemaining = null;
+    }
+
+    /**
+     * Decrements the remaining uses of this booster.
+     * Deactivates the booster if no uses remain.
+     */
+    public void decrementUse() {
+        if (usesRemaining != null && usesRemaining > 0) {
+            usesRemaining--;
+            lastUsedAt = LocalDateTime.now();
+
+            if (usesRemaining == 0) {
+                deactivate();
+            }
+        }
+    }
+
+    /**
+     * Checks if booster has expired.
+     *
+     * @return true if booster has an expiration date and it has passed
+     */
+    public boolean isExpired() {
+        return expiresAt != null && expiresAt.isBefore(LocalDateTime.now());
     }
 }

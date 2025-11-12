@@ -55,10 +55,15 @@ public class UserInventoryService {
 
     /**
      * Retrieves all inventory items for a user.
+     * Includes active boosters (DAILY_BOOSTER, CHALLENGE_BOOSTER, REFERRAL_BOOSTER)
+     * so the frontend can display their active status in the store.
      */
     @PreAuthorize("#user.username == authentication.name or hasRole('ADMIN')")
     public List<InventoryItemResponseDto> getUserInventory(@NotNull User user) {
         List<UserInventory> inventories = inventoryRepository.findByUserAndIsActiveTrue(user);
+
+        // Include all items, including active boosters
+        // Frontend will handle how to display them
         return inventoryMapper.toInventoryItemResponseList(inventories);
     }
 
@@ -126,7 +131,7 @@ public class UserInventoryService {
     @PreAuthorize("#user.username == authentication.name or hasRole('ADMIN')")
     public void equipItem(@NotNull User user, @NotNull Long inventoryId) {
         UserInventory inventoryItem = getInventoryItemById(inventoryId);
-        
+
         // Verify ownership
         if (!inventoryItem.getUser().getId().equals(user.getId())) {
             throw new IllegalArgumentException("User does not own this item");
@@ -137,6 +142,11 @@ public class UserInventoryService {
         }
 
         StoreItem.ItemType itemType = inventoryItem.getStoreItem().getItemType();
+
+        // Prevent equipping booster items - they auto-activate and cannot be manually equipped
+        if (itemType.name().endsWith("_BOOSTER")) {
+            throw new IllegalArgumentException("Booster items cannot be manually equipped. They activate automatically upon purchase.");
+        }
 
         // Unequip currently equipped item of same type
         Optional<UserInventory> currentlyEquipped = getEquippedItemByType(user, itemType);

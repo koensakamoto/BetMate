@@ -41,6 +41,28 @@ public class InventoryMapper {
         response.setLastUsedAt(inventory.getLastUsedAt());
         response.setIsActive(inventory.getIsActive());
 
+        // Booster/consumable fields
+        response.setActivatedAt(inventory.getActivatedAt());
+
+        // For time-based boosters (null usesRemaining), calculate days from expiresAt
+        if (inventory.getUsesRemaining() == null && inventory.getExpiresAt() != null) {
+            // Calculate days remaining from expiration date
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            java.time.LocalDateTime expiresAt = inventory.getExpiresAt();
+
+            if (expiresAt.isAfter(now)) {
+                long hoursRemaining = java.time.Duration.between(now, expiresAt).toHours();
+                int daysRemaining = (int) Math.ceil(hoursRemaining / 24.0);
+                response.setUsesRemaining(daysRemaining);
+            } else {
+                response.setUsesRemaining(0);
+            }
+        } else {
+            response.setUsesRemaining(inventory.getUsesRemaining());
+        }
+
+        response.setExpiresAt(inventory.getExpiresAt());
+
         return response;
     }
 

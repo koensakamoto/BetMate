@@ -24,6 +24,11 @@ public class InventoryItemResponseDto {
     private LocalDateTime lastUsedAt;
     private Boolean isActive;
 
+    // Booster/Consumable fields
+    private LocalDateTime activatedAt;
+    private Integer usesRemaining;
+    private LocalDateTime expiresAt;
+
     // Default constructor
     public InventoryItemResponseDto() {}
 
@@ -149,5 +154,29 @@ public class InventoryItemResponseDto {
 
     public void setIsActive(Boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public LocalDateTime getActivatedAt() {
+        return activatedAt;
+    }
+
+    public void setActivatedAt(LocalDateTime activatedAt) {
+        this.activatedAt = activatedAt;
+    }
+
+    public Integer getUsesRemaining() {
+        return usesRemaining;
+    }
+
+    public void setUsesRemaining(Integer usesRemaining) {
+        this.usesRemaining = usesRemaining;
+    }
+
+    public LocalDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(LocalDateTime expiresAt) {
+        this.expiresAt = expiresAt;
     }
 }
