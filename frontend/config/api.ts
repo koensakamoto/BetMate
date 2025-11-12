@@ -54,6 +54,7 @@ export const API_ENDPOINTS = {
   GROUP_BETS: (groupId: number) => `/bets/group/${groupId}`,
   MY_BETS: '/bets/my',
   BETS_BY_STATUS: (status: string) => `/bets/status/${status}`,
+  PROFILE_BETS: (userId: number) => `/bets/profile/${userId}`,
   
   // Users
   USERS: '/users',

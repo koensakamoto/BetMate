@@ -88,8 +88,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
       ...prev,
       name: updatedGroup.groupName || updatedGroup.name || prev.name,
       description: updatedGroup.description || prev.description,
-      privacy: updatedGroup.privacy,
-      autoApproveMembers: updatedGroup.autoApproveMembers
+      privacy: updatedGroup.privacy
     }));
   }, []);
 
@@ -135,8 +134,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
     name: groupData.name,
     description: groupData.description,
     memberCount: groupData.memberCount,
-    privacy: (groupData as any).privacy || 'PRIVATE' as 'PUBLIC' | 'PRIVATE' | 'INVITE_ONLY',
-    autoApproveMembers: (groupData as any).autoApproveMembers || false
+    privacy: (groupData as any).privacy || 'PRIVATE' as 'PUBLIC' | 'PRIVATE' | 'SECRET'
   };
 
   return (

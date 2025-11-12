@@ -219,6 +219,14 @@ public class BetService {
         String option4
     ) {}
 
+    /**
+     * Get visible bets for a user's profile based on privacy rules.
+     * Shows bets from PUBLIC groups and PRIVATE/SECRET groups where viewer is a member.
+     */
+    public List<Bet> getVisibleBetsForProfile(@NotNull User profileUser, @NotNull User viewerUser) {
+        return betRepository.findVisibleBetsForProfile(profileUser, viewerUser);
+    }
+
     // DTO for bet statistics
     public record BetStats(
         int totalParticipants,

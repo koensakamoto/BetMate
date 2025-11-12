@@ -57,7 +57,14 @@ function RootLayoutNav() {
           />
           <Stack.Screen
             name="create-bet"
-            options={{ 
+            options={{
+              headerShown: false,
+              presentation: 'modal'
+            }}
+          />
+          <Stack.Screen
+            name="submit-proof"
+            options={{
               headerShown: false,
               presentation: 'modal'
             }}
@@ -74,6 +81,7 @@ function RootLayoutNav() {
           <Stack.Screen name="friends" options={{ href: null }} />
           <Stack.Screen name="edit-profile" options={{ href: null }} />
           <Stack.Screen name="create-bet" options={{ href: null }} />
+          <Stack.Screen name="submit-proof" options={{ href: null }} />
           <Stack.Screen
             name="auth"
             options={{ headerShown: false }}

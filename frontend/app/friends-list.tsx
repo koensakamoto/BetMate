@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, ActivityIndicator, Image, Alert } from 'react-native';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, ActivityIndicator, Image, Alert, TextInput, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -9,8 +9,6 @@ import { debugLog, errorLog } from '../config/env';
 
 const icon = require("../assets/images/icon.png");
 
-// Use FriendDto from service instead of local interface
-
 export default function FriendsList() {
   const insets = useSafeAreaInsets();
   const { user: authUser, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -18,6 +16,7 @@ export default function FriendsList() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (!authLoading) {
@@ -29,9 +28,13 @@ export default function FriendsList() {
     }
   }, [authLoading, isAuthenticated]);
 
-  const loadFriends = async () => {
+  const loadFriends = async (isRefresh: boolean = false) => {
     try {
-      setIsLoading(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
       setError(null);
 
       const friendsList = await friendshipService.getFriends();
@@ -41,12 +44,9 @@ export default function FriendsList() {
     } catch (err: any) {
       errorLog('Failed to load friends:', err);
 
-      // If API fails but user has at least 1 friend (from friends count), show a message
-      // In production, this would be handled by proper error recovery
       if (err.status === 500) {
         setError('Unable to load friends list. Please try again later.');
 
-        // Optionally show mock data for development
         const mockFriends: FriendDto[] = [
           {
             id: 1,
@@ -64,16 +64,16 @@ export default function FriendsList() {
       }
     } finally {
       setIsLoading(false);
+      setRefreshing(false);
     }
   };
 
+  const onRefresh = () => {
+    loadFriends(true);
+  };
+
   const handleViewProfile = (friend: FriendDto) => {
-    // TODO: Navigate to user profile with user ID
-    Alert.alert(
-      'View Profile',
-      `Navigate to ${friend.firstName} ${friend.lastName}'s profile`,
-      [{ text: 'OK' }]
-    );
+    router.push(`/profile/${friend.id}`);
   };
 
   const handleRemoveFriend = async (friend: FriendDto) => {
@@ -111,7 +111,6 @@ export default function FriendsList() {
       : friend.username;
   };
 
-
   if (authLoading || isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
@@ -127,19 +126,19 @@ export default function FriendsList() {
     return null;
   }
 
-  if (error) {
+  if (error && friends.length === 0) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
         <MaterialIcons name="error-outline" size={48} color="#EF4444" />
         <Text style={{ color: '#ffffff', marginTop: 16, fontSize: 18, textAlign: 'center' }}>Failed to load friends</Text>
         <Text style={{ color: 'rgba(255, 255, 255, 0.6)', marginTop: 8, fontSize: 14, textAlign: 'center' }}>{error}</Text>
         <TouchableOpacity
-          onPress={loadFriends}
+          onPress={() => loadFriends()}
           style={{
             backgroundColor: '#00D4AA',
             paddingHorizontal: 24,
             paddingVertical: 12,
-            borderRadius: 8,
+            borderRadius: 12,
             marginTop: 20
           }}
         >
@@ -157,28 +156,25 @@ export default function FriendsList() {
         translucent={true}
       />
 
-      {/* Solid background behind status bar */}
-      <View style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: insets.top,
-        backgroundColor: '#0a0a0f',
-        zIndex: 1
-      }} />
-
       <ScrollView
-        style={{ flex: 1, marginTop: insets.top }}
-        contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 20 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 20 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#00D4AA"
+            colors={['#00D4AA']}
+          />
+        }
       >
         {/* Header */}
         <View style={{
           flexDirection: 'row',
           alignItems: 'center',
           paddingHorizontal: 20,
-          marginBottom: 24
+          marginBottom: 20
         }}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -186,7 +182,7 @@ export default function FriendsList() {
               width: 40,
               height: 40,
               borderRadius: 20,
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
               justifyContent: 'center',
               alignItems: 'center',
               marginRight: 16
@@ -204,16 +200,57 @@ export default function FriendsList() {
               fontSize: 24,
               fontWeight: '700',
               color: '#ffffff',
-              marginBottom: 4
+              letterSpacing: -0.5
             }}>
               Friends
             </Text>
             <Text style={{
               fontSize: 14,
-              color: 'rgba(255, 255, 255, 0.6)'
+              color: 'rgba(255, 255, 255, 0.4)',
+              marginTop: 2
             }}>
               {friends.length} {friends.length === 1 ? 'friend' : 'friends'}
             </Text>
+          </View>
+        </View>
+
+        {/* Search Bar */}
+        <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+          <View style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+            borderRadius: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 14,
+            paddingVertical: 10
+          }}>
+            <MaterialIcons
+              name="search"
+              size={20}
+              color="rgba(255, 255, 255, 0.3)"
+              style={{ marginRight: 10 }}
+            />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search friends..."
+              placeholderTextColor="rgba(255, 255, 255, 0.3)"
+              style={{
+                flex: 1,
+                fontSize: 15,
+                color: '#ffffff',
+                padding: 0
+              }}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <MaterialIcons
+                  name="close"
+                  size={18}
+                  color="rgba(255, 255, 255, 0.3)"
+                />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -224,13 +261,27 @@ export default function FriendsList() {
               alignItems: 'center',
               paddingVertical: 60
             }}>
-              <MaterialIcons name="people-outline" size={64} color="rgba(255, 255, 255, 0.3)" />
+              <View style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 16
+              }}>
+                <MaterialIcons
+                  name={friends.length === 0 ? "people-outline" : "search-off"}
+                  size={40}
+                  color="rgba(255, 255, 255, 0.2)"
+                />
+              </View>
               <Text style={{
                 fontSize: 18,
-                color: 'rgba(255, 255, 255, 0.6)',
+                color: '#ffffff',
                 textAlign: 'center',
-                fontWeight: '500',
-                marginTop: 16
+                fontWeight: '600',
+                marginBottom: 8
               }}>
                 {friends.length === 0 ? 'No friends yet' : 'No friends found'}
               </Text>
@@ -238,9 +289,12 @@ export default function FriendsList() {
                 fontSize: 14,
                 color: 'rgba(255, 255, 255, 0.4)',
                 textAlign: 'center',
-                marginTop: 8
+                marginBottom: 24,
+                paddingHorizontal: 40
               }}>
-                {friends.length === 0 ? 'Start adding friends to see them here' : 'Try adjusting your search'}
+                {friends.length === 0
+                  ? 'Start adding friends to build your network'
+                  : 'Try searching with a different name'}
               </Text>
 
               {friends.length === 0 && (
@@ -250,89 +304,83 @@ export default function FriendsList() {
                     backgroundColor: '#00D4AA',
                     paddingHorizontal: 24,
                     paddingVertical: 12,
-                    borderRadius: 20,
-                    marginTop: 20
+                    borderRadius: 10,
+                    flexDirection: 'row',
+                    alignItems: 'center'
                   }}
                 >
-                  <Text style={{ color: '#000000', fontWeight: '600', fontSize: 16 }}>Find Friends</Text>
+                  <MaterialIcons name="person-add" size={18} color="#000000" style={{ marginRight: 8 }} />
+                  <Text style={{ color: '#000000', fontWeight: '600', fontSize: 15 }}>Find Friends</Text>
                 </TouchableOpacity>
               )}
             </View>
           ) : (
-            filteredFriends.map((friend) => (
+            filteredFriends.map((friend, index) => (
               <TouchableOpacity
                 key={friend.id}
                 onPress={() => handleViewProfile(friend)}
+                activeOpacity={0.7}
                 style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
                   borderRadius: 16,
-                  padding: 16,
-                  marginBottom: 12,
+                  padding: 14,
+                  marginBottom: 10,
                   flexDirection: 'row',
                   alignItems: 'center'
                 }}
               >
                 {/* Avatar */}
-                <View style={{ marginRight: 16 }}>
+                <View style={{ marginRight: 12 }}>
                   <Image
                     source={icon}
                     style={{
-                      width: 50,
-                      height: 50,
-                      borderRadius: 25
+                      width: 52,
+                      height: 52,
+                      borderRadius: 26
                     }}
                   />
                 </View>
 
                 {/* Friend Info */}
-                <View style={{ flex: 1 }}>
+                <View style={{ flex: 1, marginRight: 12 }}>
                   <Text style={{
                     fontSize: 16,
                     fontWeight: '600',
                     color: '#ffffff',
-                    marginBottom: 2
+                    marginBottom: 2,
+                    letterSpacing: -0.2
                   }}>
                     {getDisplayName(friend)}
                   </Text>
 
                   <Text style={{
-                    fontSize: 14,
-                    color: 'rgba(255, 255, 255, 0.6)',
-                    marginBottom: 4
+                    fontSize: 13,
+                    color: 'rgba(255, 255, 255, 0.4)'
                   }}>
                     @{friend.username}
                   </Text>
-
-                  {friend.bio && (
-                    <Text style={{
-                      fontSize: 13,
-                      color: 'rgba(255, 255, 255, 0.5)'
-                    }} numberOfLines={1}>
-                      {friend.bio}
-                    </Text>
-                  )}
                 </View>
 
-                {/* Actions */}
+                {/* Action Button */}
                 <TouchableOpacity
-                  onPress={() => handleRemoveFriend(friend)}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleRemoveFriend(friend);
+                  }}
                   style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 8,
-                    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                    paddingVertical: 6,
+                    paddingHorizontal: 12,
+                    borderRadius: 6,
                     borderWidth: 1,
-                    borderColor: 'rgba(255, 255, 255, 0.08)',
-                    marginLeft: 12
+                    borderColor: 'rgba(255, 255, 255, 0.1)'
                   }}
                 >
                   <Text style={{
-                    fontSize: 12,
-                    fontWeight: '500',
-                    color: 'rgba(255, 255, 255, 0.6)',
-                    letterSpacing: 0.3
+                    fontSize: 13,
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    fontWeight: '500'
                   }}>
-                    Unfollow
+                    Remove
                   </Text>
                 </TouchableOpacity>
               </TouchableOpacity>

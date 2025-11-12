@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image, ActivityIndicator, Alert, TextInput, Modal, ScrollView, Linking, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, Alert, Linking } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
 import { betService, FulfillmentDetails } from '../../services/bet/betService';
 import { useAuth } from '../../contexts/AuthContext';
 import { ENV } from '../../config/env';
@@ -23,9 +23,6 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
   const [fulfillmentDetails, setFulfillmentDetails] = useState<FulfillmentDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [showProofModal, setShowProofModal] = useState(false);
-  const [proofPhoto, setProofPhoto] = useState<string | null>(null);
-  const [proofDescription, setProofDescription] = useState('');
 
   useEffect(() => {
     loadFulfillmentDetails();
@@ -61,89 +58,14 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
     }
   };
 
-  const pickImage = async () => {
-    // First check current permission status
-    const { status: currentStatus } = await ImagePicker.getMediaLibraryPermissionsAsync();
-
-    let finalStatus = currentStatus;
-
-    // If not granted, request permission
-    if (currentStatus !== 'granted') {
-      const { status, canAskAgain } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      finalStatus = status;
-
-      if (status !== 'granted') {
-        if (!canAskAgain) {
-          // Permission was denied previously and user can't be asked again
-          Alert.alert(
-            'Permission Required',
-            'Photo library access was denied. Please enable it in your device Settings:\n\nSettings > BetMate > Photos',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Open Settings',
-                onPress: () => {
-                  // On iOS, this opens the app settings
-                  if (Platform.OS === 'ios') {
-                    Linking.openURL('app-settings:');
-                  } else {
-                    Linking.openSettings();
-                  }
-                }
-              }
-            ]
-          );
-        } else {
-          Alert.alert(
-            'Permission Required',
-            'Please allow access to your photo library to upload proof photos'
-          );
-        }
-        return;
-      }
-    }
-
-    // Permission granted, open picker
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setProofPhoto(result.assets[0].uri);
-    }
-  };
-
   const handleLoserClaim = () => {
-    setShowProofModal(true);
-  };
-
-  const submitProof = async () => {
-    try {
-      setSubmitting(true);
-
-      // Upload photo first if provided
-      let uploadedProofUrl: string | undefined = undefined;
-      if (proofPhoto) {
-        const fileName = proofPhoto.split('/').pop() || `proof_${Date.now()}.jpg`;
-        uploadedProofUrl = await betService.uploadFulfillmentProof(betId, proofPhoto, fileName);
-      }
-
-      // Submit fulfillment claim with proof URL and description
-      await betService.loserClaimFulfilled(betId, uploadedProofUrl, proofDescription || undefined);
-      await loadFulfillmentDetails();
-      onRefresh?.();
-      setShowProofModal(false);
-      setProofPhoto(null);
-      setProofDescription('');
-      Alert.alert('Success', 'Your fulfillment claim has been recorded');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to record fulfillment claim');
-    } finally {
-      setSubmitting(false);
-    }
+    router.push({
+      pathname: '/submit-proof',
+      params: {
+        betId: betId.toString(),
+        betTitle: betTitle,
+      },
+    });
   };
 
   const handleWinnerConfirm = async () => {
@@ -483,154 +405,6 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
           </Text>
         </View>
       )}
-
-      {/* Proof Upload Modal */}
-      <Modal
-        visible={showProofModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowProofModal(false)}
-      >
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          justifyContent: 'flex-end'
-        }}>
-          <View style={{
-            backgroundColor: '#1f2937',
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            padding: 24,
-            maxHeight: '80%'
-          }}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <Text style={{ fontSize: 20, fontWeight: '600', color: '#ffffff' }}>
-                  Submit Proof
-                </Text>
-                <TouchableOpacity onPress={() => setShowProofModal(false)}>
-                  <MaterialIcons name="close" size={24} color="#9ca3af" />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={{ color: 'rgba(255, 255, 255, 0.7)', marginBottom: 16 }}>
-                Optionally add proof that you've fulfilled the stake
-              </Text>
-
-              {/* Photo Upload */}
-              <View style={{ marginBottom: 16 }}>
-                <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 14, fontWeight: '500', marginBottom: 8 }}>
-                  Photo Proof (Optional)
-                </Text>
-                {proofPhoto ? (
-                  <View>
-                    <Image
-                      source={{ uri: proofPhoto }}
-                      style={{ width: '100%', height: 200, borderRadius: 8, marginBottom: 8 }}
-                      resizeMode="cover"
-                    />
-                    <TouchableOpacity
-                      onPress={() => setProofPhoto(null)}
-                      style={{
-                        backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                        borderRadius: 8,
-                        padding: 12,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8
-                      }}
-                    >
-                      <MaterialIcons name="delete" size={20} color="#ef4444" />
-                      <Text style={{ color: '#ef4444', fontWeight: '500' }}>Remove Photo</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    onPress={pickImage}
-                    style={{
-                      backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                      borderWidth: 1,
-                      borderColor: 'rgba(59, 130, 246, 0.3)',
-                      borderRadius: 8,
-                      padding: 16,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8
-                    }}
-                  >
-                    <MaterialIcons name="add-photo-alternate" size={24} color="#60a5fa" />
-                    <Text style={{ color: '#60a5fa', fontWeight: '500' }}>Add Photo</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Text Description */}
-              <View style={{ marginBottom: 24 }}>
-                <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 14, fontWeight: '500', marginBottom: 8 }}>
-                  Description (Optional)
-                </Text>
-                <TextInput
-                  value={proofDescription}
-                  onChangeText={setProofDescription}
-                  placeholder="Add a description of how you fulfilled the stake..."
-                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                  multiline
-                  numberOfLines={4}
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    borderWidth: 1,
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: 8,
-                    padding: 12,
-                    color: '#ffffff',
-                    textAlignVertical: 'top',
-                    minHeight: 100
-                  }}
-                />
-              </View>
-
-              {/* Submit Button */}
-              <TouchableOpacity
-                onPress={submitProof}
-                disabled={submitting}
-                style={{
-                  backgroundColor: '#2563eb',
-                  borderRadius: 8,
-                  padding: 16,
-                  marginBottom: 8
-                }}
-                activeOpacity={0.8}
-              >
-                {submitting ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
-                ) : (
-                  <Text style={{ color: '#ffffff', fontWeight: '600', textAlign: 'center' }}>
-                    Submit Fulfillment Claim
-                  </Text>
-                )}
-              </TouchableOpacity>
-
-              {/* Skip Button */}
-              <TouchableOpacity
-                onPress={() => setShowProofModal(false)}
-                disabled={submitting}
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  borderRadius: 8,
-                  padding: 16
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontWeight: '500', textAlign: 'center' }}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };

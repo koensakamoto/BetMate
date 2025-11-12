@@ -82,8 +82,8 @@ public class GroupMembershipService {
             throw new GroupMembershipException("Cannot join inactive or deleted groups");
         }
 
-        // Check if group is full (only for immediate joins, not pending requests)
-        if (group.isFull() && group.getPrivacy() == Group.Privacy.PUBLIC && group.getAutoApproveMembers()) {
+        // Check if group is full (only for PUBLIC groups with immediate joins)
+        if (group.isFull() && group.getPrivacy() == Group.Privacy.PUBLIC) {
             throw new GroupMembershipException("Group is full");
         }
 
@@ -92,16 +92,16 @@ public class GroupMembershipService {
         membership.setGroup(group);
         membership.setRole(GroupMembership.MemberRole.MEMBER);
 
-        // Determine if auto-approve based on group settings
-        boolean shouldAutoApprove = group.getPrivacy() == Group.Privacy.PUBLIC &&
-                                     group.getAutoApproveMembers();
+        // Determine join method based on group privacy level
+        // PUBLIC: instant join, PRIVATE/SECRET: requires approval
+        boolean shouldAutoApprove = group.getPrivacy() == Group.Privacy.PUBLIC;
 
         if (shouldAutoApprove) {
-            // Immediate approval for PUBLIC groups with auto-approve
+            // Immediate approval for PUBLIC groups
             membership.setStatus(GroupMembership.MembershipStatus.APPROVED);
             membership.setIsActive(true);
         } else {
-            // Pending request for PRIVATE groups or groups without auto-approve
+            // Pending request for PRIVATE and SECRET groups
             membership.setStatus(GroupMembership.MembershipStatus.PENDING);
             membership.setIsActive(false);
         }

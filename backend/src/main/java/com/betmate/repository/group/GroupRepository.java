@@ -37,13 +37,14 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
     List<Group> findByCreatedAtAfter(LocalDateTime since);
     List<Group> findByLastMessageAtAfter(LocalDateTime since);
     
-    // Search functionality
+    // Search functionality (excludes SECRET groups)
     @Query("SELECT g FROM Group g WHERE g.deletedAt IS NULL AND g.isActive = true AND " +
+           "g.privacy IN ('PUBLIC', 'PRIVATE') AND " +
            "(LOWER(g.groupName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
            "LOWER(g.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     List<Group> searchGroups(@Param("searchTerm") String searchTerm);
     
-    // Public and Private groups for discovery (INVITE_ONLY excluded)
+    // PUBLIC and PRIVATE groups for discovery (SECRET excluded)
     @Query("SELECT g FROM Group g WHERE g.privacy IN ('PUBLIC', 'PRIVATE') AND g.isActive = true AND g.deletedAt IS NULL")
     List<Group> findPublicGroups();
     
