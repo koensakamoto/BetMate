@@ -60,11 +60,28 @@ public interface BetRepository extends JpaRepository<Bet, Long> {
     // User participation queries
     @Query("SELECT DISTINCT b FROM Bet b JOIN b.participations p WHERE p.user = :user")
     List<Bet> findBetsByParticipant(@Param("user") User user);
-    
+
     @Query("SELECT b FROM Bet b WHERE b.group IN " +
            "(SELECT gm.group FROM GroupMembership gm WHERE gm.user = :user AND gm.isActive = true) " +
            "AND b.status = 'OPEN' AND b.bettingDeadline > :currentTime AND b.deletedAt IS NULL")
     List<Bet> findAvailableBetsForUser(@Param("user") User user, @Param("currentTime") LocalDateTime currentTime);
+
+    // Get visible bets for a profile viewer based on privacy rules
+    @Query("SELECT DISTINCT b FROM Bet b " +
+           "JOIN b.participations p " +
+           "WHERE p.user = :profileUser " +
+           "AND b.deletedAt IS NULL " +
+           "AND (" +
+           "  b.group.privacy = 'PUBLIC' " +
+           "  OR EXISTS (" +
+           "    SELECT gm FROM GroupMembership gm " +
+           "    WHERE gm.group = b.group " +
+           "    AND gm.user = :viewerUser " +
+           "    AND gm.isActive = true" +
+           "  )" +
+           ") " +
+           "ORDER BY b.createdAt DESC")
+    List<Bet> findVisibleBetsForProfile(@Param("profileUser") User profileUser, @Param("viewerUser") User viewerUser);
     
     // Resolution queries
     List<Bet> findByStatusAndResolvedAtIsNull(Bet.BetStatus status);
@@ -95,8 +112,13 @@ public interface BetRepository extends JpaRepository<Bet, Long> {
     @Modifying
     @Query("UPDATE Bet b SET b.status = 'CLOSED' WHERE b.id = :betId AND b.status = 'OPEN'")
     int closeBetAtomically(@Param("betId") Long betId);
-    
+
     @Modifying
     @Query("UPDATE Bet b SET b.status = 'CANCELLED' WHERE b.id = :betId AND b.status != 'RESOLVED'")
     int cancelBetAtomically(@Param("betId") Long betId);
+
+    // Fulfillment update methods
+    @Modifying
+    @Query("UPDATE Bet b SET b.loserClaimedFulfilledAt = :claimedAt, b.loserFulfillmentProofUrl = :proofUrl, b.loserFulfillmentProofDescription = :proofDescription WHERE b.id = :betId")
+    int updateLoserClaimAtomically(@Param("betId") Long betId, @Param("claimedAt") LocalDateTime claimedAt, @Param("proofUrl") String proofUrl, @Param("proofDescription") String proofDescription);
 }

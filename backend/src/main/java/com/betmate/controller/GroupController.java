@@ -347,7 +347,6 @@ public class GroupController {
         response.setMemberCount(group.getMemberCount());
         response.setMaxMembers(group.getMaxMembers());
         response.setIsActive(group.getIsActive());
-        response.setAutoApproveMembers(group.getAutoApproveMembers());
         response.setTotalMessages(group.getTotalMessages());
         response.setLastMessageAt(group.getLastMessageAt());
         response.setCreatedAt(group.getCreatedAt());
@@ -383,7 +382,6 @@ public class GroupController {
         response.setMemberCount(group.getMemberCount());
         response.setMaxMembers(group.getMaxMembers());
         response.setIsActive(group.getIsActive());
-        response.setAutoApproveMembers(group.getAutoApproveMembers());
         response.setTotalMessages(group.getTotalMessages());
         response.setLastMessageAt(group.getLastMessageAt());
         response.setCreatedAt(group.getCreatedAt());

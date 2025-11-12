@@ -68,9 +68,6 @@ public class Group {
     @Column(nullable = false)
     private Boolean isActive = true;
 
-    @Column(nullable = false)
-    private Boolean autoApproveMembers = true;
-
     // ==========================================
     // CHAT METADATA
     // ==========================================
@@ -198,17 +195,9 @@ public class Group {
     public Boolean getIsActive() {
         return isActive;
     }
-    
+
     public void setIsActive(Boolean isActive) {
         this.isActive = isActive;
-    }
-
-    public Boolean getAutoApproveMembers() {
-        return autoApproveMembers;
-    }
-    
-    public void setAutoApproveMembers(Boolean autoApproveMembers) {
-        this.autoApproveMembers = autoApproveMembers;
     }
 
     // System Fields
@@ -383,8 +372,8 @@ public class Group {
      * Privacy levels for groups.
      */
     public enum Privacy {
-        PUBLIC,      // Anyone can see and join
-        PRIVATE,     // Visible but requires approval to join
-        INVITE_ONLY  // Only visible to invited members
+        PUBLIC,      // Visible in discovery and search, instant join
+        PRIVATE,     // Visible in discovery and search, requires approval to join
+        SECRET       // Completely hidden from discovery and search, invite-only
     }
 }

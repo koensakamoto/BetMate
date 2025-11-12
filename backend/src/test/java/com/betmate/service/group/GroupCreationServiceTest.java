@@ -153,9 +153,9 @@ class GroupCreationServiceTest {
     }
 
     @Test
-    @DisplayName("Should create invite-only group successfully")
-    void createGroup_InviteOnlyGroup_Success() {
-        validRequest.setPrivacy(Group.Privacy.INVITE_ONLY);
+    @DisplayName("Should create secret group successfully")
+    void createGroup_SecretGroup_Success() {
+        validRequest.setPrivacy(Group.Privacy.SECRET);
         when(groupService.getGroupByName(validRequest.getGroupName())).thenReturn(Optional.empty());
         when(groupService.saveGroup(any(Group.class))).thenReturn(testGroup);
         when(membershipService.addCreatorMembership(any(Group.class), eq(testUser))).thenReturn(new GroupMembership());
@@ -164,7 +164,7 @@ class GroupCreationServiceTest {
 
         assertNotNull(result);
         // The privacy should be set in the request and used in the service
-        verify(groupService).saveGroup(argThat(group -> group.getPrivacy() == Group.Privacy.INVITE_ONLY));
+        verify(groupService).saveGroup(argThat(group -> group.getPrivacy() == Group.Privacy.SECRET));
     }
 
     @Test

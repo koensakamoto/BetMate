@@ -93,16 +93,17 @@ public class BetFulfillmentService {
             throw new BetFulfillmentException("User is not a loser of this bet");
         }
 
-        // Record loser's claim (optional, informational)
-        bet.setLoserClaimedFulfilledAt(LocalDateTime.now());
-        if (proofUrl != null && !proofUrl.trim().isEmpty()) {
-            bet.setLoserFulfillmentProofUrl(proofUrl);
-        }
-        if (proofDescription != null && !proofDescription.trim().isEmpty()) {
-            bet.setLoserFulfillmentProofDescription(proofDescription);
-        }
+        // Record loser's claim using atomic update to bypass validation
+        // This avoids loading the entire entity and triggering validation on unrelated fields
+        LocalDateTime claimedAt = LocalDateTime.now();
+        String finalProofUrl = (proofUrl != null && !proofUrl.trim().isEmpty()) ? proofUrl : null;
+        String finalProofDescription = (proofDescription != null && !proofDescription.trim().isEmpty()) ? proofDescription : null;
 
-        betRepository.save(bet);
+        int updated = betRepository.updateLoserClaimAtomically(betId, claimedAt, finalProofUrl, finalProofDescription);
+
+        if (updated == 0) {
+            throw new BetFulfillmentException("Failed to update loser claim for bet: " + betId);
+        }
     }
 
     /**
@@ -211,6 +212,7 @@ public class BetFulfillmentService {
                 confirmations.size(),
                 bet.getLoserClaimedFulfilledAt(),
                 bet.getLoserFulfillmentProofUrl(),
+                bet.getLoserFulfillmentProofDescription(),
                 bet.getAllWinnersConfirmedAt(),
                 winners.stream()
                         .map(p -> new WinnerInfo(
@@ -274,6 +276,7 @@ public class BetFulfillmentService {
             int confirmationCount,
             LocalDateTime loserClaimedAt,
             String loserProofUrl,
+            String loserProofDescription,
             LocalDateTime allWinnersConfirmedAt,
             List<WinnerInfo> winners,
             List<LoserInfo> losers,

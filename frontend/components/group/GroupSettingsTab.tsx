@@ -11,8 +11,7 @@ interface GroupSettingsTabProps {
     name: string;
     description: string;
     memberCount: number;
-    privacy?: 'PUBLIC' | 'PRIVATE' | 'INVITE_ONLY';
-    autoApproveMembers?: boolean;
+    privacy?: 'PUBLIC' | 'PRIVATE' | 'SECRET';
   };
   onGroupUpdated?: (updatedGroup: any) => void;
 }
@@ -230,9 +229,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
 
   // Modal states for privacy settings
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
-  const [showAutoApproveModal, setShowAutoApproveModal] = useState(false);
-  const [tempPrivacy, setTempPrivacy] = useState<'PUBLIC' | 'PRIVATE'>('PRIVATE');
-  const [tempAutoApprove, setTempAutoApprove] = useState(false);
+  const [tempPrivacy, setTempPrivacy] = useState<'PUBLIC' | 'PRIVATE' | 'SECRET'>('PRIVATE');
 
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -240,11 +237,6 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
   const handleOpenPrivacyModal = () => {
     setTempPrivacy(groupData.privacy || 'PRIVATE');
     setShowPrivacyModal(true);
-  };
-
-  const handleOpenAutoApproveModal = () => {
-    setTempAutoApprove(groupData.autoApproveMembers ?? false);
-    setShowAutoApproveModal(true);
   };
 
   const handleSavePrivacy = async () => {
@@ -256,14 +248,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
     setIsUpdating(true);
 
     try {
-      const updatePayload: any = { privacy: tempPrivacy };
-
-      // If switching to PRIVATE and auto-approve is ON, turn it OFF
-      if (tempPrivacy === 'PRIVATE' && groupData.autoApproveMembers) {
-        updatePayload.autoApproveMembers = false;
-      }
-
-      const updatedGroup = await groupService.updateGroup(groupData.id, updatePayload);
+      const updatedGroup = await groupService.updateGroup(groupData.id, { privacy: tempPrivacy });
 
       if (onGroupUpdated) {
         onGroupUpdated(updatedGroup);
@@ -273,32 +258,6 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
     } catch (error) {
       console.error('Failed to update privacy:', error);
       Alert.alert('Error', 'Failed to update privacy settings. Please try again.');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleSaveAutoApprove = async () => {
-    if (isUpdating || tempAutoApprove === groupData.autoApproveMembers) {
-      setShowAutoApproveModal(false);
-      return;
-    }
-
-    setIsUpdating(true);
-
-    try {
-      const updatedGroup = await groupService.updateGroup(groupData.id, {
-        autoApproveMembers: tempAutoApprove
-      });
-
-      if (onGroupUpdated) {
-        onGroupUpdated(updatedGroup);
-      }
-
-      setShowAutoApproveModal(false);
-    } catch (error) {
-      console.error('Failed to update auto-approve:', error);
-      Alert.alert('Error', 'Failed to update auto-approve setting. Please try again.');
     } finally {
       setIsUpdating(false);
     }
@@ -571,23 +530,14 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
         <SettingItem
           materialIcon="public"
           title="Privacy"
-          description={groupData.privacy === 'PUBLIC' ? 'Public' : 'Private'}
-          onPress={handleOpenPrivacyModal}
-        />
-        <SettingItem
-          materialIcon="how-to-reg"
-          title="Auto-approve Members"
           description={
-            groupData.privacy === 'PRIVATE'
-              ? "Private groups require manual approval"
-              : (groupData.autoApproveMembers ? 'On' : 'Off')
+            groupData.privacy === 'PUBLIC'
+              ? 'Public - Anyone can join instantly'
+              : groupData.privacy === 'SECRET'
+              ? 'Secret - Hidden from discovery'
+              : 'Private - Requires approval to join'
           }
-          onPress={handleOpenAutoApproveModal}
-          iconColor={
-            groupData.privacy === 'PRIVATE'
-              ? 'rgba(255, 255, 255, 0.4)'
-              : 'rgba(255, 255, 255, 0.8)'
-          }
+          onPress={handleOpenPrivacyModal}
         />
       </SettingSection>
 
@@ -1120,7 +1070,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
                       color: 'rgba(255, 255, 255, 0.6)',
                       marginTop: 2
                     }}>
-                      Anyone can find and view this group
+                      Visible in discovery, anyone can join instantly
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1134,7 +1084,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
                     paddingHorizontal: 16,
                     backgroundColor: tempPrivacy === 'PRIVATE' ? 'rgba(0, 212, 170, 0.2)' : 'transparent',
                     borderRadius: 8,
-                    marginBottom: 20,
+                    marginBottom: 8,
                     borderWidth: tempPrivacy === 'PRIVATE' ? 1 : 0,
                     borderColor: '#00D4AA'
                   }}
@@ -1172,7 +1122,59 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
                       color: 'rgba(255, 255, 255, 0.6)',
                       marginTop: 2
                     }}>
-                      Only invited members can view
+                      Visible in discovery, requires approval to join
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setTempPrivacy('SECRET')}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    paddingHorizontal: 16,
+                    backgroundColor: tempPrivacy === 'SECRET' ? 'rgba(0, 212, 170, 0.2)' : 'transparent',
+                    borderRadius: 8,
+                    marginBottom: 20,
+                    borderWidth: tempPrivacy === 'SECRET' ? 1 : 0,
+                    borderColor: '#00D4AA'
+                  }}
+                >
+                  <View style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    borderWidth: 2,
+                    borderColor: tempPrivacy === 'SECRET' ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
+                    backgroundColor: tempPrivacy === 'SECRET' ? '#00D4AA' : 'transparent',
+                    marginRight: 12,
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {tempPrivacy === 'SECRET' && (
+                      <View style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: '#ffffff'
+                      }} />
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{
+                      fontSize: 16,
+                      fontWeight: '500',
+                      color: '#ffffff'
+                    }}>
+                      Secret
+                    </Text>
+                    <Text style={{
+                      fontSize: 13,
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      marginTop: 2
+                    }}>
+                      Hidden from discovery, invite-only
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1222,199 +1224,6 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
                       {isUpdating ? 'Saving...' : 'Save'}
                     </Text>
                   </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      {/* Auto-approve Modal */}
-      <Modal
-        visible={showAutoApproveModal}
-        transparent={true}
-        animationType="none"
-        onRequestClose={() => setShowAutoApproveModal(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setShowAutoApproveModal(false)}>
-          <View style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'flex-start',
-            paddingHorizontal: 20,
-            paddingTop: 300
-          }}>
-            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View style={{
-                backgroundColor: '#1a1a1f',
-                borderRadius: 12,
-                padding: 20,
-                marginHorizontal: 20
-              }}>
-                <Text style={{
-                  fontSize: 18,
-                  fontWeight: '600',
-                  color: '#ffffff',
-                  marginBottom: 8
-                }}>
-                  Auto-approve Members
-                </Text>
-
-                {groupData.privacy === 'PRIVATE' && (
-                  <Text style={{
-                    fontSize: 14,
-                    color: 'rgba(255, 255, 255, 0.6)',
-                    marginBottom: 20
-                  }}>
-                    Private groups require manual approval for all members.
-                  </Text>
-                )}
-
-                {groupData.privacy === 'PUBLIC' && (
-                  <>
-                    <Text style={{
-                      fontSize: 14,
-                      color: 'rgba(255, 255, 255, 0.6)',
-                      marginBottom: 20
-                    }}>
-                      Choose whether to automatically approve join requests.
-                    </Text>
-
-                    <TouchableOpacity
-                      onPress={() => setTempAutoApprove(true)}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        paddingVertical: 12,
-                        paddingHorizontal: 16,
-                        backgroundColor: tempAutoApprove ? 'rgba(0, 212, 170, 0.2)' : 'transparent',
-                        borderRadius: 8,
-                        marginBottom: 8,
-                        borderWidth: tempAutoApprove ? 1 : 0,
-                        borderColor: '#00D4AA'
-                      }}
-                    >
-                      <View style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 10,
-                        borderWidth: 2,
-                        borderColor: tempAutoApprove ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
-                        backgroundColor: tempAutoApprove ? '#00D4AA' : 'transparent',
-                        marginRight: 12,
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        {tempAutoApprove && (
-                          <View style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: 4,
-                            backgroundColor: '#ffffff'
-                          }} />
-                        )}
-                      </View>
-                      <Text style={{
-                        fontSize: 16,
-                        fontWeight: '500',
-                        color: '#ffffff'
-                      }}>
-                        On
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => setTempAutoApprove(false)}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        paddingVertical: 12,
-                        paddingHorizontal: 16,
-                        backgroundColor: !tempAutoApprove ? 'rgba(0, 212, 170, 0.2)' : 'transparent',
-                        borderRadius: 8,
-                        marginBottom: 20,
-                        borderWidth: !tempAutoApprove ? 1 : 0,
-                        borderColor: '#00D4AA'
-                      }}
-                    >
-                      <View style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 10,
-                        borderWidth: 2,
-                        borderColor: !tempAutoApprove ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
-                        backgroundColor: !tempAutoApprove ? '#00D4AA' : 'transparent',
-                        marginRight: 12,
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
-                        {!tempAutoApprove && (
-                          <View style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: 4,
-                            backgroundColor: '#ffffff'
-                          }} />
-                        )}
-                      </View>
-                      <Text style={{
-                        fontSize: 16,
-                        fontWeight: '500',
-                        color: '#ffffff'
-                      }}>
-                        Off
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                <View style={{
-                  flexDirection: 'row',
-                  gap: 12
-                }}>
-                  <TouchableOpacity
-                    onPress={() => setShowAutoApproveModal(false)}
-                    disabled={isUpdating}
-                    style={{
-                      flex: 1,
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      borderRadius: 8,
-                      paddingVertical: 12,
-                      alignItems: 'center',
-                      opacity: isUpdating ? 0.5 : 1
-                    }}
-                  >
-                    <Text style={{
-                      color: '#ffffff',
-                      fontSize: 16,
-                      fontWeight: '500'
-                    }}>
-                      {groupData.privacy === 'PRIVATE' ? 'OK' : 'Cancel'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  {groupData.privacy === 'PUBLIC' && (
-                    <TouchableOpacity
-                      onPress={handleSaveAutoApprove}
-                      disabled={isUpdating}
-                      style={{
-                        flex: 1,
-                        backgroundColor: '#00D4AA',
-                        borderRadius: 8,
-                        paddingVertical: 12,
-                        alignItems: 'center',
-                        opacity: isUpdating ? 0.5 : 1
-                      }}
-                    >
-                      <Text style={{
-                        color: '#ffffff',
-                        fontSize: 16,
-                        fontWeight: '500'
-                      }}>
-                        {isUpdating ? 'Saving...' : 'Save'}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               </View>
             </TouchableWithoutFeedback>

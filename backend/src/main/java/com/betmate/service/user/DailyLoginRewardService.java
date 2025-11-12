@@ -25,7 +25,7 @@ public class DailyLoginRewardService {
 
     private static final Logger log = LoggerFactory.getLogger(DailyLoginRewardService.class);
     private static final BigDecimal DAILY_REWARD_AMOUNT = new BigDecimal("10");
-    private static final int HOURS_BETWEEN_REWARDS = 24;
+    private static final int MINUTES_BETWEEN_REWARDS = 24 * 60; // 1440 minutes = 24 hours
 
     private final UserService userService;
     private final UserCreditService userCreditService;
@@ -38,7 +38,8 @@ public class DailyLoginRewardService {
 
     /**
      * Checks if user is eligible for daily reward and awards it if eligible.
-     * Awards 10 credits if 24+ hours have passed since last claim.
+     * Awards 10 credits if 24 hours (1440 minutes) have passed since last claim.
+     * Uses minute-level precision to ensure exactly 24 hours, not just 24 complete hour blocks.
      *
      * @param user The user to check and award
      * @return DailyRewardResult containing whether reward was awarded and details
@@ -98,7 +99,8 @@ public class DailyLoginRewardService {
 
     /**
      * Checks if user is eligible to claim daily reward.
-     * Eligible if never claimed before OR 24+ hours since last claim.
+     * Eligible if never claimed before OR 1440+ minutes (24 hours) since last claim.
+     * Uses minute-level precision for accurate 24-hour calculation.
      *
      * @param user The user to check
      * @return true if eligible, false otherwise
@@ -114,13 +116,13 @@ public class DailyLoginRewardService {
             return true;
         }
 
-        // Check if 24+ hours have passed
+        // Check if 24+ hours have passed (using minutes for precise calculation)
         LocalDateTime now = LocalDateTime.now();
-        long hoursSinceLastClaim = ChronoUnit.HOURS.between(lastClaimed, now);
-        boolean isAvailable = hoursSinceLastClaim >= HOURS_BETWEEN_REWARDS;
+        long minutesSinceLastClaim = ChronoUnit.MINUTES.between(lastClaimed, now);
+        boolean isAvailable = minutesSinceLastClaim >= MINUTES_BETWEEN_REWARDS;
 
-        log.info("Daily reward availability check - User: {}, LastClaimed: {}, Now: {}, HoursSince: {}, Required: {}, Available: {}",
-            user.getId(), lastClaimed, now, hoursSinceLastClaim, HOURS_BETWEEN_REWARDS, isAvailable);
+        log.info("Daily reward availability check - User: {}, LastClaimed: {}, Now: {}, MinutesSince: {}, Required: {} ({} hours), Available: {}",
+            user.getId(), lastClaimed, now, minutesSinceLastClaim, MINUTES_BETWEEN_REWARDS, MINUTES_BETWEEN_REWARDS / 60, isAvailable);
 
         return isAvailable;
     }
@@ -140,7 +142,7 @@ public class DailyLoginRewardService {
         }
 
         LocalDateTime lastClaimed = freshUser.getLastDailyRewardClaimedAt();
-        return lastClaimed.plusHours(HOURS_BETWEEN_REWARDS);
+        return lastClaimed.plusMinutes(MINUTES_BETWEEN_REWARDS);
     }
 
     /**

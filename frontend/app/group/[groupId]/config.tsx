@@ -43,7 +43,6 @@ export default function GroupConfig() {
         groupName: updatedGroup.groupName ?? updatedGroup.name ?? prev.groupName,
         description: updatedGroup.description ?? prev.description,
         privacy: updatedGroup.privacy ?? prev.privacy,
-        autoApproveMembers: updatedGroup.autoApproveMembers ?? false,
         groupPictureUrl: updatedGroup.groupPictureUrl ?? prev.groupPictureUrl,
         ...(updatedGroup.memberCount !== undefined && { memberCount: updatedGroup.memberCount }),
         ...(updatedGroup.updatedAt !== undefined && { updatedAt: updatedGroup.updatedAt }),
@@ -57,8 +56,7 @@ export default function GroupConfig() {
     name: groupData.groupName,
     description: groupData.description,
     memberCount: groupData.memberCount,
-    privacy: groupData.privacy || 'PRIVATE' as 'PUBLIC' | 'PRIVATE' | 'INVITE_ONLY',
-    autoApproveMembers: groupData.autoApproveMembers ?? false
+    privacy: groupData.privacy || 'PRIVATE' as 'PUBLIC' | 'PRIVATE' | 'SECRET'
   } : null;
 
   if (isLoading || !groupData || !settingsGroupData) {

@@ -77,11 +77,11 @@ class GroupPermissionServiceTest {
         privateGroup.setMemberCount(15);
         privateGroup.setIsActive(true);
 
-        // Invite-only group
+        // Secret group
         inviteOnlyGroup = new Group();
         inviteOnlyGroup.setId(3L);
-        inviteOnlyGroup.setGroupName("Invite Only Group");
-        inviteOnlyGroup.setPrivacy(Group.Privacy.INVITE_ONLY);
+        inviteOnlyGroup.setGroupName("Secret Group");
+        inviteOnlyGroup.setPrivacy(Group.Privacy.SECRET);
         inviteOnlyGroup.setMaxMembers(20);
         inviteOnlyGroup.setMemberCount(10);
         inviteOnlyGroup.setIsActive(true);

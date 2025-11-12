@@ -1,4 +1,4 @@
-import { Text, View, Image, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator, Alert, RefreshControl, Modal } from "react-native";
+import { Text, View, Image, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator, Alert, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { router, useFocusEffect } from 'expo-router';
@@ -13,7 +13,6 @@ import { formatNumber, formatPercentage } from '../../utils/formatters';
 import { storeService, InventoryItemResponse } from '../../services/store/storeService';
 import InventoryItemDetailSheet from '../../components/store/InventoryItemDetailSheet';
 import { betService, BetSummaryResponse } from '../../services/bet/betService';
-import { FulfillmentTracker } from '../../components/bet/FulfillmentTracker';
 
 const icon = require("../../assets/images/icon.png");
 
@@ -44,8 +43,6 @@ export default function Profile() {
   const [inventoryDetailVisible, setInventoryDetailVisible] = useState(false);
   const [unfulfilledBets, setUnfulfilledBets] = useState<BetSummaryResponse[]>([]);
   const [loadingUnfulfilledBets, setLoadingUnfulfilledBets] = useState(false);
-  const [selectedBetForFulfillment, setSelectedBetForFulfillment] = useState<BetSummaryResponse | null>(null);
-  const [fulfillmentModalVisible, setFulfillmentModalVisible] = useState(false);
   const tabs = ['Stats', 'Inventory', 'Owed Stakes'];
 
   // Cache management: 5 minute cache
@@ -1019,8 +1016,7 @@ export default function Profile() {
                       <TouchableOpacity
                         key={bet.id}
                         onPress={() => {
-                          setSelectedBetForFulfillment(bet);
-                          setFulfillmentModalVisible(true);
+                          router.push(`/fulfillment-details/${bet.id}`);
                         }}
                         activeOpacity={0.7}
                         style={{
@@ -1195,73 +1191,6 @@ export default function Profile() {
         onEquip={handleEquipItem}
         onUnequip={handleUnequipItem}
       />
-
-      {/* Fulfillment Details Modal */}
-      <Modal
-        visible={fulfillmentModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setFulfillmentModalVisible(false)}
-      >
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          justifyContent: 'flex-end'
-        }}>
-          <View style={{
-            backgroundColor: '#0a0a0f',
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            paddingTop: 20,
-            paddingBottom: insets.bottom + 20,
-            maxHeight: '90%'
-          }}>
-            {/* Header with close button */}
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingHorizontal: 20,
-              marginBottom: 16
-            }}>
-              <Text style={{
-                fontSize: 20,
-                fontWeight: '700',
-                color: '#ffffff'
-              }}>
-                {selectedBetForFulfillment?.title}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setFulfillmentModalVisible(false)}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}
-              >
-                <MaterialIcons name="close" size={20} color="#ffffff" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              style={{ paddingHorizontal: 20 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {selectedBetForFulfillment && (
-                <FulfillmentTracker
-                  betId={selectedBetForFulfillment.id}
-                  betTitle={selectedBetForFulfillment.title}
-                  socialStakeDescription={selectedBetForFulfillment.socialStakeDescription || ''}
-                  onRefresh={fetchUnfulfilledBets}
-                />
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }

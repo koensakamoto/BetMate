@@ -34,6 +34,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +48,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/bets")
 public class BetController {
+
+    private static final Logger logger = LoggerFactory.getLogger(BetController.class);
 
     private final BetService betService;
     private final BetCreationService betCreationService;
@@ -239,6 +243,38 @@ public class BetController {
 
         List<Bet> bets = betService.getBetsByStatus(status);
         List<BetSummaryResponseDto> response = bets.stream()
+            .map(bet -> convertToSummaryResponse(bet, currentUser))
+            .toList();
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get visible bets for a user's profile based on privacy rules.
+     * Shows bets from PUBLIC groups (anyone can see), and PRIVATE/SECRET groups (only members can see).
+     */
+    @GetMapping("/profile/{userId}")
+    public ResponseEntity<List<BetSummaryResponseDto>> getProfileBets(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        User profileUser = userService.getUserById(userId);
+
+        List<Bet> bets = betService.getVisibleBetsForProfile(profileUser, currentUser);
+
+        // Apply pagination manually since we're already filtering
+        int start = page * size;
+        int end = Math.min(start + size, bets.size());
+        List<Bet> paginatedBets = start < bets.size()
+            ? bets.subList(start, end)
+            : new ArrayList<>();
+
+        List<BetSummaryResponseDto> response = paginatedBets.stream()
             .map(bet -> convertToSummaryResponse(bet, currentUser))
             .toList();
 
@@ -644,12 +680,18 @@ public class BetController {
             User currentUser = userService.getUserByUsername(authentication.getName())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
+            logger.info("Uploading fulfillment proof for bet {} by user {}", betId, currentUser.getId());
+            logger.debug("File details - Name: {}, Size: {}, Type: {}",
+                file.getOriginalFilename(), file.getSize(), file.getContentType());
+
             String fileName = fileStorageService.storeFulfillmentProof(file, betId, currentUser.getId());
             String proofUrl = "/api/files/profile-pictures/" + fileName;
 
+            logger.info("Successfully uploaded fulfillment proof for bet {} - URL: {}", betId, proofUrl);
             return ResponseEntity.ok(proofUrl);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Failed to upload fulfillment proof for bet {} by user {}: {}",
+                betId, authentication.getName(), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to upload proof photo: " + e.getMessage());
         }
@@ -663,14 +705,26 @@ public class BetController {
             @PathVariable Long betId,
             @RequestBody(required = false) LoserClaimRequest request,
             Authentication authentication) {
-        User currentUser = userService.getUserByUsername(authentication.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String proofUrl = request != null ? request.proofUrl() : null;
-        String proofDescription = request != null ? request.proofDescription() : null;
-        betFulfillmentService.loserClaimFulfilled(betId, currentUser.getId(), proofUrl, proofDescription);
+            String proofUrl = request != null ? request.proofUrl() : null;
+            String proofDescription = request != null ? request.proofDescription() : null;
 
-        return ResponseEntity.ok("Fulfillment claimed successfully");
+            logger.info("Processing loser claim for bet {} by user {} - Has proof URL: {}, Has description: {}",
+                betId, currentUser.getId(), proofUrl != null, proofDescription != null);
+
+            betFulfillmentService.loserClaimFulfilled(betId, currentUser.getId(), proofUrl, proofDescription);
+
+            logger.info("Successfully recorded loser claim for bet {} by user {}", betId, currentUser.getId());
+            return ResponseEntity.ok("Fulfillment claimed successfully");
+        } catch (Exception e) {
+            logger.error("Failed to record loser claim for bet {} by user {}: {}",
+                betId, authentication.getName(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to record fulfillment claim: " + e.getMessage());
+        }
     }
 
     /**

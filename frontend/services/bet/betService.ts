@@ -203,6 +203,13 @@ class BetService extends BaseApiService {
     return this.get<BetSummaryResponse[]>(`/status/${status}`);
   }
 
+  // Get visible bets for a user's profile (respects privacy)
+  async getProfileBets(userId: number, page: number = 0, size: number = 10): Promise<BetSummaryResponse[]> {
+    return this.get<BetSummaryResponse[]>(`/profile/${userId}`, {
+      params: { page, size }
+    });
+  }
+
   // Place a bet on an existing bet
   async placeBet(betId: number, request: PlaceBetRequest): Promise<BetResponse> {
     return this.post<BetResponse, PlaceBetRequest>(`/${betId}/participate`, request);
@@ -239,13 +246,16 @@ class BetService extends BaseApiService {
 
   // Loser claims they have fulfilled the stake (optional)
   async loserClaimFulfilled(betId: number, proofUrl?: string, proofDescription?: string): Promise<string> {
-    const request: LoserClaimRequest = { proofUrl, proofDescription };
+    const request: LoserClaimRequest = {};
+    if (proofUrl !== undefined) request.proofUrl = proofUrl;
+    if (proofDescription !== undefined) request.proofDescription = proofDescription;
     return this.post<string, LoserClaimRequest>(`/${betId}/fulfillment/loser-claim`, request);
   }
 
   // Winner confirms they received the stake
   async winnerConfirmFulfilled(betId: number, notes?: string): Promise<string> {
-    const request: WinnerConfirmRequest = { notes };
+    const request: WinnerConfirmRequest = {};
+    if (notes !== undefined) request.notes = notes;
     return this.post<string, WinnerConfirmRequest>(`/${betId}/fulfillment/winner-confirm`, request);
   }
 

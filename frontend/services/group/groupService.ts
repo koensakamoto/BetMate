@@ -13,16 +13,15 @@ export interface MemberPreview {
 export interface GroupCreationRequest {
   groupName: string;
   description: string;
-  privacy: 'PUBLIC' | 'PRIVATE' | 'INVITE_ONLY';
+  privacy: 'PUBLIC' | 'PRIVATE' | 'SECRET';
   maxMembers?: number;
 }
 
 export interface GroupUpdateRequest {
   groupName?: string;
   description?: string;
-  privacy?: 'PUBLIC' | 'PRIVATE' | 'INVITE_ONLY';
+  privacy?: 'PUBLIC' | 'PRIVATE' | 'SECRET';
   maxMembers?: number;
-  autoApproveMembers?: boolean;
 }
 
 export interface GroupSummaryResponse {
@@ -30,12 +29,11 @@ export interface GroupSummaryResponse {
   groupName: string;
   description?: string;
   groupPictureUrl?: string;
-  privacy: 'PUBLIC' | 'PRIVATE' | 'INVITE_ONLY';
+  privacy: 'PUBLIC' | 'PRIVATE' | 'SECRET';
   creatorUsername: string;
   memberCount: number;
   maxMembers?: number;
   isActive: boolean;
-  autoApproveMembers?: boolean;
   totalMessages: number;
   lastMessageAt?: string;
   createdAt: string;
@@ -220,8 +218,8 @@ export class GroupService extends BaseApiService {
 
   /**
    * Join a group
-   * For PUBLIC groups with auto-approve, user joins immediately.
-   * For PRIVATE groups or groups without auto-approve, creates a pending request.
+   * For PUBLIC groups, user joins immediately.
+   * For PRIVATE and SECRET groups, creates a pending request.
    */
   async joinGroup(groupId: number): Promise<void> {
     return this.post<void>(API_ENDPOINTS.GROUP_JOIN(groupId), {});
