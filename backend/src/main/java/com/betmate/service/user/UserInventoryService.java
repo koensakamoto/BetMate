@@ -354,6 +354,7 @@ public class UserInventoryService {
 
         // Delegate to item-specific service based on item type
         switch (itemType) {
+            case BET_INSURANCE:
             case BASIC_INSURANCE:
             case PREMIUM_INSURANCE:
             case ELITE_INSURANCE:

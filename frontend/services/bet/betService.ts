@@ -64,6 +64,11 @@ export interface BetResponse {
   userChoice?: string;
   userAmount?: number;
   canUserResolve: boolean;
+  // Insurance information (for user's participation)
+  hasInsurance?: boolean;
+  insuranceRefundPercentage?: number;
+  insuranceTier?: string;
+  insuranceRefundAmount?: number;
 }
 
 export interface BetSummaryResponse {
@@ -92,6 +97,9 @@ export interface BetSummaryResponse {
     lastName: string;
     profileImageUrl?: string;
   }[];
+  // Insurance information (for user's participation)
+  hasInsurance?: boolean;
+  insuranceRefundPercentage?: number;
 }
 
 export interface PlaceBetRequest {

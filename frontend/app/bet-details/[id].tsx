@@ -887,6 +887,72 @@ export default function BetDetails() {
           )}
         </View>
 
+        {/* Insurance Section */}
+        {betData.hasUserParticipated && betData.hasInsurance && betData.insuranceRefundPercentage && (
+          <View style={{
+            backgroundColor: 'rgba(59, 130, 246, 0.08)',
+            borderRadius: 18,
+            marginHorizontal: 20,
+            marginBottom: 24,
+            padding: 24,
+            borderWidth: 1,
+            borderColor: 'rgba(59, 130, 246, 0.2)'
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+              <MaterialIcons name="shield" size={24} color="#3B82F6" style={{ marginRight: 12 }} />
+              <Text style={{
+                fontSize: 16,
+                fontWeight: '600',
+                color: '#3B82F6'
+              }}>
+                Insurance Active
+              </Text>
+            </View>
+
+            <View style={{ gap: 12 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 14 }}>Refund Coverage</Text>
+                <Text style={{ color: '#3B82F6', fontSize: 18, fontWeight: '700' }}>
+                  {betData.insuranceRefundPercentage}%
+                </Text>
+              </View>
+
+              {betData.insuranceRefundAmount && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 14 }}>Guaranteed Refund</Text>
+                  <Text style={{ color: '#3B82F6', fontSize: 16, fontWeight: '600' }}>
+                    ${betData.insuranceRefundAmount}
+                  </Text>
+                </View>
+              )}
+
+              {betData.insuranceTier && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 14 }}>Insurance Tier</Text>
+                  <Text style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: 14, fontWeight: '500' }}>
+                    {betData.insuranceTier}
+                  </Text>
+                </View>
+              )}
+
+              <View style={{
+                marginTop: 12,
+                paddingTop: 12,
+                borderTopWidth: 1,
+                borderTopColor: 'rgba(59, 130, 246, 0.2)'
+              }}>
+                <Text style={{
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  fontSize: 12,
+                  lineHeight: 18
+                }}>
+                  If you lose this bet, you'll receive {betData.insuranceRefundPercentage}% of your stake back as a refund.
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Resolution Information */}
         <View style={{
           backgroundColor: 'rgba(255, 255, 255, 0.04)',

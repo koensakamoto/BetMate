@@ -60,6 +60,12 @@ public class BetResponseDto {
     private BigDecimal userAmount;
     private Boolean canUserResolve;
 
+    // Insurance information (for user's participation)
+    private Boolean hasInsurance;
+    private Integer insuranceRefundPercentage;
+    private String insuranceTier;
+    private BigDecimal insuranceRefundAmount;
+
     // Constructors
     public BetResponseDto() {}
 
@@ -342,5 +348,38 @@ public class BetResponseDto {
 
     public void setAllWinnersConfirmedAt(LocalDateTime allWinnersConfirmedAt) {
         this.allWinnersConfirmedAt = allWinnersConfirmedAt;
+    }
+
+    // Insurance getters and setters
+    public Boolean getHasInsurance() {
+        return hasInsurance;
+    }
+
+    public void setHasInsurance(Boolean hasInsurance) {
+        this.hasInsurance = hasInsurance;
+    }
+
+    public Integer getInsuranceRefundPercentage() {
+        return insuranceRefundPercentage;
+    }
+
+    public void setInsuranceRefundPercentage(Integer insuranceRefundPercentage) {
+        this.insuranceRefundPercentage = insuranceRefundPercentage;
+    }
+
+    public String getInsuranceTier() {
+        return insuranceTier;
+    }
+
+    public void setInsuranceTier(String insuranceTier) {
+        this.insuranceTier = insuranceTier;
+    }
+
+    public BigDecimal getInsuranceRefundAmount() {
+        return insuranceRefundAmount;
+    }
+
+    public void setInsuranceRefundAmount(BigDecimal insuranceRefundAmount) {
+        this.insuranceRefundAmount = insuranceRefundAmount;
     }
 }

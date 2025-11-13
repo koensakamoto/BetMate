@@ -305,7 +305,7 @@ class BetResolutionIntegrationTest {
     }
 
     private void placeBet(User user, Bet bet, Integer option, BigDecimal amount) {
-        betParticipationService.placeBet(user, bet.getId(), option, amount);
+        betParticipationService.placeBet(user, bet.getId(), option, amount, null);
     }
 
     private void assertUserStats(User user, int winCount, int lossCount,

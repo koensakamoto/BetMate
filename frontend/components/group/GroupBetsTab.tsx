@@ -98,12 +98,17 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
       timeRemaining: bettingTimeRemaining,
       resolveTimeRemaining: resolveTimeRemaining,
       participantCount: bet.totalParticipants,
+      participantPreviews: bet.participantPreviews,
       participantAvatars: [icon, icon, icon],  // Placeholder avatars
-      stakeAmount: Math.round(bet.totalPool / Math.max(bet.totalParticipants, 1)),
+      stakeAmount: bet.stakeType === 'SOCIAL' ? 0 : (bet.fixedStakeAmount || Math.round(bet.totalPool / Math.max(bet.totalParticipants, 1))),
+      stakeType: bet.stakeType,
+      socialStakeDescription: bet.socialStakeDescription,
       status: bet.status.toLowerCase() as 'open' | 'active' | 'resolved',
       isJoined: bet.hasUserParticipated,
       creatorName: bet.creatorUsername,
-      userStake: bet.userAmount
+      userStake: bet.userAmount,
+      hasInsurance: bet.hasInsurance,
+      insuranceRefundPercentage: bet.insuranceRefundPercentage
     };
   }, [calculateTimeRemaining]);
 
