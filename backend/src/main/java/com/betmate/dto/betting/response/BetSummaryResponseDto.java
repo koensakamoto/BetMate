@@ -47,6 +47,10 @@ public class BetSummaryResponseDto {
     // Participant previews for displaying avatars
     private List<MemberPreviewDto> participantPreviews;
 
+    // Insurance information (for user's participation)
+    private Boolean hasInsurance;
+    private Integer insuranceRefundPercentage;
+
     // Constructors
     public BetSummaryResponseDto() {}
 
@@ -217,5 +221,21 @@ public class BetSummaryResponseDto {
 
     public void setFulfillmentStatus(FulfillmentStatus fulfillmentStatus) {
         this.fulfillmentStatus = fulfillmentStatus;
+    }
+
+    public Boolean getHasInsurance() {
+        return hasInsurance;
+    }
+
+    public void setHasInsurance(Boolean hasInsurance) {
+        this.hasInsurance = hasInsurance;
+    }
+
+    public Integer getInsuranceRefundPercentage() {
+        return insuranceRefundPercentage;
+    }
+
+    public void setInsuranceRefundPercentage(Integer insuranceRefundPercentage) {
+        this.insuranceRefundPercentage = insuranceRefundPercentage;
     }
 }

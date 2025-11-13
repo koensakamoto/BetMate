@@ -19,6 +19,7 @@ import com.betmate.service.bet.BetCreationService;
 import com.betmate.service.bet.BetParticipationService;
 import com.betmate.service.bet.BetResolutionService;
 import com.betmate.service.bet.BetFulfillmentService;
+import com.betmate.service.bet.InsuranceService;
 import com.betmate.entity.betting.BetParticipation;
 import com.betmate.service.group.GroupService;
 import com.betmate.service.group.GroupMembershipService;
@@ -56,6 +57,7 @@ public class BetController {
     private final BetParticipationService betParticipationService;
     private final BetResolutionService betResolutionService;
     private final BetFulfillmentService betFulfillmentService;
+    private final InsuranceService insuranceService;
     private final GroupService groupService;
     private final GroupMembershipService groupMembershipService;
     private final UserService userService;
@@ -67,6 +69,7 @@ public class BetController {
                         BetParticipationService betParticipationService,
                         BetResolutionService betResolutionService,
                         BetFulfillmentService betFulfillmentService,
+                        InsuranceService insuranceService,
                         GroupService groupService,
                         GroupMembershipService groupMembershipService,
                         UserService userService,
@@ -76,6 +79,7 @@ public class BetController {
         this.betParticipationService = betParticipationService;
         this.betResolutionService = betResolutionService;
         this.betFulfillmentService = betFulfillmentService;
+        this.insuranceService = insuranceService;
         this.groupService = groupService;
         this.groupMembershipService = groupMembershipService;
         this.userService = userService;
@@ -569,6 +573,29 @@ public class BetController {
                     };
                     response.setUserChoice(userChoice);
                     response.setUserAmount(participation.getBetAmount());
+
+                    // Set insurance information if user has insurance on this bet
+                    if (participation.hasInsurance()) {
+                        response.setHasInsurance(true);
+                        response.setInsuranceRefundPercentage(participation.getInsuranceRefundPercentage());
+                        if (participation.getInsuranceItem() != null &&
+                            participation.getInsuranceItem().getStoreItem() != null) {
+                            String tierName = insuranceService.getInsuranceTierName(
+                                participation.getInsuranceItem().getStoreItem().getItemType()
+                            );
+                            response.setInsuranceTier(tierName);
+                        }
+                        // Calculate refund amount
+                        if (participation.getInsuranceRefundPercentage() != null) {
+                            BigDecimal refundAmount = insuranceService.calculateRefundAmount(
+                                participation.getBetAmount(),
+                                participation.getInsuranceRefundPercentage()
+                            );
+                            response.setInsuranceRefundAmount(refundAmount);
+                        }
+                    } else {
+                        response.setHasInsurance(false);
+                    }
                 });
         }
 
@@ -603,7 +630,7 @@ public class BetController {
         boolean hasParticipated = betParticipationService.hasUserParticipated(currentUser, bet.getId());
         response.setHasUserParticipated(hasParticipated);
 
-        // If user has participated, get their choice and amount
+        // If user has participated, get their choice, amount, and insurance
         if (hasParticipated) {
             betParticipationService.getUserParticipation(currentUser, bet.getId())
                 .ifPresent(participation -> {
@@ -617,6 +644,14 @@ public class BetController {
                     };
                     response.setUserChoice(userChoice);
                     response.setUserAmount(participation.getBetAmount());
+
+                    // Set insurance information if user has insurance on this bet
+                    if (participation.hasInsurance()) {
+                        response.setHasInsurance(true);
+                        response.setInsuranceRefundPercentage(participation.getInsuranceRefundPercentage());
+                    } else {
+                        response.setHasInsurance(false);
+                    }
                 });
         }
 

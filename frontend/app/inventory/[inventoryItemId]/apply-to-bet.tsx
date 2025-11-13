@@ -36,15 +36,12 @@ export default function ApplyToBetScreen() {
     }
   };
 
-  const handleApplyToBet = async (bet: EligibleBet) => {
+  const handleApplyInsurance = async (bet: EligibleBet) => {
     if (!bet.canApply || applying) return;
 
     try {
       setApplying(bet.betId);
-      // Apply insurance to the bet
       await insuranceService.applyInsuranceToBet(bet.betId, parseInt(inventoryItemId));
-
-      // Success - navigate back
       router.back();
     } catch (err: any) {
       errorLog('Failed to apply insurance:', err);
@@ -64,22 +61,31 @@ export default function ApplyToBetScreen() {
   };
 
   const eligibleBets = data?.eligibleBets?.filter(bet => bet.canApply) || [];
-  const ineligibleBets = data?.eligibleBets?.filter(bet => !bet.canApply) || [];
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0a0f" translucent={true} />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+
+      {/* Solid background behind status bar */}
+      <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top,
+        backgroundColor: '#0a0a0f',
+        zIndex: 1
+      }} />
 
       {/* Header */}
       <View style={{
-        paddingTop: insets.top + 16,
+        marginTop: insets.top,
+        paddingTop: 16,
         paddingHorizontal: 20,
-        paddingBottom: 16,
-        backgroundColor: '#0a0a0f',
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255, 255, 255, 0.1)'
+        paddingBottom: 20,
+        backgroundColor: '#0a0a0f'
       }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
           <TouchableOpacity
             onPress={() => router.back()}
             style={{
@@ -88,49 +94,44 @@ export default function ApplyToBetScreen() {
               borderRadius: 20,
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
               justifyContent: 'center',
-              alignItems: 'center'
+              alignItems: 'center',
+              marginRight: 12
             }}
           >
-            <MaterialIcons name="arrow-back" size={24} color="#ffffff" />
+            <MaterialIcons name="arrow-back" size={22} color="#ffffff" />
           </TouchableOpacity>
 
-          <View style={{ flex: 1, marginLeft: 16 }}>
+          <View style={{ flex: 1 }}>
             <Text style={{
-              fontSize: 20,
-              fontWeight: '700',
+              fontSize: 22,
+              fontWeight: '600',
               color: '#ffffff'
             }}>
-              Apply {data?.itemName || 'Item'}
-            </Text>
-            <Text style={{
-              fontSize: 13,
-              color: 'rgba(255, 255, 255, 0.6)',
-              marginTop: 2
-            }}>
-              Select a bet to protect
+              Apply Insurance
             </Text>
           </View>
         </View>
 
         {data && (
           <View style={{
-            backgroundColor: 'rgba(0, 212, 170, 0.1)',
+            backgroundColor: 'rgba(0, 212, 170, 0.06)',
             borderRadius: 12,
-            padding: 12,
+            padding: 14,
             borderWidth: 1,
-            borderColor: 'rgba(0, 212, 170, 0.2)'
+            borderColor: 'rgba(0, 212, 170, 0.15)'
           }}>
-            <Text style={{
-              fontSize: 12,
-              color: 'rgba(255, 255, 255, 0.6)',
-              marginBottom: 4
-            }}>
-              Item Details
-            </Text>
             <Text style={{
               fontSize: 14,
               fontWeight: '600',
-              color: '#ffffff'
+              color: '#ffffff',
+              marginBottom: 4
+            }}>
+              {data.itemName}
+            </Text>
+            <Text style={{
+              fontSize: 13,
+              color: 'rgba(255, 255, 255, 0.5)',
+              marginBottom: data.usesRemaining !== undefined ? 8 : 0
             }}>
               {data.description}
             </Text>
@@ -138,7 +139,7 @@ export default function ApplyToBetScreen() {
               <Text style={{
                 fontSize: 12,
                 color: '#00D4AA',
-                marginTop: 4
+                fontWeight: '500'
               }}>
                 {data.usesRemaining} use{data.usesRemaining !== 1 ? 's' : ''} remaining
               </Text>
@@ -152,22 +153,38 @@ export default function ApplyToBetScreen() {
           <ActivityIndicator size="large" color="#00D4AA" />
         </View>
       ) : error ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
-          <MaterialIcons name="error-outline" size={48} color="#EF4444" />
-          <Text style={{ color: '#ffffff', marginTop: 16, fontSize: 18, textAlign: 'center' }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+          <View style={{
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 16
+          }}>
+            <MaterialIcons name="error-outline" size={32} color="#EF4444" />
+          </View>
+          <Text style={{
+            color: '#ffffff',
+            fontSize: 17,
+            fontWeight: '600',
+            textAlign: 'center',
+            marginBottom: 8
+          }}>
             {error}
           </Text>
           <TouchableOpacity
             onPress={loadEligibleBets}
             style={{
               backgroundColor: '#00D4AA',
-              paddingHorizontal: 24,
-              paddingVertical: 12,
-              borderRadius: 8,
-              marginTop: 20
+              paddingHorizontal: 28,
+              paddingVertical: 14,
+              borderRadius: 12,
+              marginTop: 16
             }}
           >
-            <Text style={{ color: '#000000', fontWeight: '600', fontSize: 16 }}>Retry</Text>
+            <Text style={{ color: '#000000', fontWeight: '600', fontSize: 15 }}>Try Again</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -175,62 +192,31 @@ export default function ApplyToBetScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: 20,
-            paddingTop: 20,
             paddingBottom: insets.bottom + 20
           }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Eligible Bets */}
-          {eligibleBets.length > 0 && (
-            <View style={{ marginBottom: 24 }}>
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: '#ffffff',
-                marginBottom: 12
-              }}>
-                Eligible Bets ({eligibleBets.length})
-              </Text>
-
-              {eligibleBets.map((bet) => (
-                <TouchableOpacity
+          {eligibleBets.length > 0 ? (
+            <View>
+              {eligibleBets.map((bet, index) => (
+                <View
                   key={bet.betId}
-                  onPress={() => handleApplyToBet(bet)}
-                  disabled={applying !== null}
                   style={{
                     backgroundColor: 'rgba(255, 255, 255, 0.04)',
                     borderRadius: 16,
                     padding: 16,
                     marginBottom: 12,
                     borderWidth: 1,
-                    borderColor: 'rgba(0, 212, 170, 0.3)',
-                    opacity: applying && applying !== bet.betId ? 0.5 : 1
+                    borderColor: 'rgba(255, 255, 255, 0.04)'
                   }}
-                  activeOpacity={0.7}
                 >
-                  {applying === bet.betId && (
-                    <View style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                      borderRadius: 16,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      zIndex: 1
-                    }}>
-                      <ActivityIndicator size="large" color="#00D4AA" />
-                    </View>
-                  )}
-
                   {/* Bet Title */}
                   <Text style={{
                     fontSize: 16,
-                    fontWeight: '700',
+                    fontWeight: '600',
                     color: '#ffffff',
-                    marginBottom: 8
+                    marginBottom: 8,
+                    lineHeight: 22
                   }} numberOfLines={2}>
                     {bet.title}
                   </Text>
@@ -239,60 +225,57 @@ export default function ApplyToBetScreen() {
                   <View style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    marginBottom: 8
+                    marginBottom: 12
                   }}>
-                    <MaterialIcons name="groups" size={14} color="rgba(255, 255, 255, 0.5)" />
+                    <MaterialIcons name="groups" size={14} color="rgba(255, 255, 255, 0.4)" />
                     <Text style={{
                       fontSize: 13,
-                      color: 'rgba(255, 255, 255, 0.6)',
+                      color: 'rgba(255, 255, 255, 0.5)',
                       marginLeft: 6
                     }}>
                       {bet.groupName}
                     </Text>
                   </View>
 
-                  {/* Bet Details */}
+                  {/* Bet Details Row */}
                   <View style={{
                     flexDirection: 'row',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     paddingTop: 12,
-                    borderTopWidth: 0.5,
-                    borderTopColor: 'rgba(255, 255, 255, 0.1)'
+                    borderTopWidth: 1,
+                    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+                    marginBottom: 12
                   }}>
                     <View>
                       <Text style={{
                         fontSize: 12,
-                        color: 'rgba(255, 255, 255, 0.5)',
-                        marginBottom: 2
+                        color: 'rgba(255, 255, 255, 0.4)',
+                        marginBottom: 4
                       }}>
-                        Your Bet
+                        Stake
                       </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <MaterialIcons name="monetization-on" size={14} color="#FFD700" />
-                        <Text style={{
-                          fontSize: 15,
-                          fontWeight: '700',
-                          color: '#FFD700',
-                          marginLeft: 4
-                        }}>
-                          {bet.betAmount}
-                        </Text>
-                      </View>
+                      <Text style={{
+                        fontSize: 16,
+                        fontWeight: '600',
+                        color: '#ffffff'
+                      }}>
+                        {bet.betAmount}
+                      </Text>
                     </View>
 
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={{
                         fontSize: 12,
-                        color: 'rgba(255, 255, 255, 0.5)',
-                        marginBottom: 2
+                        color: 'rgba(255, 255, 255, 0.4)',
+                        marginBottom: 4
                       }}>
                         Deadline
                       </Text>
                       <Text style={{
                         fontSize: 13,
-                        fontWeight: '600',
-                        color: '#ffffff'
+                        fontWeight: '500',
+                        color: 'rgba(255, 255, 255, 0.7)'
                       }}>
                         {formatDate(bet.deadline)}
                       </Text>
@@ -302,125 +285,77 @@ export default function ApplyToBetScreen() {
                   {/* Choice/Prediction */}
                   {bet.chosenOptionText && (
                     <View style={{
-                      marginTop: 12,
-                      backgroundColor: 'rgba(0, 212, 170, 0.1)',
-                      padding: 10,
-                      borderRadius: 8
+                      backgroundColor: 'rgba(0, 212, 170, 0.06)',
+                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      borderRadius: 8,
+                      marginBottom: 12
                     }}>
                       <Text style={{
                         fontSize: 12,
-                        color: 'rgba(255, 255, 255, 0.5)',
+                        color: 'rgba(0, 212, 170, 0.6)',
                         marginBottom: 2
                       }}>
-                        Your Choice
+                        Your choice
                       </Text>
                       <Text style={{
                         fontSize: 14,
-                        fontWeight: '600',
+                        fontWeight: '500',
                         color: '#00D4AA'
                       }}>
                         {bet.chosenOptionText}
                       </Text>
                     </View>
                   )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
 
-          {/* Ineligible Bets */}
-          {ineligibleBets.length > 0 && (
-            <View>
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: 'rgba(255, 255, 255, 0.6)',
-                marginBottom: 12
-              }}>
-                Not Eligible ({ineligibleBets.length})
-              </Text>
-
-              {ineligibleBets.map((bet) => (
-                <View
-                  key={bet.betId}
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                    borderRadius: 16,
-                    padding: 16,
-                    marginBottom: 12,
-                    borderWidth: 1,
-                    borderColor: 'rgba(255, 255, 255, 0.08)',
-                    opacity: 0.6
-                  }}
-                >
-                  {/* Bet Title */}
-                  <Text style={{
-                    fontSize: 16,
-                    fontWeight: '600',
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    marginBottom: 8
-                  }} numberOfLines={2}>
-                    {bet.title}
-                  </Text>
-
-                  {/* Reason */}
-                  {bet.reason && (
-                    <View style={{
-                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                      padding: 10,
-                      borderRadius: 8,
-                      marginBottom: 8
-                    }}>
+                  {/* Apply Insurance Button */}
+                  <TouchableOpacity
+                    onPress={() => handleApplyInsurance(bet)}
+                    disabled={applying === bet.betId}
+                    style={{
+                      paddingVertical: 12,
+                      borderRadius: 10,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: 1,
+                      borderColor: 'rgba(0, 212, 170, 0.3)',
+                      opacity: applying === bet.betId ? 0.5 : 1
+                    }}
+                    activeOpacity={0.6}
+                  >
+                    {applying === bet.betId ? (
+                      <ActivityIndicator size="small" color="#00D4AA" />
+                    ) : (
                       <Text style={{
-                        fontSize: 13,
-                        color: '#EF4444',
+                        color: '#00D4AA',
+                        fontSize: 14,
                         fontWeight: '500'
                       }}>
-                        {bet.reason}
+                        Apply Insurance
                       </Text>
-                    </View>
-                  )}
-
-                  {/* Group Name */}
-                  <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center'
-                  }}>
-                    <MaterialIcons name="groups" size={14} color="rgba(255, 255, 255, 0.3)" />
-                    <Text style={{
-                      fontSize: 13,
-                      color: 'rgba(255, 255, 255, 0.4)',
-                      marginLeft: 6
-                    }}>
-                      {bet.groupName}
-                    </Text>
-                  </View>
+                    )}
+                  </TouchableOpacity>
                 </View>
               ))}
             </View>
-          )}
-
-          {/* No Bets */}
-          {eligibleBets.length === 0 && ineligibleBets.length === 0 && (
+          ) : (
             <View style={{
               alignItems: 'center',
-              paddingVertical: 60
+              paddingVertical: 80
             }}>
-              <MaterialIcons name="inbox" size={48} color="rgba(255, 255, 255, 0.3)" />
+              <MaterialIcons name="inbox" size={48} color="rgba(255, 255, 255, 0.15)" style={{ marginBottom: 16 }} />
               <Text style={{
                 fontSize: 16,
+                fontWeight: '500',
                 color: 'rgba(255, 255, 255, 0.6)',
-                textAlign: 'center',
-                marginTop: 16,
-                fontWeight: '500'
+                marginBottom: 6
               }}>
-                No active bets found
+                No eligible bets
               </Text>
               <Text style={{
                 fontSize: 14,
-                color: 'rgba(255, 255, 255, 0.4)',
-                textAlign: 'center',
-                marginTop: 8
+                color: 'rgba(255, 255, 255, 0.4)'
               }}>
                 Place a bet to use this item
               </Text>

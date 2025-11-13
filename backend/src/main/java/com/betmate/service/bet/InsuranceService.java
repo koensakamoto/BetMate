@@ -65,8 +65,11 @@ public class InsuranceService {
      * @return list of active insurance items
      */
     public List<UserInventory> getAllActiveInsuranceItems(User user) {
-        // Get all insurance items (BASIC_INSURANCE, PREMIUM_INSURANCE, ELITE_INSURANCE)
+        // Get all insurance items (BET_INSURANCE, BASIC_INSURANCE, PREMIUM_INSURANCE, ELITE_INSURANCE)
         List<UserInventory> allInsurance = userInventoryRepository
+            .findByUserAndIsActiveTrueAndStoreItem_ItemType(user, StoreItem.ItemType.BET_INSURANCE);
+
+        List<UserInventory> basicInsurance = userInventoryRepository
             .findByUserAndIsActiveTrueAndStoreItem_ItemType(user, StoreItem.ItemType.BASIC_INSURANCE);
 
         List<UserInventory> premiumInsurance = userInventoryRepository
@@ -76,6 +79,7 @@ public class InsuranceService {
             .findByUserAndIsActiveTrueAndStoreItem_ItemType(user, StoreItem.ItemType.ELITE_INSURANCE);
 
         // Combine all insurance types
+        allInsurance.addAll(basicInsurance);
         allInsurance.addAll(premiumInsurance);
         allInsurance.addAll(eliteInsurance);
 
@@ -87,6 +91,8 @@ public class InsuranceService {
 
     /**
      * Gets a specific active insurance item by inventory ID.
+     * For insurance items, just checks if item exists and is active.
+     * Insurance items are single-use per tier, so no need to check usesRemaining.
      *
      * @param user the user who owns the insurance
      * @param insuranceItemId the inventory item ID
@@ -96,8 +102,7 @@ public class InsuranceService {
         return userInventoryRepository.findById(insuranceItemId)
             .filter(item -> item.getUser().getId().equals(user.getId()))
             .filter(item -> item.getIsActive())
-            .filter(item -> isInsuranceItem(item))
-            .filter(item -> item.getUsesRemaining() != null && item.getUsesRemaining() > 0);
+            .filter(item -> isInsuranceItem(item));
     }
 
     /**
@@ -187,36 +192,22 @@ public class InsuranceService {
         if (!isInsuranceItem(insurance)) {
             throw new IllegalArgumentException("Item is not an insurance type");
         }
-
-        // Insurance must have uses remaining
-        if (insurance.getUsesRemaining() == null || insurance.getUsesRemaining() <= 0) {
-            throw new IllegalArgumentException("Insurance has no uses remaining");
-        }
     }
 
     /**
-     * Consumes one use of an insurance item.
+     * Consumes an insurance item by deactivating it.
+     * Insurance items are single-use per tier, so consumption = deactivation.
      *
      * @param insurance the insurance item to consume
      */
     @Transactional
     public void consumeInsurance(UserInventory insurance) {
-        if (insurance.getUsesRemaining() == null || insurance.getUsesRemaining() <= 0) {
-            throw new IllegalStateException("Cannot consume insurance with no uses remaining");
-        }
-
-        // Decrement uses
-        insurance.setUsesRemaining(insurance.getUsesRemaining() - 1);
+        // Deactivate the insurance item
+        insurance.setIsActive(false);
         insurance.setLastUsedAt(LocalDateTime.now());
 
-        // If no uses remain, deactivate
-        if (insurance.getUsesRemaining() == 0) {
-            insurance.setIsActive(false);
-            logger.info("Insurance item {} fully consumed and deactivated", insurance.getId());
-        }
-
         userInventoryRepository.save(insurance);
-        logger.info("Consumed insurance use. Remaining uses: {}", insurance.getUsesRemaining());
+        logger.info("Insurance item {} consumed and deactivated", insurance.getId());
     }
 
     /**
@@ -247,6 +238,7 @@ public class InsuranceService {
      */
     public Integer getRefundPercentage(StoreItem.ItemType itemType) {
         return switch (itemType) {
+            case BET_INSURANCE -> BASIC_REFUND_PERCENTAGE;  // Legacy insurance type treated as basic
             case BASIC_INSURANCE -> BASIC_REFUND_PERCENTAGE;
             case PREMIUM_INSURANCE -> PREMIUM_REFUND_PERCENTAGE;
             case ELITE_INSURANCE -> ELITE_REFUND_PERCENTAGE;
@@ -265,7 +257,8 @@ public class InsuranceService {
             return false;
         }
         StoreItem.ItemType itemType = item.getStoreItem().getItemType();
-        return itemType == StoreItem.ItemType.BASIC_INSURANCE ||
+        return itemType == StoreItem.ItemType.BET_INSURANCE ||
+               itemType == StoreItem.ItemType.BASIC_INSURANCE ||
                itemType == StoreItem.ItemType.PREMIUM_INSURANCE ||
                itemType == StoreItem.ItemType.ELITE_INSURANCE;
     }
@@ -278,6 +271,7 @@ public class InsuranceService {
      */
     public String getInsuranceTierName(StoreItem.ItemType itemType) {
         return switch (itemType) {
+            case BET_INSURANCE -> "BASIC";  // Legacy insurance type treated as basic
             case BASIC_INSURANCE -> "BASIC";
             case PREMIUM_INSURANCE -> "PREMIUM";
             case ELITE_INSURANCE -> "ELITE";

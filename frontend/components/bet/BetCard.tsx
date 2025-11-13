@@ -53,6 +53,8 @@ interface BetCardProps {
   showJoinedIndicator?: boolean; // Defaults to true if not provided
   userStake?: number; // User's personal stake amount if they've joined
   fulfillmentStatus?: 'PENDING' | 'PARTIALLY_FULFILLED' | 'FULFILLED'; // For resolved social bets
+  hasInsurance?: boolean; // Whether insurance is applied to this bet
+  insuranceRefundPercentage?: number; // Refund percentage (25, 50, or 75)
 }
 
 function BetCard({
@@ -74,8 +76,18 @@ function BetCard({
   resolution,
   showJoinedIndicator = true,
   userStake,
-  fulfillmentStatus
+  fulfillmentStatus,
+  hasInsurance = false,
+  insuranceRefundPercentage
 }: BetCardProps) {
+
+  // Debug logging for insurance
+  console.log(`[BetCard ${id}] Insurance Debug:`, {
+    hasInsurance,
+    insuranceRefundPercentage,
+    isJoined,
+    shouldShowBadge: hasInsurance && isJoined
+  });
 
   const handlePress = useCallback(() => {
     // Navigate to bet details
@@ -342,6 +354,32 @@ function BetCard({
 
         {/* Status Indicator */}
         <View style={{ flexDirection: 'row', gap: 8 }}>
+          {/* Insurance Badge */}
+          {hasInsurance && isJoined && (
+            <View style={{
+              backgroundColor: 'rgba(59, 130, 246, 0.15)',
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: 'rgba(59, 130, 246, 0.3)',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4
+            }}>
+              <MaterialIcons name="shield" size={14} color="#3B82F6" />
+              {insuranceRefundPercentage && (
+                <Text style={{
+                  fontSize: 11,
+                  fontWeight: '600',
+                  color: '#3B82F6'
+                }}>
+                  {insuranceRefundPercentage}%
+                </Text>
+              )}
+            </View>
+          )}
+
           {/* Fulfillment Status Badge - Show for resolved social bets */}
           {status === 'resolved' && stakeType === 'SOCIAL' && fulfillmentStatus && (
             <View style={{

@@ -26,9 +26,9 @@ public abstract class DomainEvent {
         return eventType;
     }
 
-    @Override
-    public String toString() {
-        return String.format("%s[eventId=%s, occurredAt=%s]",
-                           getClass().getSimpleName(), eventId, occurredAt);
-    }
+@Override
+public String toString() {
+    return String.format("%s[eventId=%s, occurredAt=%s]",
+                       getClass().getSimpleName(), eventId, occurredAt);
+}
 }

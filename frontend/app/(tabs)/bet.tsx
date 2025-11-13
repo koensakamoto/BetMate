@@ -63,6 +63,13 @@ export default function Bet() {
     try {
       // Load my bets
       const myBetsData = await betService.getMyBets();
+      console.log('[loadBets] Received bets from API:', myBetsData.map(bet => ({
+        id: bet.id,
+        title: bet.title,
+        hasInsurance: bet.hasInsurance,
+        insuranceRefundPercentage: bet.insuranceRefundPercentage,
+        hasUserParticipated: bet.hasUserParticipated
+      })));
       setMyBets(myBetsData);
 
       // TODO: Implement guest/public betting - Discover bets loading commented out
@@ -113,6 +120,14 @@ export default function Bet() {
     const bettingTimeRemaining = calculateTimeRemaining(bet.bettingDeadline);
     const resolveTimeRemaining = calculateTimeRemaining(bet.resolveDate);
 
+    // Debug logging for insurance data
+    console.log(`[transformBetData] Bet ${bet.id}:`, {
+      hasInsurance: bet.hasInsurance,
+      insuranceRefundPercentage: bet.insuranceRefundPercentage,
+      hasUserParticipated: bet.hasUserParticipated,
+      rawBet: bet
+    });
+
     return {
       id: bet.id.toString(),
       title: bet.title,
@@ -122,11 +137,15 @@ export default function Bet() {
       resolveTimeRemaining: resolveTimeRemaining,
       participantCount: bet.totalParticipants,
       participantPreviews: bet.participantPreviews,
-      stakeAmount: Math.round(bet.totalPool / Math.max(bet.totalParticipants, 1)),
+      stakeAmount: bet.stakeType === 'SOCIAL' ? 0 : (bet.fixedStakeAmount || Math.round(bet.totalPool / Math.max(bet.totalParticipants, 1))),
+      stakeType: bet.stakeType,
+      socialStakeDescription: bet.socialStakeDescription,
       status: bet.status.toLowerCase() as 'open' | 'active' | 'resolved',
       isJoined: bet.hasUserParticipated,
       creatorName: bet.creatorUsername,
-      userStake: bet.userAmount
+      userStake: bet.userAmount,
+      hasInsurance: bet.hasInsurance,
+      insuranceRefundPercentage: bet.insuranceRefundPercentage
     };
   }, [calculateTimeRemaining]);
 
