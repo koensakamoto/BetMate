@@ -4,13 +4,18 @@ import com.betmate.entity.user.User;
 import com.betmate.entity.user.UserInventory;
 import com.betmate.entity.store.StoreItem;
 import com.betmate.repository.user.UserInventoryRepository;
+import com.betmate.service.bet.InsuranceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 /**
- * Service for managing active effects from consumable items (boosters, etc.).
+ * Service for managing active effects from consumable items (boosters, insurance, etc.).
  * Handles activation, consumption, and checking of active item effects.
  */
 @Service
@@ -19,9 +24,13 @@ public class ActiveEffectsService {
     private static final Logger logger = LoggerFactory.getLogger(ActiveEffectsService.class);
 
     private final UserInventoryRepository userInventoryRepository;
+    private final InsuranceService insuranceService;
 
-    public ActiveEffectsService(UserInventoryRepository userInventoryRepository) {
+    @Autowired
+    public ActiveEffectsService(UserInventoryRepository userInventoryRepository,
+                               @Lazy InsuranceService insuranceService) {
         this.userInventoryRepository = userInventoryRepository;
+        this.insuranceService = insuranceService;
     }
 
     /**
@@ -151,5 +160,66 @@ public class ActiveEffectsService {
 
         // If time-based, return days
         return getDoublerDaysRemaining(user);
+    }
+
+    // ==========================================
+    // INSURANCE EFFECTS
+    // ==========================================
+
+    /**
+     * Checks if user has any active insurance items.
+     * Delegates to InsuranceService for the actual logic.
+     *
+     * @param user the user to check
+     * @return true if user has at least one unused insurance item
+     */
+    public boolean hasActiveInsurance(User user) {
+        return insuranceService.hasActiveInsurance(user);
+    }
+
+    /**
+     * Gets all active insurance items for a user.
+     * Delegates to InsuranceService.
+     *
+     * @param user the user to check
+     * @return list of active insurance items
+     */
+    public List<UserInventory> getActiveInsuranceItems(User user) {
+        return insuranceService.getAllActiveInsuranceItems(user);
+    }
+
+    /**
+     * Gets active insurance items of a specific tier.
+     * Delegates to InsuranceService.
+     *
+     * @param user the user to check
+     * @param tier the tier name (e.g., "BASIC", "PREMIUM", "ELITE")
+     * @return list of active insurance items of the specified tier
+     */
+    public List<UserInventory> getActiveInsuranceByTier(User user, String tier) {
+        return insuranceService.getActiveInsuranceByTier(user, tier);
+    }
+
+    /**
+     * Gets the total number of insurance uses remaining across all tiers.
+     * Delegates to InsuranceService.
+     *
+     * @param user the user to check
+     * @return total uses remaining
+     */
+    public int getTotalInsuranceUsesRemaining(User user) {
+        return insuranceService.getTotalInsuranceUsesRemaining(user);
+    }
+
+    /**
+     * Gets count of active insurance items by tier.
+     * Delegates to InsuranceService.
+     *
+     * @param user the user to check
+     * @param tier the tier name (e.g., "BASIC", "PREMIUM", "ELITE")
+     * @return count of active insurance items
+     */
+    public long getActiveInsuranceCountByTier(User user, String tier) {
+        return insuranceService.getActiveInsuranceCountByTier(user, tier);
     }
 }

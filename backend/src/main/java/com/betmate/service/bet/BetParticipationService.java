@@ -39,18 +39,21 @@ public class BetParticipationService {
     private final BetService betService;
     private final UserCreditService creditService;
     private final UserStatisticsService statisticsService;
+    private final InsuranceService insuranceService;
 
     @Autowired
     public BetParticipationService(BetParticipationRepository participationRepository,
                                  BetPredictionRepository predictionRepository,
                                  BetService betService,
                                  UserCreditService creditService,
-                                 UserStatisticsService statisticsService) {
+                                 UserStatisticsService statisticsService,
+                                 InsuranceService insuranceService) {
         this.participationRepository = participationRepository;
         this.predictionRepository = predictionRepository;
         this.betService = betService;
         this.creditService = creditService;
         this.statisticsService = statisticsService;
+        this.insuranceService = insuranceService;
     }
 
     /**
@@ -58,7 +61,8 @@ public class BetParticipationService {
      */
     public BetParticipation placeBetWithPrediction(@NotNull User user, @NotNull Long betId,
                                                  @NotNull @DecimalMin("0.01") BigDecimal betAmount,
-                                                 @NotNull String predictionValue) {
+                                                 @NotNull String predictionValue,
+                                                 Long insuranceItemId) {
         Bet bet = betService.getBetById(betId);
 
         // Validate this is a prediction bet
@@ -98,6 +102,11 @@ public class BetParticipationService {
         }
         BetParticipation savedParticipation = participationRepository.save(participation);
 
+        // Apply insurance if provided
+        if (insuranceItemId != null) {
+            insuranceService.applyInsuranceToBet(user, savedParticipation, insuranceItemId);
+        }
+
         // Create prediction
         BetPrediction prediction = new BetPrediction();
         prediction.setParticipation(savedParticipation);
@@ -118,7 +127,8 @@ public class BetParticipationService {
      */
     public BetParticipation placeBet(@NotNull User user, @NotNull Long betId,
                                    @Min(1) @Max(4) Integer chosenOption,
-                                   @NotNull @DecimalMin("0.01") BigDecimal betAmount) {
+                                   @NotNull @DecimalMin("0.01") BigDecimal betAmount,
+                                   Long insuranceItemId) {
         Bet bet = betService.getBetById(betId);
 
         // Validate bet can accept participations
@@ -155,7 +165,12 @@ public class BetParticipationService {
             participation = createParticipation(user, bet, chosenOption, betAmount);
         }
         BetParticipation savedParticipation = participationRepository.save(participation);
-        
+
+        // Apply insurance if provided
+        if (insuranceItemId != null) {
+            insuranceService.applyInsuranceToBet(user, savedParticipation, insuranceItemId);
+        }
+
         // Update bet statistics
         updateBetStatistics(bet, chosenOption, betAmount);
         
@@ -388,8 +403,21 @@ public class BetParticipationService {
             // Update user statistics
             statisticsService.recordWin(user.getId());
         } else {
-            // User lost - no payout
+            // User lost - check for insurance refund
             participation.settle(BigDecimal.ZERO);
+
+            // Process insurance refund if applicable
+            if (participation.shouldReceiveInsuranceRefund()) {
+                BigDecimal refundAmount = participation.getInsuranceRefundAmount();
+
+                // Credit insurance refund to user (only for CREDIT bets)
+                if (bet.getStakeType() == BetStakeType.CREDIT && refundAmount != null) {
+                    creditService.addCredits(user.getId(), refundAmount,
+                        "Insurance refund (" + participation.getInsuranceRefundPercentage() +
+                        "%) for bet: " + bet.getTitle());
+                }
+            }
+
             statisticsService.recordLoss(user.getId());
         }
 

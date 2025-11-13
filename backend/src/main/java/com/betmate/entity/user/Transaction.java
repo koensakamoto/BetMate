@@ -45,10 +45,11 @@ public class Transaction {
     private LocalDateTime createdAt;
 
     public enum TransactionType {
-        CREDIT,        // Adding credits
-        DEBIT,         // Deducting credits
-        TRANSFER_IN,   // Receiving from another user
-        TRANSFER_OUT   // Sending to another user
+        CREDIT,           // Adding credits
+        DEBIT,            // Deducting credits
+        TRANSFER_IN,      // Receiving from another user
+        TRANSFER_OUT,     // Sending to another user
+        INSURANCE_REFUND  // Refund from bet insurance
     }
 
     // Constructors

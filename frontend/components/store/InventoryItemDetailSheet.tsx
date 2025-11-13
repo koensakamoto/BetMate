@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, Modal, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { InventoryItemResponse } from '../../services/store/storeService';
 import { haptic } from '../../utils/haptics';
 
@@ -59,6 +60,15 @@ export default function InventoryItemDetailSheet({
 
   const handleToggleEquip = () => {
     haptic.medium();
+
+    // For insurance items and other bet-applicable items, navigate to bet selection
+    if (item.itemType.includes('INSURANCE')) {
+      router.push(`/inventory/${item.id}/apply-to-bet`);
+      onClose();
+      return;
+    }
+
+    // For cosmetic items, handle equip/unequip
     if (item.isEquipped) {
       onUnequip(item);
     } else {
@@ -365,7 +375,9 @@ export default function InventoryItemDetailSheet({
                   fontWeight: '700',
                   color: item.isEquipped ? '#EF4444' : '#000000'
                 }}>
-                  {item.isEquipped ? 'Unequip Item' : 'Activate Item'}
+                  {item.itemType.includes('INSURANCE')
+                    ? 'Apply to Bet'
+                    : item.isEquipped ? 'Unequip Item' : 'Activate Item'}
                 </Text>
               </TouchableOpacity>
             ) : (
