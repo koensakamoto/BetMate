@@ -1,5 +1,7 @@
 package com.betmate.service.user;
 
+import com.betmate.dto.betting.response.EligibleBetResponseDto;
+import com.betmate.dto.betting.response.InventoryItemWithEligibleBetsResponseDto;
 import com.betmate.dto.store.response.InventoryItemResponseDto;
 import com.betmate.dto.store.response.InventorySummaryResponseDto;
 import com.betmate.dto.store.response.PopularItemResponseDto;
@@ -10,7 +12,10 @@ import com.betmate.entity.user.UserInventory;
 import com.betmate.exception.user.UserInventoryException;
 import com.betmate.mapper.InventoryMapper;
 import com.betmate.repository.user.UserInventoryRepository;
+import com.betmate.service.bet.InsuranceService;
 import jakarta.validation.constraints.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -32,15 +37,21 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class UserInventoryService {
 
+    private static final Logger logger = LoggerFactory.getLogger(UserInventoryService.class);
+
     private final UserInventoryRepository inventoryRepository;
     private final InventoryMapper inventoryMapper;
+    private final InsuranceService insuranceService;
     // private final StoreService storeService; // TODO: Add when StoreService is created
     // private final UserService userService; // TODO: Add when needed
 
     @Autowired
-    public UserInventoryService(UserInventoryRepository inventoryRepository, InventoryMapper inventoryMapper) {
+    public UserInventoryService(UserInventoryRepository inventoryRepository,
+                              InventoryMapper inventoryMapper,
+                              InsuranceService insuranceService) {
         this.inventoryRepository = inventoryRepository;
         this.inventoryMapper = inventoryMapper;
+        this.insuranceService = insuranceService;
         // this.storeService = storeService; // TODO: Add when StoreService is created
         // this.userService = userService; // TODO: Add when needed
     }
@@ -294,12 +305,83 @@ public class UserInventoryService {
     @PreAuthorize("hasRole('ADMIN')")
     public UserInventory transferItem(@NotNull Long inventoryId, @NotNull User newOwner) {
         UserInventory originalItem = getInventoryItemById(inventoryId);
-        
+
         // Remove from original owner
         removeItemFromInventory(inventoryId, "Transferred to user: " + newOwner.getUsername());
-        
+
         // Add to new owner
         return addItemToInventory(newOwner, originalItem.getStoreItem(), originalItem.getPricePaid());
+    }
+
+    /**
+     * Gets all bets eligible for applying a specific inventory item.
+     * Delegates to item-specific services based on item type.
+     * Currently supports:
+     * - Insurance items (BASIC_INSURANCE, PREMIUM_INSURANCE, ELITE_INSURANCE)
+     *
+     * Future support planned for:
+     * - Mulligan tokens (can apply to CLOSED bets before resolution)
+     * - Freeze cards and other bet-applicable items
+     *
+     * @param user the user requesting eligible bets
+     * @param inventoryItemId the inventory item ID to apply
+     * @return DTO containing item info and list of eligible bets
+     * @throws IllegalArgumentException if user doesn't own the item or item type not supported
+     */
+    @PreAuthorize("#user.username == authentication.name or hasRole('ADMIN')")
+    public InventoryItemWithEligibleBetsResponseDto getEligibleBetsForInventoryItem(
+            @NotNull User user,
+            @NotNull Long inventoryItemId) {
+
+        logger.info("Getting eligible bets for inventory item {} for user {}", inventoryItemId, user.getId());
+
+        // Get and validate inventory item
+        UserInventory inventoryItem = getInventoryItemById(inventoryItemId);
+
+        // Verify ownership
+        if (!inventoryItem.getUser().getId().equals(user.getId())) {
+            throw new IllegalArgumentException("User does not own this inventory item");
+        }
+
+        // Verify item is active
+        if (!inventoryItem.getIsActive()) {
+            throw new IllegalArgumentException("Inventory item is not active");
+        }
+
+        // Get item type
+        StoreItem.ItemType itemType = inventoryItem.getStoreItem().getItemType();
+        List<EligibleBetResponseDto> eligibleBets;
+
+        // Delegate to item-specific service based on item type
+        switch (itemType) {
+            case BASIC_INSURANCE:
+            case PREMIUM_INSURANCE:
+            case ELITE_INSURANCE:
+                logger.info("Getting eligible bets for insurance item type: {}", itemType);
+                eligibleBets = insuranceService.getEligibleBetsForInsurance(user);
+                break;
+
+            // TODO: Add support for mulligan tokens
+            // case MULLIGAN_TOKEN:
+            //     eligibleBets = mulliganService.getEligibleBetsForMulligan(user);
+            //     break;
+
+            // TODO: Add support for freeze cards
+            // case FREEZE_CARD:
+            //     eligibleBets = freezeCardService.getEligibleBetsForFreezeCard(user);
+            //     break;
+
+            default:
+                throw new IllegalArgumentException("Item type " + itemType + " cannot be applied to bets");
+        }
+
+        logger.info("Found {} total bets for inventory item {}, {} eligible",
+            eligibleBets.size(),
+            inventoryItemId,
+            eligibleBets.stream().filter(EligibleBetResponseDto::isCanApply).count());
+
+        // Build and return response
+        return InventoryItemWithEligibleBetsResponseDto.fromInventory(inventoryItem, eligibleBets);
     }
 
 

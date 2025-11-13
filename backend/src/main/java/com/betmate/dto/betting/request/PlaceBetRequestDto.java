@@ -24,6 +24,9 @@ public class PlaceBetRequestDto {
     @Size(max = 500, message = "Predicted value cannot exceed 500 characters")
     private String predictedValue;
 
+    @Min(value = 1, message = "Insurance item ID must be positive")
+    private Long insuranceItemId;
+
     // Constructors
     public PlaceBetRequestDto() {}
 
@@ -70,5 +73,13 @@ public class PlaceBetRequestDto {
 
     public void setPredictedValue(String predictedValue) {
         this.predictedValue = predictedValue;
+    }
+
+    public Long getInsuranceItemId() {
+        return insuranceItemId;
+    }
+
+    public void setInsuranceItemId(Long insuranceItemId) {
+        this.insuranceItemId = insuranceItemId;
     }
 }

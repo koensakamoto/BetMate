@@ -7,10 +7,12 @@ import com.betmate.repository.store.StoreItemRepository;
 import com.betmate.repository.user.UserInventoryRepository;
 import com.betmate.exception.store.StoreItemNotFoundException;
 import com.betmate.exception.store.StoreOperationException;
+import com.betmate.service.bet.InsuranceService;
 import com.betmate.service.user.UserCreditService;
 import com.betmate.service.user.ActiveEffectsService;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -34,16 +36,19 @@ public class StoreService {
     private final UserInventoryRepository userInventoryRepository;
     private final UserCreditService userCreditService;
     private final ActiveEffectsService activeEffectsService;
+    private final InsuranceService insuranceService;
 
     @Autowired
     public StoreService(StoreItemRepository storeItemRepository,
                        UserInventoryRepository userInventoryRepository,
                        UserCreditService userCreditService,
-                       ActiveEffectsService activeEffectsService) {
+                       ActiveEffectsService activeEffectsService,
+                       @Lazy InsuranceService insuranceService) {
         this.storeItemRepository = storeItemRepository;
         this.userInventoryRepository = userInventoryRepository;
         this.userCreditService = userCreditService;
         this.activeEffectsService = activeEffectsService;
+        this.insuranceService = insuranceService;
     }
 
     // ==========================================
@@ -164,6 +169,15 @@ public class StoreService {
             activeEffectsService.activateDailyDoubler(user, savedInventory);
         }
 
+        // Initialize insurance items with 1 use
+        if (item.getItemType() == StoreItem.ItemType.BASIC_INSURANCE ||
+            item.getItemType() == StoreItem.ItemType.PREMIUM_INSURANCE ||
+            item.getItemType() == StoreItem.ItemType.ELITE_INSURANCE) {
+            // Set usesRemaining=1, isActive=true, activatedAt=now
+            savedInventory.activateBooster(1);
+            savedInventory = userInventoryRepository.save(savedInventory);
+        }
+
         return savedInventory;
     }
 
@@ -185,6 +199,18 @@ public class StoreService {
         if (item.getItemType() == StoreItem.ItemType.DAILY_BOOSTER) {
             if (activeEffectsService.hasActiveDailyDoubler(user)) {
                 throw new StoreOperationException("You already have an active daily bonus doubler. Wait for it to expire before purchasing another.");
+            }
+        }
+
+        // Prevent purchasing insurance if user already has one active of the same tier
+        if (item.getItemType() == StoreItem.ItemType.BASIC_INSURANCE ||
+            item.getItemType() == StoreItem.ItemType.PREMIUM_INSURANCE ||
+            item.getItemType() == StoreItem.ItemType.ELITE_INSURANCE) {
+
+            String tier = insuranceService.getInsuranceTierName(item.getItemType());
+            if (!insuranceService.getActiveInsuranceByTier(user, tier).isEmpty()) {
+                throw new StoreOperationException("You already have active " + tier.toLowerCase() +
+                    " insurance. Use it before purchasing another.");
             }
         }
 

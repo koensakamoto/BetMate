@@ -356,7 +356,10 @@ public class StoreItem {
      */
     public enum ItemType {
         // Risk Management
-        BET_INSURANCE,          // Insurance to get stake back
+        BET_INSURANCE,          // Insurance to get stake back (legacy/generic)
+        BASIC_INSURANCE,        // Basic bet insurance (25% refund)
+        PREMIUM_INSURANCE,      // Premium bet insurance (50% refund)
+        ELITE_INSURANCE,        // Elite bet insurance (75% refund)
         FREEZE_CARD,            // Pause a bet and withdraw stake
         HEDGE_HELPER,           // Counter-bet at discount
         MULLIGAN_TOKEN,         // Change bet choice after deadline

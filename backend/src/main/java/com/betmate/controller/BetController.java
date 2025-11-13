@@ -314,7 +314,8 @@ public class BetController {
                     currentUser,
                     betId,
                     request.getAmount(),
-                    request.getPredictedValue()
+                    request.getPredictedValue(),
+                    request.getInsuranceItemId()
                 );
             } else {
                 // Handle regular bets (BINARY, MULTIPLE_CHOICE)
@@ -331,7 +332,8 @@ public class BetController {
                     currentUser,
                     betId,
                     request.getChosenOption(),
-                    request.getAmount()
+                    request.getAmount(),
+                    request.getInsuranceItemId()
                 );
             }
 

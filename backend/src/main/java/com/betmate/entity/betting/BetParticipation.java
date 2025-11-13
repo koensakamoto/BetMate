@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.betmate.entity.user.User;
+import com.betmate.entity.user.UserInventory;
 
 /**
  * BetParticipation entity representing a user's participation in a specific bet.
@@ -71,6 +72,23 @@ public class BetParticipation {
 
     @Column(nullable = false)
     private Boolean isActive = true;
+
+    // ==========================================
+    // INSURANCE DETAILS
+    // ==========================================
+
+    @ManyToOne
+    @JoinColumn(name = "insurance_item_id")
+    private UserInventory insuranceItem;
+
+    @Column
+    private Integer insuranceRefundPercentage;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal insuranceRefundAmount;
+
+    @Column(nullable = false)
+    private Boolean insuranceApplied = false;
 
     // ==========================================
     // SYSTEM FIELDS
@@ -176,6 +194,39 @@ public class BetParticipation {
     
     public void setIsActive(Boolean isActive) {
         this.isActive = isActive;
+    }
+
+    // Insurance Details
+    public UserInventory getInsuranceItem() {
+        return insuranceItem;
+    }
+
+    public void setInsuranceItem(UserInventory insuranceItem) {
+        this.insuranceItem = insuranceItem;
+    }
+
+    public Integer getInsuranceRefundPercentage() {
+        return insuranceRefundPercentage;
+    }
+
+    public void setInsuranceRefundPercentage(Integer insuranceRefundPercentage) {
+        this.insuranceRefundPercentage = insuranceRefundPercentage;
+    }
+
+    public BigDecimal getInsuranceRefundAmount() {
+        return insuranceRefundAmount;
+    }
+
+    public void setInsuranceRefundAmount(BigDecimal insuranceRefundAmount) {
+        this.insuranceRefundAmount = insuranceRefundAmount;
+    }
+
+    public Boolean getInsuranceApplied() {
+        return insuranceApplied;
+    }
+
+    public void setInsuranceApplied(Boolean insuranceApplied) {
+        this.insuranceApplied = insuranceApplied;
     }
 
     // System Fields
@@ -330,6 +381,54 @@ public class BetParticipation {
      */
     public Integer getPrediction() {
         return chosenOption;
+    }
+
+    /**
+     * Checks if insurance is applied to this participation.
+     *
+     * @return true if insurance is applied
+     */
+    public boolean hasInsurance() {
+        return insuranceApplied != null && insuranceApplied && insuranceItem != null;
+    }
+
+    /**
+     * Applies insurance to this participation.
+     *
+     * @param insurance the insurance item to apply
+     * @param refundPercentage the refund percentage (25, 50, or 75)
+     */
+    public void applyInsurance(UserInventory insurance, Integer refundPercentage) {
+        this.insuranceItem = insurance;
+        this.insuranceRefundPercentage = refundPercentage;
+        this.insuranceApplied = true;
+        // Calculate refund amount
+        this.insuranceRefundAmount = betAmount.multiply(BigDecimal.valueOf(refundPercentage))
+                .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Removes insurance from this participation (used when bet is cancelled).
+     */
+    public void removeInsurance() {
+        this.insuranceItem = null;
+        this.insuranceRefundPercentage = null;
+        this.insuranceRefundAmount = null;
+        this.insuranceApplied = false;
+    }
+
+    /**
+     * Checks if this participation qualifies for insurance refund.
+     * Only lost bets with insurance applied get refunded.
+     *
+     * @return true if should receive insurance refund
+     */
+    public boolean shouldReceiveInsuranceRefund() {
+        return hasInsurance() &&
+               !isWinner() &&
+               status == ParticipationStatus.LOST &&
+               insuranceRefundAmount != null &&
+               insuranceRefundAmount.compareTo(BigDecimal.ZERO) > 0;
     }
 
     // ==========================================
