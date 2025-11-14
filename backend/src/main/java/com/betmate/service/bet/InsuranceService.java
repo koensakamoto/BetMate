@@ -385,4 +385,26 @@ public class InsuranceService {
 
         return eligibleBets;
     }
+
+    /**
+     * Returns an insurance item to the user's inventory when a bet is cancelled.
+     * Makes the item available again for future use.
+     *
+     * @param insuranceItem the insurance inventory item to return
+     */
+    @Transactional
+    public void returnInsuranceItem(UserInventory insuranceItem) {
+        if (insuranceItem == null) {
+            logger.warn("Attempted to return null insurance item");
+            return;
+        }
+
+        // Make the item active/available again
+        insuranceItem.setIsActive(true);
+
+        userInventoryRepository.save(insuranceItem);
+
+        logger.info("Returned insurance item {} to user {}'s inventory",
+            insuranceItem.getId(), insuranceItem.getUser().getId());
+    }
 }

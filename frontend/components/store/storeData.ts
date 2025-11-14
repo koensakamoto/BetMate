@@ -338,19 +338,6 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       sortOrder: 2
     },
     {
-      id: '19',
-      name: 'Refund Voucher',
-      description: 'Get your stake back on next bet (win or lose). You keep winnings if you win. One-time use.',
-      price: 200,
-      emoji: '🎁',
-      icon: 'card-giftcard',
-      itemType: ItemType.DISCOUNT_TICKET,
-      category: ItemCategory.DISCOUNTS,
-      rarity: Rarity.RARE,
-      isOwned: false,
-      sortOrder: 3
-    },
-    {
       id: '20',
       name: 'VIP Pass (7 Days)',
       description: '10% discount on all bet stakes for 7 days. Full payouts on wins. Stackable with other discounts.',
@@ -361,7 +348,7 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       category: ItemCategory.DISCOUNTS,
       rarity: Rarity.EPIC,
       isOwned: false,
-      sortOrder: 4
+      sortOrder: 3
     },
     {
       id: '4',
@@ -374,7 +361,7 @@ export const storeItems: Record<StoreCategory, StoreItemData[]> = {
       category: ItemCategory.DISCOUNTS,
       rarity: Rarity.LEGENDARY,
       isOwned: false,
-      sortOrder: 5
+      sortOrder: 4
     }
   ],
 

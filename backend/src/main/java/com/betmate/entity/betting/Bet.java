@@ -68,6 +68,9 @@ public class Bet {
     @Column(nullable = false)
     private BetStatus status = BetStatus.OPEN;
 
+    @Column(length = 500)
+    private String cancellationReason;
+
     @Enumerated(EnumType.STRING)
     private BetOutcome outcome;
 
@@ -327,6 +330,14 @@ public class Bet {
     
     public void setStatus(BetStatus status) {
         this.status = status;
+    }
+
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    public void setCancellationReason(String cancellationReason) {
+        this.cancellationReason = cancellationReason;
     }
 
     public BetOutcome getOutcome() {

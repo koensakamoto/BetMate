@@ -19,7 +19,6 @@ UPDATE store_items SET short_description = 'Add 24 hours to deadline' WHERE name
 UPDATE store_items SET short_description = 'Create custom side bets' WHERE name = 'Side Bet Creator';
 UPDATE store_items SET short_description = '50% off bet stakes' WHERE name = 'Half-Price Ticket';
 UPDATE store_items SET short_description = 'Free bet entry' WHERE name = 'Free Entry Pass';
-UPDATE store_items SET short_description = 'Full refund on loss' WHERE name = 'Refund Voucher';
 UPDATE store_items SET short_description = '7 days of VIP perks' WHERE name = 'VIP Pass (7 Days)';
 UPDATE store_items SET short_description = 'Boost challenge rewards' WHERE name = 'Challenge Booster';
 UPDATE store_items SET short_description = 'Double daily login bonus' WHERE name = 'Daily Bonus Doubler';

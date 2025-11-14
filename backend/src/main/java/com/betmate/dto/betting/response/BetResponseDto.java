@@ -18,6 +18,7 @@ public class BetResponseDto {
     private String description;
     private Bet.BetType betType;
     private Bet.BetStatus status;
+    private String cancellationReason;  // Reason for bet cancellation (if cancelled)
     private Bet.BetOutcome outcome;
     private Bet.BetResolutionMethod resolutionMethod;
     
@@ -108,6 +109,14 @@ public class BetResponseDto {
 
     public void setStatus(Bet.BetStatus status) {
         this.status = status;
+    }
+
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    public void setCancellationReason(String cancellationReason) {
+        this.cancellationReason = cancellationReason;
     }
 
     public Bet.BetOutcome getOutcome() {

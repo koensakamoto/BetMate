@@ -47,6 +47,7 @@ interface BetCardProps {
   socialStakeDescription?: string; // Description for social bets
   yourPosition?: string;
   status: 'open' | 'active' | 'resolved';
+  backendStatus?: string; // Original backend status (OPEN, CLOSED, RESOLVED, CANCELLED)
   isJoined: boolean;
   creatorName: string;
   resolution?: string;
@@ -71,6 +72,7 @@ function BetCard({
   socialStakeDescription,
   yourPosition,
   status,
+  backendStatus,
   isJoined,
   creatorName,
   resolution,
@@ -354,6 +356,26 @@ function BetCard({
 
         {/* Status Indicator */}
         <View style={{ flexDirection: 'row', gap: 8 }}>
+          {/* Cancelled Badge */}
+          {backendStatus === 'CANCELLED' && (
+            <View style={{
+              backgroundColor: 'rgba(156, 163, 175, 0.15)',
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: 'rgba(156, 163, 175, 0.3)'
+            }}>
+              <Text style={{
+                fontSize: 11,
+                fontWeight: '600',
+                color: '#9ca3af'
+              }}>
+                Cancelled
+              </Text>
+            </View>
+          )}
+
           {/* Insurance Badge */}
           {hasInsurance && isJoined && (
             <View style={{

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert, TextInput, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -57,6 +57,10 @@ export default function BetDetails() {
   const [customValue, setCustomValue] = useState('');
   const [showResolutionModal, setShowResolutionModal] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     loadBetDetails();
@@ -160,6 +164,7 @@ export default function BetDetails() {
       case 'OPEN': return '#00D4AA';
       case 'CLOSED': return '#6B7280';
       case 'RESOLVED': return '#6B7280';
+      case 'CANCELLED': return '#EF4444';
       default: return '#6B7280';
     }
   };
@@ -214,6 +219,32 @@ export default function BetDetails() {
       console.error('Error resolving bet:', error);
       haptic.error();
       throw error;
+    }
+  };
+
+  const handleCancelBet = async () => {
+    haptic.heavy();
+    setIsCancelling(true);
+    try {
+      const reason = cancelReason.trim();
+      await betService.cancelBet(parseInt(id), reason || undefined);
+      haptic.success();
+
+      // Close modal and reset state immediately
+      setShowCancelModal(false);
+      setCancelReason('');
+      setIsCancelling(false);
+
+      // Reload bet details to show CANCELLED status
+      await loadBetDetails();
+
+      // Show success message after reload
+      Alert.alert('Success', 'Bet cancelled. All participants have been refunded.');
+    } catch (error) {
+      console.error('Error cancelling bet:', error);
+      haptic.error();
+      setIsCancelling(false);
+      Alert.alert('Error', 'Failed to cancel bet. Please try again.');
     }
   };
 
@@ -482,7 +513,66 @@ export default function BetDetails() {
                 </Text>
               </View>
             </View>
+
+            {/* 3-dot menu (only for creator on non-resolved bets) */}
+            {betData.creator.id === currentUserId && betData.status !== 'RESOLVED' && (
+              <TouchableOpacity
+                onPress={() => {
+                  haptic.selection();
+                  setShowMenu(!showMenu);
+                }}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}
+              >
+                <MaterialIcons name="more-vert" size={20} color="#ffffff" />
+              </TouchableOpacity>
+            )}
           </View>
+
+          {/* Menu dropdown */}
+          {showMenu && (
+            <View style={{
+              position: 'absolute',
+              top: 60,
+              right: 20,
+              backgroundColor: '#1a1a1f',
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 5,
+              zIndex: 1000
+            }}>
+              <TouchableOpacity
+                onPress={() => {
+                  haptic.selection();
+                  setShowMenu(false);
+                  setShowCancelModal(true);
+                }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  padding: 16,
+                  minWidth: 180
+                }}
+              >
+                <MaterialIcons name="cancel" size={20} color="#EF4444" style={{ marginRight: 12 }} />
+                <Text style={{ fontSize: 15, color: '#EF4444', fontWeight: '500' }}>
+                  Cancel Bet
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
 
           <Text style={{
             fontSize: 24,
@@ -1109,6 +1199,124 @@ export default function BetDetails() {
         bet={betData}
         resolutionType={betData?.resolutionMethod === 'CONSENSUS_VOTING' ? 'vote' : 'resolve'}
       />
+
+      {/* Cancel Bet Modal */}
+      <Modal
+        visible={showCancelModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowCancelModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 20
+        }}>
+          <View style={{
+            backgroundColor: '#1a1a1f',
+            borderRadius: 16,
+            padding: 24,
+            width: '100%',
+            maxWidth: 400,
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.1)'
+          }}>
+            <Text style={{
+              fontSize: 20,
+              fontWeight: '700',
+              color: '#ffffff',
+              marginBottom: 8
+            }}>
+              Cancel Bet?
+            </Text>
+
+            <Text style={{
+              fontSize: 14,
+              color: 'rgba(255, 255, 255, 0.7)',
+              marginBottom: 20,
+              lineHeight: 20
+            }}>
+              All participants will be refunded. This action cannot be undone.
+            </Text>
+
+            {/* Optional reason input */}
+            <Text style={{
+              fontSize: 13,
+              color: 'rgba(255, 255, 255, 0.6)',
+              marginBottom: 8
+            }}>
+              Reason for cancellation (optional)
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: 8,
+                padding: 12,
+                color: '#ffffff',
+                fontSize: 14,
+                marginBottom: 24,
+                minHeight: 80,
+                textAlignVertical: 'top'
+              }}
+              placeholder="e.g., Event was cancelled, Wrong bet setup..."
+              placeholderTextColor="rgba(255, 255, 255, 0.3)"
+              value={cancelReason}
+              onChangeText={setCancelReason}
+              multiline
+              maxLength={500}
+            />
+
+            {/* Action buttons */}
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowCancelModal(false);
+                  setCancelReason('');
+                }}
+                disabled={isCancelling}
+                style={{
+                  flex: 1,
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  borderRadius: 12,
+                  padding: 16,
+                  alignItems: 'center'
+                }}
+              >
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: 'rgba(255, 255, 255, 0.7)'
+                }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleCancelBet}
+                disabled={isCancelling}
+                style={{
+                  flex: 1,
+                  backgroundColor: '#EF4444',
+                  borderRadius: 12,
+                  padding: 16,
+                  alignItems: 'center',
+                  opacity: isCancelling ? 0.6 : 1
+                }}
+              >
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: '#ffffff'
+                }}>
+                  {isCancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

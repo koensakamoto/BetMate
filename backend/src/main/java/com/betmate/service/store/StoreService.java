@@ -364,4 +364,27 @@ public class StoreService {
         Map<StoreItem.Rarity, Long> rarityDistribution
     ) {}
 
+    // ==========================================
+    // INSURANCE ITEM RETURN (FOR BET CANCELLATION)
+    // ==========================================
+
+    /**
+     * Returns an insurance item to the user's inventory when a bet is cancelled.
+     * Makes the item available again for future use.
+     *
+     * @param insuranceItem the insurance inventory item to return
+     * @throws IllegalArgumentException if insuranceItem is null
+     */
+    @Transactional
+    public void returnItemToInventory(@NotNull UserInventory insuranceItem) {
+        if (insuranceItem == null) {
+            throw new IllegalArgumentException("Insurance item cannot be null");
+        }
+
+        // Make the item active/available again
+        insuranceItem.setIsActive(true);
+
+        userInventoryRepository.save(insuranceItem);
+    }
+
 }
