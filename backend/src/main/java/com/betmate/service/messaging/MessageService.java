@@ -86,6 +86,16 @@ public class MessageService {
     }
 
     /**
+     * Retrieves messages from a group before a specific timestamp (for pagination).
+     * Returns messages in DESC order (newest first).
+     */
+    @PreAuthorize("@groupMembershipService.isMember(#group.id, authentication.name)")
+    public List<Message> getMessagesBefore(@NotNull Group group, @NotNull LocalDateTime before, int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+        return messageRepository.findMessagesBefore(group, before, pageable);
+    }
+
+    /**
      * Retrieves all replies to a specific message.
      */
     public List<Message> getMessageReplies(@NotNull Message parentMessage) {
@@ -116,8 +126,23 @@ public class MessageService {
     @Transactional
     @PreAuthorize("@groupMembershipService.isActiveMember(#request.groupId(), authentication.name)")
     public Message postMessage(@NotNull @Valid MessageCreateRequest request, @NotNull User sender) {
+        return postMessageInternal(request, sender);
+    }
+
+    /**
+     * Posts a message to a group without @PreAuthorize (for use by WebSocket controller after manual auth check).
+     */
+    @Transactional
+    public Message postMessageWithoutAuth(@NotNull @Valid MessageCreateRequest request, @NotNull User sender) {
+        return postMessageInternal(request, sender);
+    }
+
+    /**
+     * Internal method to post a message (shared by postMessage and postMessageWithoutAuth).
+     */
+    private Message postMessageInternal(@NotNull @Valid MessageCreateRequest request, @NotNull User sender) {
         Group group = groupService.getGroupById(request.groupId());
-        
+
         Message message = new Message();
         message.setGroup(group);
         message.setSender(sender);

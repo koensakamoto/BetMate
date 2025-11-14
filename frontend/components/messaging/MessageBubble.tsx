@@ -196,7 +196,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       <TouchableOpacity
         onLongPress={handleLongPress}
         style={{
-          backgroundColor: isOwnMessage ? '#3B82F6' : '#1f2937',
+          backgroundColor: isOwnMessage ? '#00D4AA' : '#1f2937',
           borderRadius: 16,
           paddingHorizontal: 12,
           paddingVertical: 8,
@@ -211,13 +211,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             alignItems: 'center',
             marginBottom: 4
           }}>
-            <MaterialIcons 
-              name={getMessageTypeIcon()} 
-              size={16} 
-              color={isOwnMessage ? '#e5e7eb' : '#9ca3af'} 
+            <MaterialIcons
+              name={getMessageTypeIcon()}
+              size={16}
+              color={isOwnMessage ? 'rgba(0, 0, 0, 0.7)' : '#9ca3af'}
             />
             <Text style={{
-              color: isOwnMessage ? '#e5e7eb' : '#9ca3af',
+              color: isOwnMessage ? 'rgba(0, 0, 0, 0.7)' : '#9ca3af',
               fontSize: 12,
               marginLeft: 4,
               fontWeight: '500'
@@ -234,12 +234,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             alignItems: 'center',
             marginBottom: 6,
             padding: 8,
-            backgroundColor: isOwnMessage ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.2)',
+            backgroundColor: isOwnMessage ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.2)',
             borderRadius: 8
           }}>
-            <MaterialIcons name="attachment" size={16} color={isOwnMessage ? '#e5e7eb' : '#9ca3af'} />
+            <MaterialIcons name="attachment" size={16} color={isOwnMessage ? 'rgba(0, 0, 0, 0.7)' : '#9ca3af'} />
             <Text style={{
-              color: isOwnMessage ? '#e5e7eb' : '#9ca3af',
+              color: isOwnMessage ? 'rgba(0, 0, 0, 0.7)' : '#9ca3af',
               fontSize: 12,
               marginLeft: 4
             }}>
@@ -250,7 +250,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         {/* Message content */}
         <Text style={{
-          color: isOwnMessage ? '#ffffff' : '#f3f4f6',
+          color: isOwnMessage ? '#000000' : '#f3f4f6',
           fontSize: 15,
           lineHeight: 20
         }}>
@@ -267,7 +267,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           }}>
             {message.isEdited && (
               <Text style={{
-                color: isOwnMessage ? 'rgba(255, 255, 255, 0.6)' : '#9ca3af',
+                color: isOwnMessage ? 'rgba(0, 0, 0, 0.6)' : '#9ca3af',
                 fontSize: 11,
                 fontStyle: 'italic'
               }}>
@@ -278,16 +278,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               <>
                 {message.isEdited && (
                   <Text style={{
-                    color: isOwnMessage ? 'rgba(255, 255, 255, 0.6)' : '#9ca3af',
+                    color: isOwnMessage ? 'rgba(0, 0, 0, 0.6)' : '#9ca3af',
                     fontSize: 11,
                     marginHorizontal: 4
                   }}>
                     •
                   </Text>
                 )}
-                <MaterialIcons name="reply" size={12} color={isOwnMessage ? 'rgba(255, 255, 255, 0.6)' : '#9ca3af'} />
+                <MaterialIcons name="reply" size={12} color={isOwnMessage ? 'rgba(0, 0, 0, 0.6)' : '#9ca3af'} />
                 <Text style={{
-                  color: isOwnMessage ? 'rgba(255, 255, 255, 0.6)' : '#9ca3af',
+                  color: isOwnMessage ? 'rgba(0, 0, 0, 0.6)' : '#9ca3af',
                   fontSize: 11,
                   marginLeft: 2
                 }}>

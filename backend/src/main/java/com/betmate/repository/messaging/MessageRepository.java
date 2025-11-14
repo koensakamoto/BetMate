@@ -20,7 +20,14 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     List<Message> findByGroup(Group group);
     List<Message> findByGroupOrderByCreatedAtDesc(Group group);
     Page<Message> findByGroupAndDeletedAtIsNull(Group group, Pageable pageable);
-    
+
+    // Pagination support - load messages before a timestamp
+    @Query("SELECT m FROM Message m WHERE m.group = :group AND m.deletedAt IS NULL " +
+           "AND m.createdAt < :before ORDER BY m.createdAt DESC")
+    List<Message> findMessagesBefore(@Param("group") Group group,
+                                     @Param("before") LocalDateTime before,
+                                     Pageable pageable);
+
     @Query("SELECT m FROM Message m WHERE m.group = :group AND m.deletedAt IS NULL ORDER BY m.createdAt DESC")
     List<Message> findActiveMessagesByGroup(@Param("group") Group group);
     

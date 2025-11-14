@@ -4,6 +4,7 @@ import com.betmate.dto.messaging.request.SendMessageRequestDto;
 import com.betmate.dto.messaging.response.MessageResponseDto;
 import com.betmate.entity.messaging.Message;
 import com.betmate.entity.user.User;
+import com.betmate.service.group.GroupMembershipService;
 import com.betmate.service.messaging.MessageService;
 import com.betmate.service.user.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,14 +26,17 @@ public class MessageWebSocketController {
 
     private final MessageService messageService;
     private final UserService userService;
+    private final GroupMembershipService groupMembershipService;
     private final SimpMessageSendingOperations messagingTemplate;
 
     @Autowired
     public MessageWebSocketController(MessageService messageService,
                                     UserService userService,
+                                    GroupMembershipService groupMembershipService,
                                     SimpMessageSendingOperations messagingTemplate) {
         this.messageService = messageService;
         this.userService = userService;
+        this.groupMembershipService = groupMembershipService;
         this.messagingTemplate = messagingTemplate;
     }
 
@@ -44,10 +48,25 @@ public class MessageWebSocketController {
     public void sendMessage(@DestinationVariable Long groupId,
                            @Payload SendMessageRequestDto request,
                            Principal principal) {
+        System.out.println("\n========================================");
+        System.out.println("[WS-MESSAGE] 📨 Received message send request");
+        System.out.println("[WS-MESSAGE] User: " + principal.getName());
+        System.out.println("[WS-MESSAGE] Group: " + groupId);
+        System.out.println("[WS-MESSAGE] Content: " + request.getContent());
+        System.out.println("========================================");
+
         try {
             // Get the authenticated user
             User currentUser = userService.getUserByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
+            System.out.println("[WS-MESSAGE] ✅ User found: " + currentUser.getUsername());
+
+            // Manually check group membership (bypass @PreAuthorize for WebSocket context)
+            if (!groupMembershipService.isActiveMember(groupId, principal.getName())) {
+                System.out.println("[WS-MESSAGE] ❌ User is not an active member of group " + groupId);
+                throw new SecurityException("User is not an active member of this group");
+            }
+            System.out.println("[WS-MESSAGE] ✅ User is active member of group " + groupId);
 
             // Ensure the request has the correct group ID
             request.setGroupId(groupId);
@@ -62,15 +81,26 @@ public class MessageWebSocketController {
                 request.getParentMessageId()
             );
 
-            Message savedMessage = messageService.postMessage(createRequest, currentUser);
-            
+            System.out.println("[WS-MESSAGE] 💾 Saving message to database...");
+            Message savedMessage = messageService.postMessageWithoutAuth(createRequest, currentUser);
+            System.out.println("[WS-MESSAGE] ✅ Message saved with ID: " + savedMessage.getId());
+
             // Convert to response DTO
             MessageResponseDto response = convertToMessageResponse(savedMessage, currentUser);
+            System.out.println("[WS-MESSAGE] ✅ Message converted to DTO");
 
             // Broadcast the message to all users subscribed to the group topic
-            messagingTemplate.convertAndSend("/topic/group/" + groupId + "/messages", response);
+            String destination = "/topic/group/" + groupId + "/messages";
+            System.out.println("[WS-MESSAGE] 📡 Broadcasting to: " + destination);
+            messagingTemplate.convertAndSend(destination, response);
+            System.out.println("[WS-MESSAGE] ✅ Message broadcast complete");
+            System.out.println("========================================\n");
 
         } catch (Exception e) {
+            System.out.println("[WS-MESSAGE] ❌ ERROR: " + e.getMessage());
+            e.printStackTrace();
+            System.out.println("========================================\n");
+
             // Send error back to the user who tried to send the message
             messagingTemplate.convertAndSendToUser(
                 principal.getName(),

@@ -105,17 +105,47 @@ public class MessageController {
             @PathVariable Long groupId,
             @RequestParam(defaultValue = "50") int limit,
             Authentication authentication) {
-        
+
         User currentUser = userService.getUserByUsername(authentication.getName())
             .orElseThrow(() -> new RuntimeException("User not found"));
-        
+
         Group group = groupService.getGroupById(groupId);
         List<Message> messages = messageService.getRecentGroupMessages(group, limit);
-        
+
         List<MessageResponseDto> response = messages.stream()
             .map(message -> convertToMessageResponse(message, currentUser))
             .toList();
-        
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get messages from a group before a specific message ID (for pagination).
+     * Returns messages in DESC order (newest first).
+     */
+    @GetMapping("/group/{groupId}/before/{messageId}")
+    public ResponseEntity<List<MessageResponseDto>> getMessagesBeforeMessage(
+            @PathVariable Long groupId,
+            @PathVariable Long messageId,
+            @RequestParam(defaultValue = "50") int limit,
+            Authentication authentication) {
+
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Group group = groupService.getGroupById(groupId);
+        Message beforeMessage = messageService.getMessageById(messageId);
+
+        List<Message> messages = messageService.getMessagesBefore(
+            group,
+            beforeMessage.getCreatedAt(),
+            limit
+        );
+
+        List<MessageResponseDto> response = messages.stream()
+            .map(message -> convertToMessageResponse(message, currentUser))
+            .toList();
+
         return ResponseEntity.ok(response);
     }
 
