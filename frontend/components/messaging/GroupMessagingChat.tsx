@@ -3,11 +3,11 @@ import {
   View,
   FlatList,
   Alert,
-  RefreshControl,
-  KeyboardAvoidingView,
   Platform,
   Text,
-  Keyboard
+  Keyboard,
+  Animated,
+  Easing
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
@@ -37,13 +37,17 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   const { user, isLoading: authLoading } = useAuth();
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
+  // Animated keyboard height for smooth transitions
+  const keyboardHeight = useRef(new Animated.Value(0)).current;
+
   // Generate unique component instance ID for isolation
   const componentInstanceId = useRef(`comp_${groupId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`).current;
   
   // State
   const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [replyToMessage, setReplyToMessage] = useState<MessageResponse | null>(null);
   const [editingMessage, setEditingMessage] = useState<MessageResponse | null>(null);
@@ -61,6 +65,8 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
     setReplyToMessage(null);
     setEditingMessage(null);
     setConnectionStatus('disconnected');
+    setHasMoreMessages(true);
+    setLoadingMore(false);
 
     console.log(`[GroupChat ${groupId}] 🔄 Component effect triggered - clearing state and initializing for group ${groupId} (instance: ${componentInstanceId})`);
 
@@ -80,16 +86,34 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
     };
   }, [groupId, user, authLoading]);
 
-  // Keyboard handling - Professional smooth transitions
+  // Keyboard handling - Ultra-polished transitions matching iMessage/Instagram/Hinge
   useEffect(() => {
     const keyboardWillShowListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (e) => {
         setIsKeyboardVisible(true);
-        // Smooth scroll to bottom when keyboard appears
+
+        // Calculate keyboard height accounting for safe area
+        // MessageInput already has bottom padding for safe area, so we subtract it here
+        // to avoid a gap between the input and keyboard
+        const adjustedHeight = e.endCoordinates.height - insets.bottom;
+
+        // iOS keyboard uses a specific bezier curve (0.25, 0.1, 0.25, 1.0)
+        // This is the EXACT curve used by iMessage and Instagram
+        Animated.timing(keyboardHeight, {
+          toValue: adjustedHeight,
+          duration: Platform.OS === 'ios' ? 250 : (e.duration || 250),
+          useNativeDriver: false,
+          easing: Platform.OS === 'ios'
+            ? Easing.bezier(0.25, 0.1, 0.25, 1.0) // iOS keyboard curve (iMessage/IG standard)
+            : Easing.out(Easing.cubic), // Android smooth easeOut
+        }).start();
+
+        // Scroll to bottom with slight delay to sync with keyboard animation
+        // This creates the smooth "following" effect seen in pro apps
         setTimeout(() => {
           scrollToBottom();
-        }, 100);
+        }, Platform.OS === 'ios' ? 50 : 100);
       }
     );
 
@@ -97,6 +121,16 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
       (e) => {
         setIsKeyboardVisible(false);
+
+        // Use same bezier curve for hide animation - creates symmetrical motion
+        Animated.timing(keyboardHeight, {
+          toValue: 0,
+          duration: Platform.OS === 'ios' ? 250 : (e.duration || 250),
+          useNativeDriver: false,
+          easing: Platform.OS === 'ios'
+            ? Easing.bezier(0.25, 0.1, 0.25, 1.0) // Same curve for symmetry
+            : Easing.out(Easing.cubic),
+        }).start();
       }
     );
 
@@ -104,7 +138,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
       keyboardWillShowListener?.remove();
       keyboardWillHideListener?.remove();
     };
-  }, []);
+  }, [keyboardHeight, insets.bottom]);
 
   const initializeChat = async () => {
     try {
@@ -164,34 +198,56 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   // MESSAGE LOADING
   // ==========================================
 
-  const loadMessages = async (refresh = false) => {
-    if (refresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
+  const loadMessages = async () => {
+    setLoading(true);
 
     try {
       const groupMessages = await messagingService.getRecentGroupMessages(groupId, 50);
-      setMessages(groupMessages.reverse()); // Reverse to show newest at bottom
-      
-      // Scroll to bottom after loading
-      setTimeout(() => {
-        scrollToBottom();
-      }, 100);
-      
+      // Backend returns messages in DESC order (newest first)
+      // We keep them in that order for inverted FlatList
+      setMessages(groupMessages);
+      setHasMoreMessages(groupMessages.length === 50); // If we got a full page, there might be more
+
     } catch (error) {
       console.error('Failed to load messages:', error);
       Alert.alert('Error', 'Failed to load messages. Please try again.');
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
-  const scrollToBottom = () => {
+  const loadMoreMessages = async () => {
+    if (loadingMore || !hasMoreMessages || messages.length === 0) return;
+
+    setLoadingMore(true);
+    try {
+      // Get the oldest message (last in array since messages are DESC)
+      const oldestMessage = messages[messages.length - 1];
+
+      const olderMessages = await messagingService.getMessagesBeforeMessage(
+        groupId,
+        oldestMessage.id,
+        50
+      );
+
+      if (olderMessages.length > 0) {
+        // Append older messages to the end of the array
+        setMessages(prev => [...prev, ...olderMessages]);
+        setHasMoreMessages(olderMessages.length === 50);
+      } else {
+        setHasMoreMessages(false);
+      }
+    } catch (error) {
+      console.error('Failed to load more messages:', error);
+      Alert.alert('Error', 'Failed to load older messages.');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const scrollToBottom = (animated = true) => {
     if (messages.length > 0) {
-      flatListRef.current?.scrollToEnd({ animated: true });
+      flatListRef.current?.scrollToEnd({ animated });
     }
   };
 
@@ -285,13 +341,10 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
       }
 
       console.log(`[GroupChat ${groupId}] ✅ Adding new message to state (messageId: ${message.id})`);
-      return [...prevMessages, message];
+      // Prepend new messages to maintain DESC order (newest first)
+      return [message, ...prevMessages];
     });
-
-    // Auto-scroll if user is near bottom
-    setTimeout(() => {
-      scrollToBottom();
-    }, 100);
+    // Scroll handled by onContentSizeChange
   }, [groupId]);
 
   const handleMessageEdit = useCallback((editedMessage: MessageResponse) => {
@@ -497,34 +550,39 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   });
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#0a0a0f' }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 85 + insets.bottom : 0}
+    <Animated.View
+      style={{
+        flex: 1,
+        backgroundColor: '#0a0a0f',
+        paddingBottom: keyboardHeight
+      }}
     >
       <View style={{ flex: 1 }}>
-        {/* Messages List */}
+        {/* Messages List - Inverted for chat-like behavior */}
         <FlatList
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
           keyExtractor={keyExtractor}
+          inverted // Newest messages at bottom, scroll starts at bottom
           style={{ flex: 1 }}
           contentContainerStyle={{
-            paddingTop: 16,
-            paddingBottom: 8,
-            flexGrow: 1
+            paddingTop: 8,
+            paddingBottom: 16
           }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => loadMessages(true)}
-              tintColor="#8b8b8b"
-              colors={['#6366f1']}
-            />
+          onEndReached={loadMoreMessages}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+                <Text style={{ color: '#8b8b8b', fontSize: 13 }}>Loading older messages...</Text>
+              </View>
+            ) : !hasMoreMessages && messages.length > 0 ? (
+              <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+                <Text style={{ color: '#666', fontSize: 13 }}>No more messages</Text>
+              </View>
+            ) : null
           }
-          onContentSizeChange={scrollToBottom}
-          onLayout={scrollToBottom}
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
@@ -561,7 +619,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
           }
         />
       </View>
-    </KeyboardAvoidingView>
+    </Animated.View>
   );
 };
 

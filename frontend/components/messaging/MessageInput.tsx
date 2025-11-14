@@ -167,8 +167,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
       if (replyToMessage && onCancelReply) onCancelReply();
       if (editingMessage && onCancelEdit) onCancelEdit();
 
-      // Dismiss keyboard smoothly
-      Keyboard.dismiss();
+      // Keep keyboard open for rapid messaging (modern chat app UX)
+      // Users can still dismiss manually via swipe or tapping message list
 
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -227,7 +227,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       borderTopColor: 'rgba(255, 255, 255, 0.1)',
       paddingHorizontal: 12,
       paddingTop: 8,
-      paddingBottom: Math.max(8, insets.bottom)
+      paddingBottom: Math.max(16, insets.bottom + 8)
     }}>
       {/* Reply/Edit indicator */}
       {(isReplying || isEditing) && (
@@ -316,7 +316,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
           }}
           multiline
           editable={!disabled}
-          returnKeyType="send"
+          returnKeyType="default"
+          keyboardAppearance="dark"
           blurOnSubmit={false}
           onSubmitEditing={handleSend}
         />
@@ -338,7 +339,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
               height: 32,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: canSend ? '#3B82F6' : 'rgba(255, 255, 255, 0.2)',
+              backgroundColor: canSend ? '#00D4AA' : 'rgba(255, 255, 255, 0.2)',
               transform: [{ scale: sendButtonScale }],
             }}
           >

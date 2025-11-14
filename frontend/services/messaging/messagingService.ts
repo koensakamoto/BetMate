@@ -78,6 +78,20 @@ export class MessagingService extends BaseApiService {
   }
 
   /**
+   * Get messages before a specific message ID (for pagination)
+   * Returns messages in DESC order (newest first)
+   */
+  async getMessagesBeforeMessage(
+    groupId: number,
+    beforeMessageId: number,
+    limit: number = 50
+  ): Promise<MessageResponse[]> {
+    return this.get<MessageResponse[]>(`/group/${groupId}/before/${beforeMessageId}`, {
+      params: { limit }
+    });
+  }
+
+  /**
    * Get message statistics for a group
    */
   async getGroupMessageStats(groupId: number): Promise<MessageStatsResponse> {

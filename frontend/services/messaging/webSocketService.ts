@@ -40,20 +40,79 @@ export class WebSocketMessagingService {
   private connectionPromise: Promise<void> | null = null;
 
   constructor() {
+    debugLog('[WS-INIT] 🚀 Initializing WebSocket service');
+    debugLog('[WS-INIT] WebSocket URL:', ENV.WS_BASE_URL);
+
     this.client = new Client({
       brokerURL: ENV.WS_BASE_URL, // Use pure WebSocket URL
-      // CRITICAL for React Native: Provide WebSocket factory
-      webSocketFactory: () => new WebSocket(ENV.WS_BASE_URL),
+
+      // CRITICAL for React Native: Provide WebSocket factory with detailed logging
+      webSocketFactory: () => {
+        debugLog('[WS-FACTORY] 🏭 Creating new WebSocket instance');
+        const ws = new WebSocket(ENV.WS_BASE_URL);
+
+        // Log raw WebSocket lifecycle
+        ws.onopen = (event) => {
+          debugLog('[WS-RAW] ✅ WebSocket opened', event);
+        };
+
+        ws.onerror = (event) => {
+          errorLog('[WS-RAW] ❌ WebSocket error', event);
+        };
+
+        ws.onclose = (event) => {
+          debugLog('[WS-RAW] 🔌 WebSocket closed', {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean
+          });
+        };
+
+        ws.onmessage = (event) => {
+          debugLog('[WS-RAW] 📨 Raw message received, length:', event.data?.length || 0);
+        };
+
+        return ws;
+      },
+
+      // React Native compatibility flags
+      forceBinaryWSFrames: true, // Force binary frames to avoid NULL byte chopping
+      appendMissingNULLonIncoming: true, // Handle missing NULL terminators
+      splitLargeFrames: true, // Break large frames into chunks
+
       reconnectDelay: this.reconnectDelay,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
       maxWebSocketChunkSize: 8 * 1024, // 8KB chunks for mobile
+
+      // Comprehensive STOMP debug logging
       debug: (str) => {
-        debugLog('STOMP Debug:', str);
+        const timestamp = new Date().toISOString();
+        debugLog(`[STOMP-DEBUG ${timestamp}]:`, str);
+
+        // Highlight critical STOMP frames
+        if (str.includes('CONNECT')) {
+          debugLog('[STOMP-LIFECYCLE] 🔗 SENDING CONNECT FRAME');
+        } else if (str.includes('CONNECTED')) {
+          debugLog('[STOMP-LIFECYCLE] ✅ RECEIVED CONNECTED FRAME');
+        } else if (str.includes('ERROR')) {
+          errorLog('[STOMP-LIFECYCLE] ❌ STOMP ERROR FRAME:', str);
+        } else if (str.includes('SUBSCRIBE')) {
+          debugLog('[STOMP-LIFECYCLE] 📬 SUBSCRIBE FRAME');
+        } else if (str.includes('MESSAGE')) {
+          debugLog('[STOMP-LIFECYCLE] 📨 MESSAGE FRAME');
+        }
+      },
+
+      // Log connection attempts
+      beforeConnect: () => {
+        const timestamp = new Date().toISOString();
+        debugLog(`[STOMP-LIFECYCLE ${timestamp}] 🚀 BEFORE CONNECT - Starting connection attempt`);
       },
     });
 
     this.setupEventHandlers();
+    debugLog('[WS-INIT] ✅ WebSocket service initialized');
   }
 
   // ==========================================
@@ -64,53 +123,83 @@ export class WebSocketMessagingService {
    * Connect to the WebSocket server
    */
   async connect(): Promise<void> {
+    const startTime = Date.now();
+    debugLog('[WS-CONNECT] 🎯 Connect method called');
+
     if (this.client.connected) {
-      debugLog('WebSocket already connected');
+      debugLog('[WS-CONNECT] ✅ WebSocket already connected');
       return;
     }
 
     if (this.isConnecting && this.connectionPromise) {
-      debugLog('WebSocket connection in progress, waiting...');
+      debugLog('[WS-CONNECT] ⏳ WebSocket connection in progress, waiting...');
       return this.connectionPromise;
     }
 
     this.isConnecting = true;
+    debugLog('[WS-CONNECT] 🚀 Starting new connection attempt');
+
     this.connectionPromise = new Promise((resolve, reject) => {
       const connectTimeout = setTimeout(() => {
+        const elapsed = Date.now() - startTime;
+        errorLog(`[WS-CONNECT] ⏰ CONNECTION TIMEOUT after ${elapsed}ms`);
+        errorLog('[WS-CONNECT] WebSocket state:', {
+          connected: this.client.connected,
+          active: this.client.active,
+          webSocket: this.client.webSocket ? 'exists' : 'null'
+        });
         reject(new Error('WebSocket connection timeout'));
       }, 30000); // 30 second timeout for mobile
 
-      this.client.onConnect = () => {
+      this.client.onConnect = (frame) => {
         clearTimeout(connectTimeout);
         this.isConnecting = false;
         this.reconnectAttempts = 0;
-        debugLog('WebSocket connected successfully');
+        const elapsed = Date.now() - startTime;
+        debugLog(`[WS-CONNECT] ✅ WebSocket CONNECTED successfully in ${elapsed}ms`);
+        debugLog('[WS-CONNECT] CONNECTED frame:', frame);
         this.globalEventHandlers.onConnect?.();
         resolve();
       };
 
-      this.client.onDisconnect = () => {
+      this.client.onDisconnect = (frame) => {
         clearTimeout(connectTimeout);
         this.isConnecting = false;
-        debugLog('WebSocket disconnected');
+        const elapsed = Date.now() - startTime;
+        debugLog(`[WS-CONNECT] 🔌 WebSocket DISCONNECTED after ${elapsed}ms`);
+        debugLog('[WS-CONNECT] DISCONNECT frame:', frame);
         this.globalEventHandlers.onDisconnect?.();
       };
 
       this.client.onWebSocketError = (error) => {
         clearTimeout(connectTimeout);
         this.isConnecting = false;
-        errorLog('WebSocket connection error:', error);
+        const elapsed = Date.now() - startTime;
+        errorLog(`[WS-CONNECT] ❌ WebSocket ERROR after ${elapsed}ms:`, error);
+        errorLog('[WS-CONNECT] Error details:', {
+          message: error.message,
+          type: error.type,
+          target: error.target ? 'WebSocket' : 'unknown'
+        });
         reject(error);
       };
 
       // Set authentication headers
+      debugLog('[WS-CONNECT] 🔑 Setting authentication headers...');
       this.setAuthHeaders()
         .then(() => {
+          debugLog('[WS-CONNECT] 🔑 Auth headers set, activating client...');
+          debugLog('[WS-CONNECT] Connect headers:', {
+            hasAuth: !!this.client.connectHeaders?.['Authorization'],
+            headerCount: Object.keys(this.client.connectHeaders || {}).length
+          });
           this.client.activate();
+          debugLog('[WS-CONNECT] 📡 Client activation initiated');
         })
         .catch((error) => {
           clearTimeout(connectTimeout);
           this.isConnecting = false;
+          errorLog('[WS-CONNECT] ❌ Failed to set auth headers:', error);
           reject(error);
         });
     });
@@ -230,8 +319,17 @@ export class WebSocketMessagingService {
   }
 
   private setupEventHandlers(): void {
+    debugLog('[WS-SETUP] 🔧 Setting up event handlers');
+
     this.client.onStompError = (frame) => {
-      errorLog('STOMP error:', frame);
+      errorLog('[STOMP-ERROR] ❌ STOMP error frame received:', frame);
+      errorLog('[STOMP-ERROR] Error details:', {
+        command: frame.command,
+        headers: frame.headers,
+        body: frame.body,
+        message: frame.headers?.['message'],
+        receiptId: frame.headers?.['receipt-id']
+      });
       this.globalEventHandlers.onError?.({
         error: `STOMP Error: ${frame.headers['message']}`,
         timestamp: Date.now()
@@ -239,9 +337,28 @@ export class WebSocketMessagingService {
     };
 
     this.client.onWebSocketClose = (event) => {
-      debugLog('WebSocket closed:', event);
+      debugLog('[WS-CLOSE] 🔌 WebSocket closed event:', {
+        code: event.code,
+        reason: event.reason,
+        wasClean: event.wasClean,
+        timestamp: new Date().toISOString()
+      });
+
+      // Interpret close codes
+      if (event.code === 1000) {
+        debugLog('[WS-CLOSE] Normal closure');
+      } else if (event.code === 1006) {
+        errorLog('[WS-CLOSE] Abnormal closure - connection lost without close frame');
+      } else if (event.code >= 3000 && event.code <= 3999) {
+        errorLog('[WS-CLOSE] Application-specific close code:', event.code);
+      } else {
+        errorLog('[WS-CLOSE] Unexpected close code:', event.code);
+      }
+
       this.handleReconnect();
     };
+
+    debugLog('[WS-SETUP] ✅ Event handlers configured');
   }
 
   private async handleReconnect(): Promise<void> {
@@ -265,20 +382,31 @@ export class WebSocketMessagingService {
   }
 
   private async setAuthHeaders(): Promise<void> {
+    debugLog('[WS-AUTH] 🔑 Retrieving access token...');
     try {
       const token = await tokenStorage.getAccessToken();
       if (token) {
+        // Log token info (safely - only length and first/last few chars)
+        const tokenPreview = `${token.substring(0, 10)}...${token.substring(token.length - 10)}`;
+        debugLog('[WS-AUTH] ✅ Access token retrieved:', {
+          length: token.length,
+          preview: tokenPreview
+        });
+
         this.client.connectHeaders = {
           'Authorization': `Bearer ${token}`
         };
-        debugLog('WebSocket auth headers set successfully');
+        debugLog('[WS-AUTH] ✅ WebSocket auth headers set successfully');
+        debugLog('[WS-AUTH] Connect headers keys:', Object.keys(this.client.connectHeaders));
       } else {
-        debugLog('No access token available for WebSocket connection');
+        debugLog('[WS-AUTH] ⚠️  No access token available for WebSocket connection');
+        this.client.connectHeaders = {};
       }
     } catch (error) {
-      errorLog('Failed to set auth headers:', error);
+      errorLog('[WS-AUTH] ❌ Failed to set auth headers:', error);
       // Don't throw error - WebSocket should work without auth for testing
       this.client.connectHeaders = {};
+      debugLog('[WS-AUTH] Using empty connect headers due to error');
     }
   }
 
