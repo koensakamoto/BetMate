@@ -113,7 +113,7 @@ public interface BetRepository extends JpaRepository<Bet, Long> {
     @Query("UPDATE Bet b SET b.status = 'CLOSED' WHERE b.id = :betId AND b.status = 'OPEN'")
     int closeBetAtomically(@Param("betId") Long betId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Bet b SET b.status = 'CANCELLED' WHERE b.id = :betId AND b.status != 'RESOLVED'")
     int cancelBetAtomically(@Param("betId") Long betId);
 

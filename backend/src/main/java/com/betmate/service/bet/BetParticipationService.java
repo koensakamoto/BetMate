@@ -452,4 +452,50 @@ public class BetParticipationService {
         };
     }
 
+    /**
+     * Refunds all active participations for a cancelled bet.
+     * Returns a map of user IDs to refund amounts for event publishing.
+     *
+     * @param bet the cancelled bet
+     * @return map of user ID to refund amount
+     */
+    @Transactional
+    public java.util.Map<Long, BigDecimal> refundAllParticipations(@NotNull Bet bet) {
+        // Get all ACTIVE participations for this bet
+        List<BetParticipation> activeParticipations = participationRepository
+            .findByBetAndStatus(bet, ParticipationStatus.ACTIVE);
+
+        java.util.Map<Long, BigDecimal> refunds = new java.util.HashMap<>();
+
+        for (BetParticipation participation : activeParticipations) {
+            // Call the refund() method which sets status to REFUNDED and actualWinnings = betAmount
+            participation.refund();
+
+            // For CREDIT bets, credit the user back their bet amount
+            if (bet.getStakeType() == BetStakeType.CREDIT) {
+                creditService.addCredits(
+                    participation.getUser().getId(),
+                    participation.getBetAmount(),
+                    "Refund from cancelled bet: " + bet.getTitle()
+                );
+                refunds.put(participation.getUser().getId(), participation.getBetAmount());
+            }
+
+            // If insurance was applied, return the insurance item to inventory
+            if (participation.hasInsurance() && participation.getInsuranceItem() != null) {
+                insuranceService.returnInsuranceItem(participation.getInsuranceItem());
+
+                // Clear insurance fields
+                participation.setInsuranceItem(null);
+                participation.setInsuranceApplied(false);
+                participation.setInsuranceRefundPercentage(null);
+                participation.setInsuranceRefundAmount(null);
+            }
+
+            participationRepository.save(participation);
+        }
+
+        return refunds;
+    }
+
 }

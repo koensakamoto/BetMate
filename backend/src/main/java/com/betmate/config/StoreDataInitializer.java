@@ -109,13 +109,9 @@ public class StoreDataInitializer {
                     new BigDecimal("150"), "confirmation-number", StoreItem.ItemType.DISCOUNT_TICKET,
                     StoreItem.ItemCategory.DISCOUNTS, StoreItem.Rarity.RARE, true, false, 2);
 
-            createItem("Refund Voucher", "Get your stake back on next bet (win or lose). You keep winnings if you win. One-time use.",
-                    new BigDecimal("200"), "card-giftcard", StoreItem.ItemType.DISCOUNT_TICKET,
-                    StoreItem.ItemCategory.DISCOUNTS, StoreItem.Rarity.RARE, true, false, 3);
-
             createItem("VIP Pass (7 Days)", "10% discount on all bet stakes for 7 days. Full payouts on wins. Stackable with other discounts.",
                     new BigDecimal("300"), "card-membership", StoreItem.ItemType.VIP_PASS,
-                    StoreItem.ItemCategory.DISCOUNTS, StoreItem.Rarity.EPIC, true, false, 4);
+                    StoreItem.ItemCategory.DISCOUNTS, StoreItem.Rarity.EPIC, true, false, 3);
 
             // Boosters
             createItem("Challenge Booster", "Earn 50% more from completed challenges. Active for 7 days.",

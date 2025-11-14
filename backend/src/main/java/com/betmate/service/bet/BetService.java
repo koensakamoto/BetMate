@@ -3,18 +3,23 @@
 import com.betmate.entity.betting.Bet;
 import com.betmate.entity.group.Group;
 import com.betmate.entity.user.User;
+import com.betmate.event.betting.BetCancelledEvent;
 import com.betmate.exception.betting.BetNotFoundException;
 import com.betmate.exception.betting.BetOperationException;
 import com.betmate.repository.betting.BetRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Core bet management service handling CRUD operations and basic bet data.
@@ -26,10 +31,16 @@ import java.util.List;
 public class BetService {
 
     private final BetRepository betRepository;
+    private final BetParticipationService participationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
-    public BetService(BetRepository betRepository) {
+    public BetService(BetRepository betRepository,
+                     @Lazy BetParticipationService participationService,
+                     ApplicationEventPublisher eventPublisher) {
         this.betRepository = betRepository;
+        this.participationService = participationService;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -133,21 +144,56 @@ public class BetService {
     }
 
     /**
-     * Cancels a bet and marks it for refunds.
+     * Cancels a bet, refunds all participants, and publishes cancellation event.
+     *
+     * @param betId the ID of the bet to cancel
+     * @param reason optional reason for cancellation
+     * @param cancelledBy the user who cancelled the bet (typically the creator)
+     * @return the cancelled bet
+     * @throws BetOperationException if bet cannot be cancelled
      */
     @Transactional
-    public Bet cancelBet(@NotNull Long betId) {
+    public Bet cancelBet(@NotNull Long betId, String reason, @NotNull User cancelledBy) {
+        // Load bet before cancellation to validate
+        Bet bet = getBetById(betId);
+
+        // Validate bet can be cancelled
+        if (bet.getStatus() == Bet.BetStatus.RESOLVED) {
+            throw new BetOperationException("Cannot cancel resolved bet");
+        }
+
+        // Atomically update bet status to CANCELLED
         int updatedRows = betRepository.cancelBetAtomically(betId);
         if (updatedRows == 0) {
-            // Either bet doesn't exist or was already resolved
-            Bet bet = getBetById(betId); // This will throw if bet doesn't exist
-            if (bet.getStatus() == Bet.BetStatus.RESOLVED) {
-                throw new BetOperationException("Cannot cancel resolved bet");
-            }
             throw new BetOperationException("Bet cannot be cancelled");
         }
-        
-        return getBetById(betId); // Return updated bet
+
+        // Reload bet to get updated status
+        Bet cancelledBet = getBetById(betId);
+
+        // Refund all active participations and collect refund amounts
+        Map<Long, BigDecimal> refunds = participationService.refundAllParticipations(cancelledBet);
+
+        // Store cancellation reason if provided
+        if (reason != null && !reason.trim().isEmpty()) {
+            cancelledBet.setCancellationReason(reason);
+            betRepository.save(cancelledBet);
+        }
+
+        // Publish BetCancelledEvent for notifications
+        BetCancelledEvent event = new BetCancelledEvent(
+            cancelledBet.getId(),
+            cancelledBet.getTitle(),
+            cancelledBet.getGroup().getId(),
+            cancelledBet.getGroup().getName(),
+            cancelledBy.getId(),
+            cancelledBy.getUsername(),
+            reason,
+            refunds
+        );
+        eventPublisher.publishEvent(event);
+
+        return cancelledBet;
     }
 
     /**

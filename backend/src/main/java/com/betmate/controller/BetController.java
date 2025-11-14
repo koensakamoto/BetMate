@@ -1,6 +1,7 @@
 package com.betmate.controller;
 
 import com.betmate.dto.betting.request.BetCreationRequestDto;
+import com.betmate.dto.betting.request.CancelBetRequestDto;
 import java.math.BigDecimal;
 import com.betmate.dto.betting.request.PlaceBetRequestDto;
 import com.betmate.dto.betting.request.ResolveBetRequestDto;
@@ -453,6 +454,54 @@ public class BetController {
     }
 
     /**
+     * Cancel a bet and refund all participants.
+     * Only the bet creator can cancel a bet, and only if it's not resolved.
+     */
+    @PostMapping("/{betId}/cancel")
+    public ResponseEntity<BetResponseDto> cancelBet(
+            @PathVariable Long betId,
+            @RequestBody(required = false) CancelBetRequestDto request,
+            Authentication authentication) {
+
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+            Bet bet = betService.getBetById(betId);
+
+            // Verify current user is the bet creator
+            if (!bet.isCreator(currentUser)) {
+                logger.warn("User {} attempted to cancel bet {} but is not the creator",
+                    currentUser.getUsername(), betId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .build();
+            }
+
+            // Verify bet is not already resolved
+            if (bet.getStatus() == Bet.BetStatus.RESOLVED) {
+                logger.warn("User {} attempted to cancel already resolved bet {}",
+                    currentUser.getUsername(), betId);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .build();
+            }
+
+            logger.info("User {} is cancelling bet {}", currentUser.getUsername(), betId);
+
+            // Cancel the bet with optional reason
+            String reason = request != null ? request.getReason() : null;
+            Bet cancelledBet = betService.cancelBet(betId, reason, currentUser);
+
+            // Return updated bet details
+            BetResponseDto response = convertToDetailedResponse(cancelledBet, currentUser);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("ERROR cancelling bet: " + e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    /**
      * Get all participations for a bet (for resolvers to see who participated).
      */
     @GetMapping("/{betId}/participations")
@@ -500,6 +549,7 @@ public class BetController {
         response.setDescription(bet.getDescription());
         response.setBetType(bet.getBetType());
         response.setStatus(bet.getStatus());
+        response.setCancellationReason(bet.getCancellationReason());
         response.setOutcome(bet.getOutcome());
         response.setResolutionMethod(bet.getResolutionMethod());
         response.setCreator(UserProfileResponseDto.fromUser(bet.getCreator()));

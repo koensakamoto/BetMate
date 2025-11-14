@@ -15,7 +15,7 @@ interface GroupBetsTabProps {
 
 const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) => {
   const [activeBetFilter, setActiveBetFilter] = useState('All');
-  const betFilters = ['All', 'OPEN', 'CLOSED', 'RESOLVED'];
+  const betFilters = ['All', 'Open', 'Pending', 'Resolved'];
   const [bets, setBets] = useState<BetSummaryResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const searchParams = useLocalSearchParams();
@@ -90,6 +90,16 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
     const bettingTimeRemaining = calculateTimeRemaining(bet.bettingDeadline);
     const resolveTimeRemaining = calculateTimeRemaining(bet.resolveDate);
 
+    // Map backend status to frontend display status
+    let displayStatus: 'open' | 'active' | 'resolved';
+    if (bet.status === 'OPEN') {
+      displayStatus = 'open';
+    } else if (bet.status === 'CLOSED') {
+      displayStatus = 'active';
+    } else {
+      displayStatus = 'resolved'; // Both RESOLVED and CANCELLED
+    }
+
     return {
       id: bet.id.toString(),
       title: bet.title,
@@ -103,7 +113,8 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
       stakeAmount: bet.stakeType === 'SOCIAL' ? 0 : (bet.fixedStakeAmount || Math.round(bet.totalPool / Math.max(bet.totalParticipants, 1))),
       stakeType: bet.stakeType,
       socialStakeDescription: bet.socialStakeDescription,
-      status: bet.status.toLowerCase() as 'open' | 'active' | 'resolved',
+      status: displayStatus,
+      backendStatus: bet.status, // Pass original backend status for badge display
       isJoined: bet.hasUserParticipated,
       creatorName: bet.creatorUsername,
       userStake: bet.userAmount,
@@ -115,7 +126,18 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
   // Filter bets based on selected filter - memoized to avoid recalculating on every render
   const filteredBets = useMemo(() => {
     if (activeBetFilter === 'All') return bets;
-    return bets.filter(bet => bet.status === activeBetFilter);
+
+    // Map user-friendly filter labels to backend status values
+    if (activeBetFilter === 'Open') {
+      return bets.filter(bet => bet.status === 'OPEN');
+    } else if (activeBetFilter === 'Pending') {
+      return bets.filter(bet => bet.status === 'CLOSED');
+    } else if (activeBetFilter === 'Resolved') {
+      // Include both RESOLVED and CANCELLED in the Resolved filter
+      return bets.filter(bet => bet.status === 'RESOLVED' || bet.status === 'CANCELLED');
+    }
+
+    return bets;
   }, [activeBetFilter, bets]);
 
   // Memoize transformed bets array to avoid recalculating on every render

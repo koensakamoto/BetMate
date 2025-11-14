@@ -22,10 +22,11 @@ export default function Bet() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Filter states for My Bets tab
-  const [myBetsFilter, setMyBetsFilter] = useState<'all' | 'active' | 'resolved'>('all');
+  const [myBetsFilter, setMyBetsFilter] = useState<'all' | 'open' | 'pending' | 'resolved'>('all');
   const myBetsFilters = [
     { key: 'all' as const, label: 'All' },
-    { key: 'active' as const, label: 'Active' },
+    { key: 'open' as const, label: 'Open' },
+    { key: 'pending' as const, label: 'Pending' },
     { key: 'resolved' as const, label: 'Resolved' }
   ];
 
@@ -128,6 +129,16 @@ export default function Bet() {
       rawBet: bet
     });
 
+    // Map backend status to frontend display status
+    let displayStatus: 'open' | 'active' | 'resolved';
+    if (bet.status === 'OPEN') {
+      displayStatus = 'open';
+    } else if (bet.status === 'CLOSED') {
+      displayStatus = 'active';
+    } else {
+      displayStatus = 'resolved'; // Both RESOLVED and CANCELLED
+    }
+
     return {
       id: bet.id.toString(),
       title: bet.title,
@@ -140,7 +151,8 @@ export default function Bet() {
       stakeAmount: bet.stakeType === 'SOCIAL' ? 0 : (bet.fixedStakeAmount || Math.round(bet.totalPool / Math.max(bet.totalParticipants, 1))),
       stakeType: bet.stakeType,
       socialStakeDescription: bet.socialStakeDescription,
-      status: bet.status.toLowerCase() as 'open' | 'active' | 'resolved',
+      status: displayStatus,
+      backendStatus: bet.status, // Pass original backend status for badge display
       isJoined: bet.hasUserParticipated,
       creatorName: bet.creatorUsername,
       userStake: bet.userAmount,
@@ -155,11 +167,15 @@ export default function Bet() {
       // Status filter
       let matchesStatus = false;
       switch (myBetsFilter) {
-        case 'active':
-          matchesStatus = bet.status === 'OPEN' || bet.status === 'ACTIVE';
+        case 'open':
+          matchesStatus = bet.status === 'OPEN';
+          break;
+        case 'pending':
+          matchesStatus = bet.status === 'CLOSED';
           break;
         case 'resolved':
-          matchesStatus = bet.status === 'CLOSED' || bet.status === 'RESOLVED';
+          // Include both RESOLVED and CANCELLED in the Resolved filter
+          matchesStatus = bet.status === 'RESOLVED' || bet.status === 'CANCELLED';
           break;
         case 'all':
         default:
@@ -195,7 +211,7 @@ export default function Bet() {
   }, []);
 
   // Memoize filter change handler to provide stable reference
-  const handleFilterChange = useCallback((filter: 'all' | 'active' | 'resolved') => {
+  const handleFilterChange = useCallback((filter: 'all' | 'open' | 'pending' | 'resolved') => {
     Haptics.selectionAsync();
     setMyBetsFilter(filter);
   }, []);
@@ -483,7 +499,8 @@ export default function Bet() {
                       color: 'rgba(255, 255, 255, 0.4)',
                       textAlign: 'center'
                     }}>
-                      {myBetsFilter === 'active' ? 'No active bets' :
+                      {myBetsFilter === 'open' ? 'No open bets' :
+                       myBetsFilter === 'pending' ? 'No pending bets' :
                        myBetsFilter === 'resolved' ? 'No resolved bets' :
                        'Create your first bet to get started'}
                     </Text>

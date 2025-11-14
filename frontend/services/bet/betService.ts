@@ -25,6 +25,7 @@ export interface BetResponse {
   description?: string;
   betType: string;
   status: string;
+  cancellationReason?: string;
   outcome?: string;
   resolutionMethod: string;
   creator: {
@@ -241,6 +242,12 @@ class BetService extends BaseApiService {
   async voteOnResolution(betId: number, outcome: string, reasoning: string): Promise<BetResponse> {
     const request: VoteOnResolutionRequest = { outcome, reasoning };
     return this.post<BetResponse, VoteOnResolutionRequest>(`/${betId}/vote`, request);
+  }
+
+  // Cancel a bet (creator only)
+  async cancelBet(betId: number, reason?: string): Promise<BetResponse> {
+    const request = reason ? { reason } : undefined;
+    return this.post<BetResponse, { reason?: string } | undefined>(`/${betId}/cancel`, request);
   }
 
   // ==========================================

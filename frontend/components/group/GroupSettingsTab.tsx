@@ -233,6 +233,56 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
 
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Debug: Keyboard state tracking
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const eventCounter = React.useRef(0);
+
+  // Intent-based save tracking
+  const isKeyboardVisibleRef = React.useRef(false);
+  const saveNameIntentRef = React.useRef(false);
+  const saveDescriptionIntentRef = React.useRef(false);
+
+  // Debug: Track keyboard visibility + Intent-based save execution
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      const timestamp = new Date().toISOString();
+      console.log(`[${timestamp}] [EVENT ${++eventCounter.current}] 🎹 KEYBOARD SHOWN`);
+      setIsKeyboardVisible(true);
+      isKeyboardVisibleRef.current = true;
+    });
+
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      const timestamp = new Date().toISOString();
+      console.log(`[${timestamp}] [EVENT ${++eventCounter.current}] 🎹 KEYBOARD HIDDEN`);
+      setIsKeyboardVisible(false);
+      isKeyboardVisibleRef.current = false;
+
+      // Execute pending save intents after keyboard is fully hidden
+      if (saveNameIntentRef.current) {
+        console.log('  - 🎯 Executing pending Save Name intent');
+        saveNameIntentRef.current = false;
+        handleSaveGroupName();
+      }
+
+      if (saveDescriptionIntentRef.current) {
+        console.log('  - 🎯 Executing pending Save Description intent');
+        saveDescriptionIntentRef.current = false;
+        handleSaveGroupDescription();
+      }
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
+  // Debug: Track modal state changes
+  useEffect(() => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [STATE] 📱 Edit Name Modal State Changed: ${showEditNameModal ? 'VISIBLE' : 'HIDDEN'}`);
+  }, [showEditNameModal]);
+
   // Modal handlers
   const handleOpenPrivacyModal = () => {
     setTempPrivacy(groupData.privacy || 'PRIVATE');
@@ -286,6 +336,9 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
   SettingSection.displayName = 'SettingSection';
 
   const handleEditGroupName = () => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [EVENT ${++eventCounter.current}] 🚪 MODAL OPENING - Edit Group Name`);
+    console.log('  - Setting modal visible...');
     setNewGroupName(groupData.name);
     setShowEditNameModal(true);
   };
@@ -373,24 +426,34 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
   };
 
   const handleSaveGroupName = async () => {
-    Keyboard.dismiss();
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [EVENT ${++eventCounter.current}] 💾 handleSaveGroupName CALLED`);
+    console.log('📊 UI STATE SNAPSHOT:');
+    console.log('  - Keyboard visible:', isKeyboardVisible);
+    console.log('  - Modal visible:', showEditNameModal);
+    console.log('  - isUpdating:', isUpdating);
+    console.log('  - newGroupName:', newGroupName);
+    console.log('  - trimmed:', newGroupName.trim());
+    console.log('  - equals original:', newGroupName.trim() === groupData.name);
 
     if (!newGroupName.trim() || newGroupName.trim() === groupData.name) {
+      console.log('Early return - no changes');
       setShowEditNameModal(false);
       return;
     }
 
+    console.log('Proceeding with save...');
     setIsUpdating(true);
     try {
       const updatedGroup = await groupService.updateGroup(groupData.id, {
         groupName: newGroupName.trim()
       });
-      
+
       // Call the callback to update parent component
       if (onGroupUpdated) {
         onGroupUpdated(updatedGroup);
       }
-      
+
       setShowEditNameModal(false);
       Alert.alert('Success', 'Group name updated successfully!');
     } catch (error) {
@@ -427,8 +490,6 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
   };
 
   const handleSaveGroupDescription = async () => {
-    Keyboard.dismiss();
-
     if (newGroupDescription.trim() === groupData.description) {
       setShowEditDescriptionModal(false);
       return;
@@ -439,12 +500,12 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
       const updatedGroup = await groupService.updateGroup(groupData.id, {
         description: newGroupDescription.trim()
       });
-      
+
       // Call the callback to update parent component
       if (onGroupUpdated) {
         onGroupUpdated(updatedGroup);
       }
-      
+
       setShowEditDescriptionModal(false);
       Alert.alert('Success', 'Group description updated successfully!');
     } catch (error) {
@@ -603,37 +664,58 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
           setShowEditNameModal(false);
         }}
       >
-        <TouchableWithoutFeedback onPress={() => {
-          Keyboard.dismiss();
-          setShowEditNameModal(false);
-        }}>
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          justifyContent: 'flex-start',
-          paddingHorizontal: 20,
-          paddingTop: 300
-        }}>
-          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            scrollEnabled={false}
-            contentContainerStyle={{ flexGrow: 0 }}
+        <View style={{ flex: 1 }}>
+          {/* Backdrop */}
+          <TouchableOpacity
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            }}
+            activeOpacity={1}
+            onPress={() => {
+              const timestamp = new Date().toISOString();
+              console.log(`[${timestamp}] [EVENT ${++eventCounter.current}] 🌑 Backdrop pressed (Edit Name)`);
+              console.log('  - Keyboard visible:', isKeyboardVisible);
+              console.log('  - Dismissing keyboard and closing modal...');
+              Keyboard.dismiss();
+              setShowEditNameModal(false);
+            }}
+          />
+
+          {/* Content */}
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'flex-start',
+              paddingTop: 300,
+              paddingHorizontal: 20
+            }}
+            pointerEvents="box-none"
           >
-          <View style={{
-            backgroundColor: '#1a1a1f',
-            borderRadius: 12,
-            padding: 20,
-            marginHorizontal: 20
-          }}>
-            <Text style={{
-              fontSize: 18,
-              fontWeight: '600',
-              color: '#ffffff',
-              marginBottom: 20
-            }}>
-              Edit Group Name
-            </Text>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ flexGrow: 1 }}
+            >
+              <View
+                style={{
+                  backgroundColor: '#1a1a1f',
+                  borderRadius: 12,
+                  padding: 20,
+                  marginHorizontal: 20
+                }}
+              >
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '600',
+                color: '#ffffff',
+                marginBottom: 20
+              }}>
+                Edit Group Name
+              </Text>
             
             <TextInput
               value={newGroupName}
@@ -653,6 +735,17 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
               editable={!isUpdating}
               returnKeyType="done"
               onSubmitEditing={handleSaveGroupName}
+              selectTextOnFocus={false}
+              onFocus={() => {
+                const timestamp = new Date().toISOString();
+                console.log(`[${timestamp}] [EVENT ${++eventCounter.current}] ⌨️ TextInput onFocus`);
+                console.log('  - Keyboard should appear shortly...');
+              }}
+              onBlur={() => {
+                const timestamp = new Date().toISOString();
+                console.log(`[${timestamp}] [EVENT ${++eventCounter.current}] 💨 TextInput onBlur`);
+                console.log('  - Keyboard should hide shortly...');
+              }}
             />
             
             <View style={{
@@ -684,7 +777,19 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
               </TouchableOpacity>
               
               <TouchableOpacity
-                onPress={handleSaveGroupName}
+                onPress={() => {
+                  const timestamp = new Date().toISOString();
+                  console.log(`[${timestamp}] [EVENT ${++eventCounter.current}] 💾 Save button onPress`);
+
+                  if (isKeyboardVisibleRef.current) {
+                    console.log('  - ⏸️ Keyboard is visible, marking save intent and dismissing keyboard');
+                    saveNameIntentRef.current = true;
+                    Keyboard.dismiss();
+                  } else {
+                    console.log('  - ▶️ Keyboard already hidden, executing save immediately');
+                    handleSaveGroupName();
+                  }
+                }}
                 disabled={isUpdating || !newGroupName.trim() || newGroupName.trim() === groupData.name}
                 style={{
                   flex: 1,
@@ -706,9 +811,8 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
             </View>
           </View>
           </ScrollView>
-          </TouchableWithoutFeedback>
         </View>
-        </TouchableWithoutFeedback>
+        </View>
       </Modal>
 
       {/* Edit Group Description Modal */}
@@ -721,37 +825,54 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
           setShowEditDescriptionModal(false);
         }}
       >
-        <TouchableWithoutFeedback onPress={() => {
-          Keyboard.dismiss();
-          setShowEditDescriptionModal(false);
-        }}>
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          justifyContent: 'flex-start',
-          paddingHorizontal: 20,
-          paddingTop: 250
-        }}>
-          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            scrollEnabled={false}
-            contentContainerStyle={{ flexGrow: 0 }}
+        <View style={{ flex: 1 }}>
+          {/* Backdrop */}
+          <TouchableOpacity
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            }}
+            activeOpacity={1}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowEditDescriptionModal(false);
+            }}
+          />
+
+          {/* Content */}
+          <View
+            style={{
+              flex: 1,
+              justifyContent: 'flex-start',
+              paddingTop: 250,
+              paddingHorizontal: 20
+            }}
+            pointerEvents="box-none"
           >
-          <View style={{
-            backgroundColor: '#1a1a1f',
-            borderRadius: 12,
-            padding: 20,
-            marginHorizontal: 20
-          }}>
-            <Text style={{
-              fontSize: 18,
-              fontWeight: '600',
-              color: '#ffffff',
-              marginBottom: 20
-            }}>
-              Edit Group Description
-            </Text>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ flexGrow: 1 }}
+            >
+              <View
+                style={{
+                  backgroundColor: '#1a1a1f',
+                  borderRadius: 12,
+                  padding: 20,
+                  marginHorizontal: 20
+                }}
+              >
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '600',
+                color: '#ffffff',
+                marginBottom: 20
+              }}>
+                Edit Group Description
+              </Text>
             
             <TextInput
               value={newGroupDescription}
@@ -773,6 +894,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
               editable={!isUpdating}
               multiline={true}
               numberOfLines={4}
+              selectTextOnFocus={false}
             />
             
             <View style={{
@@ -804,7 +926,14 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
               </TouchableOpacity>
               
               <TouchableOpacity
-                onPress={handleSaveGroupDescription}
+                onPress={() => {
+                  if (isKeyboardVisibleRef.current) {
+                    saveDescriptionIntentRef.current = true;
+                    Keyboard.dismiss();
+                  } else {
+                    handleSaveGroupDescription();
+                  }
+                }}
                 disabled={isUpdating || newGroupDescription.trim() === groupData.description}
                 style={{
                   flex: 1,
@@ -826,9 +955,8 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
             </View>
           </View>
           </ScrollView>
-          </TouchableWithoutFeedback>
         </View>
-        </TouchableWithoutFeedback>
+        </View>
       </Modal>
 
       {/* Edit Group Photo Modal */}
