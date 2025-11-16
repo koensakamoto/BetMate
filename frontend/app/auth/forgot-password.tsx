@@ -152,105 +152,44 @@ export default function ForgotPassword() {
         translucent={true}
       />
       
-      <ScrollView 
+      <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ 
-          paddingTop: insets.top + 20,
-          paddingBottom: insets.bottom + 20
+        contentContainerStyle={{
+          paddingTop: insets.top + 12,
+          paddingBottom: insets.bottom + 20,
+          paddingHorizontal: 20
         }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         <AuthHeader
           title="Reset Password"
-          subtitle="Enter your email and we'll send you a link to reset your password"
+          subtitle="Enter your email to receive a reset link"
           showBackButton={true}
           onBackPress={() => router.back()}
         />
 
-        <View style={{ paddingHorizontal: 20 }}>
-          {/* Reset Form */}
-          <View style={{ marginBottom: 32 }}>
-            <AuthInput
-              label="Email"
-              value={email}
-              onChangeText={handleEmailChange}
-              placeholder="Enter your email address"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              error={error}
-              isValid={email.length > 0 && validateEmail(email)}
-            />
+        {/* Reset Form */}
+        <View>
+          <AuthInput
+            label="Email"
+            value={email}
+            onChangeText={handleEmailChange}
+            placeholder="Enter your email"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            error={error}
+            isValid={email.length > 0 && validateEmail(email)}
+          />
 
-            <AuthButton
-              title="Send Reset Link"
-              onPress={handleResetPassword}
-              loading={isLoading}
-              disabled={isLoading || !email.trim()}
-              variant="primary"
-            />
-          </View>
-
-          {/* Info Section */}
-          <View style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.03)',
-            borderRadius: 12,
-            padding: 20,
-            borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.08)'
-          }}>
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'flex-start'
-            }}>
-              <MaterialIcons 
-                name="info-outline" 
-                size={20} 
-                color="rgba(255, 255, 255, 0.6)" 
-                style={{ marginRight: 12, marginTop: 2 }}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={{
-                  fontSize: 14,
-                  fontWeight: '500',
-                  color: '#ffffff',
-                  marginBottom: 8
-                }}>
-                  What happens next?
-                </Text>
-                <Text style={{
-                  fontSize: 13,
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  lineHeight: 18
-                }}>
-                  We&apos;ll send you a secure link to reset your password. The link will expire in 24 hours for your security.
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Back to Login */}
-          <View style={{
-            flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginTop: 32
-          }}>
-            <Text style={{
-              fontSize: 15,
-              color: 'rgba(255, 255, 255, 0.6)'
-            }}>
-              Remember your password?{' '}
-            </Text>
-            <AuthButton
-              title="Back to Login"
-              onPress={() => router.back()}
-              variant="outline"
-              size="small"
-              fullWidth={false}
-            />
-          </View>
+          <AuthButton
+            title="Send Reset Link"
+            onPress={handleResetPassword}
+            loading={isLoading}
+            disabled={isLoading || !email.trim()}
+            variant="primary"
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

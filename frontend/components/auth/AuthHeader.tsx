@@ -18,7 +18,7 @@ export default function AuthHeader({
   return (
     <View style={{
       paddingHorizontal: 20,
-      paddingVertical: 20,
+      paddingVertical: 12,
       alignItems: 'center'
     }}>
       {/* Back Button Row */}
@@ -27,14 +27,14 @@ export default function AuthHeader({
           width: '100%',
           flexDirection: 'row',
           alignItems: 'center',
-          marginBottom: 20
+          marginBottom: 14
         }}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={onBackPress}
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
+              width: 36,
+              height: 36,
+              borderRadius: 18,
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
               borderWidth: 1,
               borderColor: 'rgba(255, 255, 255, 0.15)',
@@ -42,10 +42,10 @@ export default function AuthHeader({
               alignItems: 'center'
             }}
           >
-            <MaterialIcons 
-              name="arrow-back" 
-              size={20} 
-              color="#ffffff" 
+            <MaterialIcons
+              name="arrow-back"
+              size={18}
+              color="#ffffff"
             />
           </TouchableOpacity>
         </View>
@@ -53,12 +53,12 @@ export default function AuthHeader({
 
       {/* Title */}
       <Text style={{
-        fontSize: 28,
+        fontSize: 24,
         fontWeight: '700',
         color: '#ffffff',
         textAlign: 'center',
         letterSpacing: -0.5,
-        marginBottom: subtitle ? 12 : 0
+        marginBottom: subtitle ? 8 : 0
       }}>
         {title}
       </Text>
@@ -66,10 +66,10 @@ export default function AuthHeader({
       {/* Subtitle */}
       {subtitle && (
         <Text style={{
-          fontSize: 16,
+          fontSize: 14,
           color: 'rgba(255, 255, 255, 0.6)',
           textAlign: 'center',
-          lineHeight: 22,
+          lineHeight: 20,
           paddingHorizontal: 20
         }}>
           {subtitle}

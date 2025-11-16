@@ -265,23 +265,44 @@ public class GroupController {
             @PathVariable Long groupId,
             @Valid @RequestBody GroupUpdateRequestDto request,
             Authentication authentication) {
-        
+
         User currentUser = userService.getUserByUsername(authentication.getName())
             .orElseThrow(() -> new RuntimeException("User not found"));
         Group group = groupService.getGroupById(groupId);
-        
+
         // Check if user is authorized to update the group (creator or admin)
         boolean isCreator = group.getCreator().getId().equals(currentUser.getId());
         boolean isAdmin = groupMembershipService.isAdmin(currentUser, group);
-        
+
         if (!isCreator && !isAdmin) {
             throw new RuntimeException("Access denied - insufficient permissions to update this group");
         }
-        
+
         Group updatedGroup = groupService.updateGroup(group, request);
         GroupResponseDto response = convertToDetailedResponse(updatedGroup, currentUser);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Delete a group.
+     */
+    @DeleteMapping("/{groupId}")
+    public ResponseEntity<Void> deleteGroup(
+            @PathVariable Long groupId,
+            Authentication authentication) {
+
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        Group group = groupService.getGroupById(groupId);
+
+        // Only the creator can delete the group
+        if (!group.getCreator().getId().equals(currentUser.getId())) {
+            throw new RuntimeException("Access denied - only the group creator can delete the group");
+        }
+
+        groupService.deleteGroup(group);
+        return ResponseEntity.noContent().build();
     }
 
     /**

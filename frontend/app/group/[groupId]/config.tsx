@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, StatusBar, TouchableOpacity, Text, ScrollView } from 'react-native';
+import { View, StatusBar, TouchableOpacity, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import GroupSettingsTab from '../../../components/group/GroupSettingsTab';
 import { groupService, GroupDetailResponse } from '../../../services/group/groupService';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -72,13 +73,23 @@ export default function GroupConfig() {
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0f" translucent={true} />
 
-      <ScrollView
+      <KeyboardAwareScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        extraScrollHeight={40}
+        enableOnAndroid={true}
+        enableAutomaticScroll={true}
       >
         {/* Header */}
-        <View style={{ paddingTop: insets.top + 16, paddingHorizontal: 20, marginBottom: 24 }}>
+        <View style={{
+          paddingTop: insets.top + 16,
+          paddingHorizontal: 20,
+          marginBottom: 16,
+          flexDirection: 'row',
+          alignItems: 'center'
+        }}>
           <TouchableOpacity
             onPress={() => router.back()}
             style={{
@@ -88,7 +99,7 @@ export default function GroupConfig() {
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
               justifyContent: 'center',
               alignItems: 'center',
-              marginBottom: 16
+              marginRight: 16
             }}
           >
             <MaterialIcons name="arrow-back" size={18} color="#ffffff" />
@@ -98,21 +109,10 @@ export default function GroupConfig() {
           <Text style={{
             fontSize: 24,
             fontWeight: '700',
-            color: '#ffffff',
-            marginBottom: 8
+            color: '#ffffff'
           }}>
             Group Settings
           </Text>
-
-          {groupData && (
-            <Text style={{
-              fontSize: 16,
-              color: 'rgba(255, 255, 255, 0.6)',
-              marginBottom: 16
-            }}>
-              {groupData.groupName}
-            </Text>
-          )}
         </View>
 
         {/* Settings Content */}
@@ -122,7 +122,7 @@ export default function GroupConfig() {
             onGroupUpdated={handleGroupUpdated}
           />
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

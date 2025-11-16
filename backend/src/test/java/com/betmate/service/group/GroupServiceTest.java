@@ -5,6 +5,7 @@ import com.betmate.entity.group.Group;
 import com.betmate.entity.user.User;
 import com.betmate.exception.group.GroupNotFoundException;
 import com.betmate.repository.group.GroupRepository;
+import com.betmate.repository.group.GroupMembershipRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -28,9 +29,12 @@ import static com.betmate.service.group.GroupCreationService.DEFAULT_MAX_MEMBERS
 class GroupServiceTest {
 
     private GroupService groupService;
-    
+
     @Mock
     private GroupRepository groupRepository;
+
+    @Mock
+    private GroupMembershipRepository membershipRepository;
     
     // Test data constants
     private static final Long TEST_GROUP_ID = 123L;
@@ -45,7 +49,7 @@ class GroupServiceTest {
 
     @BeforeEach
     void setUp() {
-        groupService = new GroupService(groupRepository);
+        groupService = new GroupService(groupRepository, membershipRepository);
         
         // Create test user
         testUser = createTestUser(TEST_USER_ID, TEST_USERNAME);

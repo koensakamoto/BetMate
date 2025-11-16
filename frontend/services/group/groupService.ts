@@ -142,6 +142,13 @@ export class GroupService extends BaseApiService {
   }
 
   /**
+   * Delete a group
+   */
+  async deleteGroup(groupId: number): Promise<void> {
+    return this.delete(`/groups/${groupId}`);
+  }
+
+  /**
    * Get group members by group ID
    */
   async getGroupMembers(groupId: number): Promise<GroupMemberResponse[]> {

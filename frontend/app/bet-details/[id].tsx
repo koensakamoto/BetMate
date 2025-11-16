@@ -514,8 +514,8 @@ export default function BetDetails() {
               </View>
             </View>
 
-            {/* 3-dot menu (only for creator on non-resolved bets) */}
-            {betData.creator.id === currentUserId && betData.status !== 'RESOLVED' && (
+            {/* 3-dot menu (only for creator on non-resolved/non-cancelled bets) */}
+            {betData.creator.id === currentUserId && betData.status !== 'RESOLVED' && betData.status !== 'CANCELLED' && (
               <TouchableOpacity
                 onPress={() => {
                   haptic.selection();

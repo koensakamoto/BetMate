@@ -39,36 +39,36 @@ export default function AuthInput({
   const actualSecureTextEntry = secureTextEntry && !isPasswordVisible;
 
   return (
-    <View style={{ marginBottom: 20 }}>
+    <View style={{ marginBottom: 14 }}>
       <Text style={{
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '500',
         color: 'rgba(255, 255, 255, 0.8)',
-        marginBottom: 8
+        marginBottom: 6
       }}>
         {label}
       </Text>
-      
+
       <View style={{
         backgroundColor: 'rgba(255, 255, 255, 0.06)',
-        borderRadius: 12,
+        borderRadius: 10,
         borderWidth: 1.5,
-        borderColor: hasError 
-          ? '#EF4444' 
-          : showSuccess 
-            ? '#22C55E' 
-            : isFocused 
-              ? '#00D4AA' 
+        borderColor: hasError
+          ? '#EF4444'
+          : showSuccess
+            ? '#22C55E'
+            : isFocused
+              ? '#00D4AA'
               : 'rgba(255, 255, 255, 0.15)',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
         flexDirection: 'row',
         alignItems: 'center'
       }}>
         <TextInput
           style={{
             flex: 1,
-            fontSize: 16,
+            fontSize: 15,
             color: '#ffffff',
             fontWeight: '400'
           }}
@@ -84,65 +84,55 @@ export default function AuthInput({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
         />
-        
+
         {/* Status Icons */}
         {showPasswordToggle && (
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => setIsPasswordVisible(!isPasswordVisible)}
-            style={{ marginLeft: 12 }}
+            style={{ marginLeft: 10 }}
           >
-            <MaterialIcons 
-              name={isPasswordVisible ? 'visibility-off' : 'visibility'} 
-              size={20} 
-              color="rgba(255, 255, 255, 0.6)" 
+            <MaterialIcons
+              name={isPasswordVisible ? 'visibility-off' : 'visibility'}
+              size={18}
+              color="rgba(255, 255, 255, 0.6)"
             />
           </TouchableOpacity>
         )}
-        
+
         {!showPasswordToggle && showSuccess && (
-          <View style={{ marginLeft: 12 }}>
-            <MaterialIcons 
-              name="check-circle" 
-              size={20} 
-              color="#22C55E" 
+          <View style={{ marginLeft: 10 }}>
+            <MaterialIcons
+              name="check-circle"
+              size={18}
+              color="#22C55E"
             />
           </View>
         )}
-        
+
         {!showPasswordToggle && hasError && (
-          <View style={{ marginLeft: 12 }}>
-            <MaterialIcons 
-              name="error" 
-              size={20} 
-              color="#EF4444" 
+          <View style={{ marginLeft: 10 }}>
+            <MaterialIcons
+              name="error"
+              size={18}
+              color="#EF4444"
             />
           </View>
         )}
       </View>
-      
+
       {/* Error Message */}
       {hasError && (
         <Text style={{
-          fontSize: 13,
+          fontSize: 12,
           color: '#EF4444',
-          marginTop: 6,
+          marginTop: 4,
           marginLeft: 4
         }}>
           {error}
         </Text>
       )}
-      
-      {/* Character Count */}
-      {maxLength && value.length > 0 && (
-        <Text style={{
-          fontSize: 12,
-          color: 'rgba(255, 255, 255, 0.4)',
-          textAlign: 'right',
-          marginTop: 4
-        }}>
-          {value.length}/{maxLength}
-        </Text>
-      )}
+
+      {/* Character Count - Hidden to save space */}
     </View>
   );
 }

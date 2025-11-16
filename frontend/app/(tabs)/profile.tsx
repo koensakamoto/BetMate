@@ -45,12 +45,42 @@ export default function Profile() {
   const [loadingUnfulfilledBets, setLoadingUnfulfilledBets] = useState(false);
   const tabs = ['Stats', 'Inventory', 'Owed Stakes'];
 
-  // Cache management: 5 minute cache
+  // Cache management: 5 minute cache for stats
   const lastFetchTime = useRef<number>(0);
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+  // Cache management: 1 minute cache for inventory
+  const lastInventoryFetchTime = useRef<number>(0);
+  const INVENTORY_CACHE_DURATION = 60 * 1000; // 1 minute
+
+  // Cache management: 2 minute cache for owed stakes
+  const lastOwedStakesFetchTime = useRef<number>(0);
+  const OWED_STAKES_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
+  // Invalidate inventory cache (to be called after purchases)
+  const invalidateInventoryCache = useCallback(() => {
+    lastInventoryFetchTime.current = 0;
+    debugLog('Inventory cache invalidated');
+  }, []);
+
+  // Invalidate owed stakes cache (to be called after bet fulfillment)
+  const invalidateOwedStakesCache = useCallback(() => {
+    lastOwedStakesFetchTime.current = 0;
+    debugLog('Owed stakes cache invalidated');
+  }, []);
+
   const isCacheValid = useCallback(() => {
     return (Date.now() - lastFetchTime.current) < CACHE_DURATION;
+  }, []);
+
+  const isInventoryCacheValid = useCallback(() => {
+    // Cache is only valid if we've fetched before (lastInventoryFetchTime > 0) and it's within the duration
+    return lastInventoryFetchTime.current > 0 && (Date.now() - lastInventoryFetchTime.current) < INVENTORY_CACHE_DURATION;
+  }, []);
+
+  const isOwedStakesCacheValid = useCallback(() => {
+    // Cache is only valid if we've fetched before (lastOwedStakesFetchTime > 0) and it's within the duration
+    return lastOwedStakesFetchTime.current > 0 && (Date.now() - lastOwedStakesFetchTime.current) < OWED_STAKES_CACHE_DURATION;
   }, []);
 
   // Initial load on mount
@@ -71,6 +101,24 @@ export default function Profile() {
         loadUserData(false);
       }
     }, [isAuthenticated, authLoading, isCacheValid])
+  );
+
+  // Smart refresh for inventory on focus: refresh if on inventory tab and cache expired
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated && !authLoading && activeTab === 1 && !isInventoryCacheValid()) {
+        fetchInventory(false);
+      }
+    }, [isAuthenticated, authLoading, activeTab, isInventoryCacheValid, fetchInventory])
+  );
+
+  // Smart refresh for owed stakes on focus: refresh if on owed stakes tab and cache expired
+  useFocusEffect(
+    useCallback(() => {
+      if (isAuthenticated && !authLoading && activeTab === 2 && !isOwedStakesCacheValid()) {
+        fetchUnfulfilledBets(false);
+      }
+    }, [isAuthenticated, authLoading, activeTab, isOwedStakesCacheValid, fetchUnfulfilledBets])
   );
 
   const loadUserData = async (isRefreshing: boolean = false) => {
@@ -109,9 +157,15 @@ export default function Profile() {
     }
   };
 
-  // Fetch user inventory
-  const fetchInventory = useCallback(async () => {
+  // Fetch user inventory with caching
+  const fetchInventory = useCallback(async (forceRefresh: boolean = false) => {
     if (!isAuthenticated) {
+      return;
+    }
+
+    // Check cache validity - skip fetch if cache is still valid and not forced
+    if (!forceRefresh && isInventoryCacheValid()) {
+      debugLog('Using cached inventory data');
       return;
     }
 
@@ -122,23 +176,25 @@ export default function Profile() {
       // Defensive filtering: exclude booster items (should already be filtered by backend)
       const filteredItems = items.filter(item => !item.itemType.endsWith('_BOOSTER'));
 
-      console.log('=== INVENTORY DEBUG ===');
-      console.log('First item:', filteredItems[0]);
-      console.log('Short description:', filteredItems[0]?.shortDescription);
-      console.log('Description:', filteredItems[0]?.description);
-      console.log('======================');
       setInventory(filteredItems);
+      lastInventoryFetchTime.current = Date.now();
       debugLog('User inventory loaded:', filteredItems);
     } catch (err: any) {
       errorLog('Failed to load inventory:', err);
     } finally {
       setLoadingInventory(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isInventoryCacheValid]);
 
-  // Fetch user unfulfilled bets
-  const fetchUnfulfilledBets = useCallback(async () => {
+  // Fetch user unfulfilled bets with caching
+  const fetchUnfulfilledBets = useCallback(async (forceRefresh: boolean = false) => {
     if (!isAuthenticated) {
+      return;
+    }
+
+    // Check cache validity - skip fetch if cache is still valid and not forced
+    if (!forceRefresh && isOwedStakesCacheValid()) {
+      debugLog('Using cached owed stakes data');
       return;
     }
 
@@ -153,13 +209,14 @@ export default function Profile() {
         (bet.fulfillmentStatus === 'PENDING' || bet.fulfillmentStatus === 'PARTIALLY_FULFILLED')
       );
       setUnfulfilledBets(unfulfilled);
+      lastOwedStakesFetchTime.current = Date.now();
       debugLog('Unfulfilled bets loaded:', unfulfilled);
     } catch (err: any) {
       errorLog('Failed to load unfulfilled bets:', err);
     } finally {
       setLoadingUnfulfilledBets(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isOwedStakesCacheValid]);
 
   // Fetch inventory when Inventory tab is active
   useEffect(() => {
@@ -175,13 +232,13 @@ export default function Profile() {
     }
   }, [activeTab, isAuthenticated, fetchUnfulfilledBets]);
 
-  // Pull-to-refresh handler
+  // Pull-to-refresh handler - force refresh all caches
   const onRefresh = useCallback(() => {
     loadUserData(true);
     if (activeTab === 1) {
-      fetchInventory();
+      fetchInventory(true); // Force refresh inventory
     } else if (activeTab === 2) {
-      fetchUnfulfilledBets();
+      fetchUnfulfilledBets(true); // Force refresh owed stakes
     }
   }, [activeTab, fetchInventory, fetchUnfulfilledBets]);
 
@@ -226,8 +283,8 @@ export default function Profile() {
   const handleEquipItem = useCallback(async (item: InventoryItemResponse) => {
     try {
       await storeService.equipItem(item.id);
-      // Refresh inventory to get updated status
-      await fetchInventory();
+      // Force refresh inventory to get updated status and invalidate cache
+      await fetchInventory(true);
       handleCloseInventoryDetail();
     } catch (error: any) {
       errorLog('Failed to equip item:', error);
@@ -238,8 +295,8 @@ export default function Profile() {
   const handleUnequipItem = useCallback(async (item: InventoryItemResponse) => {
     try {
       await storeService.unequipItem(item.id);
-      // Refresh inventory to get updated status
-      await fetchInventory();
+      // Force refresh inventory to get updated status and invalidate cache
+      await fetchInventory(true);
       handleCloseInventoryDetail();
     } catch (error: any) {
       errorLog('Failed to unequip item:', error);
