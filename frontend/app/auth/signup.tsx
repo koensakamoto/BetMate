@@ -162,11 +162,11 @@ export default function Signup() {
         translucent={true}
       />
       
-      <ScrollView 
+      <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ 
-          paddingTop: insets.top + 20,
-          paddingBottom: insets.bottom + 20
+        contentContainerStyle={{
+          paddingTop: insets.top + 12,
+          paddingBottom: insets.bottom + 12
         }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -180,7 +180,7 @@ export default function Signup() {
 
         <View style={{ paddingHorizontal: 20 }}>
           {/* Signup Form */}
-          <View style={{ marginBottom: 24 }}>
+          <View style={{ marginBottom: 16 }}>
             <AuthInput
               label="First Name"
               value={formData.firstName}
@@ -239,21 +239,21 @@ export default function Signup() {
 
             {/* Password Strength Indicator */}
             {formData.password.length > 0 && (
-              <View style={{ marginBottom: 20, marginTop: -12 }}>
+              <View style={{ marginBottom: 14, marginTop: -10 }}>
                 <View style={{
                   flexDirection: 'row',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  marginBottom: 6
+                  marginBottom: 4
                 }}>
                   <Text style={{
-                    fontSize: 12,
+                    fontSize: 11,
                     color: 'rgba(255, 255, 255, 0.6)'
                   }}>
                     Password strength
                   </Text>
                   <Text style={{
-                    fontSize: 12,
+                    fontSize: 11,
                     color: getPasswordStrengthColor(),
                     fontWeight: '600'
                   }}>
@@ -261,15 +261,15 @@ export default function Signup() {
                   </Text>
                 </View>
                 <View style={{
-                  height: 4,
+                  height: 3,
                   backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  borderRadius: 2
+                  borderRadius: 1.5
                 }}>
                   <View style={{
-                    height: 4,
+                    height: 3,
                     width: `${passwordStrength}%`,
                     backgroundColor: getPasswordStrengthColor(),
-                    borderRadius: 2
+                    borderRadius: 1.5
                   }} />
                 </View>
               </View>
@@ -287,47 +287,61 @@ export default function Signup() {
             />
 
             {/* Terms Acceptance */}
-            <TouchableOpacity
+            <View
               style={{
                 flexDirection: 'row',
                 alignItems: 'flex-start',
-                marginBottom: 32
+                marginBottom: 20
               }}
-              onPress={() => setAcceptTerms(!acceptTerms)}
             >
-              <View style={{
-                width: 20,
-                height: 20,
-                borderRadius: 4,
-                borderWidth: 1.5,
-                borderColor: acceptTerms ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
-                backgroundColor: acceptTerms ? '#00D4AA' : 'transparent',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 12,
-                marginTop: 2
-              }}>
+              <TouchableOpacity
+                onPress={() => setAcceptTerms(!acceptTerms)}
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: 3,
+                  borderWidth: 1.5,
+                  borderColor: acceptTerms ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
+                  backgroundColor: acceptTerms ? '#00D4AA' : 'transparent',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 10,
+                  marginTop: 1
+                }}
+              >
                 {acceptTerms && (
-                  <MaterialIcons name="check" size={14} color="#000000" />
+                  <MaterialIcons name="check" size={12} color="#000000" />
                 )}
-              </View>
+              </TouchableOpacity>
               <View style={{ flex: 1 }}>
                 <Text style={{
-                  fontSize: 14,
+                  fontSize: 13,
                   color: 'rgba(255, 255, 255, 0.7)',
-                  lineHeight: 20
+                  lineHeight: 18
                 }}>
                   I agree to the{' '}
-                  <Text style={{ color: '#00D4AA', fontWeight: '500' }}>
+                  <Text
+                    style={{ color: '#00D4AA', fontWeight: '500', textDecorationLine: 'underline' }}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      router.push('/terms-of-service');
+                    }}
+                  >
                     Terms of Service
                   </Text>
                   {' '}and{' '}
-                  <Text style={{ color: '#00D4AA', fontWeight: '500' }}>
+                  <Text
+                    style={{ color: '#00D4AA', fontWeight: '500', textDecorationLine: 'underline' }}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      router.push('/privacy-policy');
+                    }}
+                  >
                     Privacy Policy
                   </Text>
                 </Text>
               </View>
-            </TouchableOpacity>
+            </View>
 
             {/* Create Account Button */}
             <AuthButton

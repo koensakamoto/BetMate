@@ -23,13 +23,15 @@ export default function FindFriends() {
         setIsLoading(true);
         try {
           const results = await userService.searchUsers(searchQuery.trim());
-          setSearchResults(results);
           debugLog('User search results:', results);
 
-          // Load friendship statuses for all search results
+          // Load friendship statuses BEFORE setting search results to prevent flickering
           if (results.length > 0) {
-            loadFriendshipStatuses(results.map(user => user.id));
+            await loadFriendshipStatuses(results.map(user => user.id));
           }
+
+          // Now set the results - friendship statuses are already loaded
+          setSearchResults(results);
         } catch (error) {
           errorLog('Error searching users:', error);
           setSearchResults([]);

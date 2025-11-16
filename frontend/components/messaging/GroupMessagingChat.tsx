@@ -567,6 +567,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
           inverted // Newest messages at bottom, scroll starts at bottom
           style={{ flex: 1 }}
           contentContainerStyle={{
+            flexGrow: 1,
             paddingTop: 8,
             paddingBottom: 16
           }}
@@ -576,10 +577,6 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
             loadingMore ? (
               <View style={{ paddingVertical: 16, alignItems: 'center' }}>
                 <Text style={{ color: '#8b8b8b', fontSize: 13 }}>Loading older messages...</Text>
-              </View>
-            ) : !hasMoreMessages && messages.length > 0 ? (
-              <View style={{ paddingVertical: 16, alignItems: 'center' }}>
-                <Text style={{ color: '#666', fontSize: 13 }}>No more messages</Text>
               </View>
             ) : null
           }

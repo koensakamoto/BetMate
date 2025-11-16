@@ -2,9 +2,11 @@ package com.betmate.service.group;
 
 import com.betmate.dto.group.request.GroupUpdateRequestDto;
 import com.betmate.entity.group.Group;
+import com.betmate.entity.group.GroupMembership;
 import com.betmate.entity.user.User;
 import com.betmate.exception.group.GroupNotFoundException;
 import com.betmate.repository.group.GroupRepository;
+import com.betmate.repository.group.GroupMembershipRepository;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,10 +27,12 @@ import java.util.Optional;
 public class GroupService {
 
     private final GroupRepository groupRepository;
+    private final GroupMembershipRepository membershipRepository;
 
     @Autowired
-    public GroupService(GroupRepository groupRepository) {
+    public GroupService(GroupRepository groupRepository, GroupMembershipRepository membershipRepository) {
         this.groupRepository = groupRepository;
+        this.membershipRepository = membershipRepository;
     }
 
     /**
@@ -112,6 +116,26 @@ public class GroupService {
         }
 
         return groupRepository.save(group);
+    }
+
+    /**
+     * Soft deletes a group by setting deletedAt timestamp and deactivating all memberships.
+     */
+    @Transactional
+    public void deleteGroup(@NotNull Group group) {
+        LocalDateTime now = LocalDateTime.now();
+
+        // Mark group as deleted
+        group.setDeletedAt(now);
+        groupRepository.save(group);
+
+        // Deactivate all memberships for this group
+        List<GroupMembership> memberships = membershipRepository.findByGroup(group);
+        for (GroupMembership membership : memberships) {
+            membership.setIsActive(false);
+            membership.setLeftAt(now);
+        }
+        membershipRepository.saveAll(memberships);
     }
 
     /**

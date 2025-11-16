@@ -37,7 +37,6 @@ export default function CreateBet() {
   const [resolver, setResolver] = useState<'self' | 'specific' | 'multiple' | 'group'>('self');
   const [selectedResolver, setSelectedResolver] = useState<number | null>(null);
   const [selectedResolvers, setSelectedResolvers] = useState<number[]>([]);
-  const [evidenceRequirements, setEvidenceRequirements] = useState('');
   const [showDatePicker, setShowDatePicker] = useState<'start' | 'end' | 'resolution' | null>(null);
   const [multipleChoiceOptions, setMultipleChoiceOptions] = useState(['', '']);
   const [overUnderLine, setOverUnderLine] = useState('');
@@ -1064,51 +1063,6 @@ export default function CreateBet() {
             </Text>
             <MaterialIcons name="event" size={20} color="rgba(255, 255, 255, 0.5)" />
           </TouchableOpacity>
-
-          {/* Evidence Requirements */}
-          <Text style={{
-            fontSize: 13,
-            fontWeight: '500',
-            color: 'rgba(255, 255, 255, 0.8)',
-            marginBottom: 4,
-            marginTop: 24
-          }}>
-            Evidence Requirements <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontWeight: '400' }}>(Optional)</Text>
-          </Text>
-          <Text style={{
-            fontSize: 12,
-            color: 'rgba(255, 255, 255, 0.5)',
-            marginBottom: 6
-          }}>
-            What proof is needed to resolve this bet
-          </Text>
-          <View style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.06)',
-            borderRadius: 8,
-            borderWidth: 0.5,
-            borderColor: 'rgba(255, 255, 255, 0.15)',
-            paddingHorizontal: 12,
-            paddingVertical: 10,
-            marginBottom: 24
-          }}>
-            <TextInput
-              style={{
-                fontSize: 15,
-                color: '#ffffff',
-                fontWeight: '400',
-                minHeight: 60,
-                textAlignVertical: 'top'
-              }}
-              value={evidenceRequirements}
-              onChangeText={setEvidenceRequirements}
-              placeholder="What proof is needed to resolve this bet? (e.g., official scoreboard, news article, screenshot)"
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
-              multiline={true}
-              maxLength={300}
-              returnKeyType="done"
-              blurOnSubmit={true}
-            />
-          </View>
 
           {/* Bet Resolver */}
           <Text style={{

@@ -336,42 +336,45 @@ export default function EditProfile() {
             </Text>
           </View>
 
-          {/* Profile Picture */}
-          <TouchableOpacity
-            onPress={showImagePicker}
-            style={{
-              flexDirection: 'row',
+          {/* Profile Picture Section */}
+          <View style={{
+            paddingVertical: 16,
+            borderBottomWidth: 0.5,
+            borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+            marginBottom: 8
+          }}>
+            {/* Avatar Display */}
+            <View style={{
               alignItems: 'center',
-              paddingVertical: 16,
-              borderBottomWidth: 0.5,
-              borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-              marginBottom: 8
-            }}
-          >
-            <View style={{ position: 'relative', marginRight: 16 }}>
+              marginBottom: 20
+            }}>
               {getFullImageUrl(profileImage) ? (
                 <Image
                   source={{ uri: getFullImageUrl(profileImage)! }}
                   style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: 30,
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                    width: 100,
+                    height: 100,
+                    borderRadius: 50,
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    borderWidth: 2,
+                    borderColor: 'rgba(255, 255, 255, 0.1)'
                   }}
                   resizeMode="cover"
                   defaultSource={defaultIcon}
                 />
               ) : (
                 <View style={{
-                  width: 60,
-                  height: 60,
-                  borderRadius: 30,
+                  width: 100,
+                  height: 100,
+                  borderRadius: 50,
                   backgroundColor: 'rgba(0, 212, 170, 0.2)',
                   justifyContent: 'center',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  borderWidth: 2,
+                  borderColor: 'rgba(0, 212, 170, 0.3)'
                 }}>
                   <Text style={{
-                    fontSize: 20,
+                    fontSize: 36,
                     fontWeight: '700',
                     color: '#00D4AA'
                   }}>
@@ -379,45 +382,70 @@ export default function EditProfile() {
                   </Text>
                 </View>
               )}
-              <View style={{
-                position: 'absolute',
-                bottom: -2,
-                right: -2,
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                backgroundColor: '#00D4AA',
-                justifyContent: 'center',
-                alignItems: 'center',
-                borderWidth: 2,
-                borderColor: '#0a0a0f'
-              }}>
-                <MaterialIcons name="camera-alt" size={10} color="#000000" />
-              </View>
             </View>
-            
-            <View style={{ flex: 1 }}>
-              <Text style={{
-                fontSize: 16,
-                color: '#ffffff',
-                marginBottom: 2
-              }}>
-                Profile Photo
-              </Text>
-              <Text style={{
-                fontSize: 14,
-                color: 'rgba(255, 255, 255, 0.6)'
-              }}>
-                Tap to change
-              </Text>
+
+            {/* Upload Buttons */}
+            <View style={{
+              flexDirection: 'row',
+              gap: 12
+            }}>
+              {/* Photo Library Button */}
+              <TouchableOpacity
+                onPress={pickImage}
+                disabled={isSaving}
+                style={{
+                  flex: 1,
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: 12,
+                  paddingVertical: 14,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  opacity: isSaving ? 0.5 : 1
+                }}
+              >
+                <MaterialIcons name="photo-library" size={20} color="#00D4AA" />
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: '#ffffff'
+                }}>
+                  Photo Library
+                </Text>
+              </TouchableOpacity>
+
+              {/* Camera Button */}
+              <TouchableOpacity
+                onPress={takePhoto}
+                disabled={isSaving}
+                style={{
+                  flex: 1,
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: 12,
+                  paddingVertical: 14,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  opacity: isSaving ? 0.5 : 1
+                }}
+              >
+                <MaterialIcons name="camera-alt" size={20} color="#00D4AA" />
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: '#ffffff'
+                }}>
+                  Camera
+                </Text>
+              </TouchableOpacity>
             </View>
-            
-            <MaterialIcons 
-              name="chevron-right" 
-              size={20} 
-              color="rgba(255, 255, 255, 0.4)" 
-            />
-          </TouchableOpacity>
+          </View>
 
           {/* First Name */}
           <View style={{

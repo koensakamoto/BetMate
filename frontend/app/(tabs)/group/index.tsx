@@ -2,7 +2,7 @@ import { Text, View, TouchableOpacity, ScrollView, Image, StatusBar, TextInput, 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import GroupCard from "../../../components/group/groupcard";
 import { groupService, type GroupSummaryResponse } from '../../../services/group/groupService';
 import { debugLog, errorLog, ENV } from '../../../config/env';
@@ -21,6 +21,7 @@ const icon = require("../../../assets/images/icon.png");
 
 
 export default function Group() {
+  const params = useLocalSearchParams<{ refresh?: string }>();
   const [activeTab, setActiveTab] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [myGroups, setMyGroups] = useState<GroupSummaryResponse[]>([]);
@@ -35,15 +36,19 @@ export default function Group() {
   const lastFetchTime = useRef<number>(0);
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+  // Track if we've fetched data at least once
+  const hasFetchedMyGroups = useRef<boolean>(false);
+  const hasFetchedPublicGroups = useRef<boolean>(false);
+
   const isCacheValid = useCallback(() => {
     return (Date.now() - lastFetchTime.current) < CACHE_DURATION;
   }, []);
 
   // Refresh both groups lists
-  const refreshGroups = useCallback(async (isRefreshing: boolean = false) => {
+  const refreshGroups = useCallback(async (isRefreshing: boolean = false, forceLoading: boolean = false) => {
     if (isRefreshing) {
       setRefreshing(true);
-    } else {
+    } else if (forceLoading) {
       setIsLoading(true);
     }
 
@@ -56,6 +61,11 @@ export default function Group() {
 
       setMyGroups(myGroupsData);
       setPublicGroups(publicGroupsData);
+
+      // Mark that we've fetched both
+      hasFetchedMyGroups.current = true;
+      hasFetchedPublicGroups.current = true;
+
       debugLog('Groups refreshed - My groups:', myGroupsData, 'Public groups:', publicGroupsData);
 
       // Debug memberPreviews
@@ -74,13 +84,25 @@ export default function Group() {
     }
   }, []);
 
+  // Watch for refresh parameter changes (e.g., after deleting a group)
+  useEffect(() => {
+    if (params.refresh) {
+      debugLog('Refresh parameter detected, forcing groups refresh');
+      // Invalidate cache and force refresh
+      lastFetchTime.current = 0;
+      refreshGroups(false, true);
+    }
+  }, [params.refresh, refreshGroups]);
+
   // Smart refresh on focus: only refetch if cache expired
   useFocusEffect(
     useCallback(() => {
       if (!isCacheValid() || myGroups.length === 0) {
-        refreshGroups(false);
+        // Only show loading skeleton if we have no data at all
+        const shouldShowLoading = myGroups.length === 0 && publicGroups.length === 0;
+        refreshGroups(false, shouldShowLoading);
       }
-    }, [refreshGroups, isCacheValid, myGroups.length])
+    }, [refreshGroups, isCacheValid, myGroups.length, publicGroups.length])
   );
 
   // Pull-to-refresh handler
@@ -91,27 +113,35 @@ export default function Group() {
   // Fetch data based on active tab (for tab switching only - useFocusEffect handles initial load)
   useEffect(() => {
     const fetchData = async () => {
-      setIsLoading(true);
+      let didFetch = false;
       try {
         if (activeTab === 0) {
-          // Fetch my groups if not already loaded
-          if (myGroups.length === 0) {
+          // Fetch my groups if not already fetched
+          if (!hasFetchedMyGroups.current && myGroups.length === 0) {
+            setIsLoading(true);
+            didFetch = true;
             const groups = await groupService.getMyGroups();
             setMyGroups(groups);
+            hasFetchedMyGroups.current = true;
             debugLog('My groups fetched:', groups);
           }
         } else {
-          // Fetch public groups if not already loaded
-          if (publicGroups.length === 0) {
+          // Fetch public groups if not already fetched
+          if (!hasFetchedPublicGroups.current && publicGroups.length === 0) {
+            setIsLoading(true);
+            didFetch = true;
             const groups = await groupService.getPublicGroups();
             setPublicGroups(groups);
+            hasFetchedPublicGroups.current = true;
             debugLog('Public groups fetched:', groups);
           }
         }
       } catch (error) {
         errorLog('Error fetching groups:', error);
       } finally {
-        setIsLoading(false);
+        if (didFetch) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -332,7 +362,7 @@ export default function Group() {
             </TouchableOpacity>
 
             {/* My Groups Grid - 2 Columns */}
-            {isLoading ? (
+            {isLoading && myGroups.length === 0 ? (
               <View style={{
                 flexDirection: 'row',
                 flexWrap: 'wrap',
@@ -380,7 +410,7 @@ export default function Group() {
           /* Discover Section */
           <View>
             {/* Public Groups Grid - 2 Columns */}
-            {isLoading ? (
+            {isLoading && publicGroups.length === 0 ? (
               <View style={{
                 flexDirection: 'row',
                 flexWrap: 'wrap',

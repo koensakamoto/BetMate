@@ -158,8 +158,11 @@ export default function CreateGroup() {
           {
             text: 'OK',
             onPress: () => {
-              // Navigate back to groups page and the useFocusEffect will refresh the data
-              router.back();
+              // Navigate back to groups page with refresh parameter to force data reload
+              router.replace({
+                pathname: '/(tabs)/group',
+                params: { refresh: Date.now().toString() }
+              });
             }
           }
         ]
