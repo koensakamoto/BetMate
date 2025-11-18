@@ -267,13 +267,17 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
 
     setIsInviting(true);
     try {
-      // TODO: Implement actual API call for username invite
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      Alert.alert('Success', `Invite sent to ${usernameToInvite}`);
+      const groupId = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
+      await groupService.inviteUser(Number(groupId), usernameToInvite.trim());
+      Alert.alert('Success', `Invite sent to @${usernameToInvite}`);
       setUsernameToInvite('');
       setShowInviteModal(false);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to send invite');
+      // Refresh members list to show newly invited user
+      fetchMembers();
+    } catch (error: any) {
+      errorLog('Error inviting user:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send invite';
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsInviting(false);
     }

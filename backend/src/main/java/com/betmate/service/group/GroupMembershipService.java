@@ -3,6 +3,7 @@ package com.betmate.service.group;
 import com.betmate.entity.group.Group;
 import com.betmate.entity.group.GroupMembership;
 import com.betmate.entity.user.User;
+import com.betmate.event.group.GroupInvitationEvent;
 import com.betmate.event.group.GroupJoinRequestEvent;
 import com.betmate.exception.group.GroupMembershipException;
 import com.betmate.repository.group.GroupMembershipRepository;
@@ -203,19 +204,91 @@ public class GroupMembershipService {
      * @param role the role to assign
      * @return the created membership
      */
-    public GroupMembership inviteUserToGroup(@NotNull User actor, @NotNull User userToInvite, 
+    public GroupMembership inviteUserToGroup(@NotNull User actor, @NotNull User userToInvite,
                                            @NotNull Group group, @NotNull GroupMembership.MemberRole role) {
         // Validate actor has permission to invite users
         if (!permissionService.canInviteUsers(actor, group)) {
             throw new GroupMembershipException("Insufficient permissions to invite users");
         }
-        
+
         // Validate actor has permission to create admins (only admins can invite other admins)
         if (role == GroupMembership.MemberRole.ADMIN && !permissionService.canChangeRoles(actor, group)) {
             throw new GroupMembershipException("Only admins can invite other admins");
         }
-        
-        return joinGroup(userToInvite, group, role);
+
+        // Check if user already has an active membership or pending request
+        Optional<GroupMembership> existingMembershipOpt = membershipRepository.findByUserAndGroup(userToInvite, group);
+
+        if (existingMembershipOpt.isPresent()) {
+            GroupMembership existingMembership = existingMembershipOpt.get();
+
+            // Block if user is already an active member
+            if (existingMembership.getIsActive() &&
+                existingMembership.getStatus() == GroupMembership.MembershipStatus.APPROVED) {
+                throw new GroupMembershipException("User is already a member of this group");
+            }
+
+            // Block if user has a pending request
+            if (existingMembership.getStatus() == GroupMembership.MembershipStatus.PENDING) {
+                throw new GroupMembershipException("User already has a pending request for this group");
+            }
+
+            // Allow re-invite for REJECTED or LEFT memberships - create pending invitation
+            if (existingMembership.getStatus() == GroupMembership.MembershipStatus.REJECTED ||
+                existingMembership.getStatus() == GroupMembership.MembershipStatus.LEFT) {
+                existingMembership.setStatus(GroupMembership.MembershipStatus.PENDING);
+                existingMembership.setIsActive(false);
+                existingMembership.setRole(role);
+                existingMembership.setLeftAt(null);
+
+                GroupMembership savedMembership = membershipRepository.save(existingMembership);
+
+                // Don't update member count for pending invitations
+
+                // Publish event
+                publishInvitationEvent(actor, userToInvite, group, savedMembership.getId());
+
+                return savedMembership;
+            }
+        }
+
+        // Create new membership as pending invitation (user must accept to join)
+        GroupMembership membership = new GroupMembership();
+        membership.setUser(userToInvite);
+        membership.setGroup(group);
+        membership.setRole(role);
+        membership.setStatus(GroupMembership.MembershipStatus.PENDING);
+        membership.setIsActive(false);
+
+        GroupMembership savedMembership = membershipRepository.save(membership);
+
+        // Don't update member count for pending invitations
+
+        // Publish event to notify the invited user
+        publishInvitationEvent(actor, userToInvite, group, savedMembership.getId());
+
+        return savedMembership;
+    }
+
+    private void publishInvitationEvent(User actor, User userToInvite, Group group, Long membershipId) {
+        String inviterName = actor.getFirstName() != null && !actor.getFirstName().isEmpty()
+            ? actor.getFirstName() + " " + (actor.getLastName() != null ? actor.getLastName() : "")
+            : actor.getUsername();
+
+        String invitedUsername = userToInvite.getUsername();
+
+        GroupInvitationEvent event = new GroupInvitationEvent(
+            group.getId(),
+            group.getGroupName(),
+            group.getDescription(),
+            actor.getId(),
+            inviterName.trim(),
+            userToInvite.getId(),
+            invitedUsername,
+            membershipId
+        );
+
+        eventPublisher.publishEvent(event);
     }
 
     /**
@@ -615,6 +688,75 @@ public class GroupMembershipService {
         }
 
         // Reject the request
+        membership.setStatus(GroupMembership.MembershipStatus.REJECTED);
+        membership.setIsActive(false);
+        membershipRepository.save(membership);
+    }
+
+    /**
+     * Accept a pending group invitation.
+     *
+     * @param user the user accepting the invitation (must be the invited user)
+     * @param membershipId the membership/invitation ID
+     * @return the approved membership
+     */
+    public GroupMembership acceptInvitation(@NotNull User user, @NotNull Long membershipId) {
+        // Get the pending membership
+        GroupMembership membership = membershipRepository.findById(membershipId)
+            .orElseThrow(() -> new GroupMembershipException("Invitation not found"));
+
+        // Validate it belongs to this user
+        if (!membership.getUser().getId().equals(user.getId())) {
+            throw new GroupMembershipException("This invitation does not belong to you");
+        }
+
+        // Validate it's actually pending
+        if (membership.getStatus() != GroupMembership.MembershipStatus.PENDING) {
+            throw new GroupMembershipException("Invitation is not in pending status");
+        }
+
+        // Get the group
+        Group group = membership.getGroup();
+
+        // Check if group is full
+        if (group.isFull()) {
+            throw new GroupMembershipException("Group is full");
+        }
+
+        // Accept the invitation
+        membership.setStatus(GroupMembership.MembershipStatus.APPROVED);
+        membership.setIsActive(true);
+        GroupMembership approvedMembership = membershipRepository.save(membership);
+
+        // Update group member count
+        long memberCount = membershipRepository.countActiveMembers(group);
+        groupService.updateMemberCount(group.getId(), (int) memberCount);
+
+        return approvedMembership;
+    }
+
+    /**
+     * Reject a pending group invitation.
+     *
+     * @param user the user rejecting the invitation (must be the invited user)
+     * @param membershipId the membership/invitation ID
+     */
+    public void rejectInvitation(@NotNull User user, @NotNull Long membershipId) {
+        // Get the pending membership
+        GroupMembership membership = membershipRepository.findById(membershipId)
+            .orElseThrow(() -> new GroupMembershipException("Invitation not found"));
+
+        // Validate it belongs to this user
+        if (!membership.getUser().getId().equals(user.getId())) {
+            throw new GroupMembershipException("This invitation does not belong to you");
+        }
+
+        // Validate it's actually pending
+        if (membership.getStatus() != GroupMembership.MembershipStatus.PENDING) {
+            throw new GroupMembershipException("Invitation is not in pending status");
+        }
+
+        // Reject the invitation
         membership.setStatus(GroupMembership.MembershipStatus.REJECTED);
         membership.setIsActive(false);
         membershipRepository.save(membership);

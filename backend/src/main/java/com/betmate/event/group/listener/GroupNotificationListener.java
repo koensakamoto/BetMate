@@ -6,8 +6,10 @@ import com.betmate.entity.messaging.Notification;
 import com.betmate.entity.messaging.Notification.NotificationType;
 import com.betmate.entity.messaging.Notification.NotificationPriority;
 import com.betmate.entity.user.User;
+import com.betmate.event.group.GroupInvitationEvent;
 import com.betmate.event.group.GroupJoinRequestEvent;
 import com.betmate.repository.group.GroupMembershipRepository;
+import com.betmate.repository.user.UserRepository;
 import com.betmate.service.group.GroupService;
 import com.betmate.service.messaging.MessageNotificationService;
 import com.betmate.service.notification.NotificationService;
@@ -18,6 +20,8 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.List;
 
@@ -33,17 +37,20 @@ public class GroupNotificationListener {
     private final MessageNotificationService messageNotificationService;
     private final GroupMembershipRepository groupMembershipRepository;
     private final GroupService groupService;
+    private final UserRepository userRepository;
 
     @Autowired
     public GroupNotificationListener(
             NotificationService notificationService,
             MessageNotificationService messageNotificationService,
             GroupMembershipRepository groupMembershipRepository,
-            GroupService groupService) {
+            GroupService groupService,
+            UserRepository userRepository) {
         this.notificationService = notificationService;
         this.messageNotificationService = messageNotificationService;
         this.groupMembershipRepository = groupMembershipRepository;
         this.groupService = groupService;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -131,6 +138,65 @@ public class GroupNotificationListener {
         } catch (Exception e) {
             // Log error but don't throw - we don't want notification failures to break join requests
             logger.error("Failed to process GROUP_JOIN_REQUEST event for group {}: {}",
+                        event.getGroupId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Handles GroupInvitationEvent by creating a notification for the invited user.
+     * Uses TransactionalEventListener with AFTER_COMMIT to ensure the membership was successfully created.
+     * Runs asynchronously to avoid blocking the invitation process.
+     *
+     * @param event The GroupInvitationEvent containing invitation information
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Async
+    public void handleGroupInvitationEvent(GroupInvitationEvent event) {
+        try {
+            logger.info("Processing GROUP_INVITE event for group: {} by inviter: {} to user: {}",
+                       event.getGroupName(), event.getInviterName(), event.getInvitedUsername());
+
+            // 1. Fetch the invited user to ensure they exist
+            User invitedUser = userRepository.findById(event.getInvitedUserId()).orElse(null);
+            if (invitedUser == null) {
+                logger.warn("Invited user {} not found for group invitation", event.getInvitedUserId());
+                return;
+            }
+
+            // 2. Create notification title and message
+            String title = "Group Invitation: " + event.getGroupName();
+            String message = event.getInviterName() + " invited you to join " + event.getGroupName();
+            String actionUrl = "/groups/" + event.getGroupId();
+
+            // 3. Ensure title and message don't exceed maximum lengths
+            if (title.length() > 100) {
+                title = title.substring(0, 97) + "...";
+            }
+            if (message.length() > 500) {
+                message = message.substring(0, 497) + "...";
+            }
+
+            // 4. Create the notification in the database
+            // Use membershipId as relatedEntityId so frontend can accept/reject the invitation
+            Notification notification = notificationService.createNotification(
+                invitedUser,
+                title,
+                message,
+                NotificationType.GROUP_INVITE,
+                NotificationPriority.NORMAL,
+                actionUrl,
+                event.getMembershipId(),
+                "GROUP_MEMBERSHIP"
+            );
+
+            // 5. Send real-time notification via WebSocket
+            messageNotificationService.sendNotificationToUser(invitedUser.getId(), notification);
+
+            logger.info("Successfully created GROUP_INVITE notification for user: {}", invitedUser.getUsername());
+
+        } catch (Exception e) {
+            // Log error but don't throw - we don't want notification failures to break invitations
+            logger.error("Failed to process GROUP_INVITE event for group {}: {}",
                         event.getGroupId(), e.getMessage(), e);
         }
     }

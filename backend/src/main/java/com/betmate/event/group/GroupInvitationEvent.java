@@ -10,10 +10,12 @@ public class GroupInvitationEvent extends DomainEvent {
     private final String inviterName;
     private final Long invitedUserId;
     private final String invitedUsername;
+    private final Long membershipId;
 
     public GroupInvitationEvent(Long groupId, String groupName, String groupDescription,
                                Long inviterId, String inviterName,
-                               Long invitedUserId, String invitedUsername) {
+                               Long invitedUserId, String invitedUsername,
+                               Long membershipId) {
         super("GROUP_INVITATION");
         this.groupId = groupId;
         this.groupName = groupName;
@@ -22,6 +24,7 @@ public class GroupInvitationEvent extends DomainEvent {
         this.inviterName = inviterName;
         this.invitedUserId = invitedUserId;
         this.invitedUsername = invitedUsername;
+        this.membershipId = membershipId;
     }
 
     public Long getGroupId() {
@@ -50,5 +53,9 @@ public class GroupInvitationEvent extends DomainEvent {
 
     public String getInvitedUsername() {
         return invitedUsername;
+    }
+
+    public Long getMembershipId() {
+        return membershipId;
     }
 }

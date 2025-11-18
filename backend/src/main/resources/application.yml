@@ -11,7 +11,7 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:riq21#A20}
     driver-class-name: com.mysql.cj.jdbc.Driver
-  
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -20,6 +20,13 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
+        jdbc:
+          time_zone: UTC  # Ensure Hibernate uses UTC for JDBC operations
+
+  # Jackson timezone configuration for JSON serialization
+  jackson:
+    time-zone: UTC
+    date-format: yyyy-MM-dd'T'HH:mm:ss
   
   flyway:
     enabled: false
@@ -60,6 +67,10 @@ bet:
     close-expired-interval-ms: ${BET_CLOSE_INTERVAL:900000}
     # Process resolvable bets every 15 minutes (900000 ms)
     process-resolvable-interval-ms: ${BET_RESOLVE_INTERVAL:900000}
+    # Notify approaching betting deadlines every 15 minutes (900000 ms)
+    notify-betting-deadline-interval-ms: ${BET_NOTIFY_BETTING_DEADLINE_INTERVAL:900000}
+    # Notify approaching resolution deadlines every 15 minutes (900000 ms)
+    notify-resolution-deadline-interval-ms: ${BET_NOTIFY_RESOLUTION_DEADLINE_INTERVAL:900000}
 
 logging:
   level:
