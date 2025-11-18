@@ -238,6 +238,30 @@ export class GroupService extends BaseApiService {
   async joinGroup(groupId: number): Promise<JoinGroupResponse> {
     return this.post<JoinGroupResponse>(API_ENDPOINTS.GROUP_JOIN(groupId), {});
   }
+
+  /**
+   * Invite a user to the group by username
+   * Permissions:
+   * - PUBLIC groups: Any active member can invite
+   * - PRIVATE groups: Only admins and officers can invite
+   */
+  async inviteUser(groupId: number, username: string): Promise<GroupMemberResponse> {
+    return this.post<GroupMemberResponse>(API_ENDPOINTS.GROUP_INVITE(groupId), { username });
+  }
+
+  /**
+   * Accept a group invitation
+   */
+  async acceptInvitation(membershipId: number): Promise<GroupMemberResponse> {
+    return this.post<GroupMemberResponse>(API_ENDPOINTS.GROUP_ACCEPT_INVITATION(membershipId), {});
+  }
+
+  /**
+   * Reject a group invitation
+   */
+  async rejectInvitation(membershipId: number): Promise<void> {
+    return this.post<void>(API_ENDPOINTS.GROUP_REJECT_INVITATION(membershipId), {});
+  }
 }
 
 // Export singleton instance

@@ -43,10 +43,13 @@ export const API_ENDPOINTS = {
   GROUP_SEARCH: '/groups/search',
   GROUP_CHECK_NAME: '/groups/check-name',
   GROUP_JOIN: (groupId: number) => `/groups/${groupId}/join`,
+  GROUP_INVITE: (groupId: number) => `/groups/${groupId}/invite`,
   GROUP_PENDING_REQUESTS: (groupId: number) => `/groups/${groupId}/pending-requests`,
   GROUP_PENDING_REQUESTS_COUNT: (groupId: number) => `/groups/${groupId}/pending-requests/count`,
   GROUP_APPROVE_REQUEST: (groupId: number, requestId: number) => `/groups/${groupId}/pending-requests/${requestId}/approve`,
   GROUP_DENY_REQUEST: (groupId: number, requestId: number) => `/groups/${groupId}/pending-requests/${requestId}/deny`,
+  GROUP_ACCEPT_INVITATION: (membershipId: number) => `/groups/invitations/${membershipId}/accept`,
+  GROUP_REJECT_INVITATION: (membershipId: number) => `/groups/invitations/${membershipId}/reject`,
   
   // Bets
   BETS: '/bets',

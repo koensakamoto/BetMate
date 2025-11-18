@@ -6,6 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useNotifications, useNotificationWebSocket } from '../services/notification';
 import { NotificationResponse, NotificationType, NotificationPriority } from '../types/api';
 import { friendshipService } from '../services/user/friendshipService';
+import { groupService } from '../services/group/groupService';
 
 export default function Notifications() {
   const insets = useSafeAreaInsets();
@@ -261,6 +262,58 @@ export default function Notifications() {
     }
   };
 
+  const handleAcceptGroupInvitation = async (notification: NotificationResponse) => {
+    if (!notification.relatedEntityId) return;
+
+    setProcessingRequests(prev => new Set([...prev, notification.id]));
+
+    try {
+      // The relatedEntityId contains the membershipId
+      const membershipId = notification.relatedEntityId;
+
+      await groupService.acceptInvitation(membershipId);
+      await markAsRead(notification.id);
+      await refresh();
+
+      Alert.alert('Success', 'Group invitation accepted!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to accept group invitation');
+      console.error('Error accepting group invitation:', error);
+    } finally {
+      setProcessingRequests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(notification.id);
+        return newSet;
+      });
+    }
+  };
+
+  const handleRejectGroupInvitation = async (notification: NotificationResponse) => {
+    if (!notification.relatedEntityId) return;
+
+    setProcessingRequests(prev => new Set([...prev, notification.id]));
+
+    try {
+      // The relatedEntityId contains the membershipId
+      const membershipId = notification.relatedEntityId;
+
+      await groupService.rejectInvitation(membershipId);
+      await markAsRead(notification.id);
+      await refresh();
+
+      Alert.alert('Success', 'Group invitation declined');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to decline group invitation');
+      console.error('Error rejecting group invitation:', error);
+    } finally {
+      setProcessingRequests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(notification.id);
+        return newSet;
+      });
+    }
+  };
+
   const handleViewProfile = (userId: number) => {
     // Navigate to user profile
     router.push(`/profile/${userId}` as any);
@@ -270,7 +323,9 @@ export default function Notifications() {
     // Check both type and notificationType fields since backend sends notificationType
     const notificationType = notification.type || notification.notificationType;
     const isFriendRequest = notificationType === 'FRIEND_REQUEST';
+    const isGroupInvite = notificationType === 'GROUP_INVITE';
     const showFriendRequestActions = isFriendRequest && !notification.isRead;
+    const showGroupInviteActions = isGroupInvite && !notification.isRead;
     const isProcessing = processingRequests.has(notification.id);
 
     // Debug logging
@@ -279,7 +334,9 @@ export default function Notifications() {
       type: notification.type,
       notificationType: notification.notificationType,
       isFriendRequest,
+      isGroupInvite,
       showFriendRequestActions,
+      showGroupInviteActions,
       isRead: notification.isRead,
       message: notification.message,
       relatedEntityId: notification.relatedEntityId
@@ -291,7 +348,15 @@ export default function Notifications() {
       return match ? match[1] : null;
     };
 
+    // Extract inviter name and group name for group invites
+    const extractGroupInviteInfo = (message: string) => {
+      // Expected format: "You've been invited to join {groupName} by {inviterName}"
+      const match = message?.match(/You've been invited to join (.+?) by (.+)/);
+      return match ? { groupName: match[1], inviterName: match[2] } : null;
+    };
+
     const username = isFriendRequest ? extractUsername(notification.message || '') : null;
+    const groupInviteInfo = isGroupInvite ? extractGroupInviteInfo(notification.message || '') : null;
 
     return (
       <View style={{
@@ -301,13 +366,13 @@ export default function Notifications() {
       }}>
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() => !showFriendRequestActions && handleNotificationPress(notification)}
+          onPress={() => !showFriendRequestActions && !showGroupInviteActions && handleNotificationPress(notification)}
           style={{
             flexDirection: 'row',
             alignItems: 'flex-start'
           }}
         >
-          {!isFriendRequest && (
+          {!isFriendRequest && !isGroupInvite && (
             <View style={{
               width: 36,
               height: 36,
@@ -326,7 +391,7 @@ export default function Notifications() {
           )}
 
           <View style={{ flex: 1, paddingTop: 1 }}>
-            {!isFriendRequest && (
+            {!isFriendRequest && !isGroupInvite && (
               <View style={{
                 flexDirection: 'row',
                 justifyContent: 'space-between',
@@ -458,6 +523,111 @@ export default function Notifications() {
 
                     <TouchableOpacity
                       onPress={() => handleRejectFriendRequest(notification)}
+                      disabled={isProcessing}
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 17,
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        opacity: isProcessing ? 0.7 : 1
+                      }}
+                    >
+                      {isProcessing ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                      ) : (
+                        <MaterialIcons
+                          name="close"
+                          size={16}
+                          color="rgba(255, 255, 255, 0.8)"
+                        />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            ) : isGroupInvite ? (
+              <View style={{ marginTop: 4 }}>
+                {/* Single Compact Row for Group Invite */}
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center'
+                }}>
+                  {/* Group Icon */}
+                  <View style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 19,
+                    backgroundColor: 'rgba(6, 182, 212, 0.2)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginRight: 10
+                  }}>
+                    <MaterialIcons name="group" size={20} color="#06B6D4" />
+                  </View>
+
+                  {/* Group Name + Inviter Info */}
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                      <Text style={{
+                        fontSize: 15,
+                        color: '#ffffff',
+                        fontWeight: '600',
+                        marginRight: 8
+                      }}>
+                        {groupInviteInfo?.groupName || 'Group'}
+                      </Text>
+                      <Text style={{
+                        fontSize: 13,
+                        color: 'rgba(255, 255, 255, 0.5)'
+                      }}>
+                        {formatTime(notification.createdAt)}
+                      </Text>
+                    </View>
+                    <Text style={{
+                      fontSize: 13,
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      fontWeight: '400'
+                    }}>
+                      {groupInviteInfo?.inviterName ? `Invited by ${groupInviteInfo.inviterName}` : 'Group invitation'}
+                    </Text>
+                  </View>
+
+                  {/* Action Buttons */}
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8
+                  }}>
+                    <TouchableOpacity
+                      onPress={() => handleAcceptGroupInvitation(notification)}
+                      disabled={isProcessing}
+                      style={{
+                        backgroundColor: '#ffffff',
+                        borderRadius: 6,
+                        paddingVertical: 8,
+                        paddingHorizontal: 14,
+                        opacity: isProcessing ? 0.7 : 1,
+                        minWidth: 75
+                      }}
+                    >
+                      {isProcessing ? (
+                        <ActivityIndicator size="small" color="#000000" />
+                      ) : (
+                        <Text style={{
+                          fontSize: 13,
+                          fontWeight: '600',
+                          color: '#000000',
+                          textAlign: 'center'
+                        }}>
+                          Accept
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => handleRejectGroupInvitation(notification)}
                       disabled={isProcessing}
                       style={{
                         width: 34,

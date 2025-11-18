@@ -449,6 +449,7 @@ public class Notification {
         BET_DEADLINE,       // Bet deadline approaching
         BET_CANCELLED,      // Bet was cancelled
         BET_UPDATED,
+        BET_RESOLUTION_REMINDER, // Reminder to resolve bet before deadline
         
         // Financial
         CREDITS_RECEIVED,   // Credits added to account

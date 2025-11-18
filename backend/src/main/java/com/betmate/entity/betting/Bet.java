@@ -232,6 +232,20 @@ public class Bet {
     @Column
     private LocalDateTime resolvedAt;
 
+    // Notification tracking timestamps - Resolution deadline reminders
+    @Column
+    private LocalDateTime resolution24HourReminderSentAt;
+
+    @Column
+    private LocalDateTime resolution1HourReminderSentAt;
+
+    // Notification tracking timestamps - Betting deadline reminders
+    @Column
+    private LocalDateTime betting24HourReminderSentAt;
+
+    @Column
+    private LocalDateTime betting1HourReminderSentAt;
+
     // ==========================================
     // SYSTEM FIELDS
     // ==========================================
@@ -570,9 +584,41 @@ public class Bet {
     public LocalDateTime getResolvedAt() {
         return resolvedAt;
     }
-    
+
     public void setResolvedAt(LocalDateTime resolvedAt) {
         this.resolvedAt = resolvedAt;
+    }
+
+    public LocalDateTime getResolution24HourReminderSentAt() {
+        return resolution24HourReminderSentAt;
+    }
+
+    public void setResolution24HourReminderSentAt(LocalDateTime resolution24HourReminderSentAt) {
+        this.resolution24HourReminderSentAt = resolution24HourReminderSentAt;
+    }
+
+    public LocalDateTime getResolution1HourReminderSentAt() {
+        return resolution1HourReminderSentAt;
+    }
+
+    public void setResolution1HourReminderSentAt(LocalDateTime resolution1HourReminderSentAt) {
+        this.resolution1HourReminderSentAt = resolution1HourReminderSentAt;
+    }
+
+    public LocalDateTime getBetting24HourReminderSentAt() {
+        return betting24HourReminderSentAt;
+    }
+
+    public void setBetting24HourReminderSentAt(LocalDateTime betting24HourReminderSentAt) {
+        this.betting24HourReminderSentAt = betting24HourReminderSentAt;
+    }
+
+    public LocalDateTime getBetting1HourReminderSentAt() {
+        return betting1HourReminderSentAt;
+    }
+
+    public void setBetting1HourReminderSentAt(LocalDateTime betting1HourReminderSentAt) {
+        this.betting1HourReminderSentAt = betting1HourReminderSentAt;
     }
 
     // System Fields

@@ -3,6 +3,7 @@ package com.betmate.controller;
 import com.betmate.dto.group.request.GroupCreationRequestDto;
 import com.betmate.dto.group.request.GroupUpdateRequestDto;
 import com.betmate.dto.group.request.UpdateMemberRoleRequestDto;
+import com.betmate.dto.group.request.InviteUserRequestDto;
 import com.betmate.dto.group.response.GroupResponseDto;
 import com.betmate.dto.group.response.GroupSummaryResponseDto;
 import com.betmate.dto.group.response.GroupMemberResponseDto;
@@ -478,6 +479,36 @@ public class GroupController {
         );
     }
 
+    /**
+     * Invite a user to the group.
+     * Only accessible to group admins and officers.
+     * Invited users will join as regular MEMBER role.
+     */
+    @PostMapping("/{groupId}/invite")
+    public ResponseEntity<GroupMemberResponseDto> inviteUser(
+            @PathVariable Long groupId,
+            @Valid @RequestBody InviteUserRequestDto request,
+            Authentication authentication) {
+
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Group group = groupService.getGroupById(groupId);
+
+        User userToInvite = userService.getUserByUsername(request.getUsername())
+            .orElseThrow(() -> new RuntimeException("User not found: " + request.getUsername()));
+
+        // Always invite as MEMBER role
+        GroupMembership membership = groupMembershipService.inviteUserToGroup(
+            currentUser,
+            userToInvite,
+            group,
+            GroupMembership.MemberRole.MEMBER
+        );
+
+        return ResponseEntity.ok(convertToMemberResponse(membership));
+    }
+
     // ==========================================
     // PENDING REQUEST ENDPOINTS
     // ==========================================
@@ -592,6 +623,60 @@ public class GroupController {
 
         } catch (Exception e) {
             System.err.println("ERROR denying pending request: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    // ==========================================
+    // INVITATION ACCEPTANCE ENDPOINTS
+    // ==========================================
+
+    /**
+     * Accept a group invitation.
+     * The current user must be the invited user.
+     */
+    @PostMapping("/invitations/{membershipId}/accept")
+    public ResponseEntity<GroupMemberResponseDto> acceptInvitation(
+            @PathVariable Long membershipId,
+            Authentication authentication) {
+
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+            // Accept the invitation
+            GroupMembership membership = groupMembershipService.acceptInvitation(currentUser, membershipId);
+
+            return ResponseEntity.ok(convertToMemberResponse(membership));
+
+        } catch (Exception e) {
+            System.err.println("ERROR accepting invitation: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    /**
+     * Reject a group invitation.
+     * The current user must be the invited user.
+     */
+    @PostMapping("/invitations/{membershipId}/reject")
+    public ResponseEntity<Void> rejectInvitation(
+            @PathVariable Long membershipId,
+            Authentication authentication) {
+
+        try {
+            User currentUser = userService.getUserByUsername(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+            // Reject the invitation
+            groupMembershipService.rejectInvitation(currentUser, membershipId);
+
+            return ResponseEntity.ok().build();
+
+        } catch (Exception e) {
+            System.err.println("ERROR rejecting invitation: " + e.getMessage());
             e.printStackTrace();
             throw e;
         }

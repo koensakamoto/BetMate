@@ -92,8 +92,16 @@ public class GroupPermissionService {
 
     /**
      * Checks if user can invite other users to the group.
+     * - PUBLIC groups: Any active member can invite
+     * - PRIVATE groups: Only admins and officers can invite
      */
     public boolean canInviteUsers(@NotNull User user, @NotNull Group group) {
+        // For public groups, any active member can invite
+        if (group.getPrivacy() == Group.Privacy.PUBLIC) {
+            return membershipRepository.existsByUserAndGroupAndIsActiveTrue(user, group);
+        }
+
+        // For private groups, only admins and officers can invite
         return membershipRepository.isUserAdminOrModerator(user, group);
     }
 

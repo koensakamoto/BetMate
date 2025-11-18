@@ -7,7 +7,10 @@ import com.betmate.entity.messaging.Notification.NotificationPriority;
 import com.betmate.entity.user.User;
 import com.betmate.event.betting.BetCancelledEvent;
 import com.betmate.event.betting.BetCreatedEvent;
+import com.betmate.event.betting.BetResolutionDeadlineApproachingEvent;
+import com.betmate.event.betting.BetDeadlineApproachingEvent;
 import com.betmate.repository.group.GroupMembershipRepository;
+import com.betmate.repository.betting.BetParticipationRepository;
 import com.betmate.service.group.GroupService;
 import com.betmate.service.messaging.MessageNotificationService;
 import com.betmate.service.notification.NotificationService;
@@ -37,6 +40,7 @@ public class BetNotificationListener {
     private final NotificationService notificationService;
     private final MessageNotificationService messageNotificationService;
     private final GroupMembershipRepository groupMembershipRepository;
+    private final BetParticipationRepository betParticipationRepository;
     private final GroupService groupService;
     private final UserService userService;
 
@@ -45,11 +49,13 @@ public class BetNotificationListener {
             NotificationService notificationService,
             MessageNotificationService messageNotificationService,
             GroupMembershipRepository groupMembershipRepository,
+            BetParticipationRepository betParticipationRepository,
             GroupService groupService,
             UserService userService) {
         this.notificationService = notificationService;
         this.messageNotificationService = messageNotificationService;
         this.groupMembershipRepository = groupMembershipRepository;
+        this.betParticipationRepository = betParticipationRepository;
         this.groupService = groupService;
         this.userService = userService;
     }
@@ -226,6 +232,225 @@ public class BetNotificationListener {
         } catch (Exception e) {
             // Log error but don't throw - we don't want notification failures to break bet cancellation
             logger.error("Failed to process BET_CANCELLED event for bet {}: {}",
+                        event.getBetId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Handles BetResolutionDeadlineApproachingEvent by creating notifications for resolvers.
+     * Runs asynchronously to avoid blocking the scheduled task.
+     *
+     * @param event The BetResolutionDeadlineApproachingEvent containing bet and resolver information
+     */
+    @EventListener
+    @Transactional
+    @Async
+    public void handleBetResolutionDeadlineApproachingEvent(BetResolutionDeadlineApproachingEvent event) {
+        try {
+            logger.info("Processing BET_RESOLUTION_DEADLINE_APPROACHING event for bet ID: {} ({} hours before deadline)",
+                       event.getBetId(), event.getHoursUntilDeadline());
+
+            // Determine who should be notified based on resolution method
+            java.util.List<Long> userIdsToNotify = new java.util.ArrayList<>();
+            String resolutionMethod = event.getResolutionMethod();
+
+            switch (resolutionMethod) {
+                case "CREATOR_ONLY":
+                    // Only notify the creator
+                    userIdsToNotify.add(event.getCreatorId());
+                    logger.debug("Notifying creator only for bet {}", event.getBetId());
+                    break;
+
+                case "ASSIGNED_RESOLVER":
+                    // Notify all assigned resolvers
+                    if (event.getAssignedResolverIds() != null && !event.getAssignedResolverIds().isEmpty()) {
+                        userIdsToNotify.addAll(event.getAssignedResolverIds());
+                        logger.debug("Notifying {} assigned resolvers for bet {}",
+                                   userIdsToNotify.size(), event.getBetId());
+                    } else {
+                        logger.warn("No assigned resolvers found for bet {}, falling back to creator", event.getBetId());
+                        userIdsToNotify.add(event.getCreatorId());
+                    }
+                    break;
+
+                case "CONSENSUS_VOTING":
+                    // Notify the creator (voters should already be aware)
+                    userIdsToNotify.add(event.getCreatorId());
+                    logger.debug("Notifying creator for consensus voting bet {}", event.getBetId());
+                    break;
+
+                default:
+                    logger.warn("Unknown resolution method {} for bet {}, notifying creator",
+                               resolutionMethod, event.getBetId());
+                    userIdsToNotify.add(event.getCreatorId());
+            }
+
+            // Create notifications for each resolver
+            int notificationsCreated = 0;
+            NotificationPriority priority = event.getHoursUntilDeadline() == 1
+                ? NotificationPriority.HIGH
+                : NotificationPriority.NORMAL;
+
+            for (Long userId : userIdsToNotify) {
+                try {
+                    // Get the user entity
+                    User resolver = userService.getUserById(userId);
+                    if (resolver == null) {
+                        logger.warn("User {} not found for resolution reminder", userId);
+                        continue;
+                    }
+
+                    // Create notification title and message
+                    String title = event.getHoursUntilDeadline() == 1
+                        ? "⚠️ Urgent: Bet Resolution Needed in 1 Hour"
+                        : "Bet Resolution Reminder: " + event.getBetTitle();
+
+                    String message = event.getHoursUntilDeadline() == 1
+                        ? "The bet '" + event.getBetTitle() + "' needs to be resolved within 1 hour. Please resolve it as soon as possible."
+                        : "The bet '" + event.getBetTitle() + "' needs to be resolved in 24 hours. Don't forget to resolve it before the deadline.";
+
+                    String actionUrl = "/bets/" + event.getBetId();
+
+                    // Ensure title and message don't exceed maximum lengths
+                    if (title.length() > 100) {
+                        title = title.substring(0, 97) + "...";
+                    }
+                    if (message.length() > 500) {
+                        message = message.substring(0, 497) + "...";
+                    }
+
+                    // Create the notification in the database
+                    Notification notification = notificationService.createNotification(
+                        resolver,
+                        title,
+                        message,
+                        NotificationType.BET_RESOLUTION_REMINDER,
+                        priority,
+                        actionUrl,
+                        event.getBetId(),
+                        "BET"
+                    );
+
+                    // Send real-time notification via WebSocket
+                    messageNotificationService.sendNotificationToUser(resolver.getId(), notification);
+
+                    notificationsCreated++;
+                    logger.debug("Created BET_RESOLUTION_REMINDER notification for user: {} ({} hours before)",
+                               resolver.getUsername(), event.getHoursUntilDeadline());
+
+                } catch (Exception e) {
+                    // Log error for individual notification but continue processing others
+                    logger.error("Failed to create notification for user {}: {}",
+                               userId, e.getMessage());
+                }
+            }
+
+            logger.info("Successfully created {} BET_RESOLUTION_REMINDER notifications for bet {} ({} hours)",
+                       notificationsCreated, event.getBetId(), event.getHoursUntilDeadline());
+
+        } catch (Exception e) {
+            // Log error but don't throw - we don't want notification failures to break scheduled tasks
+            logger.error("Failed to process BET_RESOLUTION_DEADLINE_APPROACHING event for bet {}: {}",
+                        event.getBetId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Handles BetDeadlineApproachingEvent by creating notifications for group members who haven't placed bets yet.
+     * Runs asynchronously to avoid blocking the scheduled task.
+     *
+     * @param event The BetDeadlineApproachingEvent containing bet and deadline information
+     */
+    @EventListener
+    @Transactional
+    @Async
+    public void handleBetDeadlineApproachingEvent(BetDeadlineApproachingEvent event) {
+        try {
+            logger.info("Processing BET_DEADLINE_APPROACHING event for bet ID: {} ({} hours before deadline)",
+                       event.getBetId(), event.getHoursRemaining());
+
+            // 1. Get the group entity
+            Group group = groupService.getGroupById(event.getGroupId());
+            if (group == null) {
+                logger.warn("Group {} not found for bet {}", event.getGroupId(), event.getBetId());
+                return;
+            }
+
+            // 2. Get all active users in the group
+            List<User> groupMembers = groupMembershipRepository.findUsersByGroup(group);
+            logger.debug("Found {} members in group '{}'", groupMembers.size(), group.getGroupName());
+
+            // 3. Get all users who have already placed bets (to exclude them)
+            List<Long> participantIds = betParticipationRepository.findByBetId(event.getBetId()).stream()
+                    .map(participation -> participation.getUser().getId())
+                    .collect(java.util.stream.Collectors.toList());
+            logger.debug("Found {} users who already placed bets on bet {}", participantIds.size(), event.getBetId());
+
+            // 4. Create notification for each member who hasn't placed a bet yet
+            int notificationsCreated = 0;
+            NotificationPriority priority = event.isUrgent()
+                ? NotificationPriority.HIGH
+                : NotificationPriority.NORMAL;
+
+            for (User member : groupMembers) {
+                // Skip users who already placed a bet
+                if (participantIds.contains(member.getId())) {
+                    logger.debug("Skipping notification for user {} - already placed bet", member.getUsername());
+                    continue;
+                }
+
+                try {
+                    // Create notification title and message
+                    String title = event.isUrgent()
+                        ? "⏰ Last Call: Bet Closing in 1 Hour"
+                        : "Bet Closing Soon in " + event.getGroupName();
+
+                    String message = event.isUrgent()
+                        ? "The bet '" + event.getBetTitle() + "' closes in 1 hour. Place your bet before it's too late!"
+                        : "The bet '" + event.getBetTitle() + "' closes in 24 hours. Don't miss your chance to participate!";
+
+                    String actionUrl = "/bets/" + event.getBetId();
+
+                    // Ensure title and message don't exceed maximum lengths
+                    if (title.length() > 100) {
+                        title = title.substring(0, 97) + "...";
+                    }
+                    if (message.length() > 500) {
+                        message = message.substring(0, 497) + "...";
+                    }
+
+                    // Create the notification in the database
+                    Notification notification = notificationService.createNotification(
+                        member,
+                        title,
+                        message,
+                        NotificationType.BET_DEADLINE,
+                        priority,
+                        actionUrl,
+                        event.getBetId(),
+                        "BET"
+                    );
+
+                    // Send real-time notification via WebSocket
+                    messageNotificationService.sendNotificationToUser(member.getId(), notification);
+
+                    notificationsCreated++;
+                    logger.debug("Created BET_DEADLINE notification for user: {} ({} hours before)",
+                               member.getUsername(), event.getHoursRemaining());
+
+                } catch (Exception e) {
+                    // Log error for individual notification but continue processing others
+                    logger.error("Failed to create notification for user {}: {}",
+                               member.getUsername(), e.getMessage());
+                }
+            }
+
+            logger.info("Successfully created {} BET_DEADLINE notifications for bet {} ({} hours)",
+                       notificationsCreated, event.getBetId(), event.getHoursRemaining());
+
+        } catch (Exception e) {
+            // Log error but don't throw - we don't want notification failures to break scheduled tasks
+            logger.error("Failed to process BET_DEADLINE_APPROACHING event for bet {}: {}",
                         event.getBetId(), e.getMessage(), e);
         }
     }

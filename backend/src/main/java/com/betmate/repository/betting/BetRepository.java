@@ -88,7 +88,40 @@ public interface BetRepository extends JpaRepository<Bet, Long> {
     
     @Query("SELECT b FROM Bet b WHERE b.status = 'CLOSED' AND b.resolveDate IS NOT NULL AND b.resolveDate <= :currentTime")
     List<Bet> findBetsReadyForResolution(@Param("currentTime") LocalDateTime currentTime);
-    
+
+    @Query("SELECT b FROM Bet b WHERE b.status IN ('OPEN', 'CLOSED') AND b.status != 'CANCELLED' AND b.resolveDate IS NOT NULL " +
+           "AND b.resolveDate > :twentyThreeHours45Minutes AND b.resolveDate <= :twentyFourHours15Minutes " +
+           "AND b.resolution24HourReminderSentAt IS NULL AND b.deletedAt IS NULL")
+    List<Bet> findBetsNeedingTwentyFourHourResolutionReminder(
+        @Param("twentyThreeHours45Minutes") LocalDateTime twentyThreeHours45Minutes,
+        @Param("twentyFourHours15Minutes") LocalDateTime twentyFourHours15Minutes
+    );
+
+    @Query("SELECT b FROM Bet b WHERE b.status IN ('OPEN', 'CLOSED') AND b.status != 'CANCELLED' AND b.resolveDate IS NOT NULL " +
+           "AND b.resolveDate > :fortyFiveMinutes AND b.resolveDate <= :oneHour15Minutes " +
+           "AND b.resolution1HourReminderSentAt IS NULL AND b.deletedAt IS NULL")
+    List<Bet> findBetsNeedingOneHourResolutionReminder(
+        @Param("fortyFiveMinutes") LocalDateTime fortyFiveMinutes,
+        @Param("oneHour15Minutes") LocalDateTime oneHour15Minutes
+    );
+
+    // Betting deadline reminder queries
+    @Query("SELECT b FROM Bet b WHERE b.status = 'OPEN' AND b.deletedAt IS NULL " +
+           "AND b.bettingDeadline > :twentyThreeHours45Minutes AND b.bettingDeadline <= :twentyFourHours15Minutes " +
+           "AND b.betting24HourReminderSentAt IS NULL")
+    List<Bet> findBetsNeedingTwentyFourHourBettingReminder(
+        @Param("twentyThreeHours45Minutes") LocalDateTime twentyThreeHours45Minutes,
+        @Param("twentyFourHours15Minutes") LocalDateTime twentyFourHours15Minutes
+    );
+
+    @Query("SELECT b FROM Bet b WHERE b.status = 'OPEN' AND b.deletedAt IS NULL " +
+           "AND b.bettingDeadline > :fortyFiveMinutes AND b.bettingDeadline <= :oneHour15Minutes " +
+           "AND b.betting1HourReminderSentAt IS NULL")
+    List<Bet> findBetsNeedingOneHourBettingReminder(
+        @Param("fortyFiveMinutes") LocalDateTime fortyFiveMinutes,
+        @Param("oneHour15Minutes") LocalDateTime oneHour15Minutes
+    );
+
     // Analytics queries
     @Query("SELECT COUNT(b) FROM Bet b WHERE b.createdAt >= :start AND b.createdAt < :end")
     Long countBetsCreatedBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
