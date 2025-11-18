@@ -7,6 +7,7 @@ import com.betmate.service.user.UserRegistrationService.RegistrationRequest;
 import com.betmate.service.user.UserRegistrationService.RegistrationValidation;
 import com.betmate.exception.user.UserRegistrationException;
 import com.betmate.validation.InputValidator;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,7 @@ class UserRegistrationServiceTest {
     private TestPasswordEncoder passwordEncoder;
     private TestInputValidator inputValidator;
     private TestUserSettingsRepository userSettingsRepository;
+    private TestEntityManager entityManager;
 
     // Test data constants
     private static final String TEST_USERNAME = "testuser";
@@ -47,8 +49,9 @@ class UserRegistrationServiceTest {
         passwordEncoder = new TestPasswordEncoder();
         inputValidator = new TestInputValidator();
         userSettingsRepository = new TestUserSettingsRepository();
+        entityManager = new TestEntityManager();
 
-        registrationService = new UserRegistrationService(userService, passwordEncoder, inputValidator, userSettingsRepository);
+        registrationService = new UserRegistrationService(userService, passwordEncoder, inputValidator, userSettingsRepository, entityManager);
         
         // Create valid registration request
         validRequest = new RegistrationRequest(
@@ -343,6 +346,65 @@ class UserRegistrationServiceTest {
         public void reset() {
             lastSavedSettings = null;
         }
+    }
+
+    private static class TestEntityManager implements EntityManager {
+        @Override
+        public void flush() {
+            // No-op for testing - the mock UserService already assigns IDs
+        }
+
+        // All other EntityManager methods are not used in tests, so we can leave them unimplemented or return null
+        @Override public void persist(Object entity) {}
+        @Override public <T> T merge(T entity) { return null; }
+        @Override public void remove(Object entity) {}
+        @Override public <T> T find(Class<T> entityClass, Object primaryKey) { return null; }
+        @Override public <T> T find(Class<T> entityClass, Object primaryKey, java.util.Map<String, Object> properties) { return null; }
+        @Override public <T> T find(Class<T> entityClass, Object primaryKey, jakarta.persistence.LockModeType lockMode) { return null; }
+        @Override public <T> T find(Class<T> entityClass, Object primaryKey, jakarta.persistence.LockModeType lockMode, java.util.Map<String, Object> properties) { return null; }
+        @Override public <T> T getReference(Class<T> entityClass, Object primaryKey) { return null; }
+        @Override public void clear() {}
+        @Override public void detach(Object entity) {}
+        @Override public boolean contains(Object entity) { return false; }
+        @Override public jakarta.persistence.LockModeType getLockMode(Object entity) { return null; }
+        @Override public void setProperty(String propertyName, Object value) {}
+        @Override public java.util.Map<String, Object> getProperties() { return null; }
+        @Override public jakarta.persistence.Query createQuery(String qlString) { return null; }
+        @Override public <T> jakarta.persistence.TypedQuery<T> createQuery(jakarta.persistence.criteria.CriteriaQuery<T> criteriaQuery) { return null; }
+        @Override public jakarta.persistence.Query createQuery(jakarta.persistence.criteria.CriteriaUpdate updateQuery) { return null; }
+        @Override public jakarta.persistence.Query createQuery(jakarta.persistence.criteria.CriteriaDelete deleteQuery) { return null; }
+        @Override public <T> jakarta.persistence.TypedQuery<T> createQuery(String qlString, Class<T> resultClass) { return null; }
+        @Override public jakarta.persistence.Query createNamedQuery(String name) { return null; }
+        @Override public <T> jakarta.persistence.TypedQuery<T> createNamedQuery(String name, Class<T> resultClass) { return null; }
+        @Override public jakarta.persistence.Query createNativeQuery(String sqlString) { return null; }
+        @Override public jakarta.persistence.Query createNativeQuery(String sqlString, Class resultClass) { return null; }
+        @Override public jakarta.persistence.Query createNativeQuery(String sqlString, String resultSetMapping) { return null; }
+        @Override public jakarta.persistence.StoredProcedureQuery createNamedStoredProcedureQuery(String name) { return null; }
+        @Override public jakarta.persistence.StoredProcedureQuery createStoredProcedureQuery(String procedureName) { return null; }
+        @Override public jakarta.persistence.StoredProcedureQuery createStoredProcedureQuery(String procedureName, Class... resultClasses) { return null; }
+        @Override public jakarta.persistence.StoredProcedureQuery createStoredProcedureQuery(String procedureName, String... resultSetMappings) { return null; }
+        @Override public void joinTransaction() {}
+        @Override public boolean isJoinedToTransaction() { return false; }
+        @Override public <T> T unwrap(Class<T> cls) { return null; }
+        @Override public Object getDelegate() { return null; }
+        @Override public void close() {}
+        @Override public boolean isOpen() { return true; }
+        @Override public jakarta.persistence.EntityTransaction getTransaction() { return null; }
+        @Override public jakarta.persistence.EntityManagerFactory getEntityManagerFactory() { return null; }
+        @Override public jakarta.persistence.criteria.CriteriaBuilder getCriteriaBuilder() { return null; }
+        @Override public jakarta.persistence.metamodel.Metamodel getMetamodel() { return null; }
+        @Override public <T> jakarta.persistence.EntityGraph<T> createEntityGraph(Class<T> rootType) { return null; }
+        @Override public jakarta.persistence.EntityGraph<?> createEntityGraph(String graphName) { return null; }
+        @Override public jakarta.persistence.EntityGraph<?> getEntityGraph(String graphName) { return null; }
+        @Override public <T> java.util.List<jakarta.persistence.EntityGraph<? super T>> getEntityGraphs(Class<T> entityClass) { return null; }
+        @Override public void lock(Object entity, jakarta.persistence.LockModeType lockMode) {}
+        @Override public void lock(Object entity, jakarta.persistence.LockModeType lockMode, java.util.Map<String, Object> properties) {}
+        @Override public void refresh(Object entity) {}
+        @Override public void refresh(Object entity, java.util.Map<String, Object> properties) {}
+        @Override public void refresh(Object entity, jakarta.persistence.LockModeType lockMode) {}
+        @Override public void refresh(Object entity, jakarta.persistence.LockModeType lockMode, java.util.Map<String, Object> properties) {}
+        @Override public void setFlushMode(jakarta.persistence.FlushModeType flushMode) {}
+        @Override public jakarta.persistence.FlushModeType getFlushMode() { return null; }
     }
 
     // ==================== registerUser Tests ====================

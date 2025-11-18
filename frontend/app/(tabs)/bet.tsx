@@ -33,6 +33,7 @@ export default function Bet() {
   // Cache management: 5 minute cache
   const lastFetchTime = useRef<number>(0);
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const hasFetchedMyBets = useRef<boolean>(false);
 
   const isCacheValid = useCallback(() => {
     return (Date.now() - lastFetchTime.current) < CACHE_DURATION;
@@ -80,8 +81,9 @@ export default function Bet() {
       // const discoverableBets = openBets.filter(bet => !bet.hasUserParticipated);
       // setDiscoverBets(discoverableBets);
 
-      // Update cache timestamp
+      // Update cache timestamp and fetch status
       lastFetchTime.current = Date.now();
+      hasFetchedMyBets.current = true;
 
     } catch (error) {
       console.error('Failed to load bets:', error);
@@ -450,7 +452,7 @@ export default function Bet() {
               /* My Bets Section */
               <>
                 {/* My Bets Feed */}
-                {loading ? (
+                {loading && !hasFetchedMyBets.current ? (
                   <>
                     <SkeletonBetCard />
                     <SkeletonBetCard />
