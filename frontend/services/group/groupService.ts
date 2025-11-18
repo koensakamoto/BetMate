@@ -44,6 +44,7 @@ export interface GroupSummaryResponse {
 export interface GroupDetailResponse extends GroupSummaryResponse {
   updatedAt: string;
   userRole?: string;
+  userMembershipStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'LEFT';
 }
 
 export interface GroupMemberResponse {
@@ -68,6 +69,12 @@ export interface PendingRequestResponse {
   displayName?: string;
   profilePictureUrl?: string;
   requestedAt: string;
+}
+
+export interface JoinGroupResponse {
+  membershipId: number;
+  status: 'APPROVED' | 'PENDING';
+  message: string;
 }
 
 export class GroupService extends BaseApiService {
@@ -228,8 +235,8 @@ export class GroupService extends BaseApiService {
    * For PUBLIC groups, user joins immediately.
    * For PRIVATE and SECRET groups, creates a pending request.
    */
-  async joinGroup(groupId: number): Promise<void> {
-    return this.post<void>(API_ENDPOINTS.GROUP_JOIN(groupId), {});
+  async joinGroup(groupId: number): Promise<JoinGroupResponse> {
+    return this.post<JoinGroupResponse>(API_ENDPOINTS.GROUP_JOIN(groupId), {});
   }
 }
 

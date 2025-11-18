@@ -251,29 +251,33 @@ class UserServiceTest {
     void should_ReturnUsers_When_SearchTermMatches() {
         // Given
         String searchTerm = "Test";
+        Long currentUserId = 999L;
         List<User> expectedUsers = List.of(testUser);
-        when(userRepository.searchUsersByName(searchTerm)).thenReturn(expectedUsers);
-        
+        when(userRepository.searchUsersByName(searchTerm, currentUserId)).thenReturn(expectedUsers);
+
         // When
-        List<User> result = userService.searchUsers(searchTerm);
-        
+        List<User> result = userService.searchUsers(searchTerm, currentUserId);
+
         // Then
         assertThat(result).hasSize(1);
         assertThat(result).containsExactly(testUser);
-        verify(userRepository).searchUsersByName(searchTerm);
+        verify(userRepository).searchUsersByName(searchTerm, currentUserId);
     }
 
     @Test
     @DisplayName("Should return empty list when search term is empty or blank")
     void should_ReturnEmptyList_When_SearchTermIsBlank() {
+        // Given
+        Long currentUserId = 999L;
+
         // When
-        List<User> emptyResult = userService.searchUsers("");
-        List<User> blankResult = userService.searchUsers("   ");
-        
+        List<User> emptyResult = userService.searchUsers("", currentUserId);
+        List<User> blankResult = userService.searchUsers("   ", currentUserId);
+
         // Then
         assertThat(emptyResult).isEmpty();
         assertThat(blankResult).isEmpty();
-        verify(userRepository, never()).searchUsersByName(anyString());
+        verify(userRepository, never()).searchUsersByName(anyString(), anyLong());
     }
 
     @Test
@@ -281,14 +285,15 @@ class UserServiceTest {
     void should_ReturnEmptyList_When_NoUsersMatchSearchTerm() {
         // Given
         String searchTerm = "NonExistent";
-        when(userRepository.searchUsersByName(searchTerm)).thenReturn(List.of());
-        
+        Long currentUserId = 999L;
+        when(userRepository.searchUsersByName(searchTerm, currentUserId)).thenReturn(List.of());
+
         // When
-        List<User> result = userService.searchUsers(searchTerm);
-        
+        List<User> result = userService.searchUsers(searchTerm, currentUserId);
+
         // Then
         assertThat(result).isEmpty();
-        verify(userRepository).searchUsersByName(searchTerm);
+        verify(userRepository).searchUsersByName(searchTerm, currentUserId);
     }
 
     // ==================== getActiveUsers Tests ====================
@@ -471,15 +476,16 @@ class UserServiceTest {
     void should_TrimSearchTerms_When_SearchingUsers() {
         // Given
         String paddedSearchTerm = "  TestUser  ";
+        Long currentUserId = 999L;
         List<User> expectedUsers = List.of(testUser);
-        when(userRepository.searchUsersByName("TestUser")).thenReturn(expectedUsers);
-        
+        when(userRepository.searchUsersByName("TestUser", currentUserId)).thenReturn(expectedUsers);
+
         // When
-        List<User> result = userService.searchUsers(paddedSearchTerm);
-        
+        List<User> result = userService.searchUsers(paddedSearchTerm, currentUserId);
+
         // Then
         assertThat(result).hasSize(1);
         assertThat(result).containsExactly(testUser);
-        verify(userRepository).searchUsersByName("TestUser"); // Verify trimmed
+        verify(userRepository).searchUsersByName("TestUser", currentUserId); // Verify trimmed
     }
 }

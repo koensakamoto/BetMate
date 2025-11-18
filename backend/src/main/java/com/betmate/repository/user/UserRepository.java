@@ -41,11 +41,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByCreatedAtAfter(LocalDateTime since);
     
     // Search functionality
-    @Query("SELECT u FROM User u WHERE u.deletedAt IS NULL AND " +
+    @Query("SELECT u FROM User u WHERE u.deletedAt IS NULL AND u.id != :currentUserId AND " +
            "(LOWER(u.username) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
            "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
            "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
-    List<User> searchUsersByName(@Param("searchTerm") String searchTerm);
+    List<User> searchUsersByName(@Param("searchTerm") String searchTerm, @Param("currentUserId") Long currentUserId);
     
     // Admin queries
     @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = true AND u.deletedAt IS NULL")

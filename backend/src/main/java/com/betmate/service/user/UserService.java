@@ -63,13 +63,13 @@ public class UserService {
     }
 
     /**
-     * Searches users by name.
+     * Searches users by name, excluding the current user.
      */
-    public List<User> searchUsers(@NotNull String searchTerm) {
+    public List<User> searchUsers(@NotNull String searchTerm, @NotNull Long currentUserId) {
         if (searchTerm.trim().isEmpty()) {
             return List.of();
         }
-        return userRepository.searchUsersByName(searchTerm.trim());
+        return userRepository.searchUsersByName(searchTerm.trim(), currentUserId);
     }
 
     /**

@@ -185,11 +185,12 @@ export const handleApiResponse = <T>(response: AxiosResponse<ApiResponse<T> | T>
       );
     }
 
-    // Return data if present, otherwise return undefined for void responses
+    // Return data if present, otherwise return the entire response (for responses like {success, message})
     if ('data' in apiResponse) {
       return apiResponse.data as T;
     }
-    return undefined as T;
+    // Return the entire response object for responses like {success: true, message: "...", ...other fields}
+    return response.data as T;
   }
 
   // Backend returns data directly (no wrapper), so return it as-is

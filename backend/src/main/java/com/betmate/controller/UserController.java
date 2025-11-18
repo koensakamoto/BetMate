@@ -275,7 +275,12 @@ public class UserController {
     @GetMapping("/search")
     public ResponseEntity<List<UserSearchResultResponseDto>> searchUsers(
             @RequestParam @NotBlank String q) {
-        List<User> users = userService.searchUsers(q);
+        UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
+        if (userPrincipal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        List<User> users = userService.searchUsers(q, userPrincipal.getUserId());
         List<UserSearchResultResponseDto> results = users.stream()
             .map(UserSearchResultResponseDto::fromUser)
             .toList();

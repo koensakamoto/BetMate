@@ -28,6 +28,7 @@ public class GroupResponseDto {
     // Additional fields for user context
     private Boolean isUserMember;
     private String userRole; // ADMIN, OFFICER, MEMBER
+    private String userMembershipStatus; // PENDING, APPROVED, REJECTED, LEFT
     
     // Constructors
     public GroupResponseDto() {}
@@ -180,5 +181,13 @@ public class GroupResponseDto {
 
     public void setUserRole(String userRole) {
         this.userRole = userRole;
+    }
+
+    public String getUserMembershipStatus() {
+        return userMembershipStatus;
+    }
+
+    public void setUserMembershipStatus(String userMembershipStatus) {
+        this.userMembershipStatus = userMembershipStatus;
     }
 }

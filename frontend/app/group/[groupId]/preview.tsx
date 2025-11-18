@@ -23,6 +23,7 @@ export default function GroupPreview() {
   const [groupData, setGroupData] = useState<GroupDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
 
   // Get group initials from name
   const getGroupInitials = (name: string) => {
@@ -43,7 +44,22 @@ export default function GroupPreview() {
         setIsLoading(true);
         const numericGroupId = Array.isArray(groupId) ? parseInt(groupId[0]) : parseInt(groupId as string);
         const data = await groupService.getGroupById(numericGroupId);
+
+        // DEBUG: Log what we're getting from the backend
+        console.log('📊 Group data from backend:', {
+          groupId: data.id,
+          groupName: data.groupName,
+          userMembershipStatus: data.userMembershipStatus,
+          isUserMember: data.isUserMember,
+          userRole: data.userRole
+        });
+
         setGroupData(data);
+
+        // Set pending request state based on membership status from backend
+        const isPending = data.userMembershipStatus === 'PENDING';
+        console.log('🔔 Setting hasPendingRequest to:', isPending);
+        setHasPendingRequest(isPending);
       } catch (error) {
         console.error('Failed to fetch group data:', error);
         Alert.alert('Error', 'Failed to load group information.');
@@ -61,18 +77,32 @@ export default function GroupPreview() {
 
     try {
       setIsJoining(true);
-      await groupService.joinGroup(groupData.id);
+      const response = await groupService.joinGroup(groupData.id);
 
-      Alert.alert(
-        'Joined Successfully!',
-        `Welcome to ${groupData.groupName}`,
-        [
-          {
-            text: 'Go to Group',
-            onPress: () => router.replace(`/group/${groupData.id}`)
-          }
-        ]
-      );
+      if (response.status === 'PENDING') {
+        setHasPendingRequest(true);
+        Alert.alert(
+          'Request Sent',
+          response.message,
+          [
+            {
+              text: 'OK'
+            }
+          ]
+        );
+      } else {
+        // APPROVED - user joined immediately
+        Alert.alert(
+          'Joined Successfully!',
+          `Welcome to ${groupData.groupName}`,
+          [
+            {
+              text: 'Go to Group',
+              onPress: () => router.replace(`/group/${groupData.id}`)
+            }
+          ]
+        );
+      }
     } catch (error) {
       console.error('Failed to join group:', error);
       Alert.alert('Error', 'Failed to join group. Please try again.');
@@ -313,22 +343,26 @@ export default function GroupPreview() {
           {/* Join Button */}
           <TouchableOpacity
             onPress={handleJoinGroup}
-            disabled={isJoining}
+            disabled={isJoining || hasPendingRequest}
             style={{
-              backgroundColor: '#ffffff',
+              backgroundColor: hasPendingRequest ? 'rgba(255, 255, 255, 0.3)' : '#ffffff',
               borderRadius: 16,
               paddingVertical: 16,
               paddingHorizontal: 24,
               alignItems: 'center',
-              opacity: isJoining ? 0.7 : 1
+              opacity: (isJoining || hasPendingRequest) ? 0.7 : 1
             }}
           >
             <Text style={{
               fontSize: 18,
               fontWeight: '700',
-              color: '#0a0a0f'
+              color: hasPendingRequest ? 'rgba(10, 10, 15, 0.7)' : '#0a0a0f'
             }}>
-              {isJoining ? 'Joining...' : 'Join Group'}
+              {hasPendingRequest
+                ? 'Request Pending'
+                : isJoining
+                  ? (groupData.privacy === 'PRIVATE' ? 'Sending Request...' : 'Joining...')
+                  : (groupData.privacy === 'PRIVATE' ? 'Request to Join' : 'Join Group')}
             </Text>
           </TouchableOpacity>
 
@@ -340,7 +374,11 @@ export default function GroupPreview() {
             marginTop: 16,
             lineHeight: 20
           }}>
-            Join this group to participate in bets, chat with members, and access exclusive content.
+            {hasPendingRequest
+              ? 'Your join request is pending approval from group admins. You will be notified once your request is reviewed.'
+              : groupData.privacy === 'PRIVATE'
+                ? 'This is a private group. Your request will be reviewed by group admins.'
+                : 'Join this group to participate in bets, chat with members, and access exclusive content.'}
           </Text>
         </View>
       </ScrollView>

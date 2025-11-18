@@ -133,9 +133,7 @@ public class UserSettings {
     
     public void setUser(User user) {
         this.user = user;
-        if (user != null) {
-            this.userId = user.getId();
-        }
+        // Note: userId is managed by @MapsId annotation, do not set it manually
     }
 
     // Priority 1: Critical Notifications
@@ -354,13 +352,13 @@ public class UserSettings {
 
     /**
      * Creates default settings for a new user.
-     * 
+     *
      * @param user the user to create settings for
      * @return new UserSettings with default values
      */
     public static UserSettings createDefaultSettings(User user) {
         UserSettings settings = new UserSettings();
-        settings.setUser(user);
+        settings.setUser(user); // @MapsId will automatically derive the ID from this relationship
         // All other fields will use their default values from field declarations
         return settings;
     }

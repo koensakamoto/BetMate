@@ -461,6 +461,7 @@ public class Notification {
         GROUP_LEFT,         // Someone left your group
         GROUP_ROLE_CHANGED, // Your role in group changed
         GROUP_MESSAGE,      // Someone sent a message in the group
+        GROUP_JOIN_REQUEST, // Someone requested to join your group (private groups)
         
         // Social
         MESSAGE,

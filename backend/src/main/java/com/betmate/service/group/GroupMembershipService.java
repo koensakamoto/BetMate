@@ -3,11 +3,13 @@ package com.betmate.service.group;
 import com.betmate.entity.group.Group;
 import com.betmate.entity.group.GroupMembership;
 import com.betmate.entity.user.User;
+import com.betmate.event.group.GroupJoinRequestEvent;
 import com.betmate.exception.group.GroupMembershipException;
 import com.betmate.repository.group.GroupMembershipRepository;
 import com.betmate.service.user.UserService;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -29,16 +31,19 @@ public class GroupMembershipService {
     private final GroupService groupService;
     private final GroupPermissionService permissionService;
     private final UserService userService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
-    public GroupMembershipService(GroupMembershipRepository membershipRepository, 
+    public GroupMembershipService(GroupMembershipRepository membershipRepository,
                                   GroupService groupService,
                                   GroupPermissionService permissionService,
-                                  UserService userService) {
+                                  UserService userService,
+                                  ApplicationEventPublisher eventPublisher) {
         this.membershipRepository = membershipRepository;
         this.groupService = groupService;
         this.permissionService = permissionService;
         this.userService = userService;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -73,9 +78,63 @@ public class GroupMembershipService {
      * - PRIVATE groups or groups without auto-approve: Creates PENDING request
      */
     public GroupMembership joinGroup(@NotNull User user, @NotNull Group group) {
-        // Check if already a member or has pending request
-        if (membershipRepository.existsByUserAndGroup(user, group)) {
-            throw new GroupMembershipException("User already has a membership or pending request for this group");
+        // Check for existing membership
+        Optional<GroupMembership> existingMembershipOpt = membershipRepository.findByUserAndGroup(user, group);
+
+        if (existingMembershipOpt.isPresent()) {
+            GroupMembership existingMembership = existingMembershipOpt.get();
+
+            // Block if user is active member or has pending request
+            if (existingMembership.getIsActive() ||
+                existingMembership.getStatus() == GroupMembership.MembershipStatus.PENDING) {
+                throw new GroupMembershipException("User already has a membership or pending request for this group");
+            }
+
+            // Allow re-request for REJECTED or LEFT memberships
+            if (existingMembership.getStatus() == GroupMembership.MembershipStatus.REJECTED ||
+                existingMembership.getStatus() == GroupMembership.MembershipStatus.LEFT) {
+
+                // Determine if should auto-approve based on group privacy
+                boolean shouldAutoApprove = group.getPrivacy() == Group.Privacy.PUBLIC;
+
+                if (shouldAutoApprove) {
+                    // Immediate approval for PUBLIC groups
+                    existingMembership.setStatus(GroupMembership.MembershipStatus.APPROVED);
+                    existingMembership.setIsActive(true);
+
+                    GroupMembership savedMembership = membershipRepository.save(existingMembership);
+
+                    // Update member count
+                    long memberCount = membershipRepository.countActiveMembers(group);
+                    groupService.updateMemberCount(group.getId(), (int) memberCount);
+
+                    return savedMembership;
+                } else {
+                    // Pending request for PRIVATE and SECRET groups
+                    existingMembership.setStatus(GroupMembership.MembershipStatus.PENDING);
+                    existingMembership.setIsActive(false);
+
+                    GroupMembership savedMembership = membershipRepository.save(existingMembership);
+
+                    // Publish event to notify group admins/officers
+                    String requesterName = user.getFirstName() != null && !user.getFirstName().isEmpty()
+                        ? user.getFirstName() + " " + (user.getLastName() != null ? user.getLastName() : "")
+                        : user.getUsername();
+
+                    GroupJoinRequestEvent event = new GroupJoinRequestEvent(
+                        group.getId(),
+                        group.getGroupName(),
+                        user.getId(),
+                        requesterName.trim(),
+                        user.getUsername(),
+                        savedMembership.getId()
+                    );
+
+                    eventPublisher.publishEvent(event);
+
+                    return savedMembership;
+                }
+            }
         }
 
         // Can't join inactive or deleted groups
@@ -88,6 +147,7 @@ public class GroupMembershipService {
             throw new GroupMembershipException("Group is full");
         }
 
+        // Create new membership
         GroupMembership membership = new GroupMembership();
         membership.setUser(user);
         membership.setGroup(group);
@@ -113,6 +173,22 @@ public class GroupMembershipService {
         if (shouldAutoApprove) {
             long memberCount = membershipRepository.countActiveMembers(group);
             groupService.updateMemberCount(group.getId(), (int) memberCount);
+        } else {
+            // Publish event to notify group admins/officers about the join request
+            String requesterName = user.getFirstName() != null && !user.getFirstName().isEmpty()
+                ? user.getFirstName() + " " + (user.getLastName() != null ? user.getLastName() : "")
+                : user.getUsername();
+
+            GroupJoinRequestEvent event = new GroupJoinRequestEvent(
+                group.getId(),
+                group.getGroupName(),
+                user.getId(),
+                requesterName.trim(),
+                user.getUsername(),
+                savedMembership.getId()
+            );
+
+            eventPublisher.publishEvent(event);
         }
 
         return savedMembership;
@@ -286,11 +362,19 @@ public class GroupMembershipService {
     }
 
     /**
-     * Gets user's membership in a group.
+     * Gets user's membership in a group (active members only).
      */
     @Transactional(readOnly = true)
     public Optional<GroupMembership> getUserMembership(@NotNull User user, @NotNull Group group) {
         return membershipRepository.findByUserAndGroupAndIsActiveTrue(user, group);
+    }
+
+    /**
+     * Gets user's membership in a group (any status including PENDING, REJECTED, LEFT).
+     */
+    @Transactional(readOnly = true)
+    public Optional<GroupMembership> getAnyUserMembership(@NotNull User user, @NotNull Group group) {
+        return membershipRepository.findByUserAndGroup(user, group);
     }
 
     /**

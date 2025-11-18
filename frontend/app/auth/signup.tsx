@@ -98,21 +98,57 @@ export default function Signup() {
   };
 
   const handleSignup = async () => {
-    if (!validateForm()) return;
+    console.log('🚀 [SIGNUP] Starting signup process');
+
+    if (!validateForm()) {
+      console.log('❌ [SIGNUP] Form validation failed');
+      return;
+    }
+
+    const signupData = {
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim(),
+      username: formData.username.trim(),
+      email: formData.email.trim(),
+      password: formData.password
+    };
+
+    console.log('📝 [SIGNUP] Form data prepared:', {
+      firstName: signupData.firstName,
+      lastName: signupData.lastName,
+      username: signupData.username,
+      email: signupData.email,
+      passwordLength: signupData.password.length
+    });
 
     try {
-      await signup({
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        username: formData.username.trim(),
-        email: formData.email.trim(),
-        password: formData.password
-      });
+      console.log('🔄 [SIGNUP] Calling signup function...');
+      await signup(signupData);
+      console.log('✅ [SIGNUP] Signup successful!');
       // Navigation will be handled by auth state change
-    } catch (error) {
+    } catch (error: any) {
+      console.error('❌ [SIGNUP] Signup failed with error:', error);
+      console.error('❌ [SIGNUP] Error name:', error?.name);
+      console.error('❌ [SIGNUP] Error message:', error?.message);
+      console.error('❌ [SIGNUP] Error status:', error?.status);
+      console.error('❌ [SIGNUP] Error data:', error?.data);
+      console.error('❌ [SIGNUP] Full error object:', JSON.stringify(error, null, 2));
+
+      let errorMessage = 'Something went wrong. Please try again.';
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.data?.message) {
+        errorMessage = error.data.message;
+      }
+
+      console.error('❌ [SIGNUP] Displaying error to user:', errorMessage);
+
       Alert.alert(
         'Signup Failed',
-        error instanceof Error ? error.message : 'Something went wrong. Please try again.',
+        errorMessage,
         [{ text: 'OK' }]
       );
     }

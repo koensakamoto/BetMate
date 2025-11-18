@@ -5,6 +5,7 @@ import com.betmate.entity.user.UserSettings;
 import com.betmate.exception.user.UserRegistrationException;
 import com.betmate.repository.user.UserSettingsRepository;
 import com.betmate.validation.InputValidator;
+import jakarta.persistence.EntityManager;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -30,17 +31,20 @@ public class UserRegistrationService {
     private final PasswordEncoder passwordEncoder;
     private final InputValidator inputValidator;
     private final UserSettingsRepository userSettingsRepository;
+    private final EntityManager entityManager;
 
     @Autowired
     public UserRegistrationService(
             UserService userService,
             PasswordEncoder passwordEncoder,
             InputValidator inputValidator,
-            UserSettingsRepository userSettingsRepository) {
+            UserSettingsRepository userSettingsRepository,
+            EntityManager entityManager) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.inputValidator = inputValidator;
         this.userSettingsRepository = userSettingsRepository;
+        this.entityManager = entityManager;
     }
 
     /**
@@ -53,9 +57,18 @@ public class UserRegistrationService {
         User user = createUserFromRequest(request);
         User savedUser = userService.saveUser(user);
 
+        // Flush to ensure the User ID is generated before creating UserSettings
+        entityManager.flush();
+
+        System.out.println("DEBUG: User ID after flush: " + savedUser.getId());
+
         // Create default settings for the new user with PUBLIC profile
         UserSettings settings = UserSettings.createDefaultSettings(savedUser);
-        userSettingsRepository.save(settings);
+        System.out.println("DEBUG: UserSettings userId after creation (should be null, @MapsId will set it): " + settings.getUserId());
+        System.out.println("DEBUG: UserSettings user ID from relationship: " + (settings.getUser() != null ? settings.getUser().getId() : "null"));
+
+        UserSettings savedSettings = userSettingsRepository.save(settings);
+        System.out.println("DEBUG: UserSettings userId after save: " + savedSettings.getUserId());
 
         return savedUser;
     }

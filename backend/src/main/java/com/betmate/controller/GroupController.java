@@ -6,6 +6,7 @@ import com.betmate.dto.group.request.UpdateMemberRoleRequestDto;
 import com.betmate.dto.group.response.GroupResponseDto;
 import com.betmate.dto.group.response.GroupSummaryResponseDto;
 import com.betmate.dto.group.response.GroupMemberResponseDto;
+import com.betmate.dto.group.response.JoinGroupResponseDto;
 import com.betmate.dto.group.response.MemberPreviewDto;
 import com.betmate.dto.group.response.PendingRequestResponseDto;
 import com.betmate.entity.group.Group;
@@ -226,7 +227,7 @@ public class GroupController {
      * For PRIVATE groups or groups without auto-approve, creates a pending request.
      */
     @PostMapping("/{groupId}/join")
-    public ResponseEntity<Void> joinGroup(
+    public ResponseEntity<JoinGroupResponseDto> joinGroup(
             @PathVariable Long groupId,
             Authentication authentication) {
 
@@ -235,9 +236,9 @@ public class GroupController {
         Group group = groupService.getGroupById(groupId);
 
         // Join the group (service handles auto-approve logic)
-        groupMembershipService.joinGroup(currentUser, group);
+        GroupMembership membership = groupMembershipService.joinGroup(currentUser, group);
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(JoinGroupResponseDto.fromMembership(membership));
     }
 
     /**
@@ -374,21 +375,33 @@ public class GroupController {
         response.setUpdatedAt(group.getUpdatedAt());
         
         // Set user context based on membership
-        boolean isUserMember = groupMembershipService.isMember(currentUser, group);
-        response.setIsUserMember(isUserMember);
+        // Use getAnyUserMembership to get ANY membership (including PENDING)
+        java.util.Optional<GroupMembership> membershipOpt =
+            groupMembershipService.getAnyUserMembership(currentUser, group);
 
-        if (isUserMember) {
-            // Get the user's role in the group
-            java.util.Optional<GroupMembership> membershipOpt = groupMembershipService.getUserMembership(currentUser, group);
-            if (membershipOpt.isPresent()) {
-                response.setUserRole(membershipOpt.get().getRole().name());
+        if (membershipOpt.isPresent()) {
+            GroupMembership membership = membershipOpt.get();
+
+            // Set membership status
+            response.setUserMembershipStatus(membership.getStatus().name());
+
+            // Set if user is member (only if APPROVED and active)
+            boolean isUserMember = membership.getIsActive() &&
+                                  membership.getStatus() == GroupMembership.MembershipStatus.APPROVED;
+            response.setIsUserMember(isUserMember);
+
+            // Set role if active member
+            if (isUserMember) {
+                response.setUserRole(membership.getRole().name());
             } else {
                 response.setUserRole(null);
             }
         } else {
+            response.setIsUserMember(false);
             response.setUserRole(null);
+            response.setUserMembershipStatus(null);
         }
-        
+
         return response;
     }
 
