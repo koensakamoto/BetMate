@@ -240,6 +240,15 @@ export class GroupService extends BaseApiService {
   }
 
   /**
+   * Leave a group
+   * The current user leaves the specified group.
+   * Admins can only leave if there is another admin in the group.
+   */
+  async leaveGroup(groupId: number): Promise<{ message: string; groupId: string }> {
+    return this.post<{ message: string; groupId: string }>(API_ENDPOINTS.GROUP_LEAVE(groupId), {});
+  }
+
+  /**
    * Invite a user to the group by username
    * Permissions:
    * - PUBLIC groups: Any active member can invite

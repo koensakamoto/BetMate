@@ -227,6 +227,72 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
     setIsEditingPrivacy(false);
   };
 
+  const handleLeaveGroup = async () => {
+    // First, check if there is another admin in the group
+    setIsUpdating(true);
+    try {
+      const members = await groupService.getGroupMembers(groupData.id);
+      const adminCount = members.filter(m => m.role === 'ADMIN' && m.isActive).length;
+
+      if (adminCount <= 1) {
+        Alert.alert(
+          'Cannot Leave Group',
+          'You are the only admin in this group. Please promote another member to admin before leaving, or delete the group instead.',
+          [{ text: 'OK' }]
+        );
+        setIsUpdating(false);
+        return;
+      }
+
+      // If there are other admins, proceed with leaving
+      Alert.alert(
+        'Leave Group',
+        `Are you sure you want to leave ${groupData.name}? Another admin will manage the group.`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => setIsUpdating(false)
+          },
+          {
+            text: 'Leave',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await groupService.leaveGroup(groupData.id);
+                Alert.alert(
+                  'Success',
+                  'You have left the group',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => {
+                        router.replace({
+                          pathname: '/(tabs)/group',
+                          params: { refresh: Date.now().toString() }
+                        });
+                      }
+                    }
+                  ]
+                );
+              } catch (error: any) {
+                console.error('Failed to leave group:', error);
+                const errorMessage = error?.response?.data?.error || 'Failed to leave group. Please try again.';
+                Alert.alert('Error', errorMessage);
+              } finally {
+                setIsUpdating(false);
+              }
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Failed to fetch group members:', error);
+      Alert.alert('Error', 'Failed to verify admin status. Please try again.');
+      setIsUpdating(false);
+    }
+  };
+
   const handleDeleteGroup = () => {
     Alert.alert(
       'Delete Group',
@@ -752,6 +818,60 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
           </TouchableOpacity>
         )}
       </SettingSection>
+
+      {/* Leave Group */}
+      <TouchableOpacity
+        onPress={handleLeaveGroup}
+        disabled={isUpdating}
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.03)',
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 12,
+          borderWidth: 0.5,
+          borderColor: 'rgba(255, 152, 0, 0.2)',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          opacity: isUpdating ? 0.5 : 1
+        }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{
+            width: 24,
+            height: 24,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 12
+          }}>
+            <MaterialIcons
+              name="exit-to-app"
+              size={18}
+              color="#FF9800"
+            />
+          </View>
+          <View>
+            <Text style={{
+              fontSize: 15,
+              fontWeight: '500',
+              color: '#FF9800',
+              marginBottom: 2
+            }}>
+              Leave Group
+            </Text>
+            <Text style={{
+              fontSize: 13,
+              color: 'rgba(255, 152, 0, 0.7)'
+            }}>
+              Leave this group as admin
+            </Text>
+          </View>
+        </View>
+        <MaterialIcons
+          name="chevron-right"
+          size={20}
+          color="rgba(255, 152, 0, 0.6)"
+        />
+      </TouchableOpacity>
 
       {/* Danger Zone */}
       <TouchableOpacity
