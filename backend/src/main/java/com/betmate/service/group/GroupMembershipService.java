@@ -7,6 +7,7 @@ import com.betmate.event.group.GroupInvitationEvent;
 import com.betmate.event.group.GroupJoinRequestEvent;
 import com.betmate.event.group.GroupMemberJoinedEvent;
 import com.betmate.event.group.GroupMemberLeftEvent;
+import com.betmate.event.group.GroupRoleChangedEvent;
 import com.betmate.exception.group.GroupMembershipException;
 import com.betmate.repository.group.GroupMembershipRepository;
 import com.betmate.service.user.UserService;
@@ -392,6 +393,30 @@ public class GroupMembershipService {
                     member.getUsername(), group.getGroupName(), wasKicked);
     }
 
+    private void publishRoleChangedEvent(@NotNull Group group, @NotNull User targetUser,
+                                         @NotNull GroupMembership.MemberRole oldRole,
+                                         @NotNull GroupMembership.MemberRole newRole,
+                                         @NotNull User changedBy) {
+        String targetUserName = targetUser.getFirstName() != null && !targetUser.getFirstName().isEmpty()
+            ? targetUser.getFirstName() + " " + (targetUser.getLastName() != null ? targetUser.getLastName() : "")
+            : targetUser.getUsername();
+
+        GroupRoleChangedEvent event = new GroupRoleChangedEvent(
+            group.getId(),
+            group.getGroupName(),
+            targetUser.getId(),
+            targetUserName.trim(),
+            targetUser.getUsername(),
+            oldRole,
+            newRole,
+            changedBy.getId()
+        );
+
+        eventPublisher.publishEvent(event);
+        logger.info("Published GroupRoleChangedEvent for user {} in group {} (old: {}, new: {})",
+                    targetUser.getUsername(), group.getGroupName(), oldRole, newRole);
+    }
+
     /**
      * Adds creator membership when group is created.
      * Bypasses permission checks since the creator should always be able to join their own group.
@@ -694,8 +719,13 @@ public class GroupMembershipService {
 
         System.out.println("🔄 [SERVICE DEBUG] Found membership - Current role: " + membership.getRole());
 
+        // Capture old role BEFORE updating (needed for event)
+        GroupMembership.MemberRole oldRole = membership.getRole();
+
         // Prevent demoting the group creator from admin
-        if (group.getCreator().getId().equals(targetUser.getId()) && newRole != GroupMembership.MemberRole.ADMIN) {
+        if (group.getCreator().getId().equals(targetUser.getId()) &&
+            oldRole == GroupMembership.MemberRole.ADMIN &&
+            newRole != GroupMembership.MemberRole.ADMIN) {
             System.out.println("❌ [SERVICE DEBUG] Cannot demote group creator from admin");
             throw new GroupMembershipException("Cannot demote the group creator from admin role");
         }
@@ -707,6 +737,9 @@ public class GroupMembershipService {
         System.out.println("🔄 [SERVICE DEBUG] Saving membership to database...");
         GroupMembership savedMembership = membershipRepository.save(membership);
         System.out.println("🔄 [SERVICE DEBUG] Saved membership - Role is now: " + savedMembership.getRole());
+
+        // Publish GROUP_ROLE_CHANGED event
+        publishRoleChangedEvent(group, targetUser, oldRole, newRole, requestingUser);
 
         return savedMembership;
     }

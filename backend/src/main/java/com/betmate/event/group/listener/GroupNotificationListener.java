@@ -10,6 +10,7 @@ import com.betmate.event.group.GroupInvitationEvent;
 import com.betmate.event.group.GroupJoinRequestEvent;
 import com.betmate.event.group.GroupMemberJoinedEvent;
 import com.betmate.event.group.GroupMemberLeftEvent;
+import com.betmate.event.group.GroupRoleChangedEvent;
 import com.betmate.repository.group.GroupMembershipRepository;
 import com.betmate.repository.user.UserRepository;
 import com.betmate.service.group.GroupService;
@@ -378,6 +379,74 @@ public class GroupNotificationListener {
         } catch (Exception e) {
             // Log error but don't throw - we don't want notification failures to break leave/removal
             logger.error("Failed to process GROUP_LEFT event for group {}: {}",
+                        event.getGroupId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Handles GroupRoleChangedEvent by creating a notification for the user whose role was changed.
+     * Uses TransactionalEventListener with AFTER_COMMIT to ensure the role was successfully changed.
+     * Runs asynchronously to avoid blocking the role change process.
+     *
+     * @param event The GroupRoleChangedEvent containing role change information
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Async
+    public void handleGroupRoleChangedEvent(GroupRoleChangedEvent event) {
+        try {
+            logger.info("Processing GROUP_ROLE_CHANGED event for group: {} user: {} (old: {}, new: {})",
+                       event.getGroupName(), event.getTargetUsername(),
+                       event.getOldRole(), event.getNewRole());
+
+            // 1. Fetch the target user to ensure they exist
+            User targetUser = userRepository.findById(event.getTargetUserId()).orElse(null);
+            if (targetUser == null) {
+                logger.warn("Target user {} not found for role change notification", event.getTargetUserId());
+                return;
+            }
+
+            // 2. Create notification message using Option 1 style
+            String message;
+            if (event.wasPromoted()) {
+                // Use "promoted" for upward role changes
+                message = "You were promoted to " + event.getNewRole() + " in " + event.getGroupName();
+            } else {
+                // Use "changed" for other role changes
+                message = "Your role was changed to " + event.getNewRole() + " in " + event.getGroupName();
+            }
+
+            String title = "Role Changed: " + event.getGroupName();
+            String actionUrl = "/groups/" + event.getGroupId();
+
+            // 3. Ensure title and message don't exceed maximum lengths
+            if (title.length() > 100) {
+                title = title.substring(0, 97) + "...";
+            }
+            if (message.length() > 500) {
+                message = message.substring(0, 497) + "...";
+            }
+
+            // 4. Create the notification in the database
+            Notification notification = notificationService.createNotification(
+                targetUser,
+                title,
+                message,
+                NotificationType.GROUP_ROLE_CHANGED,
+                NotificationPriority.NORMAL,
+                actionUrl,
+                event.getGroupId(),
+                "GROUP"
+            );
+
+            // 5. Send real-time notification via WebSocket
+            messageNotificationService.sendNotificationToUser(targetUser.getId(), notification);
+
+            logger.info("Successfully created GROUP_ROLE_CHANGED notification for user: {}",
+                       targetUser.getUsername());
+
+        } catch (Exception e) {
+            // Log error but don't throw - we don't want notification failures to break role changes
+            logger.error("Failed to process GROUP_ROLE_CHANGED event for group {}: {}",
                         event.getGroupId(), e.getMessage(), e);
         }
     }
