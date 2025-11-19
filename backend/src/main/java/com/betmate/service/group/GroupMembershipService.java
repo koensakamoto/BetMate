@@ -5,10 +5,15 @@ import com.betmate.entity.group.GroupMembership;
 import com.betmate.entity.user.User;
 import com.betmate.event.group.GroupInvitationEvent;
 import com.betmate.event.group.GroupJoinRequestEvent;
+import com.betmate.event.group.GroupMemberJoinedEvent;
+import com.betmate.event.group.GroupMemberLeftEvent;
 import com.betmate.exception.group.GroupMembershipException;
 import com.betmate.repository.group.GroupMembershipRepository;
 import com.betmate.service.user.UserService;
+import jakarta.persistence.EntityManager;
 import jakarta.validation.constraints.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -28,23 +33,28 @@ import java.util.Optional;
 @Transactional
 public class GroupMembershipService {
 
+    private static final Logger logger = LoggerFactory.getLogger(GroupMembershipService.class);
+
     private final GroupMembershipRepository membershipRepository;
     private final GroupService groupService;
     private final GroupPermissionService permissionService;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
+    private final EntityManager entityManager;
 
     @Autowired
     public GroupMembershipService(GroupMembershipRepository membershipRepository,
                                   GroupService groupService,
                                   GroupPermissionService permissionService,
                                   UserService userService,
-                                  ApplicationEventPublisher eventPublisher) {
+                                  ApplicationEventPublisher eventPublisher,
+                                  EntityManager entityManager) {
         this.membershipRepository = membershipRepository;
         this.groupService = groupService;
         this.permissionService = permissionService;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
+        this.entityManager = entityManager;
     }
 
     /**
@@ -92,8 +102,10 @@ public class GroupMembershipService {
             }
 
             // Allow re-request for REJECTED or LEFT memberships
+            // Also handle members who have leftAt set (regardless of status inconsistency)
             if (existingMembership.getStatus() == GroupMembership.MembershipStatus.REJECTED ||
-                existingMembership.getStatus() == GroupMembership.MembershipStatus.LEFT) {
+                existingMembership.getStatus() == GroupMembership.MembershipStatus.LEFT ||
+                (!existingMembership.getIsActive() && existingMembership.getLeftAt() != null)) {
 
                 // Determine if should auto-approve based on group privacy
                 boolean shouldAutoApprove = group.getPrivacy() == Group.Privacy.PUBLIC;
@@ -102,6 +114,7 @@ public class GroupMembershipService {
                     // Immediate approval for PUBLIC groups
                     existingMembership.setStatus(GroupMembership.MembershipStatus.APPROVED);
                     existingMembership.setIsActive(true);
+                    existingMembership.setRole(GroupMembership.MemberRole.MEMBER);
 
                     GroupMembership savedMembership = membershipRepository.save(existingMembership);
 
@@ -114,6 +127,7 @@ public class GroupMembershipService {
                     // Pending request for PRIVATE and SECRET groups
                     existingMembership.setStatus(GroupMembership.MembershipStatus.PENDING);
                     existingMembership.setIsActive(false);
+                    existingMembership.setRole(GroupMembership.MemberRole.MEMBER);
 
                     GroupMembership savedMembership = membershipRepository.save(existingMembership);
 
@@ -174,6 +188,9 @@ public class GroupMembershipService {
         if (shouldAutoApprove) {
             long memberCount = membershipRepository.countActiveMembers(group);
             groupService.updateMemberCount(group.getId(), (int) memberCount);
+
+            // Publish event to notify existing members
+            publishMemberJoinedEvent(user, group, false);
         } else {
             // Publish event to notify group admins/officers about the join request
             String requesterName = user.getFirstName() != null && !user.getFirstName().isEmpty()
@@ -217,10 +234,19 @@ public class GroupMembershipService {
         }
 
         // Check if user already has an active membership or pending request
+        logger.debug("Checking for existing membership - User ID: {}, Group ID: {}",
+            userToInvite.getId(), group.getId());
         Optional<GroupMembership> existingMembershipOpt = membershipRepository.findByUserAndGroup(userToInvite, group);
 
         if (existingMembershipOpt.isPresent()) {
             GroupMembership existingMembership = existingMembershipOpt.get();
+
+            logger.info("Found existing membership - ID: {}, Status: {}, IsActive: {}, User: {}, Group: {}",
+                existingMembership.getId(),
+                existingMembership.getStatus(),
+                existingMembership.getIsActive(),
+                userToInvite.getUsername(),
+                group.getGroupName());
 
             // Block if user is already an active member
             if (existingMembership.getIsActive() &&
@@ -233,15 +259,48 @@ public class GroupMembershipService {
                 throw new GroupMembershipException("User already has a pending request for this group");
             }
 
-            // Allow re-invite for REJECTED or LEFT memberships - create pending invitation
+            // Allow re-invite for REJECTED or LEFT memberships - reset the existing record
+            // Also handle members who have leftAt set (regardless of status inconsistency)
             if (existingMembership.getStatus() == GroupMembership.MembershipStatus.REJECTED ||
-                existingMembership.getStatus() == GroupMembership.MembershipStatus.LEFT) {
+                existingMembership.getStatus() == GroupMembership.MembershipStatus.LEFT ||
+                (!existingMembership.getIsActive() && existingMembership.getLeftAt() != null)) {
+
+                logger.info("Re-inviting user with LEFT/REJECTED membership - " +
+                    "Membership ID: {}, Current Status: {}, User: {}, Group: {}",
+                    existingMembership.getId(),
+                    existingMembership.getStatus(),
+                    userToInvite.getUsername(),
+                    group.getGroupName());
+
+                // Reset the existing membership to a fresh pending state
                 existingMembership.setStatus(GroupMembership.MembershipStatus.PENDING);
                 existingMembership.setIsActive(false);
                 existingMembership.setRole(role);
                 existingMembership.setLeftAt(null);
+                // Note: joinedAt cannot be updated as it's marked updatable=false in the entity
+                existingMembership.setTotalBets(0);
+                existingMembership.setTotalWins(0);
+                existingMembership.setTotalLosses(0);
+
+                logger.debug("About to save membership - " +
+                    "ID: {}, Status: {}, IsActive: {}, Role: {}, " +
+                    "LeftAt: {}, TotalBets: {}, EntityState: {}",
+                    existingMembership.getId(),
+                    existingMembership.getStatus(),
+                    existingMembership.getIsActive(),
+                    existingMembership.getRole(),
+                    existingMembership.getLeftAt(),
+                    existingMembership.getTotalBets(),
+                    entityManager.contains(existingMembership) ? "MANAGED" : "DETACHED");
 
                 GroupMembership savedMembership = membershipRepository.save(existingMembership);
+
+                logger.info("Successfully saved re-invited membership - " +
+                    "ID: {}, Status: {}, User: {}, Group: {}",
+                    savedMembership.getId(),
+                    savedMembership.getStatus(),
+                    userToInvite.getUsername(),
+                    group.getGroupName());
 
                 // Don't update member count for pending invitations
 
@@ -292,6 +351,48 @@ public class GroupMembershipService {
     }
 
     /**
+     * Publishes a GroupMemberJoinedEvent to notify other group members
+     */
+    private void publishMemberJoinedEvent(@NotNull User newMember, @NotNull Group group, boolean wasInvited) {
+        String memberName = newMember.getFirstName() != null && !newMember.getFirstName().isEmpty()
+            ? newMember.getFirstName() + " " + (newMember.getLastName() != null ? newMember.getLastName() : "")
+            : newMember.getUsername();
+
+        GroupMemberJoinedEvent event = new GroupMemberJoinedEvent(
+            group.getId(),
+            group.getGroupName(),
+            newMember.getId(),
+            memberName.trim(),
+            newMember.getUsername(),
+            wasInvited
+        );
+
+        eventPublisher.publishEvent(event);
+        logger.info("Published GroupMemberJoinedEvent for user {} joining group {}",
+                    newMember.getUsername(), group.getGroupName());
+    }
+
+    private void publishMemberLeftEvent(@NotNull User member, @NotNull Group group, boolean wasKicked, String reason) {
+        String memberName = member.getFirstName() != null && !member.getFirstName().isEmpty()
+            ? member.getFirstName() + " " + (member.getLastName() != null ? member.getLastName() : "")
+            : member.getUsername();
+
+        GroupMemberLeftEvent event = new GroupMemberLeftEvent(
+            group.getId(),
+            group.getGroupName(),
+            member.getId(),
+            memberName.trim(),
+            member.getUsername(),
+            wasKicked,
+            reason
+        );
+
+        eventPublisher.publishEvent(event);
+        logger.info("Published GroupMemberLeftEvent for user {} leaving group {} (wasKicked: {})",
+                    member.getUsername(), group.getGroupName(), wasKicked);
+    }
+
+    /**
      * Adds creator membership when group is created.
      * Bypasses permission checks since the creator should always be able to join their own group.
      */
@@ -317,23 +418,37 @@ public class GroupMembershipService {
      * User leaves a group.
      */
     public void leaveGroup(@NotNull User user, @NotNull Group group) {
-        // Use atomic operation to prevent race conditions
+        // Check if user is a member
+        Optional<GroupMembership> membership = membershipRepository.findByUserAndGroupAndIsActiveTrue(user, group);
+        if (membership.isEmpty()) {
+            throw new GroupMembershipException("User is not a member of this group");
+        }
+
         LocalDateTime leftAt = LocalDateTime.now();
-        int rowsUpdated = membershipRepository.atomicLeaveGroup(user, group, leftAt);
-        
-        if (rowsUpdated == 0) {
-            // Check if user exists but is last admin
-            Optional<GroupMembership> membership = membershipRepository.findByUserAndGroupAndIsActiveTrue(user, group);
-            if (membership.isEmpty()) {
-                throw new GroupMembershipException("User is not a member of this group");
-            } else {
+        int rowsUpdated;
+
+        // If user is an admin, check if they're the last admin
+        if (membership.get().getRole() == GroupMembership.MemberRole.ADMIN) {
+            long adminCount = membershipRepository.countActiveAdmins(group);
+            if (adminCount <= 1) {
                 throw new GroupMembershipException("Cannot leave group - user is the only admin");
             }
+            rowsUpdated = membershipRepository.atomicLeaveGroupAdmin(user, group, leftAt);
+        } else {
+            // Non-admin can leave without restrictions
+            rowsUpdated = membershipRepository.atomicLeaveGroupNonAdmin(user, group, leftAt);
         }
-        
+
+        if (rowsUpdated == 0) {
+            throw new GroupMembershipException("Failed to leave group - membership may have changed");
+        }
+
         // Update group member count
         long memberCount = membershipRepository.countActiveMembers(group);
         groupService.updateMemberCount(group.getId(), (int) memberCount);
+
+        // Publish event to notify other members
+        publishMemberLeftEvent(user, group, false, null);
     }
 
     /**
@@ -427,11 +542,16 @@ public class GroupMembershipService {
         // Directly update the membership
         targetMembership.setIsActive(false);
         targetMembership.setLeftAt(LocalDateTime.now());
+        targetMembership.setStatus(GroupMembership.MembershipStatus.LEFT);
         membershipRepository.save(targetMembership);
 
         // Update group member count
         long memberCount = membershipRepository.countActiveMembers(group);
         groupService.updateMemberCount(group.getId(), (int) memberCount);
+
+        // Publish event to notify other members
+        String reason = "Removed by " + actor.getUsername();
+        publishMemberLeftEvent(userToRemove, group, true, reason);
     }
 
     /**
@@ -657,6 +777,9 @@ public class GroupMembershipService {
         long memberCount = membershipRepository.countActiveMembers(group);
         groupService.updateMemberCount(group.getId(), (int) memberCount);
 
+        // Publish event to notify existing members
+        publishMemberJoinedEvent(membership.getUser(), group, false);
+
         return approvedMembership;
     }
 
@@ -731,6 +854,9 @@ public class GroupMembershipService {
         // Update group member count
         long memberCount = membershipRepository.countActiveMembers(group);
         groupService.updateMemberCount(group.getId(), (int) memberCount);
+
+        // Publish event to notify existing members
+        publishMemberJoinedEvent(user, group, true);
 
         return approvedMembership;
     }

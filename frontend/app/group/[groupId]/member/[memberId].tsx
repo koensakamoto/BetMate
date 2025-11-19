@@ -147,6 +147,35 @@ export default function MemberProfile() {
     );
   };
 
+  const handlePromoteToAdmin = async () => {
+    if (!member) return;
+
+    Alert.alert(
+      'Promote to Admin',
+      `Are you sure you want to promote ${getDisplayName(member)} to Admin? They will have full group permissions.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Promote',
+          onPress: async () => {
+            setIsUpdating(true);
+            try {
+              const numericGroupId = Array.isArray(groupId) ? parseInt(groupId[0]) : parseInt(groupId as string);
+              await groupService.updateMemberRole(numericGroupId, member.id, 'ADMIN');
+              setMember(prev => prev ? { ...prev, role: 'ADMIN' } : null);
+              Alert.alert('Success', `${getDisplayName(member)} has been promoted to Admin`);
+            } catch (error) {
+              console.error('Error promoting member:', error);
+              Alert.alert('Error', 'Failed to promote member. Please try again.');
+            } finally {
+              setIsUpdating(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleDemoteToMember = async () => {
     if (!member) return;
 
@@ -492,8 +521,8 @@ export default function MemberProfile() {
             </View>
           </View>
 
-          {/* Management Actions */}
-          {canManageMembers && member.id !== user?.id && (
+          {/* Management Actions - Only show for non-admin members */}
+          {canManageMembers && member.id !== user?.id && member.role !== 'ADMIN' && (
             <View style={{
               paddingTop: 18,
               borderTopWidth: 0.5,
@@ -545,40 +574,80 @@ export default function MemberProfile() {
                     Grant officer permissions
                   </Text>
                 </TouchableOpacity>
-              ) : member.role === 'OFFICER' && currentUserRole === 'ADMIN' ? (
-                <TouchableOpacity
-                  onPress={handleDemoteToMember}
-                  disabled={isUpdating}
-                  activeOpacity={0.7}
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                    borderWidth: 0.5,
-                    borderColor: 'rgba(255, 255, 255, 0.08)',
-                    borderRadius: 11,
-                    padding: 13,
-                    marginBottom: 9,
-                    opacity: isUpdating ? 0.5 : 1
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
-                    <MaterialIcons name="trending-down" size={16} color="#FFA500" style={{ marginRight: 7 }} />
+              ) : member.role === 'OFFICER' ? (
+                <>
+                  {/* Promote to Admin Button */}
+                  <TouchableOpacity
+                    onPress={handlePromoteToAdmin}
+                    disabled={isUpdating}
+                    activeOpacity={0.7}
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                      borderWidth: 0.5,
+                      borderColor: 'rgba(255, 255, 255, 0.08)',
+                      borderRadius: 11,
+                      padding: 13,
+                      marginBottom: 9,
+                      opacity: isUpdating ? 0.5 : 1
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+                      <MaterialIcons name="workspace-premium" size={16} color="#FFD700" style={{ marginRight: 7 }} />
+                      <Text style={{
+                        fontSize: 14,
+                        fontWeight: '600',
+                        color: '#ffffff',
+                        flex: 1
+                      }}>
+                        Promote to Admin
+                      </Text>
+                    </View>
                     <Text style={{
-                      fontSize: 14,
-                      fontWeight: '600',
-                      color: '#ffffff',
-                      flex: 1
+                      fontSize: 12,
+                      color: 'rgba(255, 255, 255, 0.4)',
+                      marginLeft: 23
                     }}>
-                      Demote to Member
+                      Grant full admin permissions
                     </Text>
-                  </View>
-                  <Text style={{
-                    fontSize: 12,
-                    color: 'rgba(255, 255, 255, 0.4)',
-                    marginLeft: 23
-                  }}>
-                    Remove officer permissions
-                  </Text>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+
+                  {/* Demote to Member Button (Admin only) */}
+                  {currentUserRole === 'ADMIN' && (
+                    <TouchableOpacity
+                      onPress={handleDemoteToMember}
+                      disabled={isUpdating}
+                      activeOpacity={0.7}
+                      style={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        borderWidth: 0.5,
+                        borderColor: 'rgba(255, 255, 255, 0.08)',
+                        borderRadius: 11,
+                        padding: 13,
+                        marginBottom: 9,
+                        opacity: isUpdating ? 0.5 : 1
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+                        <MaterialIcons name="trending-down" size={16} color="#FFA500" style={{ marginRight: 7 }} />
+                        <Text style={{
+                          fontSize: 14,
+                          fontWeight: '600',
+                          color: '#ffffff',
+                          flex: 1
+                        }}>
+                          Demote to Member
+                        </Text>
+                      </View>
+                      <Text style={{
+                        fontSize: 12,
+                        color: 'rgba(255, 255, 255, 0.4)',
+                        marginLeft: 23
+                      }}>
+                        Remove officer permissions
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </>
               ) : null}
 
               {/* Remove Button */}

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Text, View, ScrollView, Image, TouchableOpacity, StatusBar, RefreshControl } from 'react-native';
+import { Text, View, ScrollView, Image, TouchableOpacity, StatusBar, RefreshControl, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -128,6 +128,49 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
     }, 1000);
   }, []);
 
+  // Handle leave group for non-admins
+  const handleLeaveGroup = useCallback(() => {
+    Alert.alert(
+      'Leave Group',
+      `Are you sure you want to leave ${groupData.name}?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const groupId = typeof groupData.id === 'string' ? parseInt(groupData.id) : parseInt(groupData.id[0]);
+              await groupService.leaveGroup(groupId);
+              Alert.alert(
+                'Success',
+                'You have left the group',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      router.replace({
+                        pathname: '/(tabs)/group',
+                        params: { refresh: Date.now().toString() }
+                      });
+                    }
+                  }
+                ]
+              );
+            } catch (error: any) {
+              console.error('Failed to leave group:', error);
+              const errorMessage = error?.response?.data?.error || 'Failed to leave group. Please try again.';
+              Alert.alert('Error', errorMessage);
+            }
+          }
+        }
+      ]
+    );
+  }, [groupData]);
+
   // Transform data for GroupSettingsTab
   const settingsGroupData = {
     id: typeof groupData.id === 'string' ? parseInt(groupData.id) : parseInt(groupData.id[0]),
@@ -217,7 +260,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
               </Text>
             </View>
 
-            {/* Settings Button (Admin Only) */}
+            {/* Settings Button (Admin Only) or Menu (Non-admins) */}
             {groupData.isAdmin ? (
               <TouchableOpacity
                 onPress={() => {
@@ -238,7 +281,21 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                 <MaterialIcons name="settings" size={16} color="#ffffff" />
               </TouchableOpacity>
             ) : (
-              <View style={{ width: 36, height: 36 }} />
+              <TouchableOpacity
+                onPress={handleLeaveGroup}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderWidth: 0.5,
+                  borderColor: 'rgba(255, 255, 255, 0.15)'
+                }}
+              >
+                <MaterialIcons name="more-vert" size={16} color="#ffffff" />
+              </TouchableOpacity>
             )}
           </View>
         </View>

@@ -13,6 +13,7 @@ import com.betmate.dto.group.response.PendingRequestResponseDto;
 import com.betmate.entity.group.Group;
 import com.betmate.entity.group.GroupMembership;
 import com.betmate.entity.user.User;
+import com.betmate.exception.group.GroupMembershipException;
 import com.betmate.service.group.GroupCreationService;
 import com.betmate.service.group.GroupMembershipService;
 import com.betmate.service.group.GroupService;
@@ -26,7 +27,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -240,6 +243,36 @@ public class GroupController {
         GroupMembership membership = groupMembershipService.joinGroup(currentUser, group);
 
         return ResponseEntity.ok(JoinGroupResponseDto.fromMembership(membership));
+    }
+
+    /**
+     * Leave a group.
+     * Any member can leave a group, except the only admin (must promote another admin first).
+     */
+    @PostMapping("/{groupId}/leave")
+    public ResponseEntity<Map<String, String>> leaveGroup(
+            @PathVariable Long groupId,
+            Authentication authentication) {
+
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        Group group = groupService.getGroupById(groupId);
+
+        try {
+            // Leave the group (service handles validation)
+            groupMembershipService.leaveGroup(currentUser, group);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Successfully left the group");
+            response.put("groupId", groupId.toString());
+
+            return ResponseEntity.ok(response);
+        } catch (GroupMembershipException e) {
+            // Handle specific business logic errors (e.g., only admin)
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
     }
 
     /**

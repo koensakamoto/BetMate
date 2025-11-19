@@ -8,6 +8,8 @@ import com.betmate.entity.messaging.Notification.NotificationPriority;
 import com.betmate.entity.user.User;
 import com.betmate.event.group.GroupInvitationEvent;
 import com.betmate.event.group.GroupJoinRequestEvent;
+import com.betmate.event.group.GroupMemberJoinedEvent;
+import com.betmate.event.group.GroupMemberLeftEvent;
 import com.betmate.repository.group.GroupMembershipRepository;
 import com.betmate.repository.user.UserRepository;
 import com.betmate.service.group.GroupService;
@@ -197,6 +199,185 @@ public class GroupNotificationListener {
         } catch (Exception e) {
             // Log error but don't throw - we don't want notification failures to break invitations
             logger.error("Failed to process GROUP_INVITE event for group {}: {}",
+                        event.getGroupId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Handles GroupMemberJoinedEvent by creating notifications for all existing group members.
+     * Uses TransactionalEventListener with AFTER_COMMIT to ensure the membership was successfully created.
+     * Runs asynchronously to avoid blocking the join process.
+     *
+     * @param event The GroupMemberJoinedEvent containing information about the new member
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Async
+    public void handleGroupMemberJoinedEvent(GroupMemberJoinedEvent event) {
+        try {
+            logger.info("Processing GROUP_JOINED event for group: {} with new member: {}",
+                       event.getGroupName(), event.getNewMemberUsername());
+
+            // 1. Get the group entity
+            Group group = groupService.getGroupById(event.getGroupId());
+            if (group == null) {
+                logger.warn("Group {} not found for member joined event", event.getGroupId());
+                return;
+            }
+
+            // 2. Get all active members in the group
+            List<User> allMembers = groupMembershipRepository.findUsersByGroup(group);
+            logger.debug("Found {} members in group '{}'", allMembers.size(), group.getGroupName());
+
+            // 3. Create notification for each existing member (excluding the new member)
+            int notificationsCreated = 0;
+            for (User member : allMembers) {
+                // Skip the new member who just joined
+                if (member.getId().equals(event.getNewMemberId())) {
+                    logger.debug("Skipping notification for the new member: {}", member.getUsername());
+                    continue;
+                }
+
+                try {
+                    // Create notification title and message
+                    String title = "👥 New Member in " + event.getGroupName();
+                    String actionVerb = event.wasInvited() ? "joined" : "joined";
+                    String message = event.getNewMemberName() + " (@" + event.getNewMemberUsername() +
+                                   ") " + actionVerb + " " + event.getGroupName();
+                    String actionUrl = "/groups/" + event.getGroupId();
+
+                    // Ensure title and message don't exceed maximum lengths
+                    if (title.length() > 100) {
+                        title = title.substring(0, 97) + "...";
+                    }
+                    if (message.length() > 500) {
+                        message = message.substring(0, 497) + "...";
+                    }
+
+                    // Create the notification in the database
+                    Notification notification = notificationService.createNotification(
+                        member,
+                        title,
+                        message,
+                        NotificationType.GROUP_JOINED,
+                        NotificationPriority.LOW,  // Low priority for informational notifications
+                        actionUrl,
+                        event.getGroupId(),
+                        "GROUP"
+                    );
+
+                    // Send real-time notification via WebSocket
+                    messageNotificationService.sendNotificationToUser(member.getId(), notification);
+
+                    notificationsCreated++;
+                    logger.debug("Created member joined notification for user: {}", member.getUsername());
+
+                } catch (Exception e) {
+                    // Log error for individual notification but continue processing others
+                    logger.error("Failed to create notification for member {}: {}",
+                               member.getUsername(), e.getMessage());
+                }
+            }
+
+            logger.info("Successfully created {} GROUP_JOINED notifications for group {}",
+                       notificationsCreated, event.getGroupId());
+
+        } catch (Exception e) {
+            // Log error but don't throw - we don't want notification failures to break joins
+            logger.error("Failed to process GROUP_JOINED event for group {}: {}",
+                        event.getGroupId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Handles GroupMemberLeftEvent by creating notifications for all remaining group members.
+     * Uses TransactionalEventListener with AFTER_COMMIT to ensure the membership was successfully removed.
+     * Runs asynchronously to avoid blocking the leave/removal process.
+     *
+     * @param event The GroupMemberLeftEvent containing information about the member who left
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Async
+    public void handleGroupMemberLeftEvent(GroupMemberLeftEvent event) {
+        try {
+            logger.info("Processing GROUP_LEFT event for group: {} with member: {} (wasKicked: {})",
+                       event.getGroupName(), event.getMemberUsername(), event.wasKicked());
+
+            // 1. Get the group entity
+            Group group = groupService.getGroupById(event.getGroupId());
+            if (group == null) {
+                logger.warn("Group {} not found for member left event", event.getGroupId());
+                return;
+            }
+
+            // 2. Get all active members in the group (remaining members)
+            List<User> allMembers = groupMembershipRepository.findUsersByGroup(group);
+            logger.debug("Found {} remaining members in group '{}'", allMembers.size(), group.getGroupName());
+
+            // 3. Create notification for each remaining member
+            int notificationsCreated = 0;
+            for (User member : allMembers) {
+                try {
+                    // Create notification title and message
+                    String title = event.wasKicked()
+                        ? "Member Removed from " + event.getGroupName()
+                        : "Member Left " + event.getGroupName();
+
+                    String message;
+                    if (event.wasKicked()) {
+                        // For kicked/removed members, show they were removed
+                        message = event.getMemberName() + " (@" + event.getMemberUsername() + ") " +
+                                "was removed from " + event.getGroupName();
+                        // Add reason if provided (e.g., "Removed by admin")
+                        if (event.getReason() != null && !event.getReason().isEmpty()) {
+                            message += " - " + event.getReason();
+                        }
+                    } else {
+                        // For voluntary leaving, use simple "left" language
+                        message = event.getMemberName() + " (@" + event.getMemberUsername() + ") " +
+                                "left " + event.getGroupName();
+                    }
+
+                    String actionUrl = "/groups/" + event.getGroupId();
+
+                    // Ensure title and message don't exceed maximum lengths
+                    if (title.length() > 100) {
+                        title = title.substring(0, 97) + "...";
+                    }
+                    if (message.length() > 500) {
+                        message = message.substring(0, 497) + "...";
+                    }
+
+                    // Create the notification in the database
+                    Notification notification = notificationService.createNotification(
+                        member,
+                        title,
+                        message,
+                        NotificationType.GROUP_LEFT,
+                        NotificationPriority.LOW,  // Low priority for informational notifications
+                        actionUrl,
+                        event.getGroupId(),
+                        "GROUP"
+                    );
+
+                    // Send real-time notification via WebSocket
+                    messageNotificationService.sendNotificationToUser(member.getId(), notification);
+
+                    notificationsCreated++;
+                    logger.debug("Created member left notification for user: {}", member.getUsername());
+
+                } catch (Exception e) {
+                    // Log error for individual notification but continue processing others
+                    logger.error("Failed to create notification for member {}: {}",
+                               member.getUsername(), e.getMessage());
+                }
+            }
+
+            logger.info("Successfully created {} GROUP_LEFT notifications for group {}",
+                       notificationsCreated, event.getGroupId());
+
+        } catch (Exception e) {
+            // Log error but don't throw - we don't want notification failures to break leave/removal
+            logger.error("Failed to process GROUP_LEFT event for group {}: {}",
                         event.getGroupId(), e.getMessage(), e);
         }
     }

@@ -197,24 +197,22 @@ class GroupMembershipServiceTest {
 
     @Test
     void leaveGroup_LastAdmin_ThrowsException() {
-        when(membershipRepository.atomicLeaveGroup(eq(adminUser), eq(testGroup), any(LocalDateTime.class))).thenReturn(0);
-        
         GroupMembership adminMembership = new GroupMembership();
         adminMembership.setRole(GroupMembership.MemberRole.ADMIN);
         when(membershipRepository.findByUserAndGroupAndIsActiveTrue(adminUser, testGroup))
             .thenReturn(Optional.of(adminMembership));
+        when(membershipRepository.countActiveAdmins(testGroup)).thenReturn(1L);
 
-        assertThrows(GroupMembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () ->
             membershipService.leaveGroup(adminUser, testGroup));
     }
 
     @Test
     void leaveGroup_NonMember_ThrowsException() {
-        when(membershipRepository.atomicLeaveGroup(eq(testUser), eq(testGroup), any(LocalDateTime.class))).thenReturn(0);
         when(membershipRepository.findByUserAndGroupAndIsActiveTrue(testUser, testGroup))
             .thenReturn(Optional.empty());
 
-        assertThrows(GroupMembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () ->
             membershipService.leaveGroup(testUser, testGroup));
     }
 
@@ -295,15 +293,22 @@ class GroupMembershipServiceTest {
 
     @Test
     void removeMember_LastAdmin_ThrowsException() {
-        when(membershipRepository.isUserAdminOrModerator(adminUser, testGroup)).thenReturn(true);
-        when(membershipRepository.atomicRemoveMember(eq(testUser), eq(testGroup), any(LocalDateTime.class))).thenReturn(0);
-        
-        GroupMembership adminMembership = new GroupMembership();
-        adminMembership.setRole(GroupMembership.MemberRole.ADMIN);
-        when(membershipRepository.findByUserAndGroupAndIsActiveTrue(testUser, testGroup))
-            .thenReturn(Optional.of(adminMembership));
+        when(permissionService.canRemoveMembers(adminUser, testGroup)).thenReturn(true);
 
-        assertThrows(GroupMembershipException.class, () -> 
+        GroupMembership actorMembership = new GroupMembership();
+        actorMembership.setRole(GroupMembership.MemberRole.ADMIN);
+        when(membershipRepository.findByUserAndGroupAndIsActiveTrue(adminUser, testGroup))
+            .thenReturn(Optional.of(actorMembership));
+
+        GroupMembership targetMembership = new GroupMembership();
+        targetMembership.setRole(GroupMembership.MemberRole.ADMIN);
+        when(membershipRepository.findByUserAndGroupAndIsActiveTrue(testUser, testGroup))
+            .thenReturn(Optional.of(targetMembership));
+
+        when(membershipRepository.findByGroupAndRole(testGroup, GroupMembership.MemberRole.ADMIN))
+            .thenReturn(List.of(targetMembership)); // Only one admin
+
+        assertThrows(GroupMembershipException.class, () ->
             membershipService.removeMember(adminUser, testUser, testGroup));
     }
 

@@ -93,13 +93,21 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
     @Query("SELECT g, COUNT(gm) FROM GroupMembership gm JOIN gm.group g WHERE gm.isActive = true GROUP BY g ORDER BY COUNT(gm) DESC")
     List<Object[]> findMostPopularGroups();
     
+    // Count active admins in a group (helper for atomic operations)
+    @Query("SELECT COUNT(gm) FROM GroupMembership gm WHERE gm.group = :group AND gm.role = 'ADMIN' AND gm.isActive = true")
+    long countActiveAdmins(@Param("group") Group group);
+
     // Atomic admin operations to prevent race conditions
+    // Note: Split into non-admin and admin updates to avoid MySQL subquery limitation
     @Modifying
-    @Query("UPDATE GroupMembership gm SET gm.isActive = false, gm.leftAt = :leftAt " +
-           "WHERE gm.user = :user AND gm.group = :group AND gm.isActive = true " +
-           "AND (gm.role != 'ADMIN' OR " +
-           "(SELECT COUNT(gm2) FROM GroupMembership gm2 WHERE gm2.group = :group AND gm2.role = 'ADMIN' AND gm2.isActive = true) > 1)")
-    int atomicLeaveGroup(@Param("user") User user, @Param("group") Group group, @Param("leftAt") LocalDateTime leftAt);
+    @Query("UPDATE GroupMembership gm SET gm.isActive = false, gm.leftAt = :leftAt, gm.status = 'LEFT' " +
+           "WHERE gm.user = :user AND gm.group = :group AND gm.isActive = true AND gm.role != 'ADMIN'")
+    int atomicLeaveGroupNonAdmin(@Param("user") User user, @Param("group") Group group, @Param("leftAt") LocalDateTime leftAt);
+
+    @Modifying
+    @Query("UPDATE GroupMembership gm SET gm.isActive = false, gm.leftAt = :leftAt, gm.status = 'LEFT' " +
+           "WHERE gm.user = :user AND gm.group = :group AND gm.isActive = true AND gm.role = 'ADMIN'")
+    int atomicLeaveGroupAdmin(@Param("user") User user, @Param("group") Group group, @Param("leftAt") LocalDateTime leftAt);
     
     @Modifying
     @Query("UPDATE GroupMembership gm SET gm.role = :newRole " +
@@ -107,11 +115,4 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
            "AND (gm.role != 'ADMIN' OR :newRole = 'ADMIN' OR " +
            "(SELECT COUNT(gm2) FROM GroupMembership gm2 WHERE gm2.group = :group AND gm2.role = 'ADMIN' AND gm2.isActive = true) > 1)")
     int atomicChangeRole(@Param("user") User user, @Param("group") Group group, @Param("newRole") GroupMembership.MemberRole newRole);
-    
-    @Modifying
-    @Query("UPDATE GroupMembership gm SET gm.isActive = false, gm.leftAt = :leftAt " +
-           "WHERE gm.user = :user AND gm.group = :group AND gm.isActive = true " +
-           "AND (gm.role != 'ADMIN' OR " +
-           "(SELECT COUNT(gm2) FROM GroupMembership gm2 WHERE gm2.group = :group AND gm2.role = 'ADMIN' AND gm2.isActive = true) > 1)")
-    int atomicRemoveMember(@Param("user") User user, @Param("group") Group group, @Param("leftAt") LocalDateTime leftAt);
 }
