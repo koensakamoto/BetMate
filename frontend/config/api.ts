@@ -74,6 +74,9 @@ export const API_ENDPOINTS = {
   // Messages
   MESSAGES: '/messages',
 
+  // Contact/Support
+  CONTACT_SUBMIT: '/contact/submit',
+
   // Friendships
   FRIENDSHIPS: '/friendships',
   FRIENDS_LIST: '/friendships/friends',

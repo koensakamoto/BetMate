@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 /**
  * StoreItem entity representing items available for purchase in the store.
@@ -101,13 +102,13 @@ public class StoreItem {
     
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now(ZoneOffset.UTC);
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     // ==========================================
@@ -266,7 +267,7 @@ public class StoreItem {
         }
 
         if (isLimitedTime && availableUntil != null) {
-            return LocalDateTime.now().isBefore(availableUntil);
+            return LocalDateTime.now(ZoneOffset.UTC).isBefore(availableUntil);
         }
 
         return true;
@@ -280,7 +281,7 @@ public class StoreItem {
     public boolean isExpired() {
         return isLimitedTime && 
                availableUntil != null && 
-               LocalDateTime.now().isAfter(availableUntil);
+               LocalDateTime.now(ZoneOffset.UTC).isAfter(availableUntil);
     }
 
     /**

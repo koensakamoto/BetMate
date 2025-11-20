@@ -254,9 +254,7 @@ export default function TermsOfService() {
               lineHeight: 24,
               letterSpacing: 0.1
             }}>
-              Email: legal@betmate.com{'\n'}
-              Address: 123 App Street, Tech City, TC 12345{'\n'}
-              Phone: +1 (555) 123-4567
+              Email: rivalpicksapp@gmail.com
             </Text>
           </View>
         </Section>

@@ -203,7 +203,13 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
           }}>
             {/* Back Button */}
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => {
+                router.dismissAll();
+                router.navigate({
+                  pathname: '/(tabs)/group',
+                  params: { refresh: Date.now().toString() }
+                });
+              }}
               style={{
                 width: 36,
                 height: 36,

@@ -178,10 +178,8 @@ export default function CreateBet() {
               haptic.success();
               Alert.alert('Success!', 'Your bet has been created successfully.', [
                 { text: 'OK', onPress: () => {
-                  // Navigate back to the group page with Bets tab active (tab=1)
-                  // Use dismissAll to clear stack and navigate fresh with proper path
-                  router.dismissAll();
-                  router.navigate(`/group/${betGroupId}?tab=1&refresh=${Date.now()}`);
+                  // Navigate back - GroupBetsTab will auto-refresh via useFocusEffect
+                  router.back();
                 }}
               ]);
             } catch (error) {

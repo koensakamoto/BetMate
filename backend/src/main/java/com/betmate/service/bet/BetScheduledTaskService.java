@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 /**
@@ -44,7 +45,7 @@ public class BetScheduledTaskService {
     @Scheduled(fixedDelayString = "${bet.scheduling.close-expired-interval-ms:120000}") // Default: 2 minutes
     @Transactional
     public void closeExpiredBets() {
-        LocalDateTime now = LocalDateTime.now();  // System timezone - JDBC will convert to UTC
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);  // Use UTC to match database/frontend timezone
         List<Bet> expiredBets = betRepository.findExpiredOpenBets(now);
 
         if (expiredBets.isEmpty()) {
@@ -81,7 +82,7 @@ public class BetScheduledTaskService {
     @Scheduled(fixedDelayString = "${bet.scheduling.process-resolvable-interval-ms:300000}") // Default: 5 minutes
     @Transactional
     public void processResolvableBets() {
-        LocalDateTime now = LocalDateTime.now();  // System timezone - JDBC will convert to UTC
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);  // Use UTC to match database/frontend timezone
         List<Bet> resolvableBets = betRepository.findBetsReadyForResolution(now);
 
         if (resolvableBets.isEmpty()) {
@@ -209,9 +210,9 @@ public class BetScheduledTaskService {
     @Scheduled(fixedDelayString = "${bet.scheduling.notify-resolution-deadline-interval-ms:900000}") // Default: 15 minutes
     @Transactional
     public void notifyApproachingResolutionDeadlines() {
-        LocalDateTime now = LocalDateTime.now();  // System timezone (MST) - JDBC will convert to UTC
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);  // Use UTC to match database/frontend timezone
         log.info("===== RESOLUTION DEADLINE CHECK =====");
-        log.info("System time (MST): {}", now);
+        log.info("Current time (UTC): {}", now);
 
         // Check for bets needing 24-hour reminder (with precise time window: 23h45m to 24h15m)
         LocalDateTime twentyThreeHours45Minutes = now.plusHours(23).plusMinutes(45);
@@ -377,10 +378,9 @@ public class BetScheduledTaskService {
     @Scheduled(fixedDelayString = "${bet.scheduling.notify-betting-deadline-interval-ms:900000}") // Default: 15 minutes
     @Transactional
     public void notifyApproachingBettingDeadlines() {
-        LocalDateTime now = LocalDateTime.now();  // System timezone (MST) - JDBC will convert to UTC
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);  // Use UTC to match database/frontend timezone
         log.info("===== BETTING DEADLINE CHECK =====");
-        log.info("System time (MST): {}", now);
-        log.info("JDBC will convert to UTC when querying");
+        log.info("Current time (UTC): {}", now);
 
         // Check for bets needing 24-hour reminder (with precise time window: 23h45m to 24h15m)
         LocalDateTime twentyThreeHours45Minutes = now.plusHours(23).plusMinutes(45);

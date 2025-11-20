@@ -8,6 +8,7 @@ import BetCard from '../../components/bet/BetCard';
 import { betService, BetSummaryResponse } from '../../services/bet/betService';
 import { SkeletonBetCard } from '../../components/common/SkeletonCard';
 import * as Haptics from 'expo-haptics';
+import { parseBackendDate } from '../../utils/dateUtils';
 
 export default function Bet() {
   const insets = useSafeAreaInsets();
@@ -104,7 +105,7 @@ export default function Bet() {
     if (!deadline) return 'N/A';
 
     const now = new Date();
-    const deadlineDate = new Date(deadline);
+    const deadlineDate = parseBackendDate(deadline);
     const diff = deadlineDate.getTime() - now.getTime();
 
     if (diff <= 0) return 'Ended';
