@@ -20,8 +20,6 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
-        jdbc:
-          time_zone: UTC  # Ensure Hibernate uses UTC for JDBC operations
 
   # Jackson timezone configuration for JSON serialization
   jackson:
@@ -63,14 +61,14 @@ file:
 # Bet Scheduling Configuration
 bet:
   scheduling:
-    # Close expired bets every 15 minutes (900000 ms)
-    close-expired-interval-ms: ${BET_CLOSE_INTERVAL:900000}
-    # Process resolvable bets every 15 minutes (900000 ms)
-    process-resolvable-interval-ms: ${BET_RESOLVE_INTERVAL:900000}
-    # Notify approaching betting deadlines every 15 minutes (900000 ms)
-    notify-betting-deadline-interval-ms: ${BET_NOTIFY_BETTING_DEADLINE_INTERVAL:900000}
-    # Notify approaching resolution deadlines every 15 minutes (900000 ms)
-    notify-resolution-deadline-interval-ms: ${BET_NOTIFY_RESOLUTION_DEADLINE_INTERVAL:900000}
+    # Close expired bets every 1 minute (60000 ms) - FOR TESTING
+    close-expired-interval-ms: ${BET_CLOSE_INTERVAL:60000}
+    # Process resolvable bets every 1 minute (60000 ms) - FOR TESTING
+    process-resolvable-interval-ms: ${BET_RESOLVE_INTERVAL:60000}
+    # Notify approaching betting deadlines every 1 minute (60000 ms) - FOR TESTING
+    notify-betting-deadline-interval-ms: ${BET_NOTIFY_BETTING_DEADLINE_INTERVAL:60000}
+    # Notify approaching resolution deadlines every 1 minute (60000 ms) - FOR TESTING
+    notify-resolution-deadline-interval-ms: ${BET_NOTIFY_RESOLUTION_DEADLINE_INTERVAL:60000}
 
 logging:
   level:
@@ -79,6 +77,8 @@ logging:
     org.springframework.web: DEBUG
     org.springframework.validation: DEBUG
     org.hibernate.validator: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
 management:
   endpoints:
