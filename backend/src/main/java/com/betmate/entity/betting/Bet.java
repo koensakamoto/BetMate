@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import com.betmate.entity.user.User;
@@ -690,11 +691,11 @@ public class Bet {
 
     /**
      * Checks if the betting deadline has passed.
-     * 
+     *
      * @return true if current time is after betting deadline
      */
     public boolean isPastDeadline() {
-        return LocalDateTime.now().isAfter(bettingDeadline);
+        return LocalDateTime.now(ZoneOffset.UTC).isAfter(bettingDeadline);
     }
 
     /**

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Text, View, TouchableOpacity, ScrollView, StatusBar, Alert, Linking, TextInput } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, StatusBar, Alert, Linking, TextInput, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { contactService } from '../services/contact/contactService';
+import { ContactMessageRequest } from '../types/api';
 
 // Move components outside to prevent recreation on every render
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -142,29 +144,66 @@ export default function HelpSupport() {
   const insets = useSafeAreaInsets();
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
   const [contactForm, setContactForm] = useState({
+    category: 'General Support',
     subject: '',
     message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
   const handleContactSubmit = async () => {
-    if (!contactForm.subject.trim() || !contactForm.message.trim()) {
-      Alert.alert('Error', 'Please fill in all fields before submitting.');
+    // Validate category (3-50 characters)
+    if (!contactForm.category || contactForm.category.length < 3 || contactForm.category.length > 50) {
+      Alert.alert('Validation Error', 'Category must be between 3 and 50 characters.');
+      return;
+    }
+
+    // Validate subject (3-100 characters)
+    if (!contactForm.subject.trim() || contactForm.subject.trim().length < 3) {
+      Alert.alert('Validation Error', 'Subject must be at least 3 characters long.');
+      return;
+    }
+    if (contactForm.subject.trim().length > 100) {
+      Alert.alert('Validation Error', 'Subject must not exceed 100 characters.');
+      return;
+    }
+
+    // Validate message (10-500 characters)
+    if (!contactForm.message.trim() || contactForm.message.trim().length < 10) {
+      Alert.alert('Validation Error', 'Message must be at least 10 characters long.');
+      return;
+    }
+    if (contactForm.message.trim().length > 500) {
+      Alert.alert('Validation Error', 'Message must not exceed 500 characters.');
       return;
     }
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    try {
+      const request: ContactMessageRequest = {
+        category: contactForm.category,
+        subject: contactForm.subject,
+        message: contactForm.message,
+      };
+
+      await contactService.submitContactMessage(request);
+
       Alert.alert(
         'Message Sent',
         'Thank you for your message. Our support team will get back to you within 24 hours.',
         [{ text: 'OK', onPress: () => {
-          setContactForm({ subject: '', message: '' });
-          setIsSubmitting(false);
+          setContactForm({ category: 'General Support', subject: '', message: '' });
         }}]
       );
-    }, 1000);
+    } catch (error: any) {
+      Alert.alert(
+        'Error',
+        error?.message || 'Failed to send message. Please try again later.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const openExternalLink = (url: string) => {
@@ -300,61 +339,10 @@ export default function HelpSupport() {
           </View>
         </Section>
 
-        {/* Contact Support */}
-        <Section title="Contact Support">
+        {/* Contact & Support */}
+        <Section title="Contact & Support">
           <Paragraph>
-            Need more help? Reach out to our support team through any of these channels.
-          </Paragraph>
-          <View style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.02)',
-            borderRadius: 12,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.05)'
-          }}>
-            <ContactOption
-              icon="email"
-              label="Email Support"
-              value="support@betmate.com"
-              onPress={() => openExternalLink('mailto:support@betmate.com')}
-            />
-            <ContactOption
-              icon="phone"
-              label="Phone Support"
-              value="+1 (555) 012-3456"
-              onPress={() => openExternalLink('tel:+1-555-0123')}
-            />
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingVertical: 12
-            }}>
-              <MaterialIcons name="schedule" size={18} color="rgba(255, 255, 255, 0.7)" />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={{
-                  fontSize: 13,
-                  color: 'rgba(255, 255, 255, 0.6)',
-                  marginBottom: 2,
-                  letterSpacing: 0.1
-                }}>
-                  Support Hours
-                </Text>
-                <Text style={{
-                  fontSize: 15,
-                  color: 'rgba(255, 255, 255, 0.85)',
-                  letterSpacing: 0.1
-                }}>
-                  24/7 Support Available
-                </Text>
-              </View>
-            </View>
-          </View>
-        </Section>
-
-        {/* Send Message */}
-        <Section title="Send Us a Message">
-          <Paragraph>
-            Have a specific question? Fill out the form below and we'll get back to you within 24 hours.
+            Need help? Fill out the form below and we'll get back to you within 24 hours.
           </Paragraph>
           <View style={{
             backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -363,6 +351,41 @@ export default function HelpSupport() {
             borderWidth: 1,
             borderColor: 'rgba(255, 255, 255, 0.05)'
           }}>
+            {/* Category Picker */}
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{
+                fontSize: 14,
+                fontWeight: '600',
+                color: 'rgba(255, 255, 255, 0.8)',
+                marginBottom: 8,
+                letterSpacing: 0.1
+              }}>
+                Category
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowCategoryPicker(true)}
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  borderRadius: 8,
+                  padding: 12,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.1)',
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={{
+                  color: '#ffffff',
+                  fontSize: 15
+                }}>
+                  {contactForm.category}
+                </Text>
+                <MaterialIcons name="arrow-drop-down" size={20} color="rgba(255, 255, 255, 0.6)" />
+              </TouchableOpacity>
+            </View>
+
             <View style={{ marginBottom: 20 }}>
               <Text style={{
                 fontSize: 14,
@@ -453,39 +476,73 @@ export default function HelpSupport() {
           </View>
         </Section>
 
-        {/* Report Bug */}
-        <Section title="Report a Bug">
-          <Paragraph>
-            Found a bug? Help us improve BetMate by reporting it.
-          </Paragraph>
+        {/* Category Picker Modal */}
+        <Modal
+          visible={showCategoryPicker}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowCategoryPicker(false)}
+        >
           <TouchableOpacity
-            onPress={() => openExternalLink('mailto:bugs@betmate.com')}
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.02)',
-              borderRadius: 12,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.05)',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between'
+              flex: 1,
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              justifyContent: 'center',
+              alignItems: 'center'
             }}
-            activeOpacity={0.7}
+            activeOpacity={1}
+            onPress={() => setShowCategoryPicker(false)}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <MaterialIcons name="bug-report" size={18} color="rgba(255, 255, 255, 0.7)" />
+            <View style={{
+              backgroundColor: '#1a1a1f',
+              borderRadius: 12,
+              padding: 20,
+              width: '80%',
+              maxWidth: 300
+            }}>
               <Text style={{
-                fontSize: 15,
-                color: 'rgba(255, 255, 255, 0.85)',
-                marginLeft: 12,
-                letterSpacing: 0.1
+                fontSize: 18,
+                fontWeight: '600',
+                color: '#ffffff',
+                marginBottom: 16
               }}>
-                bugs@betmate.com
+                Select Category
               </Text>
+
+              {['General Support', 'Bug Report'].map((category) => (
+                <TouchableOpacity
+                  key={category}
+                  onPress={() => {
+                    setContactForm(prev => ({ ...prev, category }));
+                    setShowCategoryPicker(false);
+                  }}
+                  style={{
+                    paddingVertical: 14,
+                    borderBottomWidth: category === 'Bug Report' ? 0 : 0.5,
+                    borderBottomColor: 'rgba(255, 255, 255, 0.1)'
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <Text style={{
+                      fontSize: 15,
+                      color: contactForm.category === category ? '#00D4AA' : 'rgba(255, 255, 255, 0.85)'
+                    }}>
+                      {category}
+                    </Text>
+                    {contactForm.category === category && (
+                      <MaterialIcons name="check" size={20} color="#00D4AA" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
             </View>
-            <MaterialIcons name="chevron-right" size={18} color="rgba(255, 255, 255, 0.4)" />
           </TouchableOpacity>
-        </Section>
+        </Modal>
 
         {/* Footer */}
         <View style={{

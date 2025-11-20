@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import BetCard from '../bet/BetCard';
 import { betService, BetSummaryResponse } from '../../services/bet/betService';
+import { parseBackendDate } from '../../utils/dateUtils';
 
 const icon = require("../../assets/images/icon.png");
 
@@ -47,6 +49,16 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
     }
   }, [forceRefresh]);
 
+  // Refresh when screen comes into focus (e.g., after navigating back from bet-details)
+  useFocusEffect(
+    useCallback(() => {
+      if (!isCacheValid() || bets.length === 0) {
+        console.log(`🔄 [GroupBetsTab] Screen focused, reloading bets`);
+        loadGroupBets();
+      }
+    }, [isCacheValid, bets.length])
+  );
+
   const loadGroupBets = async () => {
     setLoading(true);
     try {
@@ -71,7 +83,7 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
     if (!deadline) return 'N/A';
 
     const now = new Date();
-    const deadlineDate = new Date(deadline);
+    const deadlineDate = parseBackendDate(deadline);
     const diff = deadlineDate.getTime() - now.getTime();
 
     if (diff <= 0) return 'Ended';

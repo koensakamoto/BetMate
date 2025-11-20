@@ -3,6 +3,7 @@ package com.betmate.entity.user;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 /**
  * Entity representing a user credit transaction.
@@ -65,13 +66,13 @@ public class Transaction {
         this.balanceBefore = balanceBefore;
         this.balanceAfter = balanceAfter;
         this.correlationId = correlationId;
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+            createdAt = LocalDateTime.now(ZoneOffset.UTC);
         }
     }
 

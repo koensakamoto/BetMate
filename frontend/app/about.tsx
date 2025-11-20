@@ -440,50 +440,6 @@ export default function About() {
             borderColor: 'rgba(255, 255, 255, 0.05)'
           }}>
             <TouchableOpacity
-              onPress={() => openLink('mailto:support@betmate.com')}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 12,
-                borderBottomWidth: 0.5,
-                borderBottomColor: 'rgba(255, 255, 255, 0.1)'
-              }}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="email" size={18} color="rgba(255, 255, 255, 0.7)" />
-              <Text style={{
-                fontSize: 15,
-                color: 'rgba(255, 255, 255, 0.85)',
-                marginLeft: 12,
-                letterSpacing: 0.1
-              }}>
-                support@betmate.com
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => openLink('https://betmate.com')}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 12,
-                borderBottomWidth: 0.5,
-                borderBottomColor: 'rgba(255, 255, 255, 0.1)'
-              }}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="language" size={18} color="rgba(255, 255, 255, 0.7)" />
-              <Text style={{
-                fontSize: 15,
-                color: 'rgba(255, 255, 255, 0.85)',
-                marginLeft: 12,
-                letterSpacing: 0.1
-              }}>
-                www.betmate.com
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
               onPress={() => router.push('/help-support')}
               style={{
                 flexDirection: 'row',

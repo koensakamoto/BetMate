@@ -3,6 +3,7 @@ package com.betmate.entity.betting;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import com.betmate.entity.user.User;
 
@@ -78,13 +79,13 @@ public class BetResolutionVote {
     
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now(ZoneOffset.UTC);
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     // ==========================================
@@ -178,7 +179,7 @@ public class BetResolutionVote {
      */
     public void revoke() {
         this.isActive = false;
-        this.revokedAt = LocalDateTime.now();
+        this.revokedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     /**

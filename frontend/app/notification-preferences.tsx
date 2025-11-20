@@ -8,14 +8,28 @@ export default function NotificationPreferences() {
   const insets = useSafeAreaInsets();
 
   // Notification preferences state
-  const [betUpdates, setBetUpdates] = useState(true);
-  const [groupInvites, setGroupInvites] = useState(true);
-  const [betResults, setBetResults] = useState(true);
-  const [groupMessages, setGroupMessages] = useState(true);
-  const [promotions, setPromotions] = useState(false);
-  const [accountSecurity, setAccountSecurity] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(false);
+  // General
   const [pushNotifications, setPushNotifications] = useState(true);
+  const [emailNotifications, setEmailNotifications] = useState(false);
+
+  // Betting Activity
+  const [betCreated, setBetCreated] = useState(true);
+  const [betUpdates, setBetUpdates] = useState(true);
+  const [betDeadline, setBetDeadline] = useState(true);
+  const [betResolutionReminder, setBetResolutionReminder] = useState(true);
+  const [betResults, setBetResults] = useState(true);
+  const [betCancelled, setBetCancelled] = useState(true);
+
+  // Social & Groups
+  const [groupInvites, setGroupInvites] = useState(true);
+  const [groupMessages, setGroupMessages] = useState(true);
+  const [groupMemberJoined, setGroupMemberJoined] = useState(true);
+  const [groupMemberLeft, setGroupMemberLeft] = useState(true);
+  const [groupRoleChanged, setGroupRoleChanged] = useState(true);
+
+  // Account & Security
+  const [accountSecurity, setAccountSecurity] = useState(true);
+  const [promotions, setPromotions] = useState(false);
 
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <View style={{
@@ -196,18 +210,46 @@ export default function NotificationPreferences() {
         {/* Betting Activity */}
         <Section title="Betting Activity">
           <ToggleItem
-            title="Bet Updates"
-            description="Get notified when your bets are updated"
+            title="Bet Created"
+            description="New bets created in your groups"
+            value={betCreated}
+            onValueChange={setBetCreated}
+            icon="add-circle"
+          />
+          <ToggleItem
+            title="Bet Updated"
+            description="When bet details are modified"
             value={betUpdates}
             onValueChange={setBetUpdates}
             icon="update"
           />
           <ToggleItem
+            title="Bet Deadline Approaching"
+            description="Reminders before bet deadlines"
+            value={betDeadline}
+            onValueChange={setBetDeadline}
+            icon="schedule"
+          />
+          <ToggleItem
+            title="Bet Resolution Reminder"
+            description="Reminders to resolve bets you created"
+            value={betResolutionReminder}
+            onValueChange={setBetResolutionReminder}
+            icon="gavel"
+          />
+          <ToggleItem
             title="Bet Results"
-            description="Notifications when your bets are resolved"
+            description="When your bets are resolved"
             value={betResults}
             onValueChange={setBetResults}
             icon="emoji-events"
+          />
+          <ToggleItem
+            title="Bet Cancelled"
+            description="When bets are cancelled with refund info"
+            value={betCancelled}
+            onValueChange={setBetCancelled}
+            icon="cancel"
           />
         </Section>
 
@@ -226,6 +268,27 @@ export default function NotificationPreferences() {
             value={groupMessages}
             onValueChange={setGroupMessages}
             icon="chat"
+          />
+          <ToggleItem
+            title="Group Member Joined"
+            description="When members join your groups"
+            value={groupMemberJoined}
+            onValueChange={setGroupMemberJoined}
+            icon="person-add"
+          />
+          <ToggleItem
+            title="Group Member Left"
+            description="When members leave your groups"
+            value={groupMemberLeft}
+            onValueChange={setGroupMemberLeft}
+            icon="person-remove"
+          />
+          <ToggleItem
+            title="Group Role Changed"
+            description="When your role in a group changes"
+            value={groupRoleChanged}
+            onValueChange={setGroupRoleChanged}
+            icon="admin-panel-settings"
           />
         </Section>
 
@@ -246,26 +309,6 @@ export default function NotificationPreferences() {
             icon="local-offer"
           />
         </Section>
-
-        {/* Footer Note */}
-        <View style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.02)',
-          borderRadius: 12,
-          padding: 20,
-          marginTop: 20,
-          borderWidth: 1,
-          borderColor: 'rgba(255, 255, 255, 0.05)'
-        }}>
-          <Text style={{
-            fontSize: 14,
-            color: 'rgba(255, 255, 255, 0.7)',
-            lineHeight: 20,
-            textAlign: 'center',
-            letterSpacing: 0.1
-          }}>
-            You can change these preferences at any time. Some notifications may still be sent for important account or security updates.
-          </Text>
-        </View>
       </ScrollView>
     </View>
   );

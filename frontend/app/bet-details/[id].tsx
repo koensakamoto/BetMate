@@ -237,17 +237,13 @@ export default function BetDetails() {
       // Reload bet details to show CANCELLED status
       await loadBetDetails();
 
-      // Show success message and navigate back to group with refresh
+      // Show success message and navigate back
       Alert.alert('Success', 'Bet cancelled. All participants have been refunded.', [
         {
           text: 'OK',
           onPress: () => {
-            // Navigate back to group page with Bets tab active and refresh parameter
-            if (betData?.groupId) {
-              router.push(`/group/${betData.groupId}?tab=1&refresh=${Date.now()}`);
-            } else {
-              router.back();
-            }
+            // Navigate back - GroupBetsTab will auto-refresh via useFocusEffect
+            router.back();
           }
         }
       ]);
@@ -636,9 +632,7 @@ export default function BetDetails() {
                 }}>
                   {betData.status === 'OPEN'
                     ? "You'll be able to resolve this bet once betting closes"
-                    : betData.hasUserParticipated
-                      ? "You participated - now resolve the bet"
-                      : "You can resolve now or join first (optional)"}
+                    : "You can resolve the bet now"}
                 </Text>
               </View>
             </View>
@@ -703,24 +697,6 @@ export default function BetDetails() {
                 {betData.stakeType === 'SOCIAL' ? 'Social' : (betData.fixedStakeAmount ? `$${betData.fixedStakeAmount} (Fixed)` : 'Variable')}
               </Text>
             </View>
-
-            {betData.stakeType === 'SOCIAL' && betData.socialStakeDescription && (
-              <View style={{
-                marginTop: 12,
-                backgroundColor: 'rgba(0, 212, 170, 0.08)',
-                borderRadius: 8,
-                padding: 12,
-                borderWidth: 1,
-                borderColor: 'rgba(0, 212, 170, 0.2)'
-              }}>
-                <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 12, marginBottom: 4 }}>
-                  What's at stake:
-                </Text>
-                <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '500' }}>
-                  {betData.socialStakeDescription}
-                </Text>
-              </View>
-            )}
           </View>
         </View>
 
@@ -1207,97 +1183,38 @@ export default function BetDetails() {
           </View>
         )}
 
-        {/* Resolve & Join Buttons - Show when bet is CLOSED and user can resolve */}
+        {/* Resolve Button - Show when bet is CLOSED and user can resolve */}
         {betData.status === 'CLOSED' && canUserResolve() && (
           <View style={{
             marginHorizontal: 20,
             marginTop: 20,
             marginBottom: 40
           }}>
-            {/* Show both Join and Resolve if user hasn't participated yet */}
-            {!betData.hasUserParticipated ? (
-              <View style={{ gap: 12 }}>
-                {/* Join Bet Button (Optional) */}
-                <TouchableOpacity
-                  onPress={handleJoinBet}
-                  disabled={(!betData.fixedStakeAmount && !isValidBetAmount()) || !isValidBetSelection()}
-                  style={{
-                    backgroundColor: 'transparent',
-                    borderRadius: 14,
-                    paddingVertical: 16,
-                    alignItems: 'center',
-                    borderWidth: 2,
-                    borderColor: '#00D4AA',
-                    flexDirection: 'row',
-                    justifyContent: 'center',
-                    opacity: ((!betData.fixedStakeAmount && !isValidBetAmount()) || !isValidBetSelection()) ? 0.4 : 1
-                  }}
-                >
-                  <MaterialIcons name="add-circle" size={20} color="#00D4AA" style={{ marginRight: 8 }} />
-                  <Text style={{
-                    color: '#00D4AA',
-                    fontSize: 16,
-                    fontWeight: '700'
-                  }}>
-                    Join Bet (Optional)
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Resolve Button */}
-                <TouchableOpacity
-                  onPress={() => setShowResolutionModal(true)}
-                  style={{
-                    backgroundColor: '#00D4AA',
-                    borderRadius: 14,
-                    paddingVertical: 16,
-                    alignItems: 'center',
-                    shadowColor: '#00D4AA',
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
-                    elevation: 8,
-                    flexDirection: 'row',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <MaterialIcons name="gavel" size={20} color="#000000" style={{ marginRight: 8 }} />
-                  <Text style={{
-                    color: '#000000',
-                    fontSize: 16,
-                    fontWeight: '700'
-                  }}>
-                    {betData.resolutionMethod === 'CONSENSUS_VOTING' ? 'Vote on Resolution' : 'Resolve Bet'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              /* If user has participated, only show Resolve button */
-              <TouchableOpacity
-                onPress={() => setShowResolutionModal(true)}
-                style={{
-                  backgroundColor: '#00D4AA',
-                  borderRadius: 14,
-                  paddingVertical: 16,
-                  alignItems: 'center',
-                  shadowColor: '#00D4AA',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 8,
-                  flexDirection: 'row',
-                  justifyContent: 'center'
-                }}
-              >
-                <MaterialIcons name="gavel" size={20} color="#000000" style={{ marginRight: 8 }} />
-                <Text style={{
-                  color: '#000000',
-                  fontSize: 16,
-                  fontWeight: '700'
-                }}>
-                  {betData.resolutionMethod === 'CONSENSUS_VOTING' ? 'Vote on Resolution' : 'Resolve Bet'}
-                </Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              onPress={() => setShowResolutionModal(true)}
+              style={{
+                backgroundColor: '#00D4AA',
+                borderRadius: 14,
+                paddingVertical: 16,
+                alignItems: 'center',
+                shadowColor: '#00D4AA',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 8,
+                flexDirection: 'row',
+                justifyContent: 'center'
+              }}
+            >
+              <MaterialIcons name="gavel" size={20} color="#000000" style={{ marginRight: 8 }} />
+              <Text style={{
+                color: '#000000',
+                fontSize: 16,
+                fontWeight: '700'
+              }}>
+                {betData.resolutionMethod === 'CONSENSUS_VOTING' ? 'Vote on Resolution' : 'Resolve Bet'}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>

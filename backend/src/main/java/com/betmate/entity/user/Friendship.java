@@ -3,6 +3,7 @@ package com.betmate.entity.user;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 /**
  * Friendship entity representing mutual relationships between users.
@@ -70,13 +71,13 @@ public class Friendship {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now(ZoneOffset.UTC);
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     // ==========================================
@@ -126,7 +127,7 @@ public class Friendship {
     public void setStatus(FriendshipStatus status) {
         this.status = status;
         if (status == FriendshipStatus.ACCEPTED && acceptedAt == null) {
-            this.acceptedAt = LocalDateTime.now();
+            this.acceptedAt = LocalDateTime.now(ZoneOffset.UTC);
         }
     }
 

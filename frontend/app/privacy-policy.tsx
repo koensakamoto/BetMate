@@ -259,7 +259,7 @@ export default function PrivacyPolicy() {
           <ListItem>Restriction: Request limited processing of your data</ListItem>
           
           <Paragraph>
-            To exercise these rights, contact us at privacy@betmate.com.
+            To exercise these rights, contact us at rivalpicksapp@gmail.com.
           </Paragraph>
         </Section>
 
@@ -326,10 +326,7 @@ export default function PrivacyPolicy() {
               lineHeight: 24,
               letterSpacing: 0.1
             }}>
-              Email: privacy@betmate.com{'\n'}
-              Data Protection Officer: dpo@betmate.com{'\n'}
-              Address: 123 App Street, Tech City, TC 12345{'\n'}
-              Phone: +1 (555) 123-4567
+              Email: rivalpicksapp@gmail.com
             </Text>
           </View>
         </Section>

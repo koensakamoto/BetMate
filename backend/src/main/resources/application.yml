@@ -54,6 +54,28 @@ spring:
       expiration: 86400000 # 24 hours in milliseconds
       refresh-expiration: 604800000 # 7 days in milliseconds
 
+  # Email Configuration
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:rivalpicksapp@gmail.com}
+    password: ${MAIL_PASSWORD:${MAIL_PASSWORD}}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    default-encoding: UTF-8
+
+# Contact Configuration
+contact:
+  support-email: ${SUPPORT_EMAIL:rivalpicksapp@gmail.com}
+
 # File Upload Configuration
 file:
   upload-dir: ${FILE_UPLOAD_DIR:uploads/profile-pictures}

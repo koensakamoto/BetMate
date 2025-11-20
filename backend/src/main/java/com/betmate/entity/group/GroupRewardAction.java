@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 import com.betmate.entity.user.User;
 
@@ -116,13 +117,13 @@ public class GroupRewardAction {
     
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now(ZoneOffset.UTC);
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 
     // ==========================================
@@ -291,7 +292,7 @@ public class GroupRewardAction {
     public boolean isReadyForExecution() {
         return status == ActionStatus.PENDING && 
                isActive && 
-               (scheduledFor == null || LocalDateTime.now().isAfter(scheduledFor)) &&
+               (scheduledFor == null || LocalDateTime.now(ZoneOffset.UTC).isAfter(scheduledFor)) &&
                !isExpired();
     }
 
@@ -301,7 +302,7 @@ public class GroupRewardAction {
      * @return true if action has passed its expiration time
      */
     public boolean isExpired() {
-        return expiresAt != null && LocalDateTime.now().isAfter(expiresAt);
+        return expiresAt != null && LocalDateTime.now(ZoneOffset.UTC).isAfter(expiresAt);
     }
 
     /**
@@ -311,7 +312,7 @@ public class GroupRewardAction {
      */
     public void markExecuted(String result) {
         this.status = ActionStatus.EXECUTED;
-        this.executedAt = LocalDateTime.now();
+        this.executedAt = LocalDateTime.now(ZoneOffset.UTC);
         this.executionResult = result;
     }
 

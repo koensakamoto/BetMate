@@ -170,6 +170,15 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles contact/support exceptions.
+     */
+    @ExceptionHandler(ContactException.class)
+    public ApiResponse<Void> handleContactException(ContactException ex, HttpServletRequest request) {
+        log.warn("Contact operation error for request {}: {}", request.getRequestURI(), ex.getMessage());
+        return createErrorResponse(HttpStatus.BAD_REQUEST, "Contact Error", ex.getMessage(), request.getRequestURI());
+    }
+
+    /**
      * Handles all other unexpected exceptions.
      */
     @ExceptionHandler(Exception.class)

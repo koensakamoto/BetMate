@@ -353,3 +353,19 @@ export interface NotificationWebSocketPayload {
   priority: string;
   createdAt: string;
 }
+
+// Contact/Support
+export interface ContactMessageRequest {
+  category: string;
+  subject: string;
+  message: string;
+  email?: string;
+}
+
+export interface ContactMessageResponse {
+  id: number;
+  category: string;
+  subject: string;
+  status: string;
+  createdAt: string;
+}
