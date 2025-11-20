@@ -22,6 +22,8 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -242,8 +244,7 @@ public class BetNotificationListener {
      *
      * @param event The BetResolutionDeadlineApproachingEvent containing bet and resolver information
      */
-    @EventListener
-    @Transactional
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async
     public void handleBetResolutionDeadlineApproachingEvent(BetResolutionDeadlineApproachingEvent event) {
         try {
@@ -361,8 +362,7 @@ public class BetNotificationListener {
      *
      * @param event The BetDeadlineApproachingEvent containing bet and deadline information
      */
-    @EventListener
-    @Transactional
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async
     public void handleBetDeadlineApproachingEvent(BetDeadlineApproachingEvent event) {
         try {

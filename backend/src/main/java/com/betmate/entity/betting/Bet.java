@@ -233,17 +233,17 @@ public class Bet {
     private LocalDateTime resolvedAt;
 
     // Notification tracking timestamps - Resolution deadline reminders
-    @Column
+    @Column(name = "resolution_24_hour_reminder_sent_at")
     private LocalDateTime resolution24HourReminderSentAt;
 
-    @Column
+    @Column(name = "resolution_1_hour_reminder_sent_at")
     private LocalDateTime resolution1HourReminderSentAt;
 
     // Notification tracking timestamps - Betting deadline reminders
-    @Column
+    @Column(name = "betting_24_hour_reminder_sent_at")
     private LocalDateTime betting24HourReminderSentAt;
 
-    @Column
+    @Column(name = "betting_1_hour_reminder_sent_at")
     private LocalDateTime betting1HourReminderSentAt;
 
     // ==========================================

@@ -44,7 +44,7 @@ public class BetScheduledTaskService {
     @Scheduled(fixedDelayString = "${bet.scheduling.close-expired-interval-ms:120000}") // Default: 2 minutes
     @Transactional
     public void closeExpiredBets() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();  // System timezone - JDBC will convert to UTC
         List<Bet> expiredBets = betRepository.findExpiredOpenBets(now);
 
         if (expiredBets.isEmpty()) {
@@ -81,7 +81,7 @@ public class BetScheduledTaskService {
     @Scheduled(fixedDelayString = "${bet.scheduling.process-resolvable-interval-ms:300000}") // Default: 5 minutes
     @Transactional
     public void processResolvableBets() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();  // System timezone - JDBC will convert to UTC
         List<Bet> resolvableBets = betRepository.findBetsReadyForResolution(now);
 
         if (resolvableBets.isEmpty()) {
@@ -209,12 +209,24 @@ public class BetScheduledTaskService {
     @Scheduled(fixedDelayString = "${bet.scheduling.notify-resolution-deadline-interval-ms:900000}") // Default: 15 minutes
     @Transactional
     public void notifyApproachingResolutionDeadlines() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();  // System timezone (MST) - JDBC will convert to UTC
+        log.info("===== RESOLUTION DEADLINE CHECK =====");
+        log.info("System time (MST): {}", now);
 
         // Check for bets needing 24-hour reminder (with precise time window: 23h45m to 24h15m)
         LocalDateTime twentyThreeHours45Minutes = now.plusHours(23).plusMinutes(45);
         LocalDateTime twentyFourHours15Minutes = now.plusHours(24).plusMinutes(15);
+        log.info("Query window: {} to {}", twentyThreeHours45Minutes, twentyFourHours15Minutes);
         List<Bet> betsNeeding24HourReminder = betRepository.findBetsNeedingTwentyFourHourResolutionReminder(twentyThreeHours45Minutes, twentyFourHours15Minutes);
+        log.info("Query returned {} bets", betsNeeding24HourReminder.size());
+
+        // Log details of each bet found
+        if (!betsNeeding24HourReminder.isEmpty()) {
+            for (Bet bet : betsNeeding24HourReminder) {
+                log.info("  Bet #{}: resolveDate={}, title='{}', group={}",
+                    bet.getId(), bet.getResolveDate(), bet.getTitle(), bet.getGroup() != null ? bet.getGroup().getId() : "null");
+            }
+        }
 
         if (!betsNeeding24HourReminder.isEmpty()) {
             log.info("Found {} bets needing 24-hour resolution reminder", betsNeeding24HourReminder.size());
@@ -365,13 +377,26 @@ public class BetScheduledTaskService {
     @Scheduled(fixedDelayString = "${bet.scheduling.notify-betting-deadline-interval-ms:900000}") // Default: 15 minutes
     @Transactional
     public void notifyApproachingBettingDeadlines() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();  // System timezone (MST) - JDBC will convert to UTC
+        log.info("===== BETTING DEADLINE CHECK =====");
+        log.info("System time (MST): {}", now);
+        log.info("JDBC will convert to UTC when querying");
 
         // Check for bets needing 24-hour reminder (with precise time window: 23h45m to 24h15m)
         LocalDateTime twentyThreeHours45Minutes = now.plusHours(23).plusMinutes(45);
         LocalDateTime twentyFourHours15Minutes = now.plusHours(24).plusMinutes(15);
+        log.info("Query window: {} to {}", twentyThreeHours45Minutes, twentyFourHours15Minutes);
         List<Bet> betsNeeding24HourReminder = betRepository.findBetsNeedingTwentyFourHourBettingReminder(
                 twentyThreeHours45Minutes, twentyFourHours15Minutes);
+        log.info("Query returned {} bets", betsNeeding24HourReminder.size());
+
+        // Log details of each bet found
+        if (!betsNeeding24HourReminder.isEmpty()) {
+            for (Bet bet : betsNeeding24HourReminder) {
+                log.info("  Bet #{}: deadline={}, title='{}', group={}",
+                    bet.getId(), bet.getBettingDeadline(), bet.getTitle(), bet.getGroup() != null ? bet.getGroup().getId() : "null");
+            }
+        }
 
         if (!betsNeeding24HourReminder.isEmpty()) {
             log.info("Found {} bets needing 24-hour betting deadline reminder", betsNeeding24HourReminder.size());
@@ -386,7 +411,7 @@ public class BetScheduledTaskService {
                     // Smart logic: Skip 24h reminder if betting deadline < 2 hours (prevent double notification)
                     long hoursUntilDeadline = java.time.Duration.between(now, bet.getBettingDeadline()).toHours();
                     if (hoursUntilDeadline < 2) {
-                        log.debug("Skipping 24-hour betting reminder for bet {} (only {} hours until deadline, will send 1-hour reminder instead)",
+                        log.debug("Skipping 24-hour betting reminder for bet {} (only {} hours until deadline)",
                                 bet.getId(), hoursUntilDeadline);
                         bet.setBetting24HourReminderSentAt(now); // Mark as sent to avoid retrying
                         betRepository.save(bet);
@@ -396,7 +421,6 @@ public class BetScheduledTaskService {
                     publishBettingDeadlineApproachingEvent(bet, 24);
                     bet.setBetting24HourReminderSentAt(now);
                     betRepository.save(bet);
-                    log.debug("Sent 24-hour betting reminder for bet {} (bettingDeadline: {})", bet.getId(), bet.getBettingDeadline());
                 } catch (Exception e) {
                     log.error("Failed to send 24-hour betting reminder for bet {}: {}", bet.getId(), e.getMessage(), e);
                 }
