@@ -1,26 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert, Keyboard } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert, Keyboard, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import UserCard from '../components/user/UserCard';
+import { SkeletonUserCard } from '../components/common/SkeletonCard';
 import { userService, UserSearchResult } from '../services/user/userService';
 import { friendshipService, FriendshipService, FriendshipStatus } from '../services/user/friendshipService';
 import { debugLog, errorLog } from '../config/env';
+import { haptic } from '../utils/haptics';
 
 export default function FindFriends() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [friendStatuses, setFriendStatuses] = useState<Map<number, 'none' | 'pending_sent' | 'pending_received' | 'friends'>>(new Map());
   const [loadingFriendStatus, setLoadingFriendStatus] = useState<Set<number>>(new Set());
+
+  // Refs for animations
+  const searchIconScale = useRef(new Animated.Value(1)).current;
+  const emptyIconFloat = useRef(new Animated.Value(0)).current;
 
   // Handle search with debouncing
   useEffect(() => {
     const handleSearch = async () => {
       if (searchQuery.trim().length > 0) {
         setIsLoading(true);
+        setHasSearched(true);
         try {
           const results = await userService.searchUsers(searchQuery.trim());
           debugLog('User search results:', results);
@@ -32,23 +40,65 @@ export default function FindFriends() {
 
           // Now set the results - friendship statuses are already loaded
           setSearchResults(results);
+          setIsLoading(false);
         } catch (error) {
           errorLog('Error searching users:', error);
           setSearchResults([]);
-          Alert.alert('Error', 'Failed to search users. Please try again.');
-        } finally {
           setIsLoading(false);
+          Alert.alert('Error', 'Failed to search users. Please try again.');
         }
       } else {
         setSearchResults([]);
         setFriendStatuses(new Map());
         setIsLoading(false);
+        setHasSearched(false);
       }
     };
 
     const timeoutId = setTimeout(handleSearch, 300); // Debounce search
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
+
+
+  // Animate search icon when loading
+  useEffect(() => {
+    if (isLoading) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(searchIconScale, {
+            toValue: 1.3,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(searchIconScale, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      searchIconScale.setValue(1);
+    }
+  }, [isLoading]);
+
+  // Animate empty state icon float
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(emptyIconFloat, {
+          toValue: -8,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(emptyIconFloat, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
 
   // Load friendship statuses for multiple users
   const loadFriendshipStatuses = async (userIds: number[]) => {
@@ -76,6 +126,7 @@ export default function FindFriends() {
   const handleFriendPress = async (userId: number) => {
     // Dismiss keyboard to improve UX
     Keyboard.dismiss();
+    haptic.medium(); // Haptic feedback on button press
 
     const currentStatus = friendStatuses.get(userId) || 'none';
 
@@ -91,9 +142,11 @@ export default function FindFriends() {
         // Send friend request
         const response = await friendshipService.sendFriendRequest(userId);
         if (response.success) {
+          haptic.success(); // Success haptic
           setFriendStatuses(prev => new Map(prev).set(userId, 'pending_sent'));
           debugLog(`Sent friend request to user ${userId}`);
         } else {
+          haptic.error(); // Error haptic
           Alert.alert('Error', response.message || 'Failed to send friend request');
         }
       } else if (currentStatus === 'pending_received') {
@@ -118,14 +171,18 @@ export default function FindFriends() {
               style: 'destructive',
               onPress: async () => {
                 try {
+                  haptic.medium(); // Haptic on confirm remove
                   const response = await friendshipService.removeFriend(userId);
                   if (response.success) {
+                    haptic.success(); // Success haptic
                     setFriendStatuses(prev => new Map(prev).set(userId, 'none'));
                     debugLog(`Removed friend ${userId}`);
                   } else {
+                    haptic.error(); // Error haptic
                     Alert.alert('Error', response.message || 'Failed to remove friend');
                   }
                 } catch (error) {
+                  haptic.error(); // Error haptic
                   errorLog('Error removing friend:', error);
                   Alert.alert('Error', 'Failed to remove friend. Please try again.');
                 }
@@ -135,6 +192,7 @@ export default function FindFriends() {
         );
       }
     } catch (error) {
+      haptic.error(); // Error haptic
       errorLog('Error updating friend status:', error);
       Alert.alert('Error', 'Failed to update friend status. Please try again.');
 
@@ -217,7 +275,9 @@ export default function FindFriends() {
               paddingHorizontal: 16,
               paddingVertical: 10
             }}>
-              <MaterialIcons name="search" size={20} color="rgba(255, 255, 255, 0.5)" style={{ marginRight: 8 }} />
+              <Animated.View style={{ transform: [{ scale: searchIconScale }] }}>
+                <MaterialIcons name="search" size={20} color="rgba(255, 255, 255, 0.5)" style={{ marginRight: 8 }} />
+              </Animated.View>
 
               <TextInput
                 style={{
@@ -239,7 +299,10 @@ export default function FindFriends() {
 
               {searchQuery.length > 0 && (
                 <TouchableOpacity
-                  onPress={() => setSearchQuery('')}
+                  onPress={() => {
+                    haptic.light(); // Light haptic on clear
+                    setSearchQuery('');
+                  }}
                   style={{ marginLeft: 8 }}
                 >
                   <MaterialIcons name="close" size={18} color="rgba(255, 255, 255, 0.5)" />
@@ -260,17 +323,18 @@ export default function FindFriends() {
               borderColor: 'rgba(255, 255, 255, 0.05)',
               marginTop: 40
             }}>
-              <View style={{
+              <Animated.View style={{
                 width: 48,
                 height: 48,
                 borderRadius: 24,
                 backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 justifyContent: 'center',
                 alignItems: 'center',
-                marginBottom: 16
+                marginBottom: 16,
+                transform: [{ translateY: emptyIconFloat }]
               }}>
                 <MaterialIcons name="search" size={24} color="rgba(255, 255, 255, 0.4)" />
-              </View>
+              </Animated.View>
               <Text style={{
                 fontSize: 16,
                 color: 'rgba(255, 255, 255, 0.7)',
@@ -287,22 +351,13 @@ export default function FindFriends() {
                 Enter a username or name to find other users
               </Text>
             </View>
-          ) : isLoading ? (
-            /* Loading state */
-            <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.02)',
-              borderRadius: 8,
-              padding: 24,
-              alignItems: 'center',
-              marginBottom: 32
-            }}>
-              <Text style={{
-                fontSize: 16,
-                color: 'rgba(255, 255, 255, 0.7)',
-                textAlign: 'center'
-              }}>
-                Searching for users...
-              </Text>
+          ) : isLoading && !hasSearched ? (
+            /* First time loading - show skeleton cards */
+            <View>
+              <SkeletonUserCard />
+              <SkeletonUserCard />
+              <SkeletonUserCard />
+              <SkeletonUserCard />
             </View>
           ) : searchResults.length > 0 ? (
             /* Search results */
@@ -315,7 +370,7 @@ export default function FindFriends() {
               }}>
                 Found {searchResults.length} user{searchResults.length !== 1 ? 's' : ''}
               </Text>
-              
+
               {searchResults.map((user) => (
                 <UserCard
                   key={user.id}
@@ -332,8 +387,8 @@ export default function FindFriends() {
                 />
               ))}
             </View>
-          ) : (
-            /* No results */
+          ) : hasSearched && !isLoading ? (
+            /* No results - only show when search is done and no results */
             <View style={{
               backgroundColor: 'rgba(255, 255, 255, 0.02)',
               borderRadius: 8,
@@ -370,7 +425,7 @@ export default function FindFriends() {
                 Try searching with a different username or name
               </Text>
             </View>
-          )}
+          ) : null}
 
           {/* Additional spacing for scroll */}
           <View style={{ height: 60 }} />

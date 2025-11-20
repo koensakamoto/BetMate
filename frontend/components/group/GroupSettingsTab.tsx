@@ -267,7 +267,8 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
                     {
                       text: 'OK',
                       onPress: () => {
-                        router.replace({
+                        router.dismissAll();
+                        router.navigate({
                           pathname: '/(tabs)/group',
                           params: { refresh: Date.now().toString() }
                         });
@@ -316,7 +317,8 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
                   {
                     text: 'OK',
                     onPress: () => {
-                      router.replace({
+                      router.dismissAll();
+                      router.navigate({
                         pathname: '/(tabs)/group',
                         params: { refresh: Date.now().toString() }
                       });

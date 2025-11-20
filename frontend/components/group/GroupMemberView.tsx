@@ -152,7 +152,8 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                   {
                     text: 'OK',
                     onPress: () => {
-                      router.replace({
+                      router.dismissAll();
+                      router.navigate({
                         pathname: '/(tabs)/group',
                         params: { refresh: Date.now().toString() }
                       });

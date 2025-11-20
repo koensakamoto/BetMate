@@ -182,13 +182,6 @@ export default function Notifications() {
   const groupedNotifications = groupByDate(filteredNotifications);
 
   const handleNotificationPress = async (notification: NotificationResponse) => {
-    console.log('🔔 Notification pressed:', {
-      type: notification.type || notification.notificationType,
-      actionUrl: notification.actionUrl,
-      relatedEntityId: notification.relatedEntityId,
-      relatedEntityType: notification.relatedEntityType
-    });
-
     // Mark as read if not already read
     if (!notification.isRead) {
       await markAsRead(notification.id);
@@ -200,8 +193,6 @@ export default function Notifications() {
       const url = notification.actionUrl;
       const notificationType = notification.type || notification.notificationType;
 
-      console.log('📍 Navigation logic:', { url, notificationType });
-
       if (url.startsWith('/bets/')) {
         const betId = url.split('/')[2];
         router.push(`/bet-details/${betId}` as any);
@@ -210,10 +201,8 @@ export default function Notifications() {
 
         // For role change notifications, navigate to People tab (index 2) to show the user their new role
         if (notificationType === 'GROUP_ROLE_CHANGED') {
-          console.log('✅ Navigating to People tab for group:', groupId);
           router.push(`/group/${groupId}?tab=2` as any);
         } else {
-          console.log('✅ Navigating to group page:', groupId);
           router.push(`/group/${groupId}` as any);
         }
       } else if (url === '/friends/requests') {
@@ -224,8 +213,6 @@ export default function Notifications() {
         // Default navigation
         console.log('Navigate to:', url);
       }
-    } else {
-      console.log('⚠️ No actionUrl available');
     }
   };
 
@@ -971,14 +958,6 @@ export default function Notifications() {
     );
 
     const shouldBeTappable = hasAction || (isGroupRoleChanged && notification.actionUrl);
-    console.log('🖱️ Notification tappable check:', {
-      id: notification.id,
-      type: notificationType,
-      isGroupRoleChanged,
-      hasActionUrl: !!notification.actionUrl,
-      hasAction,
-      shouldBeTappable
-    });
 
     return (
       <View style={{

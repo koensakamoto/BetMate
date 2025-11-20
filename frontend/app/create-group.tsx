@@ -158,8 +158,9 @@ export default function CreateGroup() {
           {
             text: 'OK',
             onPress: () => {
-              // Navigate back to groups page with refresh parameter to force data reload
-              router.replace({
+              // Dismiss modal and force refresh with parameter
+              router.dismissAll();
+              router.navigate({
                 pathname: '/(tabs)/group',
                 params: { refresh: Date.now().toString() }
               });

@@ -437,16 +437,6 @@ export default function Bet() {
               </View>
             )}
 
-            {/* Search Results Info */}
-            {searchQuery.length > 0 && (
-              <View style={{ marginBottom: 16 }}>
-                <Text style={{
-                  fontSize: 14,
-                  color: 'rgba(255, 255, 255, 0.6)'
-                }}>Searching for &quot;{searchQuery}&quot;</Text>
-              </View>
-            )}
-
             {/* Content based on active tab */}
             {activeTab === 0 ? (
               /* My Bets Section */

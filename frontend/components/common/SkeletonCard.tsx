@@ -220,3 +220,39 @@ export function SkeletonProfile() {
     </View>
   );
 }
+
+/**
+ * Skeleton for User Card
+ */
+export function SkeletonUserCard() {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 12,
+        borderWidth: 0.5,
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+      }}
+    >
+      {/* Left side: Avatar and user info */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+        {/* Avatar */}
+        <SkeletonCard width={48} height={48} borderRadius={24} style={{ marginRight: 12 }} />
+
+        {/* User info */}
+        <View style={{ flex: 1 }}>
+          <SkeletonCard width="70%" height={18} borderRadius={8} style={{ marginBottom: 6 }} />
+          <SkeletonCard width="50%" height={14} borderRadius={8} />
+        </View>
+      </View>
+
+      {/* Right side: Button */}
+      <SkeletonCard width={90} height={36} borderRadius={18} />
+    </View>
+  );
+}

@@ -9,6 +9,7 @@ import com.betmate.event.betting.BetCancelledEvent;
 import com.betmate.event.betting.BetCreatedEvent;
 import com.betmate.event.betting.BetResolutionDeadlineApproachingEvent;
 import com.betmate.event.betting.BetDeadlineApproachingEvent;
+import com.betmate.event.betting.BetResolvedEvent;
 import com.betmate.repository.group.GroupMembershipRepository;
 import com.betmate.repository.betting.BetParticipationRepository;
 import com.betmate.service.group.GroupService;
@@ -98,7 +99,7 @@ public class BetNotificationListener {
 
                 try {
                     // Create notification title and message
-                    String title = "🎲 New Bet in " + event.getGroupName();
+                    String title = "New Bet in " + event.getGroupName();
                     String message = event.getCreatorName() + " created a bet: " + event.getBetTitle();
                     String actionUrl = "/bets/" + event.getBetId();
 
@@ -470,6 +471,126 @@ public class BetNotificationListener {
         } catch (Exception e) {
             // Log error but don't throw - we don't want notification failures to break scheduled tasks
             logger.error("Failed to process BET_DEADLINE_APPROACHING event for bet {}: {}",
+                        event.getBetId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Handles BetResolvedEvent by creating notifications for all bet participants.
+     * Winners receive congratulatory messages with HIGH priority, losers receive informational
+     * messages with NORMAL priority.
+     * Runs asynchronously to avoid blocking bet resolution.
+     *
+     * @param event The BetResolvedEvent containing bet resolution information and payouts
+     */
+    @EventListener
+    @Transactional
+    @Async
+    public void handleBetResolvedEvent(BetResolvedEvent event) {
+        try {
+            logger.info("Processing BET_RESOLVED event for bet ID: {} in group: {}",
+                       event.getBetId(), event.getGroupName());
+
+            // Get all participant IDs (winners + losers)
+            List<Long> allParticipantIds = new java.util.ArrayList<>();
+            if (event.getWinnerIds() != null) {
+                allParticipantIds.addAll(event.getWinnerIds());
+            }
+            if (event.getLoserIds() != null) {
+                allParticipantIds.addAll(event.getLoserIds());
+            }
+
+            if (allParticipantIds.isEmpty()) {
+                logger.info("No participants to notify for bet {}", event.getBetId());
+                return;
+            }
+
+            logger.debug("Found {} participants to notify for bet resolution", allParticipantIds.size());
+
+            // Create notification for each participant
+            int notificationsCreated = 0;
+            for (Long userId : allParticipantIds) {
+                try {
+                    // Get the user entity
+                    User participant = userService.getUserById(userId);
+                    if (participant == null) {
+                        logger.warn("User {} not found for bet resolution notification", userId);
+                        continue;
+                    }
+
+                    // Check user settings - skip if they have disabled bet result notifications
+                    if (participant.getSettings() != null &&
+                        participant.getSettings().getBetResultNotifications() != null &&
+                        !participant.getSettings().getBetResultNotifications()) {
+                        logger.debug("Skipping notification for user {} - bet result notifications disabled",
+                                   participant.getUsername());
+                        continue;
+                    }
+
+                    // Determine if this user won or lost
+                    boolean isWinner = event.isWinner(userId);
+
+                    // Create personalized notification title and message
+                    String title;
+                    String message;
+                    NotificationPriority priority;
+
+                    if (isWinner) {
+                        // Winner notification - congratulatory message with HIGH priority
+                        title = "You Won: " + event.getBetTitle();
+                        message = "Congratulations! You won the bet '" + event.getBetTitle() +
+                                "' in " + event.getGroupName() + ".";
+                        priority = NotificationPriority.HIGH;
+                    } else {
+                        // Loser notification - informational message with NORMAL priority
+                        title = "Bet Resolved: " + event.getBetTitle();
+                        message = "The bet '" + event.getBetTitle() + "' has been resolved in " +
+                                event.getGroupName() + ".";
+                        priority = NotificationPriority.NORMAL;
+                    }
+
+                    String actionUrl = "/bets/" + event.getBetId();
+
+                    // Ensure title and message don't exceed maximum lengths
+                    if (title.length() > 100) {
+                        title = title.substring(0, 97) + "...";
+                    }
+                    if (message.length() > 500) {
+                        message = message.substring(0, 497) + "...";
+                    }
+
+                    // Create the notification in the database
+                    Notification notification = notificationService.createNotification(
+                        participant,
+                        title,
+                        message,
+                        NotificationType.BET_RESULT,
+                        priority,
+                        actionUrl,
+                        event.getBetId(),
+                        "BET"
+                    );
+
+                    // Send real-time notification via WebSocket
+                    messageNotificationService.sendNotificationToUser(participant.getId(), notification);
+
+                    notificationsCreated++;
+                    logger.debug("Created BET_RESULT notification for user: {} (winner: {})",
+                               participant.getUsername(), isWinner);
+
+                } catch (Exception e) {
+                    // Log error for individual notification but continue processing others
+                    logger.error("Failed to create notification for user {}: {}",
+                               userId, e.getMessage());
+                }
+            }
+
+            logger.info("Successfully created {} BET_RESULT notifications for bet {}",
+                       notificationsCreated, event.getBetId());
+
+        } catch (Exception e) {
+            // Log error but don't throw - we don't want notification failures to break bet resolution
+            logger.error("Failed to process BET_RESOLVED event for bet {}: {}",
                         event.getBetId(), e.getMessage(), e);
         }
     }
