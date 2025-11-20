@@ -10,10 +10,11 @@ public class GroupMemberLeftEvent extends DomainEvent {
     private final String memberUsername;
     private final boolean wasKicked;
     private final String reason;
+    private final Long removedById;  // ID of the user who removed this member (null if voluntary leave)
 
     public GroupMemberLeftEvent(Long groupId, String groupName,
                                Long memberId, String memberName, String memberUsername,
-                               boolean wasKicked, String reason) {
+                               boolean wasKicked, String reason, Long removedById) {
         super("GROUP_MEMBER_LEFT");
         this.groupId = groupId;
         this.groupName = groupName;
@@ -22,6 +23,7 @@ public class GroupMemberLeftEvent extends DomainEvent {
         this.memberUsername = memberUsername;
         this.wasKicked = wasKicked;
         this.reason = reason;
+        this.removedById = removedById;
     }
 
     public Long getGroupId() {
@@ -50,5 +52,9 @@ public class GroupMemberLeftEvent extends DomainEvent {
 
     public String getReason() {
         return reason;
+    }
+
+    public Long getRemovedById() {
+        return removedById;
     }
 }

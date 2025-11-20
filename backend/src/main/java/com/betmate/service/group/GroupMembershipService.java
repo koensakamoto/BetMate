@@ -10,6 +10,7 @@ import com.betmate.event.group.GroupMemberLeftEvent;
 import com.betmate.event.group.GroupRoleChangedEvent;
 import com.betmate.exception.group.GroupMembershipException;
 import com.betmate.repository.group.GroupMembershipRepository;
+import com.betmate.service.notification.NotificationService;
 import com.betmate.service.user.UserService;
 import jakarta.persistence.EntityManager;
 import jakarta.validation.constraints.NotNull;
@@ -17,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -40,6 +42,7 @@ public class GroupMembershipService {
     private final GroupService groupService;
     private final GroupPermissionService permissionService;
     private final UserService userService;
+    private final NotificationService notificationService;
     private final ApplicationEventPublisher eventPublisher;
     private final EntityManager entityManager;
 
@@ -48,12 +51,14 @@ public class GroupMembershipService {
                                   GroupService groupService,
                                   GroupPermissionService permissionService,
                                   UserService userService,
+                                  @Lazy NotificationService notificationService,
                                   ApplicationEventPublisher eventPublisher,
                                   EntityManager entityManager) {
         this.membershipRepository = membershipRepository;
         this.groupService = groupService;
         this.permissionService = permissionService;
         this.userService = userService;
+        this.notificationService = notificationService;
         this.eventPublisher = eventPublisher;
         this.entityManager = entityManager;
     }
@@ -373,7 +378,7 @@ public class GroupMembershipService {
                     newMember.getUsername(), group.getGroupName());
     }
 
-    private void publishMemberLeftEvent(@NotNull User member, @NotNull Group group, boolean wasKicked, String reason) {
+    private void publishMemberLeftEvent(@NotNull User member, @NotNull Group group, boolean wasKicked, String reason, Long removedById) {
         String memberName = member.getFirstName() != null && !member.getFirstName().isEmpty()
             ? member.getFirstName() + " " + (member.getLastName() != null ? member.getLastName() : "")
             : member.getUsername();
@@ -385,12 +390,13 @@ public class GroupMembershipService {
             memberName.trim(),
             member.getUsername(),
             wasKicked,
-            reason
+            reason,
+            removedById
         );
 
         eventPublisher.publishEvent(event);
-        logger.info("Published GroupMemberLeftEvent for user {} leaving group {} (wasKicked: {})",
-                    member.getUsername(), group.getGroupName(), wasKicked);
+        logger.info("Published GroupMemberLeftEvent for user {} leaving group {} (wasKicked: {}, removedById: {})",
+                    member.getUsername(), group.getGroupName(), wasKicked, removedById);
     }
 
     private void publishRoleChangedEvent(@NotNull Group group, @NotNull User targetUser,
@@ -472,8 +478,8 @@ public class GroupMembershipService {
         long memberCount = membershipRepository.countActiveMembers(group);
         groupService.updateMemberCount(group.getId(), (int) memberCount);
 
-        // Publish event to notify other members
-        publishMemberLeftEvent(user, group, false, null);
+        // Publish event to notify other members (null removedById since voluntary leave)
+        publishMemberLeftEvent(user, group, false, null, null);
     }
 
     /**
@@ -576,7 +582,7 @@ public class GroupMembershipService {
 
         // Publish event to notify other members
         String reason = "Removed by " + actor.getUsername();
-        publishMemberLeftEvent(userToRemove, group, true, reason);
+        publishMemberLeftEvent(userToRemove, group, true, reason, actor.getId());
     }
 
     /**
@@ -810,6 +816,9 @@ public class GroupMembershipService {
         long memberCount = membershipRepository.countActiveMembers(group);
         groupService.updateMemberCount(group.getId(), (int) memberCount);
 
+        // Delete the join request notification since it's been processed
+        notificationService.deleteGroupJoinRequestNotification(requestId);
+
         // Publish event to notify existing members
         publishMemberJoinedEvent(membership.getUser(), group, false);
 
@@ -847,6 +856,9 @@ public class GroupMembershipService {
         membership.setStatus(GroupMembership.MembershipStatus.REJECTED);
         membership.setIsActive(false);
         membershipRepository.save(membership);
+
+        // Delete the join request notification since it's been processed
+        notificationService.deleteGroupJoinRequestNotification(requestId);
     }
 
     /**

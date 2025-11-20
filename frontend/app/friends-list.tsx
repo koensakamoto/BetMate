@@ -77,9 +77,14 @@ export default function FriendsList() {
   };
 
   const handleRemoveFriend = async (friend: FriendDto) => {
+    // Create display name with fallback to username
+    const displayName = friend.firstName && friend.lastName
+      ? `${friend.firstName} ${friend.lastName}`
+      : friend.username;
+
     Alert.alert(
       'Remove Friend',
-      `Are you sure you want to remove ${friend.firstName} ${friend.lastName} from your friends?`,
+      `Are you sure you want to remove ${displayName} from your friends?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -89,7 +94,7 @@ export default function FriendsList() {
             try {
               await friendshipService.removeFriend(friend.id);
               setFriends(prev => prev.filter(f => f.id !== friend.id));
-              Alert.alert('Friend Removed', `${friend.firstName} ${friend.lastName} has been removed from your friends.`);
+              // No success alert - the friend disappearing from the list is enough feedback
             } catch (error: any) {
               errorLog('Failed to remove friend:', error);
               Alert.alert('Error', 'Failed to remove friend. Please try again.');

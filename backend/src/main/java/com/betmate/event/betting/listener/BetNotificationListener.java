@@ -159,20 +159,29 @@ public class BetNotificationListener {
             logger.info("Processing BET_CANCELLED event for bet ID: {} in group: {}",
                        event.getBetId(), event.getGroupName());
 
-            // Get the refunds map (userId -> refundAmount)
-            Map<Long, BigDecimal> refunds = event.getRefunds();
-            if (refunds == null || refunds.isEmpty()) {
-                logger.info("No refunds to process for bet {}", event.getBetId());
+            // Get all participants (regardless of stake type)
+            // For CREDIT bets, we have refund amounts; for SOCIAL bets, we still need to notify
+            List<com.betmate.entity.betting.BetParticipation> allParticipations =
+                betParticipationRepository.findByBetId(event.getBetId());
+
+            if (allParticipations == null || allParticipations.isEmpty()) {
+                logger.info("No participants to notify for bet {}", event.getBetId());
                 return;
             }
 
-            logger.debug("Found {} participants to notify for bet cancellation", refunds.size());
+            logger.debug("Found {} participants to notify for bet cancellation", allParticipations.size());
 
-            // Create notification for each participant who received a refund
+            // Get the refunds map (userId -> refundAmount) for CREDIT bets
+            Map<Long, BigDecimal> refunds = event.getRefunds();
+            if (refunds == null) {
+                refunds = new java.util.HashMap<>();
+            }
+
+            // Create notification for each participant
             int notificationsCreated = 0;
-            for (Map.Entry<Long, BigDecimal> refundEntry : refunds.entrySet()) {
-                Long userId = refundEntry.getKey();
-                BigDecimal refundAmount = refundEntry.getValue();
+            for (com.betmate.entity.betting.BetParticipation participation : allParticipations) {
+                Long userId = participation.getUser().getId();
+                BigDecimal refundAmount = refunds.getOrDefault(userId, BigDecimal.ZERO);
 
                 // Skip the user who cancelled the bet - they don't need a notification
                 if (userId.equals(event.getCancelledById())) {
@@ -182,7 +191,7 @@ public class BetNotificationListener {
 
                 try {
                     // Get the user entity
-                    User participant = userService.getUserById(userId);
+                    User participant = participation.getUser();
                     if (participant == null) {
                         logger.warn("User {} not found for bet cancellation notification", userId);
                         continue;
@@ -190,8 +199,18 @@ public class BetNotificationListener {
 
                     // Create notification title and message
                     String title = "Bet Cancelled: " + event.getGroupName();
-                    String message = event.getCancelledByName() + " cancelled the bet: " + event.getBetTitle() +
-                                   ". You've been refunded " + refundAmount + " credits.";
+                    String message;
+
+                    // Different message for credit vs social bets
+                    if (refundAmount.compareTo(BigDecimal.ZERO) > 0) {
+                        // Credit bet - mention refund
+                        message = event.getCancelledByName() + " cancelled the bet: " + event.getBetTitle() +
+                                ". You've been refunded " + refundAmount + " credits.";
+                    } else {
+                        // Social bet - no refund to mention
+                        message = event.getCancelledByName() + " cancelled the bet: " + event.getBetTitle() + ".";
+                    }
+
                     String actionUrl = "/bets/" + event.getBetId();
 
                     // Ensure title and message don't exceed maximum lengths
@@ -303,7 +322,7 @@ public class BetNotificationListener {
 
                     // Create notification title and message
                     String title = event.getHoursUntilDeadline() == 1
-                        ? "⚠️ Urgent: Bet Resolution Needed in 1 Hour"
+                        ? "Urgent: Bet Resolution Needed in 1 Hour"
                         : "Bet Resolution Reminder: " + event.getBetTitle();
 
                     String message = event.getHoursUntilDeadline() == 1
@@ -402,7 +421,7 @@ public class BetNotificationListener {
                 try {
                     // Create notification title and message
                     String title = event.isUrgent()
-                        ? "⏰ Last Call: Bet Closing in 1 Hour"
+                        ? "Last Call: Bet Closing in 1 Hour"
                         : "Bet Closing Soon in " + event.getGroupName();
 
                     String message = event.isUrgent()
