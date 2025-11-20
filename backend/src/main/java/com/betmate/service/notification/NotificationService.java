@@ -149,7 +149,7 @@ public class NotificationService {
             System.out.println("DEBUG: Creating friend request accepted notification from " + accepter.getId() + " to " + requester.getId());
             Notification notification = createNotification(
                 requester,
-                "🎉 Friend Request Accepted",
+                "Friend Request Accepted",
                 accepter.getDisplayName() + " accepted your friend request!",
                 NotificationType.FRIEND_ACCEPTED,
                 NotificationPriority.NORMAL,
@@ -185,6 +185,33 @@ public class NotificationService {
             }
         } catch (Exception e) {
             System.err.println("ERROR: Failed to delete friend request notification for friendshipId " + friendshipId + ": " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+    }
+
+    /**
+     * Deletes group join request notifications for a specific membership request.
+     * This is called when a join request is approved or denied to remove the notification
+     * from all admins/officers who received it.
+     */
+    @Transactional
+    public void deleteGroupJoinRequestNotification(Long membershipId) {
+        try {
+            System.out.println("DEBUG: Attempting to delete group join request notification for membershipId: " + membershipId);
+            List<Notification> notifications = notificationRepository
+                .findByRelatedEntityIdAndRelatedEntityTypeAndNotificationType(
+                    membershipId, "GROUP_MEMBERSHIP", NotificationType.GROUP_JOIN_REQUEST);
+
+            if (!notifications.isEmpty()) {
+                System.out.println("DEBUG: Found " + notifications.size() + " group join request notification(s) to delete");
+                notificationRepository.deleteAll(notifications);
+                System.out.println("DEBUG: Successfully deleted group join request notification(s) for membershipId: " + membershipId);
+            } else {
+                System.out.println("DEBUG: No group join request notifications found for membershipId: " + membershipId);
+            }
+        } catch (Exception e) {
+            System.err.println("ERROR: Failed to delete group join request notification for membershipId " + membershipId + ": " + e.getMessage());
             e.printStackTrace();
             throw e;
         }

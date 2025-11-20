@@ -7,6 +7,7 @@ import { useNotifications, useNotificationWebSocket } from '../services/notifica
 import { NotificationResponse, NotificationType, NotificationPriority } from '../types/api';
 import { friendshipService } from '../services/user/friendshipService';
 import { groupService } from '../services/group/groupService';
+import { BetDeadlineCard } from '../components/notifications/BetDeadlineCard';
 
 export default function Notifications() {
   const insets = useSafeAreaInsets();
@@ -53,6 +54,9 @@ export default function Notifications() {
       case NotificationType.BET_DEADLINE:
       case 'BET_DEADLINE':
         return 'schedule';
+      case NotificationType.BET_RESOLUTION_REMINDER:
+      case 'BET_RESOLUTION_REMINDER':
+        return 'gavel';
       case NotificationType.BET_CANCELLED:
       case 'BET_CANCELLED':
         return 'cancel';
@@ -62,6 +66,7 @@ export default function Notifications() {
       case 'FRIEND_REQUEST_ACCEPTED':
         return 'person-add';
       case NotificationType.GROUP_INVITE:
+      case NotificationType.GROUP_JOIN_REQUEST:
       case NotificationType.GROUP_MEMBER_JOINED:
       case NotificationType.GROUP_MEMBER_LEFT:
       case NotificationType.GROUP_ROLE_CHANGED:
@@ -96,6 +101,9 @@ export default function Notifications() {
       case NotificationType.CREDITS_RECEIVED:
       case 'CREDITS_RECEIVED':
         return '#00D4AA';
+      case NotificationType.BET_RESOLUTION_REMINDER:
+      case 'BET_RESOLUTION_REMINDER':
+        return '#FFB800';
       case NotificationType.BET_CANCELLED:
       case 'BET_CANCELLED':
         return '#EF4444';
@@ -174,6 +182,13 @@ export default function Notifications() {
   const groupedNotifications = groupByDate(filteredNotifications);
 
   const handleNotificationPress = async (notification: NotificationResponse) => {
+    console.log('🔔 Notification pressed:', {
+      type: notification.type || notification.notificationType,
+      actionUrl: notification.actionUrl,
+      relatedEntityId: notification.relatedEntityId,
+      relatedEntityType: notification.relatedEntityType
+    });
+
     // Mark as read if not already read
     if (!notification.isRead) {
       await markAsRead(notification.id);
@@ -183,13 +198,24 @@ export default function Notifications() {
     if (notification.actionUrl) {
       // Parse action URL and navigate accordingly
       const url = notification.actionUrl;
+      const notificationType = notification.type || notification.notificationType;
+
+      console.log('📍 Navigation logic:', { url, notificationType });
 
       if (url.startsWith('/bets/')) {
         const betId = url.split('/')[2];
-        router.push(`/bet/${betId}` as any);
+        router.push(`/bet-details/${betId}` as any);
       } else if (url.startsWith('/groups/')) {
         const groupId = url.split('/')[2];
-        router.push(`/group/${groupId}` as any);
+
+        // For role change notifications, navigate to People tab (index 2) to show the user their new role
+        if (notificationType === 'GROUP_ROLE_CHANGED') {
+          console.log('✅ Navigating to People tab for group:', groupId);
+          router.push(`/group/${groupId}?tab=2` as any);
+        } else {
+          console.log('✅ Navigating to group page:', groupId);
+          router.push(`/group/${groupId}` as any);
+        }
       } else if (url === '/friends/requests') {
         router.push('/friends' as any);
       } else if (url === '/friends') {
@@ -198,6 +224,8 @@ export default function Notifications() {
         // Default navigation
         console.log('Navigate to:', url);
       }
+    } else {
+      console.log('⚠️ No actionUrl available');
     }
   };
 
@@ -224,7 +252,10 @@ export default function Notifications() {
       await friendshipService.acceptFriendRequest(friendshipId);
       await markAsRead(notification.id);
 
-      Alert.alert('Success', 'Friend request accepted!');
+      // Refresh notifications to update the list
+      await refresh();
+
+      // No success alert - the notification disappearing is enough feedback
     } catch (error) {
       Alert.alert('Error', 'Failed to accept friend request');
       console.error('Error accepting friend request:', error);
@@ -249,7 +280,10 @@ export default function Notifications() {
       await friendshipService.rejectFriendRequest(friendshipId);
       await markAsRead(notification.id);
 
-      Alert.alert('Success', 'Friend request declined');
+      // Refresh notifications to update the list
+      await refresh();
+
+      // No success alert - the notification disappearing is enough feedback
     } catch (error) {
       Alert.alert('Error', 'Failed to decline friend request');
       console.error('Error rejecting friend request:', error);
@@ -275,7 +309,7 @@ export default function Notifications() {
       await markAsRead(notification.id);
       await refresh();
 
-      Alert.alert('Success', 'Group invitation accepted!');
+      // No success alert - the notification disappearing is enough feedback
     } catch (error) {
       Alert.alert('Error', 'Failed to accept group invitation');
       console.error('Error accepting group invitation:', error);
@@ -301,10 +335,66 @@ export default function Notifications() {
       await markAsRead(notification.id);
       await refresh();
 
-      Alert.alert('Success', 'Group invitation declined');
+      // No success alert - the notification disappearing is enough feedback
     } catch (error) {
       Alert.alert('Error', 'Failed to decline group invitation');
       console.error('Error rejecting group invitation:', error);
+    } finally {
+      setProcessingRequests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(notification.id);
+        return newSet;
+      });
+    }
+  };
+
+  const handleApproveJoinRequest = async (notification: NotificationResponse) => {
+    if (!notification.relatedEntityId || !notification.actionUrl) return;
+
+    setProcessingRequests(prev => new Set([...prev, notification.id]));
+
+    try {
+      // Extract groupId from actionUrl: "/groups/{groupId}/requests"
+      const groupId = parseInt(notification.actionUrl.split('/')[2]);
+      // The relatedEntityId contains the membershipId
+      const membershipId = notification.relatedEntityId;
+
+      await groupService.approvePendingRequest(groupId, membershipId);
+      await markAsRead(notification.id);
+      await refresh();
+
+      // No success alert - the notification disappearing is enough feedback
+    } catch (error) {
+      Alert.alert('Error', 'Failed to approve join request');
+      console.error('Error approving join request:', error);
+    } finally {
+      setProcessingRequests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(notification.id);
+        return newSet;
+      });
+    }
+  };
+
+  const handleDenyJoinRequest = async (notification: NotificationResponse) => {
+    if (!notification.relatedEntityId || !notification.actionUrl) return;
+
+    setProcessingRequests(prev => new Set([...prev, notification.id]));
+
+    try {
+      // Extract groupId from actionUrl: "/groups/{groupId}/requests"
+      const groupId = parseInt(notification.actionUrl.split('/')[2]);
+      // The relatedEntityId contains the membershipId
+      const membershipId = notification.relatedEntityId;
+
+      await groupService.denyPendingRequest(groupId, membershipId);
+      await markAsRead(notification.id);
+      await refresh();
+
+      // No success alert - the notification disappearing is enough feedback
+    } catch (error) {
+      Alert.alert('Error', 'Failed to deny join request');
+      console.error('Error denying join request:', error);
     } finally {
       setProcessingRequests(prev => {
         const newSet = new Set(prev);
@@ -322,11 +412,26 @@ export default function Notifications() {
   const NotificationItem = ({ notification }: { notification: NotificationResponse }) => {
     // Check both type and notificationType fields since backend sends notificationType
     const notificationType = notification.type || notification.notificationType;
+    const isBetDeadline = notificationType === 'BET_DEADLINE';
+    const isBetResolutionReminder = notificationType === 'BET_RESOLUTION_REMINDER';
     const isFriendRequest = notificationType === 'FRIEND_REQUEST';
     const isGroupInvite = notificationType === 'GROUP_INVITE';
+    const isGroupJoinRequest = notificationType === 'GROUP_JOIN_REQUEST';
+    const isGroupRoleChanged = notificationType === 'GROUP_ROLE_CHANGED';
     const showFriendRequestActions = isFriendRequest && !notification.isRead;
     const showGroupInviteActions = isGroupInvite && !notification.isRead;
+    const showGroupJoinRequestActions = isGroupJoinRequest && !notification.isRead;
     const isProcessing = processingRequests.has(notification.id);
+
+    // Use modern card design for BET_DEADLINE and BET_RESOLUTION_REMINDER notifications
+    if (isBetDeadline || isBetResolutionReminder) {
+      return (
+        <BetDeadlineCard
+          notification={notification}
+          onPress={() => handleNotificationPress(notification)}
+        />
+      );
+    }
 
     // Debug logging
     console.log('Notification:', {
@@ -335,8 +440,10 @@ export default function Notifications() {
       notificationType: notification.notificationType,
       isFriendRequest,
       isGroupInvite,
+      isGroupJoinRequest,
       showFriendRequestActions,
       showGroupInviteActions,
+      showGroupJoinRequestActions,
       isRead: notification.isRead,
       message: notification.message,
       relatedEntityId: notification.relatedEntityId
@@ -350,171 +457,181 @@ export default function Notifications() {
 
     // Extract inviter name and group name for group invites
     const extractGroupInviteInfo = (message: string) => {
-      // Expected format: "You've been invited to join {groupName} by {inviterName}"
-      const match = message?.match(/You've been invited to join (.+?) by (.+)/);
-      return match ? { groupName: match[1], inviterName: match[2] } : null;
+      // Expected format: "{inviterName} invited you to join {groupName}"
+      const match = message?.match(/(.+?) invited you to join (.+)/);
+      return match ? { inviterName: match[1], groupName: match[2] } : null;
+    };
+
+    // Extract requester info for group join requests
+    const extractGroupJoinRequestInfo = (message: string, title: string) => {
+      // Message format: "{requesterName} (@{requesterUsername}) wants to join your group"
+      // Title format: "Join Request for {groupName}"
+      const messageMatch = message?.match(/(.+?) \(@(.+?)\) wants to join your group/);
+      const titleMatch = title?.match(/Join Request for (.+)/);
+      return {
+        requesterName: messageMatch ? messageMatch[1] : null,
+        requesterUsername: messageMatch ? messageMatch[2] : null,
+        groupName: titleMatch ? titleMatch[1] : null
+      };
+    };
+
+    // Extract role change info for GROUP_ROLE_CHANGED notifications
+    const extractRoleChangeInfo = (message: string, title: string) => {
+      // Message format: "You were promoted to OFFICER in GroupName" OR
+      //                 "Your role was changed to MEMBER in GroupName"
+      // Title format: "Role Changed: GroupName"
+      const isPromotion = message.includes('promoted');
+      const roleMatch = message?.match(/(MEMBER|OFFICER|ADMIN)/);
+      const titleMatch = title?.match(/Role Changed: (.+)/);
+
+      return {
+        isPromotion,
+        newRole: roleMatch ? roleMatch[1] : null,
+        groupName: titleMatch ? titleMatch[1] : null
+      };
     };
 
     const username = isFriendRequest ? extractUsername(notification.message || '') : null;
     const groupInviteInfo = isGroupInvite ? extractGroupInviteInfo(notification.message || '') : null;
+    const groupJoinRequestInfo = isGroupJoinRequest ? extractGroupJoinRequestInfo(notification.message || '', notification.title || '') : null;
+    const roleChangeInfo = isGroupRoleChanged ? extractRoleChangeInfo(notification.message || '', notification.title || '') : null;
 
-    return (
+    // Check if notification has an action URL and should be clickable
+    const hasAction = notification.actionUrl && !showFriendRequestActions && !showGroupInviteActions && !showGroupJoinRequestActions && !isGroupRoleChanged;
+
+    const notificationContent = (
       <View style={{
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-        backgroundColor: notification.isRead ? 'transparent' : 'rgba(255, 255, 255, 0.02)'
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'transparent',
+        paddingVertical: 8,
+        paddingHorizontal: 0,
+        borderRadius: 6,
       }}>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => !showFriendRequestActions && !showGroupInviteActions && handleNotificationPress(notification)}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'flex-start'
-          }}
-        >
-          {!isFriendRequest && !isGroupInvite && (
-            <View style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginRight: 12
-            }}>
-              <MaterialIcons
-                name={getTypeIcon(notificationType) as any}
-                size={18}
-                color={getTypeColor(notificationType, notification.priority)}
-              />
-            </View>
+          {!isFriendRequest && !isGroupInvite && !isGroupJoinRequest && !isGroupRoleChanged && (
+            <MaterialIcons
+              name={getTypeIcon(notificationType) as any}
+              size={16}
+              color={getTypeColor(notificationType, notification.priority)}
+              style={{ marginRight: 10 }}
+            />
           )}
 
-          <View style={{ flex: 1, paddingTop: 1 }}>
-            {!isFriendRequest && !isGroupInvite && (
+          <View style={{ flex: 1 }}>
+            {!isFriendRequest && !isGroupInvite && !isGroupJoinRequest && !isGroupRoleChanged && (
               <View style={{
                 flexDirection: 'row',
                 justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: 4
+                alignItems: 'center',
+                marginBottom: 2
               }}>
                 <Text style={{
-                  fontSize: 16,
-                  fontWeight: notification.isRead ? '500' : '600',
-                  color: notification.isRead ? 'rgba(255, 255, 255, 0.8)' : '#ffffff',
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: '#ffffff',
                   flex: 1,
                   marginRight: 8
                 }}>
                   {notification.title}
                 </Text>
 
-                <View style={{ alignItems: 'flex-end' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Text style={{
-                    fontSize: 14,
-                    color: 'rgba(255, 255, 255, 0.5)',
-                    marginBottom: 2
+                    fontSize: 11,
+                    color: 'rgba(255, 255, 255, 0.4)',
+                    fontWeight: '500',
                   }}>
                     {formatTime(notification.createdAt)}
                   </Text>
-                  {notification.priority === NotificationPriority.HIGH && (
+                  {!notification.isRead && (
                     <View style={{
-                      backgroundColor: '#EF4444',
-                      borderRadius: 8,
-                      paddingHorizontal: 6,
-                      paddingVertical: 2
-                    }}>
-                      <Text style={{
-                        fontSize: 10,
-                        fontWeight: '600',
-                        color: '#ffffff'
-                      }}>
-                        HIGH
-                      </Text>
-                    </View>
+                      width: 5,
+                      height: 5,
+                      borderRadius: 2.5,
+                      backgroundColor: '#00D4AA'
+                    }} />
                   )}
                 </View>
               </View>
             )}
 
             {isFriendRequest ? (
-              <View style={{ marginTop: 4 }}>
-                {/* Single Compact Row */}
+              <View>
                 <View style={{
                   flexDirection: 'row',
                   alignItems: 'center'
                 }}>
-                  {/* Profile Picture */}
-                  <TouchableOpacity
-                    onPress={() => notification.relatedEntityId && handleViewProfile(notification.relatedEntityId)}
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 19,
-                      backgroundColor: '#1a1a1f',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      marginRight: 10
-                    }}
-                  >
-                    <MaterialIcons name="person" size={18} color="#666" />
-                  </TouchableOpacity>
+                  {/* Profile Icon */}
+                  <MaterialIcons
+                    name="person-add"
+                    size={16}
+                    color="#8B5CF6"
+                    style={{ marginRight: 10 }}
+                  />
 
-                  {/* Username + Request Text */}
-                  <TouchableOpacity
-                    onPress={() => notification.relatedEntityId && handleViewProfile(notification.relatedEntityId)}
-                    style={{ flex: 1, marginRight: 10 }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                  {/* Username + Time */}
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
                       <Text style={{
-                        fontSize: 15,
+                        fontSize: 14,
                         color: '#ffffff',
                         fontWeight: '600',
-                        marginRight: 8
                       }}>
                         {username || 'Someone'}
                       </Text>
-                      <Text style={{
-                        fontSize: 13,
-                        color: 'rgba(255, 255, 255, 0.5)'
-                      }}>
-                        {formatTime(notification.createdAt)}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{
+                          fontSize: 11,
+                          color: 'rgba(255, 255, 255, 0.4)',
+                          fontWeight: '500',
+                        }}>
+                          {formatTime(notification.createdAt)}
+                        </Text>
+                        {!notification.isRead && (
+                          <View style={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: 2.5,
+                            backgroundColor: '#00D4AA'
+                          }} />
+                        )}
+                      </View>
                     </View>
                     <Text style={{
                       fontSize: 13,
                       color: 'rgba(255, 255, 255, 0.6)',
-                      fontWeight: '400'
                     }}>
-                      New friend request
+                      Friend request
                     </Text>
-                  </TouchableOpacity>
+                  </View>
+                </View>
 
-                  {/* Action Buttons */}
+                {/* Action Buttons */}
+                {showFriendRequestActions && (
                   <View style={{
                     flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 8
+                    marginTop: 8,
+                    gap: 6
                   }}>
                     <TouchableOpacity
                       onPress={() => handleAcceptFriendRequest(notification)}
                       disabled={isProcessing}
                       style={{
-                        backgroundColor: '#ffffff',
+                        flex: 1,
+                        backgroundColor: '#00D4AA',
                         borderRadius: 6,
                         paddingVertical: 8,
-                        paddingHorizontal: 14,
+                        alignItems: 'center',
                         opacity: isProcessing ? 0.7 : 1,
-                        minWidth: 75
                       }}
                     >
                       {isProcessing ? (
-                        <ActivityIndicator size="small" color="#000000" />
+                        <ActivityIndicator size="small" color="#ffffff" />
                       ) : (
                         <Text style={{
                           fontSize: 13,
                           fontWeight: '600',
-                          color: '#000000',
-                          textAlign: 'center'
+                          color: '#ffffff',
                         }}>
                           Accept
                         </Text>
@@ -525,11 +642,10 @@ export default function Notifications() {
                       onPress={() => handleRejectFriendRequest(notification)}
                       disabled={isProcessing}
                       style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 17,
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        justifyContent: 'center',
+                        flex: 1,
+                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                        borderRadius: 6,
+                        paddingVertical: 8,
                         alignItems: 'center',
                         opacity: isProcessing ? 0.7 : 1
                       }}
@@ -537,89 +653,95 @@ export default function Notifications() {
                       {isProcessing ? (
                         <ActivityIndicator size="small" color="#ffffff" />
                       ) : (
-                        <MaterialIcons
-                          name="close"
-                          size={16}
-                          color="rgba(255, 255, 255, 0.8)"
-                        />
+                        <Text style={{
+                          fontSize: 13,
+                          fontWeight: '600',
+                          color: 'rgba(255, 255, 255, 0.7)',
+                        }}>
+                          Decline
+                        </Text>
                       )}
                     </TouchableOpacity>
                   </View>
-                </View>
+                )}
               </View>
             ) : isGroupInvite ? (
-              <View style={{ marginTop: 4 }}>
-                {/* Single Compact Row for Group Invite */}
+              <View>
                 <View style={{
                   flexDirection: 'row',
                   alignItems: 'center'
                 }}>
                   {/* Group Icon */}
-                  <View style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 19,
-                    backgroundColor: 'rgba(6, 182, 212, 0.2)',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    marginRight: 10
-                  }}>
-                    <MaterialIcons name="group" size={20} color="#06B6D4" />
-                  </View>
+                  <MaterialIcons
+                    name="group"
+                    size={16}
+                    color="#06B6D4"
+                    style={{ marginRight: 10 }}
+                  />
 
                   {/* Group Name + Inviter Info */}
-                  <View style={{ flex: 1, marginRight: 10 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
                       <Text style={{
-                        fontSize: 15,
+                        fontSize: 14,
                         color: '#ffffff',
                         fontWeight: '600',
-                        marginRight: 8
                       }}>
                         {groupInviteInfo?.groupName || 'Group'}
                       </Text>
-                      <Text style={{
-                        fontSize: 13,
-                        color: 'rgba(255, 255, 255, 0.5)'
-                      }}>
-                        {formatTime(notification.createdAt)}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{
+                          fontSize: 11,
+                          color: 'rgba(255, 255, 255, 0.4)',
+                          fontWeight: '500',
+                        }}>
+                          {formatTime(notification.createdAt)}
+                        </Text>
+                        {!notification.isRead && (
+                          <View style={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: 2.5,
+                            backgroundColor: '#00D4AA'
+                          }} />
+                        )}
+                      </View>
                     </View>
                     <Text style={{
                       fontSize: 13,
                       color: 'rgba(255, 255, 255, 0.6)',
-                      fontWeight: '400'
                     }}>
                       {groupInviteInfo?.inviterName ? `Invited by ${groupInviteInfo.inviterName}` : 'Group invitation'}
                     </Text>
                   </View>
+                </View>
 
-                  {/* Action Buttons */}
+                {/* Action Buttons */}
+                {showGroupInviteActions && (
                   <View style={{
                     flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 8
+                    marginTop: 8,
+                    gap: 6
                   }}>
                     <TouchableOpacity
                       onPress={() => handleAcceptGroupInvitation(notification)}
                       disabled={isProcessing}
                       style={{
-                        backgroundColor: '#ffffff',
+                        flex: 1,
+                        backgroundColor: '#06B6D4',
                         borderRadius: 6,
                         paddingVertical: 8,
-                        paddingHorizontal: 14,
+                        alignItems: 'center',
                         opacity: isProcessing ? 0.7 : 1,
-                        minWidth: 75
                       }}
                     >
                       {isProcessing ? (
-                        <ActivityIndicator size="small" color="#000000" />
+                        <ActivityIndicator size="small" color="#ffffff" />
                       ) : (
                         <Text style={{
                           fontSize: 13,
                           fontWeight: '600',
-                          color: '#000000',
-                          textAlign: 'center'
+                          color: '#ffffff',
                         }}>
                           Accept
                         </Text>
@@ -630,11 +752,10 @@ export default function Notifications() {
                       onPress={() => handleRejectGroupInvitation(notification)}
                       disabled={isProcessing}
                       style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 17,
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        justifyContent: 'center',
+                        flex: 1,
+                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                        borderRadius: 6,
+                        paddingVertical: 8,
                         alignItems: 'center',
                         opacity: isProcessing ? 0.7 : 1
                       }}
@@ -642,40 +763,238 @@ export default function Notifications() {
                       {isProcessing ? (
                         <ActivityIndicator size="small" color="#ffffff" />
                       ) : (
-                        <MaterialIcons
-                          name="close"
-                          size={16}
-                          color="rgba(255, 255, 255, 0.8)"
-                        />
+                        <Text style={{
+                          fontSize: 13,
+                          fontWeight: '600',
+                          color: 'rgba(255, 255, 255, 0.7)',
+                        }}>
+                          Decline
+                        </Text>
                       )}
                     </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ) : isGroupJoinRequest ? (
+              <View>
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center'
+                }}>
+                  {/* Group Icon */}
+                  <MaterialIcons
+                    name="group-add"
+                    size={16}
+                    color="#FFB800"
+                    style={{ marginRight: 10 }}
+                  />
+
+                  {/* Group Name + Requester Info */}
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <Text style={{
+                        fontSize: 14,
+                        color: '#ffffff',
+                        fontWeight: '600',
+                      }}>
+                        {groupJoinRequestInfo?.groupName || 'Group'}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{
+                          fontSize: 11,
+                          color: 'rgba(255, 255, 255, 0.4)',
+                          fontWeight: '500',
+                        }}>
+                          {formatTime(notification.createdAt)}
+                        </Text>
+                        {!notification.isRead && (
+                          <View style={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: 2.5,
+                            backgroundColor: '#00D4AA'
+                          }} />
+                        )}
+                      </View>
+                    </View>
+                    <Text style={{
+                      fontSize: 13,
+                      color: 'rgba(255, 255, 255, 0.6)',
+                    }}>
+                      {groupJoinRequestInfo?.requesterName || 'Someone'} wants to join
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Action Buttons */}
+                {showGroupJoinRequestActions && (
+                  <View style={{
+                    flexDirection: 'row',
+                    marginTop: 8,
+                    gap: 6
+                  }}>
+                    <TouchableOpacity
+                      onPress={() => handleApproveJoinRequest(notification)}
+                      disabled={isProcessing}
+                      style={{
+                        flex: 1,
+                        backgroundColor: '#00D4AA',
+                        borderRadius: 6,
+                        paddingVertical: 8,
+                        alignItems: 'center',
+                        opacity: isProcessing ? 0.7 : 1,
+                      }}
+                    >
+                      {isProcessing ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                      ) : (
+                        <Text style={{
+                          fontSize: 13,
+                          fontWeight: '600',
+                          color: '#ffffff',
+                        }}>
+                          Accept
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => handleDenyJoinRequest(notification)}
+                      disabled={isProcessing}
+                      style={{
+                        flex: 1,
+                        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                        borderRadius: 6,
+                        paddingVertical: 8,
+                        alignItems: 'center',
+                        opacity: isProcessing ? 0.7 : 1
+                      }}
+                    >
+                      {isProcessing ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                      ) : (
+                        <Text style={{
+                          fontSize: 13,
+                          fontWeight: '600',
+                          color: 'rgba(255, 255, 255, 0.7)',
+                        }}>
+                          Deny
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ) : isGroupRoleChanged ? (
+              <View>
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center'
+                }}>
+                  {/* Role Change Icon */}
+                  <MaterialIcons
+                    name={roleChangeInfo?.isPromotion ? "trending-up" : "swap-horiz"}
+                    size={16}
+                    color={roleChangeInfo?.isPromotion ? "#FFB800" : "#06B6D4"}
+                    style={{ marginRight: 10 }}
+                  />
+
+                  {/* Group Name + Role Info */}
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <Text style={{
+                        fontSize: 14,
+                        color: '#ffffff',
+                        fontWeight: '600',
+                      }}>
+                        {roleChangeInfo?.groupName || 'Group'}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={{
+                          fontSize: 11,
+                          color: 'rgba(255, 255, 255, 0.4)',
+                          fontWeight: '500',
+                        }}>
+                          {formatTime(notification.createdAt)}
+                        </Text>
+                        {!notification.isRead && (
+                          <View style={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: 2.5,
+                            backgroundColor: '#00D4AA'
+                          }} />
+                        )}
+                      </View>
+                    </View>
+                    <Text style={{
+                      fontSize: 13,
+                      color: 'rgba(255, 255, 255, 0.6)',
+                    }}>
+                      {roleChangeInfo?.isPromotion ? 'Promoted to ' : 'Role changed to '}
+                      {roleChangeInfo?.newRole || 'MEMBER'}
+                    </Text>
                   </View>
                 </View>
               </View>
             ) : (
               <Text style={{
-                fontSize: 15,
+                fontSize: 13,
                 color: 'rgba(255, 255, 255, 0.6)',
-                lineHeight: 20,
-                letterSpacing: -0.2
-              }}>
+                lineHeight: 16,
+              }} numberOfLines={2}>
                 {notification.message || notification.content || 'No message content'}
               </Text>
             )}
-
-            {!notification.isRead && (
-              <View style={{
-                position: 'absolute',
-                right: -8,
-                top: 6,
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: '#00D4AA'
-              }} />
-            )}
           </View>
-        </TouchableOpacity>
+
+          {/* Chevron for standard notifications with action */}
+          {!isFriendRequest && !isGroupInvite && !isGroupJoinRequest && !isGroupRoleChanged && hasAction && (
+            <MaterialIcons
+              name="chevron-right"
+              size={18}
+              color="rgba(255, 255, 255, 0.2)"
+              style={{ marginLeft: 6 }}
+            />
+          )}
+
+          {/* Chevron for role changed notifications */}
+          {isGroupRoleChanged && notification.actionUrl && (
+            <MaterialIcons
+              name="chevron-right"
+              size={18}
+              color="rgba(255, 255, 255, 0.2)"
+              style={{ marginLeft: 6 }}
+            />
+          )}
+      </View>
+    );
+
+    const shouldBeTappable = hasAction || (isGroupRoleChanged && notification.actionUrl);
+    console.log('🖱️ Notification tappable check:', {
+      id: notification.id,
+      type: notificationType,
+      isGroupRoleChanged,
+      hasActionUrl: !!notification.actionUrl,
+      hasAction,
+      shouldBeTappable
+    });
+
+    return (
+      <View style={{
+        paddingVertical: 2,
+        paddingHorizontal: 16,
+      }}>
+        {shouldBeTappable ? (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => handleNotificationPress(notification)}
+          >
+            {notificationContent}
+          </TouchableOpacity>
+        ) : (
+          notificationContent
+        )}
       </View>
     );
   };
@@ -889,18 +1208,26 @@ export default function Notifications() {
                 </View>
 
                 {/* Notifications in this group */}
-                {groupNotifications.map((notification, index) => (
-                  <View key={notification.id}>
-                    <NotificationItem notification={notification} />
-                    {index < groupNotifications.length - 1 && (
-                      <View style={{
-                        height: 0.5,
-                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                        marginLeft: 68
-                      }} />
-                    )}
-                  </View>
-                ))}
+                {groupNotifications.map((notification, index) => {
+                  const notificationType = notification.type || notification.notificationType;
+                  const isBetDeadline = notificationType === 'BET_DEADLINE';
+                  const nextIsBetDeadline = index < groupNotifications.length - 1 &&
+                    (groupNotifications[index + 1].type || groupNotifications[index + 1].notificationType) === 'BET_DEADLINE';
+
+                  return (
+                    <View key={notification.id}>
+                      <NotificationItem notification={notification} />
+                      {/* Skip divider for modern card designs */}
+                      {index < groupNotifications.length - 1 && !isBetDeadline && !nextIsBetDeadline && (
+                        <View style={{
+                          height: 0.5,
+                          backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                          marginLeft: 68
+                        }} />
+                      )}
+                    </View>
+                  );
+                })}
               </View>
             ))
           ) : (

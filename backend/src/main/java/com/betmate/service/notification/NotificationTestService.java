@@ -50,18 +50,18 @@ public class NotificationTestService {
         createTestNotification(user, "👋 Friend Request", "Sarah wants to be your friend!",
                               NotificationType.FRIEND_REQUEST, NotificationPriority.NORMAL, "/friends/requests", 456L, "USER");
 
-        createTestNotification(user, "🏆 Group Invitation", "Mike invited you to join Fantasy Football",
+        createTestNotification(user, "Group Invitation", "Mike invited you to join Fantasy Football",
                               NotificationType.GROUP_INVITE, NotificationPriority.NORMAL, "/groups/789", 789L, "GROUP");
 
         // Achievement notifications
-        createTestNotification(user, "🏆 Achievement Unlocked", "You've earned the 'Hot Streak' badge!",
+        createTestNotification(user, "Achievement Unlocked", "You've earned the 'Hot Streak' badge!",
                               NotificationType.ACHIEVEMENT_UNLOCKED, NotificationPriority.HIGH, "/achievements", null, null);
 
         createTestNotification(user, "📈 Level Up!", "Congratulations! You've reached level 5!",
                               NotificationType.ACHIEVEMENT_UNLOCKED, NotificationPriority.HIGH, "/profile", null, null);
 
         // Financial notifications
-        createTestNotification(user, "💰 Credits Received", "You received 50 credits as a daily bonus!",
+        createTestNotification(user, "Credits Received", "You received 50 credits as a daily bonus!",
                               NotificationType.CREDITS_RECEIVED, NotificationPriority.NORMAL, "/wallet", null, null);
 
         // Message notifications
@@ -69,7 +69,7 @@ public class NotificationTestService {
                               NotificationType.MESSAGE, NotificationPriority.NORMAL, "/groups/789/messages", 999L, "MESSAGE");
 
         // System notifications
-        createTestNotification(user, "📢 System Update", "New features available! Check out the updated betting interface.",
+        createTestNotification(user, "System Update", "New features available! Check out the updated betting interface.",
                               NotificationType.SYSTEM_ANNOUNCEMENT, NotificationPriority.LOW, "/updates", null, null);
     }
 
@@ -129,7 +129,7 @@ public class NotificationTestService {
     public void testGroupInvitationNotification(Long groupId, String groupName, Long inviterId, String inviterName, Long inviteeId) {
         Optional<User> invitee = userRepository.findById(inviteeId);
         if (invitee.isPresent()) {
-            createTestNotification(invitee.get(), "🏆 Group Invitation",
+            createTestNotification(invitee.get(), "Group Invitation",
                                  inviterName + " invited you to join " + groupName,
                                  NotificationType.GROUP_INVITE, NotificationPriority.NORMAL,
                                  "/groups/" + groupId, groupId, "GROUP");

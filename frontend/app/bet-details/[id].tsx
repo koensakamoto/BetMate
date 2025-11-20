@@ -255,26 +255,35 @@ export default function BetDetails() {
       return;
     }
 
-    // Validate bet amount
-    const amount = parseFloat(userBetAmount);
-    if (isNaN(amount) || amount <= 0) {
-      haptic.error();
-      Alert.alert('Error', 'Please enter a valid bet amount');
-      return;
-    }
+    // For SOCIAL bets, use amount of 0 (no credits involved)
+    // For CREDIT bets, validate the amount
+    let amount: number;
 
-    // Validate minimum bet amount
-    if (amount < betData.minimumBet) {
-      haptic.warning();
-      Alert.alert('Error', `Minimum bet amount is $${betData.minimumBet}`);
-      return;
-    }
+    if (betData.stakeType === 'SOCIAL') {
+      // Social bets don't use credits, so amount is irrelevant
+      amount = 0;
+    } else {
+      // CREDIT bets: validate the amount
+      amount = parseFloat(userBetAmount);
+      if (isNaN(amount) || amount <= 0) {
+        haptic.error();
+        Alert.alert('Error', 'Please enter a valid bet amount');
+        return;
+      }
 
-    // Validate maximum bet amount if set
-    if (betData.maximumBet && amount > betData.maximumBet) {
-      haptic.warning();
-      Alert.alert('Error', `Maximum bet amount is $${betData.maximumBet}`);
-      return;
+      // Validate minimum bet amount
+      if (amount < betData.minimumBet) {
+        haptic.warning();
+        Alert.alert('Error', `Minimum bet amount is $${betData.minimumBet}`);
+        return;
+      }
+
+      // Validate maximum bet amount if set
+      if (betData.maximumBet && amount > betData.maximumBet) {
+        haptic.warning();
+        Alert.alert('Error', `Maximum bet amount is $${betData.maximumBet}`);
+        return;
+      }
     }
 
     // Validate bet option selection

@@ -97,7 +97,7 @@ public class GroupNotificationListener {
 
                 try {
                     // Create notification title and message
-                    String title = "👥 Join Request for " + event.getGroupName();
+                    String title = "Join Request for " + event.getGroupName();
                     String message = event.getRequesterName() + " (@" + event.getRequesterUsername() +
                                    ") wants to join your group";
                     String actionUrl = "/groups/" + event.getGroupId() + "/requests";
@@ -240,7 +240,7 @@ public class GroupNotificationListener {
 
                 try {
                     // Create notification title and message
-                    String title = "👥 New Member in " + event.getGroupName();
+                    String title = "New Member in " + event.getGroupName();
                     String actionVerb = event.wasInvited() ? "joined" : "joined";
                     String message = event.getNewMemberName() + " (@" + event.getNewMemberUsername() +
                                    ") " + actionVerb + " " + event.getGroupName();
@@ -314,9 +314,18 @@ public class GroupNotificationListener {
             List<User> allMembers = groupMembershipRepository.findUsersByGroup(group);
             logger.debug("Found {} remaining members in group '{}'", allMembers.size(), group.getGroupName());
 
-            // 3. Create notification for each remaining member
+            // 3. Also notify the person who was removed/left
+            User removedUser = userRepository.findById(event.getMemberId()).orElse(null);
+
+            // 4. Create notification for each remaining member (excluding the person who removed them)
             int notificationsCreated = 0;
             for (User member : allMembers) {
+                // Skip the person who removed this member
+                if (event.getRemovedById() != null && member.getId().equals(event.getRemovedById())) {
+                    logger.debug("Skipping notification for user {} who removed the member", member.getUsername());
+                    continue;
+                }
+
                 try {
                     // Create notification title and message
                     String title = event.wasKicked()
@@ -370,6 +379,48 @@ public class GroupNotificationListener {
                     // Log error for individual notification but continue processing others
                     logger.error("Failed to create notification for member {}: {}",
                                member.getUsername(), e.getMessage());
+                }
+            }
+
+            // 5. Notify the person who was removed (if they were kicked, not if they left voluntarily)
+            if (event.wasKicked() && removedUser != null) {
+                try {
+                    String title = "Removed from " + event.getGroupName();
+                    String message = "You were removed from " + event.getGroupName();
+                    if (event.getReason() != null && !event.getReason().isEmpty()) {
+                        message += " - " + event.getReason();
+                    }
+                    // No actionUrl - removed users can't access the group anymore
+                    String actionUrl = null;
+
+                    // Ensure title and message don't exceed maximum lengths
+                    if (title.length() > 100) {
+                        title = title.substring(0, 97) + "...";
+                    }
+                    if (message.length() > 500) {
+                        message = message.substring(0, 497) + "...";
+                    }
+
+                    // Create the notification for the removed user
+                    Notification notification = notificationService.createNotification(
+                        removedUser,
+                        title,
+                        message,
+                        NotificationType.GROUP_LEFT,
+                        NotificationPriority.HIGH,  // High priority since they were removed
+                        actionUrl,
+                        event.getGroupId(),
+                        "GROUP"
+                    );
+
+                    // Send real-time notification via WebSocket
+                    messageNotificationService.sendNotificationToUser(removedUser.getId(), notification);
+
+                    notificationsCreated++;
+                    logger.debug("Created removal notification for removed user: {}", removedUser.getUsername());
+                } catch (Exception e) {
+                    logger.error("Failed to create notification for removed user {}: {}",
+                               removedUser.getUsername(), e.getMessage());
                 }
             }
 
