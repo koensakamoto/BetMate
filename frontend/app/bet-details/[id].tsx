@@ -10,6 +10,7 @@ import { authService } from '../../services/auth/authService';
 import { useAuth } from '../../contexts/AuthContext';
 import { haptic } from '../../utils/haptics';
 import LoadingButton from '../../components/common/LoadingButton';
+import { formatDisplayDate } from '../../utils/dateUtils';
 
 interface BetDetailsData {
   id: number;
@@ -149,14 +150,7 @@ export default function BetDetails() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDisplayDate(dateString);
   };
 
   const getStatusColor = (status: string) => {
@@ -173,27 +167,32 @@ export default function BetDetails() {
     router.back();
   };
 
-  // Check if user can resolve the bet
+  // Check if user is a resolver (regardless of bet status)
+  const isUserResolver = () => {
+    if (!betData || !currentUserId) return false;
+
+    // Check based on resolution method
+    if (betData.resolutionMethod === 'CREATOR_ONLY') {
+      return betData.creator?.id === currentUserId;
+    } else if (betData.resolutionMethod === 'ASSIGNED_RESOLVER') {
+      // For now, allow creator and assume resolver check will be done on backend
+      return betData.creator?.id === currentUserId;
+    } else if (betData.resolutionMethod === 'CONSENSUS_VOTING') {
+      // In consensus voting, all participants are potential resolvers
+      return betData.hasUserParticipated;
+    }
+
+    return false;
+  };
+
+  // Check if user can resolve the bet (must be CLOSED and be a resolver)
   const canUserResolve = () => {
     if (!betData || !currentUserId) return false;
 
     // Check if bet is in CLOSED status (ready for resolution)
     if (betData.status !== 'CLOSED') return false;
 
-    // Check based on resolution method
-    if (betData.resolutionMethod === 'CREATOR_ONLY') {
-      // Only creator can resolve
-      return betData.creator?.id === currentUserId;
-    } else if (betData.resolutionMethod === 'ASSIGNED_RESOLVER') {
-      // Check if user is an assigned resolver (would need resolver list from backend)
-      // For now, allow creator and assume resolver check will be done on backend
-      return betData.creator?.id === currentUserId;
-    } else if (betData.resolutionMethod === 'CONSENSUS_VOTING') {
-      // Check if user has participated in the bet
-      return betData.hasUserParticipated;
-    }
-
-    return false;
+    return isUserResolver();
   };
 
   const handleResolveBet = async (outcome?: string, winnerUserIds?: number[], reasoning?: string) => {
@@ -238,8 +237,20 @@ export default function BetDetails() {
       // Reload bet details to show CANCELLED status
       await loadBetDetails();
 
-      // Show success message after reload
-      Alert.alert('Success', 'Bet cancelled. All participants have been refunded.');
+      // Show success message and navigate back to group with refresh
+      Alert.alert('Success', 'Bet cancelled. All participants have been refunded.', [
+        {
+          text: 'OK',
+          onPress: () => {
+            // Navigate back to group page with Bets tab active and refresh parameter
+            if (betData?.groupId) {
+              router.push(`/group/${betData.groupId}?tab=1&refresh=${Date.now()}`);
+            } else {
+              router.back();
+            }
+          }
+        }
+      ]);
     } catch (error) {
       console.error('Error cancelling bet:', error);
       haptic.error();
@@ -386,19 +397,13 @@ export default function BetDetails() {
         return;
       }
 
-      // Update the local bet data with the response
-      setBetData(updatedBet);
-
       haptic.success();
-      Alert.alert('Success', `Bet placed successfully!\nAmount: $${amount}\nOption: ${selectedOption}`, [
-        {
-          text: 'OK',
-          onPress: () => {
-            // Navigate back to the group page with Bets tab active
-            router.push(`/(tabs)/group/${betData.groupId}?tab=1`);
-          }
-        }
-      ]);
+
+      // Reload bet details to show updated participation state
+      await loadBetDetails();
+
+      // Show success message
+      Alert.alert('Success', `Bet placed successfully!\nAmount: $${amount}\nOption: ${selectedOption || customValue}`);
 
     } catch (error) {
       console.error('=== BET PLACEMENT ERROR ===');
@@ -596,10 +601,48 @@ export default function BetDetails() {
           <Text style={{
             fontSize: 16,
             color: 'rgba(255, 255, 255, 0.8)',
-            lineHeight: 24
+            lineHeight: 24,
+            marginBottom: isUserResolver() && betData.status !== 'RESOLVED' ? 16 : 0
           }}>
             {betData.description}
           </Text>
+
+          {/* Resolver Badge - Show when user is resolver and bet is not resolved */}
+          {isUserResolver() && betData.status !== 'RESOLVED' && (
+            <View style={{
+              backgroundColor: 'rgba(0, 212, 170, 0.12)',
+              borderRadius: 12,
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(0, 212, 170, 0.25)',
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}>
+              <MaterialIcons name="verified-user" size={18} color="#00D4AA" style={{ marginRight: 10 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{
+                  color: '#00D4AA',
+                  fontSize: 14,
+                  fontWeight: '700',
+                  marginBottom: 2
+                }}>
+                  You are the Resolver
+                </Text>
+                <Text style={{
+                  color: 'rgba(0, 212, 170, 0.8)',
+                  fontSize: 12,
+                  lineHeight: 16
+                }}>
+                  {betData.status === 'OPEN'
+                    ? "You'll be able to resolve this bet once betting closes"
+                    : betData.hasUserParticipated
+                      ? "You participated - now resolve the bet"
+                      : "You can resolve now or join first (optional)"}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Essential Details Card */}
@@ -1164,38 +1207,97 @@ export default function BetDetails() {
           </View>
         )}
 
-        {/* Resolve Button - Show when bet is CLOSED and user can resolve */}
+        {/* Resolve & Join Buttons - Show when bet is CLOSED and user can resolve */}
         {betData.status === 'CLOSED' && canUserResolve() && (
           <View style={{
             marginHorizontal: 20,
             marginTop: 20,
             marginBottom: 40
           }}>
-            <TouchableOpacity
-              onPress={() => setShowResolutionModal(true)}
-              style={{
-                backgroundColor: '#00D4AA',
-                borderRadius: 14,
-                paddingVertical: 16,
-                alignItems: 'center',
-                shadowColor: '#00D4AA',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 8,
-                flexDirection: 'row',
-                justifyContent: 'center'
-              }}
-            >
-              <MaterialIcons name="gavel" size={20} color="#000000" style={{ marginRight: 8 }} />
-              <Text style={{
-                color: '#000000',
-                fontSize: 16,
-                fontWeight: '700'
-              }}>
-                {betData.resolutionMethod === 'CONSENSUS_VOTING' ? 'Vote on Resolution' : 'Resolve Bet'}
-              </Text>
-            </TouchableOpacity>
+            {/* Show both Join and Resolve if user hasn't participated yet */}
+            {!betData.hasUserParticipated ? (
+              <View style={{ gap: 12 }}>
+                {/* Join Bet Button (Optional) */}
+                <TouchableOpacity
+                  onPress={handleJoinBet}
+                  disabled={(!betData.fixedStakeAmount && !isValidBetAmount()) || !isValidBetSelection()}
+                  style={{
+                    backgroundColor: 'transparent',
+                    borderRadius: 14,
+                    paddingVertical: 16,
+                    alignItems: 'center',
+                    borderWidth: 2,
+                    borderColor: '#00D4AA',
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    opacity: ((!betData.fixedStakeAmount && !isValidBetAmount()) || !isValidBetSelection()) ? 0.4 : 1
+                  }}
+                >
+                  <MaterialIcons name="add-circle" size={20} color="#00D4AA" style={{ marginRight: 8 }} />
+                  <Text style={{
+                    color: '#00D4AA',
+                    fontSize: 16,
+                    fontWeight: '700'
+                  }}>
+                    Join Bet (Optional)
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Resolve Button */}
+                <TouchableOpacity
+                  onPress={() => setShowResolutionModal(true)}
+                  style={{
+                    backgroundColor: '#00D4AA',
+                    borderRadius: 14,
+                    paddingVertical: 16,
+                    alignItems: 'center',
+                    shadowColor: '#00D4AA',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 8,
+                    flexDirection: 'row',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <MaterialIcons name="gavel" size={20} color="#000000" style={{ marginRight: 8 }} />
+                  <Text style={{
+                    color: '#000000',
+                    fontSize: 16,
+                    fontWeight: '700'
+                  }}>
+                    {betData.resolutionMethod === 'CONSENSUS_VOTING' ? 'Vote on Resolution' : 'Resolve Bet'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              /* If user has participated, only show Resolve button */
+              <TouchableOpacity
+                onPress={() => setShowResolutionModal(true)}
+                style={{
+                  backgroundColor: '#00D4AA',
+                  borderRadius: 14,
+                  paddingVertical: 16,
+                  alignItems: 'center',
+                  shadowColor: '#00D4AA',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
+                  flexDirection: 'row',
+                  justifyContent: 'center'
+                }}
+              >
+                <MaterialIcons name="gavel" size={20} color="#000000" style={{ marginRight: 8 }} />
+                <Text style={{
+                  color: '#000000',
+                  fontSize: 16,
+                  fontWeight: '700'
+                }}>
+                  {betData.resolutionMethod === 'CONSENSUS_VOTING' ? 'Vote on Resolution' : 'Resolve Bet'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </ScrollView>

@@ -1,6 +1,7 @@
-import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import React, { useCallback, useRef } from 'react';
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, Animated } from 'react-native';
 import { router } from 'expo-router';
+import { haptic } from '../../utils/haptics';
 
 const icon = require("../../assets/images/icon.png");
 
@@ -35,7 +36,10 @@ function UserCard({
     ? `${firstName} ${lastName}`
     : username;
 
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
   const handleUserPress = useCallback(() => {
+    haptic.light(); // Light haptic on card press
     // Navigate to user profile page
     router.push(`/profile/${id}`);
   }, [id]);
@@ -46,20 +50,44 @@ function UserCard({
     }
   }, [id, onFriendPress]);
 
+  const handlePressIn = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 10,
+    }).start();
+  }, []);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 10,
+    }).start();
+  }, []);
+
   return (
-    <TouchableOpacity
-      onPress={handleUserPress}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)'
-      }}
-    >
+    <Animated.View style={{
+      transform: [{ scale: scaleAnim }],
+      marginBottom: 12
+    }}>
+      <TouchableOpacity
+        onPress={handleUserPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: 'rgba(255, 255, 255, 0.03)',
+          borderRadius: 12,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: 'rgba(255, 255, 255, 0.1)'
+        }}
+      >
       {/* User Avatar */}
       <View style={{ position: 'relative', marginRight: 12 }}>
         <Image
@@ -151,7 +179,8 @@ function UserCard({
           )}
         </TouchableOpacity>
       )}
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 

@@ -40,14 +40,14 @@ public class NotificationTestService {
         User user = userOpt.get();
 
         // Betting notifications
-        createTestNotification(user, "🎯 Bet Won!", "You won 100 credits on 'Lakers vs Warriors'!",
+        createTestNotification(user, "Bet Won!", "You won 100 credits on 'Lakers vs Warriors'!",
                               NotificationType.BET_RESULT, NotificationPriority.HIGH, "/bets/123", 123L, "BET");
 
-        createTestNotification(user, "🎲 New Bet Created", "John created a new bet in Basketball Fans group",
+        createTestNotification(user, "New Bet Created", "John created a new bet in Basketball Fans group",
                               NotificationType.BET_CREATED, NotificationPriority.NORMAL, "/bets/124", 124L, "BET");
 
         // Social notifications
-        createTestNotification(user, "👋 Friend Request", "Sarah wants to be your friend!",
+        createTestNotification(user, "Friend Request", "Sarah wants to be your friend!",
                               NotificationType.FRIEND_REQUEST, NotificationPriority.NORMAL, "/friends/requests", 456L, "USER");
 
         createTestNotification(user, "Group Invitation", "Mike invited you to join Fantasy Football",
@@ -57,7 +57,7 @@ public class NotificationTestService {
         createTestNotification(user, "Achievement Unlocked", "You've earned the 'Hot Streak' badge!",
                               NotificationType.ACHIEVEMENT_UNLOCKED, NotificationPriority.HIGH, "/achievements", null, null);
 
-        createTestNotification(user, "📈 Level Up!", "Congratulations! You've reached level 5!",
+        createTestNotification(user, "Level Up!", "Congratulations! You've reached level 5!",
                               NotificationType.ACHIEVEMENT_UNLOCKED, NotificationPriority.HIGH, "/profile", null, null);
 
         // Financial notifications
@@ -65,7 +65,7 @@ public class NotificationTestService {
                               NotificationType.CREDITS_RECEIVED, NotificationPriority.NORMAL, "/wallet", null, null);
 
         // Message notifications
-        createTestNotification(user, "💬 Mentioned in Message", "Alex mentioned you in Basketball Fans",
+        createTestNotification(user, "Mentioned in Message", "Alex mentioned you in Basketball Fans",
                               NotificationType.MESSAGE, NotificationPriority.NORMAL, "/groups/789/messages", 999L, "MESSAGE");
 
         // System notifications
@@ -81,7 +81,7 @@ public class NotificationTestService {
         for (Long winnerId : winnerIds) {
             Optional<User> user = userRepository.findById(winnerId);
             if (user.isPresent()) {
-                createTestNotification(user.get(), "🎯 Bet Won!",
+                createTestNotification(user.get(), "Bet Won!",
                                      "Congratulations! You won 50 credits on 'Test Bet'!",
                                      NotificationType.BET_RESULT, NotificationPriority.HIGH,
                                      "/bets/123", 123L, "BET");
@@ -91,7 +91,7 @@ public class NotificationTestService {
         for (Long loserId : loserIds) {
             Optional<User> user = userRepository.findById(loserId);
             if (user.isPresent()) {
-                createTestNotification(user.get(), "😞 Bet Lost",
+                createTestNotification(user.get(), "Bet Lost",
                                      "Better luck next time! You lost 25 credits on 'Test Bet'.",
                                      NotificationType.BET_RESULT, NotificationPriority.NORMAL,
                                      "/bets/123", 123L, "BET");
@@ -115,7 +115,7 @@ public class NotificationTestService {
     public void testFriendRequestNotification(Long senderId, String senderName, Long receiverId) {
         Optional<User> receiver = userRepository.findById(receiverId);
         if (receiver.isPresent()) {
-            createTestNotification(receiver.get(), "👋 Friend Request",
+            createTestNotification(receiver.get(), "Friend Request",
                                  senderName + " wants to be your friend!",
                                  NotificationType.FRIEND_REQUEST, NotificationPriority.NORMAL,
                                  "/friends/requests", senderId, "USER");

@@ -37,7 +37,7 @@ public class WebSocketAuthenticationInterceptor implements ChannelInterceptor {
 
             if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
                 System.out.println("\n========================================");
-                System.out.println("[WS-BACKEND] 🔗 STOMP CONNECT FRAME RECEIVED");
+                System.out.println("[WS-BACKEND] STOMP CONNECT FRAME RECEIVED");
                 System.out.println("[WS-BACKEND] Timestamp: " + new java.util.Date());
                 System.out.println("========================================");
 

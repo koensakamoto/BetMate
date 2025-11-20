@@ -28,6 +28,9 @@ export default function Group() {
   const [publicGroups, setPublicGroups] = useState<GroupSummaryResponse[]>([]);
   const [searchResults, setSearchResults] = useState<GroupSummaryResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const tabs = ['My Groups', 'Discover'];
   const insets = useSafeAreaInsets();
@@ -81,6 +84,7 @@ export default function Group() {
     } finally {
       setIsLoading(false);
       setRefreshing(false);
+      setHasInitiallyLoaded(true);
     }
   }, []);
 
@@ -153,18 +157,33 @@ export default function Group() {
 
   // Handle search
   useEffect(() => {
+    // Immediately set isSearching to true when there's a query to avoid showing empty state
+    if (searchQuery.trim().length > 0) {
+      console.log('🔍 [GroupIndex] Query detected, setting isSearching true');
+      setIsSearching(true);
+      setHasSearched(true);
+    } else {
+      console.log('🔍 [GroupIndex] Clearing search immediately');
+      setIsSearching(false);
+      setHasSearched(false);
+      setSearchResults([]);
+    }
+
     const handleSearch = async () => {
       if (searchQuery.trim().length > 0) {
+        console.log('🔍 [GroupIndex] Starting search for:', searchQuery.trim());
         try {
           const results = await groupService.searchGroups(searchQuery.trim());
+          console.log('🔍 [GroupIndex] Search completed, results:', results.length);
           setSearchResults(results);
+          setIsSearching(false);
           debugLog('Search results:', results);
         } catch (error) {
+          console.log('🔍 [GroupIndex] Search error:', error);
           errorLog('Error searching groups:', error);
           setSearchResults([]);
+          setIsSearching(false);
         }
-      } else {
-        setSearchResults([]);
       }
     };
 
@@ -175,9 +194,12 @@ export default function Group() {
   // Get groups to display based on current state - memoized to avoid recalculating on every render
   const groupsToDisplay = useMemo((): GroupSummaryResponse[] => {
     if (searchQuery.trim().length > 0) {
+      console.log('🔍 [GroupIndex] groupsToDisplay: Using search results', searchResults.length);
       return searchResults;
     }
-    return activeTab === 0 ? myGroups : publicGroups;
+    const result = activeTab === 0 ? myGroups : publicGroups;
+    console.log('🔍 [GroupIndex] groupsToDisplay: Using tab data', { activeTab, count: result.length });
+    return result;
   }, [searchQuery, searchResults, activeTab, myGroups, publicGroups]);
 
   // Memoize tab change handler to provide stable reference
@@ -315,102 +337,157 @@ export default function Group() {
           })}
         </View>
 
-        {/* Search Results Info */}
-        {searchQuery.length > 0 && (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{
-              fontSize: 14,
-              color: 'rgba(255, 255, 255, 0.6)'
-            }}>Searching for &quot;{searchQuery}&quot;</Text>
-          </View>
-        )}
-
         {/* Content based on active tab */}
         {activeTab === 0 ? (
           /* My Groups Section */
           <View>
-            {/* Horizontal Create Group Banner */}
-            <TouchableOpacity
-              onPress={() => router.push('/create-group')}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 12,
-                paddingHorizontal: 0,
-                marginBottom: 24,
-                borderBottomWidth: 1,
-                borderBottomColor: 'rgba(255, 255, 255, 0.1)'
-              }}>
-              <Text style={{
-                fontSize: 20,
-                color: 'rgba(255, 255, 255, 0.4)',
-                marginRight: 12
-              }}>+</Text>
-              
-              <View style={{ flex: 1 }}>
+            {/* Horizontal Create Group Banner - Only show when not searching */}
+            {searchQuery.trim().length === 0 && (
+              <TouchableOpacity
+                onPress={() => router.push('/create-group')}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 12,
+                  paddingHorizontal: 0,
+                  marginBottom: 24,
+                  borderBottomWidth: 1,
+                  borderBottomColor: 'rgba(255, 255, 255, 0.1)'
+                }}>
                 <Text style={{
-                  fontSize: 16,
-                  color: '#ffffff',
-                  marginBottom: 2
-                }}>Create New Group</Text>
-                
-                <Text style={{
-                  fontSize: 12,
-                  color: 'rgba(255, 255, 255, 0.5)'
-                }}>Start your own gaming community</Text>
-              </View>
-            </TouchableOpacity>
+                  fontSize: 20,
+                  color: 'rgba(255, 255, 255, 0.4)',
+                  marginRight: 12
+                }}>+</Text>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontSize: 16,
+                    color: '#ffffff',
+                    marginBottom: 2
+                  }}>Create New Group</Text>
+
+                  <Text style={{
+                    fontSize: 12,
+                    color: 'rgba(255, 255, 255, 0.5)'
+                  }}>Start your own gaming community</Text>
+                </View>
+              </TouchableOpacity>
+            )}
 
             {/* My Groups Grid - 2 Columns */}
-            {isLoading && myGroups.length === 0 ? (
-              <View style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                justifyContent: 'space-between'
-              }}>
-                <SkeletonGroupCard />
-                <SkeletonGroupCard />
-                <SkeletonGroupCard />
-                <SkeletonGroupCard />
-              </View>
-            ) : (
-              <View style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                justifyContent: 'space-between'
-              }}>
-                {groupsToDisplay.length === 0 ? (
-                  <Text style={{
-                    color: 'rgba(255, 255, 255, 0.6)',
-                    textAlign: 'center',
-                    width: '100%',
-                    marginTop: 20
+            {(() => {
+              console.log('🎯 [GroupIndex] Render decision - My Groups:', {
+                isSearching,
+                hasInitiallyLoaded,
+                isLoading,
+                myGroupsLength: myGroups.length,
+                groupsToDisplayLength: groupsToDisplay.length,
+                hasSearched,
+                searchQuery: searchQuery.trim()
+              });
+
+              if (isSearching) {
+                console.log('✅ [GroupIndex] Showing: SEARCHING skeletons');
+                return (
+                  /* Searching - show skeletons */
+                  <View style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between'
                   }}>
-                    {searchQuery.trim().length > 0 ? 'No groups found matching your search.' : 'You haven\'t joined any groups yet. Create one or discover groups below!'}
-                  </Text>
-                ) : (
-                  groupsToDisplay.map((group, index) => (
-                    <View key={group.id} style={{ width: '48%', marginBottom: 16 }}>
-                      <GroupCard
-                        name={group.groupName}
-                        img={getFullImageUrl(group.groupPictureUrl) ? { uri: getFullImageUrl(group.groupPictureUrl)! } : undefined}
-                        description={group.description || 'No description available'}
-                        memberCount={group.memberCount}
-                        memberPreviews={group.memberPreviews}
-                        isJoined={group.isUserMember}
-                        groupId={group.id.toString()}
-                      />
-                    </View>
-                  ))
-                )}
-              </View>
-            )}
+                    <SkeletonGroupCard />
+                    <SkeletonGroupCard />
+                    <SkeletonGroupCard />
+                    <SkeletonGroupCard />
+                  </View>
+                );
+              } else if (!hasInitiallyLoaded || (isLoading && myGroups.length === 0)) {
+                console.log('✅ [GroupIndex] Showing: INITIAL LOADING skeletons');
+                return (
+                  /* First time loading - show skeletons */
+                  <View style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between'
+                  }}>
+                    <SkeletonGroupCard />
+                    <SkeletonGroupCard />
+                    <SkeletonGroupCard />
+                    <SkeletonGroupCard />
+                  </View>
+                );
+              } else if (groupsToDisplay.length > 0) {
+                console.log('✅ [GroupIndex] Showing: GROUPS', groupsToDisplay.length);
+                return (
+                  /* Has results - show groups */
+                  <View style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between'
+                  }}>
+                    {groupsToDisplay.map((group, index) => (
+                      <View key={group.id} style={{ width: '48%', marginBottom: 16 }}>
+                        <GroupCard
+                          name={group.groupName}
+                          img={getFullImageUrl(group.groupPictureUrl) ? { uri: getFullImageUrl(group.groupPictureUrl)! } : undefined}
+                          description={group.description || 'No description available'}
+                          memberCount={group.memberCount}
+                          memberPreviews={group.memberPreviews}
+                          isJoined={group.isUserMember}
+                          groupId={group.id.toString()}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                );
+              } else if (hasSearched && searchQuery.trim().length > 0) {
+                console.log('✅ [GroupIndex] Showing: NO SEARCH RESULTS');
+                return (
+                  /* Search completed with no results */
+                  <View style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between'
+                  }}>
+                    <Text style={{
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      textAlign: 'center',
+                      width: '100%',
+                      marginTop: 20
+                    }}>
+                      No groups found matching your search.
+                    </Text>
+                  </View>
+                );
+              } else {
+                console.log('✅ [GroupIndex] Showing: NO GROUPS EMPTY STATE');
+                return (
+                  /* No search, no groups */
+                  <View style={{
+                    flexDirection: 'row',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between'
+                  }}>
+                    <Text style={{
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      textAlign: 'center',
+                      width: '100%',
+                      marginTop: 20
+                    }}>
+                      You haven't joined any groups yet. Create one or discover groups below!
+                    </Text>
+                  </View>
+                );
+              }
+            })()}
           </View>
         ) : (
           /* Discover Section */
           <View>
             {/* Public Groups Grid - 2 Columns */}
-            {isLoading && publicGroups.length === 0 ? (
+            {isSearching ? (
+              /* Searching - show skeletons */
               <View style={{
                 flexDirection: 'row',
                 flexWrap: 'wrap',
@@ -421,36 +498,70 @@ export default function Group() {
                 <SkeletonGroupCard />
                 <SkeletonGroupCard />
               </View>
-            ) : (
+            ) : (!hasInitiallyLoaded || (isLoading && publicGroups.length === 0)) ? (
+              /* First time loading - show skeletons */
               <View style={{
                 flexDirection: 'row',
                 flexWrap: 'wrap',
                 justifyContent: 'space-between'
               }}>
-                {groupsToDisplay.length === 0 ? (
-                  <Text style={{
-                    color: 'rgba(255, 255, 255, 0.6)',
-                    textAlign: 'center',
-                    width: '100%',
-                    marginTop: 20
-                  }}>
-                    {searchQuery.trim().length > 0 ? 'No groups found matching your search.' : 'No public groups available yet. Be the first to create one!'}
-                  </Text>
-                ) : (
-                  groupsToDisplay.map((group, index) => (
-                    <View key={group.id} style={{ width: '48%', marginBottom: 16 }}>
-                      <GroupCard
-                        name={group.groupName}
-                        img={getFullImageUrl(group.groupPictureUrl) ? { uri: getFullImageUrl(group.groupPictureUrl)! } : undefined}
-                        description={group.description || 'No description available'}
-                        memberCount={group.memberCount}
-                        memberPreviews={group.memberPreviews}
-                        isJoined={group.isUserMember}
-                        groupId={group.id.toString()}
-                      />
-                    </View>
-                  ))
-                )}
+                <SkeletonGroupCard />
+                <SkeletonGroupCard />
+                <SkeletonGroupCard />
+                <SkeletonGroupCard />
+              </View>
+            ) : groupsToDisplay.length > 0 ? (
+              /* Has results - show groups */
+              <View style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between'
+              }}>
+                {groupsToDisplay.map((group, index) => (
+                  <View key={group.id} style={{ width: '48%', marginBottom: 16 }}>
+                    <GroupCard
+                      name={group.groupName}
+                      img={getFullImageUrl(group.groupPictureUrl) ? { uri: getFullImageUrl(group.groupPictureUrl)! } : undefined}
+                      description={group.description || 'No description available'}
+                      memberCount={group.memberCount}
+                      memberPreviews={group.memberPreviews}
+                      isJoined={group.isUserMember}
+                      groupId={group.id.toString()}
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : hasSearched && searchQuery.trim().length > 0 ? (
+              /* Search completed with no results */
+              <View style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between'
+              }}>
+                <Text style={{
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  textAlign: 'center',
+                  width: '100%',
+                  marginTop: 20
+                }}>
+                  No groups found matching your search.
+                </Text>
+              </View>
+            ) : (
+              /* No search, no public groups */
+              <View style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between'
+              }}>
+                <Text style={{
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  textAlign: 'center',
+                  width: '100%',
+                  marginTop: 20
+                }}>
+                  No public groups available yet. Be the first to create one!
+                </Text>
               </View>
             )}
           </View>

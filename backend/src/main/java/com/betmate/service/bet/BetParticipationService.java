@@ -60,7 +60,7 @@ public class BetParticipationService {
      * Places a bet for a user with exact value prediction.
      */
     public BetParticipation placeBetWithPrediction(@NotNull User user, @NotNull Long betId,
-                                                 @NotNull @DecimalMin("0.01") BigDecimal betAmount,
+                                                 @NotNull @DecimalMin("0.00") BigDecimal betAmount,
                                                  @NotNull String predictionValue,
                                                  Long insuranceItemId) {
         Bet bet = betService.getBetById(betId);
@@ -127,7 +127,7 @@ public class BetParticipationService {
      */
     public BetParticipation placeBet(@NotNull User user, @NotNull Long betId,
                                    @Min(1) @Max(4) Integer chosenOption,
-                                   @NotNull @DecimalMin("0.01") BigDecimal betAmount,
+                                   @NotNull @DecimalMin("0.00") BigDecimal betAmount,
                                    Long insuranceItemId) {
         Bet bet = betService.getBetById(betId);
 

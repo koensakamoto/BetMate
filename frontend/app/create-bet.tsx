@@ -181,7 +181,7 @@ export default function CreateBet() {
                   // Navigate back to the group page with Bets tab active (tab=1)
                   // Use dismissAll to clear stack and navigate fresh with proper path
                   router.dismissAll();
-                  router.navigate(`/(tabs)/group/${betGroupId}?tab=1&refresh=${Date.now()}`);
+                  router.navigate(`/group/${betGroupId}?tab=1&refresh=${Date.now()}`);
                 }}
               ]);
             } catch (error) {

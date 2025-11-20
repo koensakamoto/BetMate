@@ -15,7 +15,7 @@ public class PlaceBetRequestDto {
     private Integer chosenOption;
 
     @NotNull(message = "Bet amount is required")
-    @DecimalMin(value = "0.01", message = "Bet amount must be at least 0.01")
+    @DecimalMin(value = "0.00", message = "Bet amount cannot be negative")
     private BigDecimal amount;
 
     @Size(max = 500, message = "Comment cannot exceed 500 characters")

@@ -1,7 +1,9 @@
 package com.betmate.dto.betting.request;
 
+import com.betmate.config.UtcDateTimeDeserializer;
 import com.betmate.entity.betting.Bet;
 import com.betmate.entity.betting.BetStakeType;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
@@ -30,9 +32,11 @@ public class BetCreationRequestDto {
     
     @NotNull(message = "Betting deadline is required")
     @Future(message = "Betting deadline must be in the future")
+    @JsonDeserialize(using = UtcDateTimeDeserializer.class)
     private LocalDateTime bettingDeadline;
-    
+
     @Future(message = "Resolve date must be in the future")
+    @JsonDeserialize(using = UtcDateTimeDeserializer.class)
     private LocalDateTime resolveDate;
     
     // DEPRECATED: For backward compatibility with variable-stake bets
