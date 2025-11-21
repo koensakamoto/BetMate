@@ -1,12 +1,16 @@
 package com.betmate.controller;
 
+import com.betmate.dto.common.ErrorResponseDto;
 import com.betmate.dto.user.request.UserAvailabilityCheckRequestDto;
 import com.betmate.dto.user.request.UserProfileUpdateRequestDto;
 import com.betmate.dto.user.request.UserRegistrationRequestDto;
+import com.betmate.dto.user.response.LimitedUserProfileResponseDto;
 import com.betmate.dto.user.response.UserAvailabilityResponseDto;
 import com.betmate.dto.user.response.UserProfileResponseDto;
 import com.betmate.dto.user.response.UserSearchResultResponseDto;
 import com.betmate.dto.user.response.TransactionResponseDto;
+import com.betmate.entity.user.UserSettings.ProfileVisibility;
+import com.betmate.service.user.FriendshipService;
 import com.betmate.entity.user.Transaction;
 import com.betmate.entity.user.User;
 import com.betmate.service.FileStorageService;
@@ -47,17 +51,20 @@ public class UserController {
     private final FileStorageService fileStorageService;
     private final TransactionService transactionService;
     private final DailyLoginRewardService dailyLoginRewardService;
+    private final FriendshipService friendshipService;
 
     @Autowired
     public UserController(UserService userService, UserRegistrationService userRegistrationService,
                          UserStatisticsService userStatisticsService, FileStorageService fileStorageService,
-                         TransactionService transactionService, DailyLoginRewardService dailyLoginRewardService) {
+                         TransactionService transactionService, DailyLoginRewardService dailyLoginRewardService,
+                         FriendshipService friendshipService) {
         this.userService = userService;
         this.userRegistrationService = userRegistrationService;
         this.userStatisticsService = userStatisticsService;
         this.fileStorageService = fileStorageService;
         this.transactionService = transactionService;
         this.dailyLoginRewardService = dailyLoginRewardService;
+        this.friendshipService = friendshipService;
     }
 
     // ==========================================
@@ -68,7 +75,7 @@ public class UserController {
      * Register a new user account.
      */
     @PostMapping("/register")
-    public ResponseEntity<UserProfileResponseDto> registerUser(@Valid @RequestBody UserRegistrationRequestDto request) {
+    public ResponseEntity<?> registerUser(@Valid @RequestBody UserRegistrationRequestDto request) {
         try {
             System.out.println("=== REGISTRATION DEBUG START ===");
             System.out.println("Raw request received: " + request);
@@ -78,16 +85,16 @@ public class UserController {
             System.out.println("FirstName: '" + request.firstName() + "'");
             System.out.println("LastName: '" + request.lastName() + "'");
             System.out.println("=== VALIDATION PASSED ===");
-            
+
             // Convert DTO to service request
-            UserRegistrationService.RegistrationRequest serviceRequest = 
+            UserRegistrationService.RegistrationRequest serviceRequest =
                 new UserRegistrationService.RegistrationRequest(
                     request.username(),
                     request.email(),
                     request.password(),
                     request.firstName(),
                     request.lastName()
-                ); 
+                );
             User user = userRegistrationService.registerUser(serviceRequest);
             System.out.println("=== USER CREATED SUCCESSFULLY ===");
             return ResponseEntity.status(HttpStatus.CREATED).body(UserProfileResponseDto.fromUser(user));
@@ -95,12 +102,13 @@ public class UserController {
             System.err.println("=== REGISTRATION EXCEPTION ===");
             System.err.println("Registration exception: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(new ErrorResponseDto(e.getMessage(), "REGISTRATION_ERROR"));
         } catch (Exception e) {
             System.err.println("=== UNEXPECTED EXCEPTION ===");
             System.err.println("Unexpected exception during registration: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponseDto("An unexpected error occurred", "INTERNAL_ERROR"));
         }
     }
 
@@ -235,6 +243,56 @@ public class UserController {
     }
 
     /**
+     * Get current user's profile visibility setting.
+     */
+    @GetMapping("/profile/visibility")
+    public ResponseEntity<?> getProfileVisibility() {
+        try {
+            UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
+            if (userPrincipal == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            ProfileVisibility visibility = userService.getProfileVisibility(userPrincipal.getUserId());
+            return ResponseEntity.ok(java.util.Map.of("visibility", visibility.name()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Update current user's profile visibility setting.
+     */
+    @PutMapping("/profile/visibility")
+    public ResponseEntity<?> updateProfileVisibility(@RequestBody java.util.Map<String, String> request) {
+        try {
+            UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
+            if (userPrincipal == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            String visibilityStr = request.get("visibility");
+            if (visibilityStr == null || visibilityStr.isEmpty()) {
+                return ResponseEntity.badRequest().body(java.util.Map.of("error", "Visibility is required"));
+            }
+
+            ProfileVisibility visibility;
+            try {
+                visibility = ProfileVisibility.valueOf(visibilityStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(java.util.Map.of(
+                    "error", "Invalid visibility. Must be one of: PUBLIC, FRIENDS, PRIVATE"));
+            }
+
+            ProfileVisibility updated = userService.updateProfileVisibility(userPrincipal.getUserId(), visibility);
+            return ResponseEntity.ok(java.util.Map.of("visibility", updated.name()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
      * Delete current user's account (soft delete).
      */
     @DeleteMapping("/profile")
@@ -258,12 +316,44 @@ public class UserController {
 
     /**
      * Get user by ID.
+     * Returns full profile if:
+     * - Viewer is the profile owner
+     * - Profile is PUBLIC
+     * - Profile is FRIENDS and viewer is a friend
+     * Returns limited profile otherwise.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<UserProfileResponseDto> getUserById(@PathVariable Long id) {
+    public ResponseEntity<?> getUserById(@PathVariable Long id) {
         try {
+            UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
+            Long viewerId = userPrincipal != null ? userPrincipal.getUserId() : null;
+
             User user = userService.getUserById(id);
-            return ResponseEntity.ok(UserProfileResponseDto.fromUser(user));
+
+            // Owner always sees full profile
+            if (viewerId != null && viewerId.equals(id)) {
+                return ResponseEntity.ok(UserProfileResponseDto.fromUser(user));
+            }
+
+            // Check profile visibility
+            ProfileVisibility visibility = userService.getProfileVisibility(id);
+
+            switch (visibility) {
+                case PUBLIC:
+                    return ResponseEntity.ok(UserProfileResponseDto.fromUser(user));
+
+                case FRIENDS:
+                    if (viewerId != null && friendshipService.areFriends(viewerId, id)) {
+                        return ResponseEntity.ok(UserProfileResponseDto.fromUser(user));
+                    }
+                    return ResponseEntity.ok(LimitedUserProfileResponseDto.fromUser(user,
+                        "This profile is only visible to friends"));
+
+                case PRIVATE:
+                default:
+                    return ResponseEntity.ok(LimitedUserProfileResponseDto.fromUser(user,
+                        "This profile is private"));
+            }
         } catch (com.betmate.exception.user.UserNotFoundException e) {
             return ResponseEntity.notFound().build();
         }

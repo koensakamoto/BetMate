@@ -2,6 +2,7 @@ package com.betmate.service.user;
 
 import com.betmate.entity.user.User;
 import com.betmate.repository.user.UserRepository;
+import com.betmate.repository.user.UserSettingsRepository;
 import com.betmate.service.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,9 +27,12 @@ import static org.mockito.Mockito.*;
 class UserServiceTest {
 
     private UserService userService;
-    
+
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private UserSettingsRepository userSettingsRepository;
     
     // Test data constants
     private static final Long TEST_USER_ID = 123L;
@@ -43,7 +47,7 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(userRepository);
+        userService = new UserService(userRepository, userSettingsRepository);
         
         // Create test user
         testUser = createTestUser(TEST_USER_ID, TEST_USERNAME, TEST_EMAIL, false);

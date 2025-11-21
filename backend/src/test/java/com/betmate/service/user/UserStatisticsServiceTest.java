@@ -68,7 +68,7 @@ class UserStatisticsServiceTest {
         private final AtomicLong idGenerator = new AtomicLong(1000);
 
         public TestUserService() {
-            super(null); // We'll override all methods we need
+            super(null, null); // We'll override all methods we need
         }
 
         @Override

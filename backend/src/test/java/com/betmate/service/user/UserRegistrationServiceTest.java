@@ -89,7 +89,7 @@ class UserRegistrationServiceTest {
         private User lastSavedUser;
 
         public TestUserService() {
-            super(null); // We'll override all methods
+            super(null, null); // We'll override all methods
         }
 
         @Override

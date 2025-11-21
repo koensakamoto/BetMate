@@ -1,8 +1,11 @@
 package com.betmate.service.user;
 
 import com.betmate.entity.user.User;
+import com.betmate.entity.user.UserSettings;
+import com.betmate.entity.user.UserSettings.ProfileVisibility;
 import com.betmate.exception.user.UserNotFoundException;
 import com.betmate.repository.user.UserRepository;
+import com.betmate.repository.user.UserSettingsRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,10 +26,12 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final UserSettingsRepository userSettingsRepository;
 
     @Autowired
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, UserSettingsRepository userSettingsRepository) {
         this.userRepository = userRepository;
+        this.userSettingsRepository = userSettingsRepository;
     }
 
     /**
@@ -135,5 +140,31 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    /**
+     * Gets the profile visibility setting for a user.
+     */
+    public ProfileVisibility getProfileVisibility(@NotNull Long userId) {
+        return userSettingsRepository.findByUserId(userId)
+            .map(UserSettings::getProfileVisibility)
+            .orElse(ProfileVisibility.PUBLIC);
+    }
+
+    /**
+     * Updates the profile visibility setting for a user.
+     * Creates settings if they don't exist.
+     */
+    @Transactional
+    public ProfileVisibility updateProfileVisibility(@NotNull Long userId, @NotNull ProfileVisibility visibility) {
+        UserSettings settings = userSettingsRepository.findByUserId(userId)
+            .orElseGet(() -> {
+                // Create default settings if they don't exist
+                User user = getUserById(userId);
+                UserSettings newSettings = UserSettings.createDefaultSettings(user);
+                return userSettingsRepository.save(newSettings);
+            });
+        settings.setProfileVisibility(visibility);
+        userSettingsRepository.save(settings);
+        return settings.getProfileVisibility();
+    }
 
 }

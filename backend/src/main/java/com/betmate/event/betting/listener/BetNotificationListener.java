@@ -511,6 +511,12 @@ public class BetNotificationListener {
             int notificationsCreated = 0;
             for (Long userId : allParticipantIds) {
                 try {
+                    // Skip the resolver - they don't need to be notified about their own resolution
+                    if (event.getResolvedById() != null && userId.equals(event.getResolvedById())) {
+                        logger.debug("Skipping notification for resolver: user ID {}", userId);
+                        continue;
+                    }
+
                     // Get the user entity
                     User participant = userService.getUserById(userId);
                     if (participant == null) {

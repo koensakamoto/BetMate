@@ -337,22 +337,30 @@ export default function BetDetails() {
           const displayedOptions = backendOptions.length > 0 ? backendOptions : ['Option 1', 'Option 2', 'Option 3'];
           const usingFallbackOptions = backendOptions.length === 0;
 
-          console.log('Option mapping debug:');
-          console.log('Backend options:', backendOptions);
-          console.log('Displayed options:', displayedOptions);
-          console.log('Selected option:', selectedOption);
+          console.log('=== OPTION MAPPING DEBUG ===');
+          console.log('Backend options from betData.options:', JSON.stringify(betData?.options));
+          console.log('backendOptions variable:', JSON.stringify(backendOptions));
+          console.log('Displayed options:', JSON.stringify(displayedOptions));
+          console.log('Selected option (exact):', JSON.stringify(selectedOption));
           console.log('Using fallback options:', usingFallbackOptions);
 
           let optionIndex;
           if (usingFallbackOptions) {
             // When using fallback options, map directly based on display order
             optionIndex = displayedOptions.indexOf(selectedOption);
+            console.log('Using fallback - indexOf result:', optionIndex);
           } else {
             // When using real backend options, find in backend options
             optionIndex = backendOptions.indexOf(selectedOption);
+            console.log('Using backend options - indexOf result:', optionIndex);
+            // Also log each option comparison for debugging
+            backendOptions.forEach((opt: string, idx: number) => {
+              console.log(`  Option[${idx}]: "${opt}" === "${selectedOption}" ? ${opt === selectedOption}`);
+            });
           }
 
-          console.log('Option index:', optionIndex);
+          console.log('Final optionIndex:', optionIndex);
+          console.log('Final chosenOptionNumber will be:', optionIndex + 1);
 
           if (optionIndex === -1) {
             console.error('Selected option not found in available options!');
@@ -1232,72 +1240,36 @@ export default function BetDetails() {
       <Modal
         visible={showCancelModal}
         transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowCancelModal(false)}
+        animationType="slide"
+        onRequestClose={() => !isCancelling && setShowCancelModal(false)}
       >
         <View style={{
           flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: 20
+          justifyContent: 'flex-end',
+          backgroundColor: 'rgba(0, 0, 0, 0.6)'
         }}>
           <View style={{
             backgroundColor: '#1a1a1f',
-            borderRadius: 16,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
             padding: 24,
-            width: '100%',
-            maxWidth: 400,
-            borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.1)'
+            paddingBottom: insets.bottom + 24
           }}>
-            <Text style={{
-              fontSize: 20,
-              fontWeight: '700',
-              color: '#ffffff',
-              marginBottom: 8
+            {/* Header with close button */}
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 24
             }}>
-              Cancel Bet?
-            </Text>
+              <Text style={{
+                fontSize: 20,
+                fontWeight: '700',
+                color: '#ffffff'
+              }}>
+                Cancel Bet
+              </Text>
 
-            <Text style={{
-              fontSize: 14,
-              color: 'rgba(255, 255, 255, 0.7)',
-              marginBottom: 20,
-              lineHeight: 20
-            }}>
-              All participants will be refunded. This action cannot be undone.
-            </Text>
-
-            {/* Optional reason input */}
-            <Text style={{
-              fontSize: 13,
-              color: 'rgba(255, 255, 255, 0.6)',
-              marginBottom: 8
-            }}>
-              Reason for cancellation (optional)
-            </Text>
-            <TextInput
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                borderRadius: 8,
-                padding: 12,
-                color: '#ffffff',
-                fontSize: 14,
-                marginBottom: 24,
-                minHeight: 80,
-                textAlignVertical: 'top'
-              }}
-              placeholder="e.g., Event was cancelled, Wrong bet setup..."
-              placeholderTextColor="rgba(255, 255, 255, 0.3)"
-              value={cancelReason}
-              onChangeText={setCancelReason}
-              multiline
-              maxLength={500}
-            />
-
-            {/* Action buttons */}
-            <View style={{ flexDirection: 'row', gap: 12 }}>
               <TouchableOpacity
                 onPress={() => {
                   setShowCancelModal(false);
@@ -1305,43 +1277,104 @@ export default function BetDetails() {
                 }}
                 disabled={isCancelling}
                 style={{
-                  flex: 1,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
                   backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  borderRadius: 12,
-                  padding: 16,
+                  justifyContent: 'center',
                   alignItems: 'center'
                 }}
               >
-                <Text style={{
-                  fontSize: 16,
-                  fontWeight: '600',
-                  color: 'rgba(255, 255, 255, 0.7)'
-                }}>
-                  Cancel
-                </Text>
+                <MaterialIcons name="close" size={20} color="rgba(255, 255, 255, 0.6)" />
               </TouchableOpacity>
+            </View>
 
-              <TouchableOpacity
-                onPress={handleCancelBet}
-                disabled={isCancelling}
+            {/* Description */}
+            <Text style={{
+              fontSize: 15,
+              color: 'rgba(255, 255, 255, 0.7)',
+              marginBottom: 24,
+              lineHeight: 22
+            }}>
+              All participants will be refunded their bet amount.
+            </Text>
+
+            {/* Reason input */}
+            <View style={{ marginBottom: 24 }}>
+              <Text style={{
+                fontSize: 14,
+                fontWeight: '600',
+                color: '#ffffff',
+                marginBottom: 10
+              }}>
+                Reason for cancellation
+                <Text style={{ color: 'rgba(255, 255, 255, 0.4)', fontWeight: '400' }}> (optional)</Text>
+              </Text>
+              <TextInput
                 style={{
-                  flex: 1,
-                  backgroundColor: '#EF4444',
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
                   borderRadius: 12,
-                  padding: 16,
-                  alignItems: 'center',
-                  opacity: isCancelling ? 0.6 : 1
+                  padding: 14,
+                  color: '#ffffff',
+                  fontSize: 15,
+                  minHeight: 100,
+                  textAlignVertical: 'top',
+                  borderWidth: 1,
+                  borderColor: cancelReason ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.08)'
                 }}
-              >
+                placeholder="Let participants know why..."
+                placeholderTextColor="rgba(255, 255, 255, 0.3)"
+                value={cancelReason}
+                onChangeText={setCancelReason}
+                multiline
+                maxLength={500}
+                editable={!isCancelling}
+              />
+              <Text style={{
+                fontSize: 12,
+                color: 'rgba(255, 255, 255, 0.3)',
+                textAlign: 'right',
+                marginTop: 6
+              }}>
+                {cancelReason.length}/500
+              </Text>
+            </View>
+
+            {/* Action button */}
+            <TouchableOpacity
+              onPress={handleCancelBet}
+              disabled={isCancelling}
+              style={{
+                backgroundColor: '#EF4444',
+                borderRadius: 14,
+                paddingVertical: 16,
+                alignItems: 'center',
+                flexDirection: 'row',
+                justifyContent: 'center',
+                opacity: isCancelling ? 0.7 : 1
+              }}
+            >
+              {isCancelling ? (
+                <>
+                  <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 8 }} />
+                  <Text style={{
+                    fontSize: 16,
+                    fontWeight: '600',
+                    color: '#ffffff'
+                  }}>
+                    Cancelling...
+                  </Text>
+                </>
+              ) : (
                 <Text style={{
                   fontSize: 16,
                   fontWeight: '600',
                   color: '#ffffff'
                 }}>
-                  {isCancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+                  Cancel Bet
                 </Text>
-              </TouchableOpacity>
-            </View>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

@@ -16,10 +16,12 @@ public class BetResolvedEvent extends DomainEvent {
     private final List<Long> loserIds;
     private final Map<Long, BigDecimal> payouts;
     private final String resolution;
+    private final Long resolvedById;
 
     public BetResolvedEvent(Long betId, String betTitle, Long groupId, String groupName,
                            List<Long> winnerIds, List<Long> loserIds,
-                           Map<Long, BigDecimal> payouts, String resolution) {
+                           Map<Long, BigDecimal> payouts, String resolution,
+                           Long resolvedById) {
         super("BET_RESOLVED");
         this.betId = betId;
         this.betTitle = betTitle;
@@ -29,6 +31,7 @@ public class BetResolvedEvent extends DomainEvent {
         this.loserIds = loserIds;
         this.payouts = payouts;
         this.resolution = resolution;
+        this.resolvedById = resolvedById;
     }
 
     public Long getBetId() {
@@ -69,5 +72,9 @@ public class BetResolvedEvent extends DomainEvent {
 
     public BigDecimal getPayoutForUser(Long userId) {
         return payouts.getOrDefault(userId, BigDecimal.ZERO);
+    }
+
+    public Long getResolvedById() {
+        return resolvedById;
     }
 }

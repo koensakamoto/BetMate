@@ -555,7 +555,7 @@ class UserCreditServiceTest {
         private final Map<Long, User> users = new ConcurrentHashMap<>();
 
         public TestUserService() {
-            super(null); // Pass null repository for testing
+            super(null, null); // Pass null repository for testing
         }
 
         @Override

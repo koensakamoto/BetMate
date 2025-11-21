@@ -613,12 +613,12 @@ public class BetController {
         if (hasParticipated) {
             betParticipationService.getUserParticipation(currentUser, bet.getId())
                 .ifPresent(participation -> {
-                    // Convert integer option (0,1,2,3) to BetOutcome enum (0-indexed)
+                    // Convert integer option (1,2,3,4) to BetOutcome enum (1-indexed)
                     Bet.BetOutcome userChoice = switch (participation.getChosenOption()) {
-                        case 0 -> Bet.BetOutcome.OPTION_1;
-                        case 1 -> Bet.BetOutcome.OPTION_2;
-                        case 2 -> Bet.BetOutcome.OPTION_3;
-                        case 3 -> Bet.BetOutcome.OPTION_4;
+                        case 1 -> Bet.BetOutcome.OPTION_1;
+                        case 2 -> Bet.BetOutcome.OPTION_2;
+                        case 3 -> Bet.BetOutcome.OPTION_3;
+                        case 4 -> Bet.BetOutcome.OPTION_4;
                         default -> null;
                     };
                     response.setUserChoice(userChoice);
@@ -684,12 +684,12 @@ public class BetController {
         if (hasParticipated) {
             betParticipationService.getUserParticipation(currentUser, bet.getId())
                 .ifPresent(participation -> {
-                    // Convert integer option (0,1,2,3) to BetOutcome enum (0-indexed)
+                    // Convert integer option (1,2,3,4) to BetOutcome enum (1-indexed)
                     Bet.BetOutcome userChoice = switch (participation.getChosenOption()) {
-                        case 0 -> Bet.BetOutcome.OPTION_1;
-                        case 1 -> Bet.BetOutcome.OPTION_2;
-                        case 2 -> Bet.BetOutcome.OPTION_3;
-                        case 3 -> Bet.BetOutcome.OPTION_4;
+                        case 1 -> Bet.BetOutcome.OPTION_1;
+                        case 2 -> Bet.BetOutcome.OPTION_2;
+                        case 3 -> Bet.BetOutcome.OPTION_3;
+                        case 4 -> Bet.BetOutcome.OPTION_4;
                         default -> null;
                     };
                     response.setUserChoice(userChoice);

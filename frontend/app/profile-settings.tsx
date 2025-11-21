@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { userService, UserProfileResponse, UserProfileUpdateRequest } from '../services/user/userService';
+import { userService, UserProfileResponse, UserProfileUpdateRequest, ProfileVisibility } from '../services/user/userService';
 import { useAuth } from '../contexts/AuthContext';
 import { debugLog, errorLog, ENV } from '../config/env';
 
@@ -33,6 +33,7 @@ export default function ProfileSettings() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileVisibility, setProfileVisibility] = useState<ProfileVisibility>('PUBLIC');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +53,11 @@ export default function ProfileSettings() {
       setIsLoading(true);
       setError(null);
 
-      const profile = await userService.getCurrentUserProfile();
+      const [profile, visibilityResponse] = await Promise.all([
+        userService.getCurrentUserProfile(),
+        userService.getProfileVisibility()
+      ]);
+
       setUserProfile(profile);
 
       // Pre-fill form with current data
@@ -61,8 +66,10 @@ export default function ProfileSettings() {
       setUsername(profile.username || '');
       setEmail(profile.email || '');
       setProfileImage(profile.profileImageUrl || null);
+      setProfileVisibility(visibilityResponse.visibility);
 
       debugLog('User profile loaded:', profile);
+      debugLog('Profile visibility:', visibilityResponse.visibility);
     } catch (err: any) {
       errorLog('Failed to load user profile:', err);
       setError(err.message || 'Failed to load profile');
@@ -117,6 +124,20 @@ export default function ProfileSettings() {
       errorLog('Failed to update profile:', err);
       setError(err.message || 'Failed to update profile');
       Alert.alert('Error', err.message || 'Failed to update profile. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleVisibilityChange = async (newVisibility: ProfileVisibility) => {
+    try {
+      setIsSaving(true);
+      await userService.updateProfileVisibility(newVisibility);
+      setProfileVisibility(newVisibility);
+      debugLog('Profile visibility updated to:', newVisibility);
+    } catch (err: any) {
+      errorLog('Failed to update profile visibility:', err);
+      Alert.alert('Error', 'Failed to update profile visibility. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -556,6 +577,202 @@ export default function ProfileSettings() {
             }}>
               Email cannot be changed
             </Text>
+          </View>
+
+          {/* Profile Visibility Section */}
+          <View style={{ marginTop: 12 }}>
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '500',
+              color: 'rgba(255, 255, 255, 0.7)',
+              marginBottom: 12
+            }}>
+              Profile Visibility
+            </Text>
+            <Text style={{
+              fontSize: 12,
+              color: 'rgba(255, 255, 255, 0.4)',
+              marginBottom: 16
+            }}>
+              Control who can see your full profile and statistics
+            </Text>
+
+            {/* Visibility Options */}
+            <View style={{ gap: 10 }}>
+              {/* Public Option */}
+              <TouchableOpacity
+                onPress={() => handleVisibilityChange('PUBLIC')}
+                disabled={isSaving}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: profileVisibility === 'PUBLIC'
+                    ? 'rgba(0, 212, 170, 0.15)'
+                    : 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: 12,
+                  padding: 16,
+                  borderWidth: 1,
+                  borderColor: profileVisibility === 'PUBLIC'
+                    ? 'rgba(0, 212, 170, 0.4)'
+                    : 'rgba(255, 255, 255, 0.08)',
+                  opacity: isSaving ? 0.6 : 1
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  borderWidth: 2,
+                  borderColor: profileVisibility === 'PUBLIC' ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
+                  backgroundColor: profileVisibility === 'PUBLIC' ? '#00D4AA' : 'transparent',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: 12
+                }}>
+                  {profileVisibility === 'PUBLIC' && (
+                    <MaterialIcons name="check" size={12} color="#ffffff" />
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontSize: 15,
+                    fontWeight: '500',
+                    color: '#ffffff',
+                    marginBottom: 2
+                  }}>
+                    Public
+                  </Text>
+                  <Text style={{
+                    fontSize: 12,
+                    color: 'rgba(255, 255, 255, 0.5)'
+                  }}>
+                    Anyone can view your profile and stats
+                  </Text>
+                </View>
+                <MaterialIcons
+                  name="public"
+                  size={20}
+                  color={profileVisibility === 'PUBLIC' ? '#00D4AA' : 'rgba(255, 255, 255, 0.4)'}
+                />
+              </TouchableOpacity>
+
+              {/* Friends Only Option */}
+              <TouchableOpacity
+                onPress={() => handleVisibilityChange('FRIENDS')}
+                disabled={isSaving}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: profileVisibility === 'FRIENDS'
+                    ? 'rgba(0, 212, 170, 0.15)'
+                    : 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: 12,
+                  padding: 16,
+                  borderWidth: 1,
+                  borderColor: profileVisibility === 'FRIENDS'
+                    ? 'rgba(0, 212, 170, 0.4)'
+                    : 'rgba(255, 255, 255, 0.08)',
+                  opacity: isSaving ? 0.6 : 1
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  borderWidth: 2,
+                  borderColor: profileVisibility === 'FRIENDS' ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
+                  backgroundColor: profileVisibility === 'FRIENDS' ? '#00D4AA' : 'transparent',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: 12
+                }}>
+                  {profileVisibility === 'FRIENDS' && (
+                    <MaterialIcons name="check" size={12} color="#ffffff" />
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontSize: 15,
+                    fontWeight: '500',
+                    color: '#ffffff',
+                    marginBottom: 2
+                  }}>
+                    Friends Only
+                  </Text>
+                  <Text style={{
+                    fontSize: 12,
+                    color: 'rgba(255, 255, 255, 0.5)'
+                  }}>
+                    Only friends can view your full profile
+                  </Text>
+                </View>
+                <MaterialIcons
+                  name="people"
+                  size={20}
+                  color={profileVisibility === 'FRIENDS' ? '#00D4AA' : 'rgba(255, 255, 255, 0.4)'}
+                />
+              </TouchableOpacity>
+
+              {/* Private Option */}
+              <TouchableOpacity
+                onPress={() => handleVisibilityChange('PRIVATE')}
+                disabled={isSaving}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: profileVisibility === 'PRIVATE'
+                    ? 'rgba(0, 212, 170, 0.15)'
+                    : 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: 12,
+                  padding: 16,
+                  borderWidth: 1,
+                  borderColor: profileVisibility === 'PRIVATE'
+                    ? 'rgba(0, 212, 170, 0.4)'
+                    : 'rgba(255, 255, 255, 0.08)',
+                  opacity: isSaving ? 0.6 : 1
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  borderWidth: 2,
+                  borderColor: profileVisibility === 'PRIVATE' ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
+                  backgroundColor: profileVisibility === 'PRIVATE' ? '#00D4AA' : 'transparent',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: 12
+                }}>
+                  {profileVisibility === 'PRIVATE' && (
+                    <MaterialIcons name="check" size={12} color="#ffffff" />
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontSize: 15,
+                    fontWeight: '500',
+                    color: '#ffffff',
+                    marginBottom: 2
+                  }}>
+                    Private
+                  </Text>
+                  <Text style={{
+                    fontSize: 12,
+                    color: 'rgba(255, 255, 255, 0.5)'
+                  }}>
+                    Only you can see your full profile
+                  </Text>
+                </View>
+                <MaterialIcons
+                  name="lock"
+                  size={20}
+                  color={profileVisibility === 'PRIVATE' ? '#00D4AA' : 'rgba(255, 255, 255, 0.4)'}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
