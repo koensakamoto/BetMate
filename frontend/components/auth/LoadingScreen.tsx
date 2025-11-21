@@ -95,7 +95,7 @@ export default function LoadingScreen() {
           letterSpacing: -0.5,
           marginBottom: 16
         }}>
-          BetMate
+          RivalPicks
         </Text>
 
         {/* Loading Indicator */}

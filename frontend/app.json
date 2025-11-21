@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "BetMate",
-    "slug": "betmate",
+    "name": "RivalPicks",
+    "slug": "rivalpicks",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "betmate",
+    "scheme": "rivalpicks",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -18,7 +18,7 @@
         "NSCameraUsageDescription": "This app needs access to your camera to let you take a profile picture.",
         "UIBackgroundModes": ["remote-notification"]
       },
-      "bundleIdentifier": "com.anonymous.betmate"
+      "bundleIdentifier": "com.anonymous.rivalpicks"
     },
     "android": {
       "adaptiveIcon": {
@@ -27,7 +27,7 @@
       },
       "edgeToEdgeEnabled": true,
       "usesCleartextTraffic": true,
-      "package": "com.anonymous.betmate",
+      "package": "com.anonymous.rivalpicks",
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",

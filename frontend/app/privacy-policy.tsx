@@ -138,10 +138,10 @@ export default function PrivacyPolicy() {
         {/* Content */}
         <Section title="Introduction">
           <Paragraph>
-            At BetMate, we respect your privacy and are committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you use our social betting platform.
+            At RivalPicks, we respect your privacy and are committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you use our social betting platform.
           </Paragraph>
           <Paragraph>
-            By using BetMate, you agree to the collection and use of information in accordance with this policy.
+            By using RivalPicks, you agree to the collection and use of information in accordance with this policy.
           </Paragraph>
         </Section>
 
@@ -279,7 +279,7 @@ export default function PrivacyPolicy() {
 
         <Section title="Children's Privacy">
           <Paragraph>
-            BetMate is not intended for users under 18 years of age. We do not knowingly collect personal information from children under 18.
+            RivalPicks is not intended for users under 18 years of age. We do not knowingly collect personal information from children under 18.
           </Paragraph>
           <Paragraph>
             If we discover that we have collected personal information from someone under 18, we will delete that information immediately. If you believe we have collected information from a minor, please contact us.
@@ -304,7 +304,7 @@ export default function PrivacyPolicy() {
           <ListItem>Updating the &quot;last updated&quot; date at the top of this policy</ListItem>
           
           <Paragraph>
-            Continued use of BetMate after changes constitutes acceptance of the updated policy.
+            Continued use of RivalPicks after changes constitutes acceptance of the updated policy.
           </Paragraph>
         </Section>
 
@@ -346,7 +346,7 @@ export default function PrivacyPolicy() {
             textAlign: 'center',
             letterSpacing: 0.3
           }}>
-            BetMate v1.0.0
+            RivalPicks v1.0.0
           </Text>
           <Text style={{
             fontSize: 12,
@@ -355,7 +355,7 @@ export default function PrivacyPolicy() {
             marginTop: 8,
             letterSpacing: 0.2
           }}>
-            © 2025 BetMate. All rights reserved.
+            © 2025 RivalPicks. All rights reserved.
           </Text>
         </View>
       </ScrollView>

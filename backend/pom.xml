@@ -8,10 +8,10 @@
         <version>3.2.0</version>
         <relativePath/>
     </parent>
-    <groupId>com.betmate</groupId>
-    <artifactId>betmate-backend</artifactId>
+    <groupId>com.rivalpicks</groupId>
+    <artifactId>rivalpicks-backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>betmate-backend</name>
+    <name>rivalpicks-backend</name>
     <description>Social betting platform for friends</description>
     <properties>
         <java.version>17</java.version>

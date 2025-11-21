@@ -232,7 +232,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
   // Helper functions for invite functionality
   const generateInviteLink = () => {
     const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
-    const link = `https://betmate.app/invite/${currentGroupId}`;
+    const link = `https://rivalpicks.app/invite/${currentGroupId}`;
     setInviteLink(link);
     return link;
   };
@@ -241,7 +241,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
     try {
       const link = generateInviteLink();
       await Share.share({
-        message: `Join my group "${groupData.name}" on BetMate! ${link}`,
+        message: `Join my group "${groupData.name}" on RivalPicks! ${link}`,
         url: link,
       });
     } catch (error) {

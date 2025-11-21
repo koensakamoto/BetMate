@@ -317,7 +317,7 @@ export default function HelpSupport() {
         {/* FAQ Section */}
         <Section title="Frequently Asked Questions">
           <Paragraph>
-            Find answers to common questions about using BetMate.
+            Find answers to common questions about using RivalPicks.
           </Paragraph>
           <View style={{
             backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -559,7 +559,7 @@ export default function HelpSupport() {
             textAlign: 'center',
             letterSpacing: 0.3
           }}>
-            BetMate v1.0.0
+            RivalPicks v1.0.0
           </Text>
           <Text style={{
             fontSize: 12,
@@ -568,7 +568,7 @@ export default function HelpSupport() {
             marginTop: 8,
             letterSpacing: 0.2
           }}>
-            © 2025 BetMate. All rights reserved.
+            © 2025 RivalPicks. All rights reserved.
           </Text>
         </View>
       </ScrollView>
