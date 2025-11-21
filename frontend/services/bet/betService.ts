@@ -86,10 +86,12 @@ export interface BetSummaryResponse {
   stakeType?: 'CREDIT' | 'SOCIAL'; // NEW: Type of stake
   fixedStakeAmount?: number; // For CREDIT bets
   socialStakeDescription?: string; // For SOCIAL bets
+  fulfillmentStatus?: 'PENDING' | 'PARTIALLY_FULFILLED' | 'FULFILLED'; // Fulfillment tracking status
   totalPool: number;
   totalParticipants: number;
   createdAt: string;
   hasUserParticipated: boolean;
+  userChoice?: string; // User's chosen option (e.g., OPTION_1, OPTION_2)
   userAmount?: number;
   participantPreviews?: {
     id: number;

@@ -443,11 +443,16 @@ public class BetParticipationService {
     }
 
     private BigDecimal getPoolForWinningOption(Bet bet, Integer option) {
-        return switch (option) {
+        BigDecimal pool = switch (option) {
             case 1 -> bet.getPoolForOption1();
             case 2 -> bet.getPoolForOption2();
-            default -> BigDecimal.ONE; // Avoid division by zero
+            default -> BigDecimal.ONE;
         };
+        // Avoid division by zero - if pool is zero or null, return ONE
+        if (pool == null || pool.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ONE;
+        }
+        return pool;
     }
 
     private double getOddsForOption(Bet bet, Integer option) {
