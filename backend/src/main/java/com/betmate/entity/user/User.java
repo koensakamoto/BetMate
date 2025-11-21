@@ -116,9 +116,22 @@ public class User {
     private Integer activeBets = 0;
 
     // ==========================================
+    // PUSH NOTIFICATIONS
+    // ==========================================
+
+    @Column(length = 255)
+    private String expoPushToken;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private DevicePlatform devicePlatform;
+
+    private LocalDateTime pushTokenUpdatedAt;
+
+    // ==========================================
     // SYSTEM FIELDS
     // ==========================================
-    
+
     @Column(nullable = false)
     private Boolean isActive = true;
 
@@ -386,5 +399,64 @@ public class User {
 
     public enum AuthProvider {
         LOCAL, GOOGLE
+    }
+
+    public enum DevicePlatform {
+        IOS, ANDROID, WEB
+    }
+
+    // Push notification getters and setters
+    public String getExpoPushToken() {
+        return expoPushToken;
+    }
+
+    public void setExpoPushToken(String expoPushToken) {
+        this.expoPushToken = expoPushToken;
+    }
+
+    public DevicePlatform getDevicePlatform() {
+        return devicePlatform;
+    }
+
+    public void setDevicePlatform(DevicePlatform devicePlatform) {
+        this.devicePlatform = devicePlatform;
+    }
+
+    public LocalDateTime getPushTokenUpdatedAt() {
+        return pushTokenUpdatedAt;
+    }
+
+    public void setPushTokenUpdatedAt(LocalDateTime pushTokenUpdatedAt) {
+        this.pushTokenUpdatedAt = pushTokenUpdatedAt;
+    }
+
+    /**
+     * Checks if user has a valid push token registered.
+     *
+     * @return true if user has an Expo push token
+     */
+    public boolean hasPushToken() {
+        return expoPushToken != null && !expoPushToken.isBlank();
+    }
+
+    /**
+     * Registers or updates the user's push token.
+     *
+     * @param token the Expo push token
+     * @param platform the device platform
+     */
+    public void registerPushToken(String token, DevicePlatform platform) {
+        this.expoPushToken = token;
+        this.devicePlatform = platform;
+        this.pushTokenUpdatedAt = LocalDateTime.now(ZoneOffset.UTC);
+    }
+
+    /**
+     * Clears the user's push token (e.g., on logout).
+     */
+    public void clearPushToken() {
+        this.expoPushToken = null;
+        this.devicePlatform = null;
+        this.pushTokenUpdatedAt = LocalDateTime.now(ZoneOffset.UTC);
     }
 }

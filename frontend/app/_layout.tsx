@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
 import AuthLoadingScreen from '../components/auth/AuthLoadingScreen';
+import { PushNotificationInitializer } from '../components/notification/PushNotificationInitializer';
 
 function RootLayoutNav() {
   const { user, isLoading } = useAuth();
@@ -13,15 +14,19 @@ function RootLayoutNav() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: '#0a0a0f' }
-      }}
-    >
-      {user ? (
-        // Main app screens for authenticated users
-        <>
+    <>
+      {/* Initialize push notifications when user is authenticated */}
+      {user && <PushNotificationInitializer />}
+
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: '#0a0a0f' }
+        }}
+      >
+        {user ? (
+          // Main app screens for authenticated users
+          <>
           <Stack.Screen name="index" options={{ href: null }} />
           <Stack.Screen
             name="(tabs)"
@@ -96,7 +101,8 @@ function RootLayoutNav() {
           />
         </>
       )}
-    </Stack>
+      </Stack>
+    </>
   );
 }
 
