@@ -36,7 +36,7 @@ export default function AuthLoadingScreen({ message = "Loading..." }: AuthLoadin
           color: '#FFFFFF',
           textAlign: 'center',
         }}>
-          BetMate
+          RivalPicks
         </Text>
       </View>
 

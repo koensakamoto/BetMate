@@ -164,7 +164,7 @@ export default function AccountSecurity() {
 
               // Create a filename with timestamp
               const timestamp = new Date().toISOString().split('T')[0];
-              const filename = `betmate-data-${timestamp}.json`;
+              const filename = `rivalpicks-data-${timestamp}.json`;
 
               // Use new expo-file-system API
               const file = new File(Paths.cache, filename);
@@ -177,7 +177,7 @@ export default function AccountSecurity() {
               if (isAvailable) {
                 await Sharing.shareAsync(file.uri, {
                   mimeType: 'application/json',
-                  dialogTitle: 'Save your BetMate data',
+                  dialogTitle: 'Save your RivalPicks data',
                   UTI: 'public.json',
                 });
               } else {

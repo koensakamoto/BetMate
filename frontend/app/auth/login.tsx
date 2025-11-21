@@ -298,7 +298,7 @@ export default function Login() {
                   color: '#ffffff',
                   marginBottom: 2
                 }}>
-                  New to BetMate?
+                  New to RivalPicks?
                 </Text>
                 <Text style={{
                   fontSize: 13,

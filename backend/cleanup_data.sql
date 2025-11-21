@@ -1,4 +1,4 @@
--- BetMate Database Cleanup Script
+-- RivalPicks Database Cleanup Script
 -- Deletes all data except user ID=2 and preserves referential integrity
 
 -- Start transaction

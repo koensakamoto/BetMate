@@ -78,7 +78,7 @@ export default function Welcome() {
             letterSpacing: -1,
             marginBottom: 12
           }}>
-            BetMate
+            RivalPicks
           </Text>
           
           <Text style={{

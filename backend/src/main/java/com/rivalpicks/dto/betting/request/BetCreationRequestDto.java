@@ -1,0 +1,196 @@
+package com.rivalpicks.dto.betting.request;
+
+import com.rivalpicks.config.UtcDateTimeDeserializer;
+import com.rivalpicks.entity.betting.Bet;
+import com.rivalpicks.entity.betting.BetStakeType;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import jakarta.validation.constraints.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+/**
+ * Request DTO for creating a new bet.
+ */
+public class BetCreationRequestDto {
+    
+    @NotNull(message = "Group ID is required")
+    private Long groupId;
+    
+    @NotBlank(message = "Bet title is required")
+    @Size(min = 3, max = 200, message = "Bet title must be between 3 and 200 characters")
+    private String title;
+    
+    @Size(max = 2000, message = "Description cannot exceed 2000 characters")
+    private String description;
+    
+    @NotNull(message = "Bet type is required")
+    private Bet.BetType betType;
+    
+    @NotNull(message = "Resolution method is required")
+    private Bet.BetResolutionMethod resolutionMethod;
+    
+    @NotNull(message = "Betting deadline is required")
+    @Future(message = "Betting deadline must be in the future")
+    @JsonDeserialize(using = UtcDateTimeDeserializer.class)
+    private LocalDateTime bettingDeadline;
+
+    @Future(message = "Resolve date must be in the future")
+    @JsonDeserialize(using = UtcDateTimeDeserializer.class)
+    private LocalDateTime resolveDate;
+    
+    // DEPRECATED: For backward compatibility with variable-stake bets
+    // New bets should use fixedStakeAmount instead
+    @DecimalMin(value = "0.01", message = "Minimum bet amount must be at least 0.01")
+    private Double minimumBet;
+
+    // DEPRECATED: For backward compatibility with variable-stake bets
+    @DecimalMin(value = "0.01", message = "Maximum bet amount must be at least 0.01")
+    private Double maximumBet;
+
+    // NEW: Fixed stake amount for new bets (everyone bets exactly this amount)
+    // Required when stakeType = CREDIT
+    @DecimalMin(value = "0.01", message = "Fixed stake amount must be at least 0.01")
+    private Double fixedStakeAmount;
+
+    // NEW: Stake type (CREDIT or SOCIAL) - defaults to CREDIT if not provided
+    private BetStakeType stakeType;
+
+    // NEW: Social stake description (e.g., "Loser buys pizza")
+    // Required when stakeType = SOCIAL
+    @Size(max = 500, message = "Social stake description cannot exceed 500 characters")
+    private String socialStakeDescription;
+
+    @Min(value = 1, message = "Minimum votes required must be at least 1")
+    private Integer minimumVotesRequired;
+    
+    private Boolean allowCreatorVote = true;
+    
+    // For multiple choice bets
+    @Size(max = 4, message = "Maximum 4 options allowed")
+    private String[] options;
+
+    // Constructors
+    public BetCreationRequestDto() {}
+
+    // Getters and setters
+    public Long getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(Long groupId) {
+        this.groupId = groupId;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Bet.BetType getBetType() {
+        return betType;
+    }
+
+    public void setBetType(Bet.BetType betType) {
+        this.betType = betType;
+    }
+
+    public Bet.BetResolutionMethod getResolutionMethod() {
+        return resolutionMethod;
+    }
+
+    public void setResolutionMethod(Bet.BetResolutionMethod resolutionMethod) {
+        this.resolutionMethod = resolutionMethod;
+    }
+
+    public LocalDateTime getBettingDeadline() {
+        return bettingDeadline;
+    }
+
+    public void setBettingDeadline(LocalDateTime bettingDeadline) {
+        this.bettingDeadline = bettingDeadline;
+    }
+
+    public LocalDateTime getResolveDate() {
+        return resolveDate;
+    }
+
+    public void setResolveDate(LocalDateTime resolveDate) {
+        this.resolveDate = resolveDate;
+    }
+
+    public Double getMinimumBet() {
+        return minimumBet;
+    }
+
+    public void setMinimumBet(Double minimumBet) {
+        this.minimumBet = minimumBet;
+    }
+
+    public Double getMaximumBet() {
+        return maximumBet;
+    }
+
+    public void setMaximumBet(Double maximumBet) {
+        this.maximumBet = maximumBet;
+    }
+
+    public Double getFixedStakeAmount() {
+        return fixedStakeAmount;
+    }
+
+    public void setFixedStakeAmount(Double fixedStakeAmount) {
+        this.fixedStakeAmount = fixedStakeAmount;
+    }
+
+    public BetStakeType getStakeType() {
+        return stakeType;
+    }
+
+    public void setStakeType(BetStakeType stakeType) {
+        this.stakeType = stakeType;
+    }
+
+    public String getSocialStakeDescription() {
+        return socialStakeDescription;
+    }
+
+    public void setSocialStakeDescription(String socialStakeDescription) {
+        this.socialStakeDescription = socialStakeDescription;
+    }
+
+    public Integer getMinimumVotesRequired() {
+        return minimumVotesRequired;
+    }
+
+    public void setMinimumVotesRequired(Integer minimumVotesRequired) {
+        this.minimumVotesRequired = minimumVotesRequired;
+    }
+
+    public Boolean getAllowCreatorVote() {
+        return allowCreatorVote;
+    }
+
+    public void setAllowCreatorVote(Boolean allowCreatorVote) {
+        this.allowCreatorVote = allowCreatorVote;
+    }
+
+    public String[] getOptions() {
+        return options;
+    }
+
+    public void setOptions(String[] options) {
+        this.options = options;
+    }
+}

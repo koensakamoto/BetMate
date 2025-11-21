@@ -1,5 +1,5 @@
 -- Fix: Convert OVER_UNDER bets to PREDICTION
--- This fixes the error: "No enum constant com.betmate.entity.betting.Bet.BetType.OVER_UNDER"
+-- This fixes the error: "No enum constant com.rivalpicks.entity.betting.Bet.BetType.OVER_UNDER"
 
 -- Update all OVER_UNDER bets to PREDICTION
 UPDATE bets

@@ -1,8 +1,8 @@
-# BetMate
+# RivalPicks
 
 **A real-time social betting platform for friendly competition using virtual credits.**
 
-BetMate is a production-ready full-stack mobile application where users create betting groups, place predictions on anything, and compete with friends using virtual currency. No real money involved—just friendly competition with real-time chat, leaderboards, and statistics tracking.
+RivalPicks is a production-ready full-stack mobile application where users create betting groups, place predictions on anything, and compete with friends using virtual currency. No real money involved—just friendly competition with real-time chat, leaderboards, and statistics tracking.
 
 ---
 
@@ -341,7 +341,7 @@ Client sends to:
 
 ```bash
 git clone <repository-url>
-cd BetMate
+cd RivalPicks
 ```
 
 ### 2. Database Setup
@@ -351,9 +351,9 @@ mysql -u root -p
 ```
 
 ```sql
-CREATE DATABASE betmate_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'betmate_user'@'localhost' IDENTIFIED BY 'YourPassword123!';
-GRANT ALL PRIVILEGES ON betmate_db.* TO 'betmate_user'@'localhost';
+CREATE DATABASE rivalpicks_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'rivalpicks_user'@'localhost' IDENTIFIED BY 'YourPassword123!';
+GRANT ALL PRIVILEGES ON rivalpicks_db.* TO 'rivalpicks_user'@'localhost';
 FLUSH PRIVILEGES;
 EXIT;
 ```
@@ -373,8 +373,8 @@ redis-cli ping  # Should return: PONG
 Edit `backend/src/main/resources/application.properties`:
 
 ```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/betmate_db
-spring.datasource.username=betmate_user
+spring.datasource.url=jdbc:mysql://localhost:3306/rivalpicks_db
+spring.datasource.username=rivalpicks_user
 spring.datasource.password=YourPassword123!
 
 spring.data.redis.host=localhost
@@ -546,7 +546,7 @@ npx tsc --noEmit      # Type check
 **Database connection failed:**
 ```bash
 # Verify MySQL running
-mysql -u betmate_user -p betmate_db
+mysql -u rivalpicks_user -p rivalpicks_db
 
 # Check port
 netstat -an | grep 3306

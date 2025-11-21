@@ -1,4 +1,4 @@
--- BetMate Database Cleanup Script V2
+-- RivalPicks Database Cleanup Script V2
 -- Deletes all data except user ID=2
 -- WARNING: This will delete all data except for user 2
 
