@@ -65,8 +65,10 @@ export const API_ENDPOINTS = {
   USER_BY_ID: (id: number) => `/users/${id}`,
   USER_PROFILE: '/users/profile',
   USER_PROFILE_PICTURE: '/users/profile/picture',
+  USER_PROFILE_VISIBILITY: '/users/profile/visibility',
   USER_SEARCH: '/users/search',
   USER_STATS: (id: number) => `/users/${id}/stats`,
+  USER_DATA_EXPORT: '/users/me/export',
   
   // Store
   STORE: '/store',

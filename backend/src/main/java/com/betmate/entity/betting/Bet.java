@@ -741,19 +741,20 @@ public class Bet {
      * @param amount the bet amount to add
      */
     public void addBetToOption(int option, BigDecimal amount) {
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            return;
-        }
-
-        totalPool = totalPool.add(amount);
+        // Always increment participant count (even for SOCIAL bets with 0 amount)
         totalParticipants++;
 
-        if (option == 1) {
-            poolForOption1 = poolForOption1.add(amount);
-            participantsForOption1++;
-        } else if (option == 2) {
-            poolForOption2 = poolForOption2.add(amount);
-            participantsForOption2++;
+        // Only update pools if amount is positive (skip for SOCIAL bets)
+        if (amount != null && amount.compareTo(BigDecimal.ZERO) > 0) {
+            totalPool = totalPool.add(amount);
+
+            if (option == 1) {
+                poolForOption1 = poolForOption1.add(amount);
+                participantsForOption1++;
+            } else if (option == 2) {
+                poolForOption2 = poolForOption2.add(amount);
+                participantsForOption2++;
+            }
         }
     }
 

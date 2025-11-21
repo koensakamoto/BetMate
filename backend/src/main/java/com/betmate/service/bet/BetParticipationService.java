@@ -164,6 +164,12 @@ public class BetParticipationService {
             // Create new participation
             participation = createParticipation(user, bet, chosenOption, betAmount);
         }
+
+        System.out.println("DEBUG placeBet: User=" + user.getUsername() +
+                          ", BetId=" + bet.getId() +
+                          ", chosenOption=" + chosenOption +
+                          ", betAmount=" + betAmount);
+
         BetParticipation savedParticipation = participationRepository.save(participation);
 
         // Apply insurance if provided

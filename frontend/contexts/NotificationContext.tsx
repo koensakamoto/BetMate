@@ -1,5 +1,6 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useNotifications, useNotificationWebSocket } from '../services/notification';
+import { useAuth } from './AuthContext';
 
 interface NotificationContextValue {
   unreadCount: number;
@@ -15,6 +16,11 @@ interface NotificationProviderProps {
 }
 
 export function NotificationProvider({ children }: NotificationProviderProps) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Only enable notifications when auth is fully loaded and user is authenticated
+  const shouldFetchNotifications = isAuthenticated && !isLoading;
+
   const {
     unreadCount,
     loading,
@@ -22,15 +28,16 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     refresh,
     addNotification
   } = useNotifications({
-    autoRefresh: true,
+    autoRefresh: shouldFetchNotifications,
     refreshInterval: 30000, // 30 seconds
-    pageSize: 1 // Only need count, not content
+    pageSize: 1, // Only need count, not content
+    enabled: shouldFetchNotifications // Only fetch when user is authenticated and auth is loaded
   });
 
-  // Setup WebSocket for real-time notifications
+  // Setup WebSocket for real-time notifications (only when authenticated)
   useNotificationWebSocket({
     onNotificationReceived: addNotification,
-    enabled: true
+    enabled: shouldFetchNotifications
   });
 
   const value: NotificationContextValue = {

@@ -132,7 +132,8 @@ public class BetScheduledTaskService {
     private void handleConsensusVotingResolution(Bet bet) {
         try {
             // Check if consensus has been reached and auto-resolve if yes
-            boolean resolved = betResolutionService.checkAndResolveIfConsensusReached(bet);
+            // Pass null for triggeringVoter since this is a scheduled task, not a user action
+            boolean resolved = betResolutionService.checkAndResolveIfConsensusReached(bet, null);
 
             if (resolved) {
                 log.info("Bet {} auto-resolved via consensus voting", bet.getId());

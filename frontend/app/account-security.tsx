@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert, Switch } from 'react-native';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { userService } from '../services/user/userService';
+import { debugLog, errorLog } from '../config/env';
+import { File, Paths } from 'expo-file-system/next';
+import * as Sharing from 'expo-sharing';
 
 export default function AccountSecurity() {
   const insets = useSafeAreaInsets();
-  const [privateProfile, setPrivateProfile] = useState(false);
+  const [isExportingData, setIsExportingData] = useState(false);
 
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <View style={{ marginBottom: 32 }}>
@@ -141,9 +145,62 @@ export default function AccountSecurity() {
 
   const handleDataDownload = () => {
     Alert.alert(
-      'Download Data',
-      'Request a copy of your account data and betting history.',
-      [{ text: 'OK' }]
+      'Download Your Data',
+      'This will export all your personal data including profile, bets, transactions, and more as a JSON file.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Download',
+          onPress: async () => {
+            try {
+              setIsExportingData(true);
+              debugLog('Starting data export...');
+
+              // Get the JSON data from the API
+              const jsonData = await userService.exportUserData();
+
+              // Create a filename with timestamp
+              const timestamp = new Date().toISOString().split('T')[0];
+              const filename = `betmate-data-${timestamp}.json`;
+
+              // Use new expo-file-system API
+              const file = new File(Paths.cache, filename);
+              await file.write(jsonData);
+
+              debugLog('Data exported to file:', file.uri);
+
+              // Check if sharing is available
+              const isAvailable = await Sharing.isAvailableAsync();
+              if (isAvailable) {
+                await Sharing.shareAsync(file.uri, {
+                  mimeType: 'application/json',
+                  dialogTitle: 'Save your BetMate data',
+                  UTI: 'public.json',
+                });
+              } else {
+                Alert.alert(
+                  'Success',
+                  `Your data has been saved to: ${filename}`,
+                  [{ text: 'OK' }]
+                );
+              }
+
+            } catch (error) {
+              errorLog('Data export error:', error);
+              Alert.alert(
+                'Error',
+                'Failed to export your data. Please try again.',
+                [{ text: 'OK' }]
+              );
+            } finally {
+              setIsExportingData(false);
+            }
+          },
+        },
+      ]
     );
   };
 
@@ -281,63 +338,12 @@ export default function AccountSecurity() {
           />
         </Section>
 
-        {/* Privacy Controls */}
-        <Section title="Privacy">
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              paddingVertical: 16,
-              borderBottomWidth: 0,
-              borderBottomColor: 'rgba(255, 255, 255, 0.08)'
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                <View style={{
-                  width: 24,
-                  height: 24,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  marginRight: 12
-                }}>
-                  <MaterialIcons
-                    name="lock"
-                    size={18}
-                    color="rgba(255, 255, 255, 0.7)"
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{
-                    fontSize: 15,
-                    color: '#ffffff',
-                    marginBottom: 2
-                  }}>
-                    Private Profile
-                  </Text>
-                  <Text style={{
-                    fontSize: 13,
-                    color: 'rgba(255, 255, 255, 0.6)'
-                  }}>
-                    Only friends can see your profile
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                value={privateProfile}
-                onValueChange={setPrivateProfile}
-                trackColor={{ false: 'rgba(255, 255, 255, 0.2)', true: '#00D4AA' }}
-                thumbColor={privateProfile ? '#ffffff' : '#ffffff'}
-                ios_backgroundColor="rgba(255, 255, 255, 0.2)"
-              />
-            </View>
-        </Section>
-
         {/* Data & Privacy */}
         <Section title="Data & Privacy">
           <SecurityItem
-            title="Download Your Data"
+            title={isExportingData ? "Exporting Data..." : "Download Your Data"}
             description="Get a copy of your account information"
-            onPress={handleDataDownload}
+            onPress={isExportingData ? () => {} : handleDataDownload}
             icon="download"
             isLast={true}
           />

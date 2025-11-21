@@ -1,6 +1,7 @@
 import { BaseApiService } from '../api/baseService';
 import { API_ENDPOINTS } from '../../config/api';
 import { ApiResponse } from '../../types/api';
+import { apiClient } from '../api/baseClient';
 
 // User DTOs matching backend
 export interface UserProfileUpdateRequest {
@@ -44,6 +45,12 @@ export interface UserStatistics {
   activeBets: number;
   winRate: number;
   totalGames: number;
+}
+
+export type ProfileVisibility = 'PUBLIC' | 'FRIENDS' | 'PRIVATE';
+
+export interface ProfileVisibilityResponse {
+  visibility: ProfileVisibility;
 }
 
 export class UserService extends BaseApiService {
@@ -97,6 +104,36 @@ export class UserService extends BaseApiService {
   async getCurrentUserStatistics(): Promise<UserStatistics> {
     const profile = await this.getCurrentUserProfile();
     return this.getUserStatistics(profile.id);
+  }
+
+  /**
+   * Export user data as JSON string
+   * Returns the raw JSON data for download
+   */
+  async exportUserData(): Promise<string> {
+    const response = await apiClient.get(API_ENDPOINTS.USER_DATA_EXPORT, {
+      responseType: 'arraybuffer',
+    });
+    // Convert arraybuffer to string
+    const decoder = new TextDecoder('utf-8');
+    return decoder.decode(response.data);
+  }
+
+  /**
+   * Get current user's profile visibility setting
+   */
+  async getProfileVisibility(): Promise<ProfileVisibilityResponse> {
+    return this.get<ProfileVisibilityResponse>(API_ENDPOINTS.USER_PROFILE_VISIBILITY);
+  }
+
+  /**
+   * Update current user's profile visibility setting
+   */
+  async updateProfileVisibility(visibility: ProfileVisibility): Promise<ProfileVisibilityResponse> {
+    return this.put<ProfileVisibilityResponse>(
+      API_ENDPOINTS.USER_PROFILE_VISIBILITY,
+      { visibility }
+    );
   }
 
   /**

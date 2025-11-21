@@ -133,7 +133,7 @@ public class BetResolutionService {
         betParticipationService.settleParticipationsForResolvedBet(bet);
 
         // Publish bet resolved event for notifications
-        publishBetResolvedEvent(bet);
+        publishBetResolvedEvent(bet, resolver.getId());
 
         return bet;
     }
@@ -146,14 +146,24 @@ public class BetResolutionService {
             throw new BetResolutionException("Only the bet creator can resolve this bet");
         }
 
+        System.out.println("DEBUG resolveByCreator: BetId=" + bet.getId() +
+                          ", Resolver=" + resolver.getUsername() +
+                          ", Outcome=" + outcome +
+                          ", Option1=" + bet.getOption1() +
+                          ", Option2=" + bet.getOption2() +
+                          ", Option3=" + bet.getOption3() +
+                          ", Option4=" + bet.getOption4());
+
         bet.resolve(outcome);
         bet = betRepository.save(bet);
+
+        System.out.println("DEBUG resolveByCreator: Bet saved with outcome=" + bet.getOutcome());
 
         // Settle all participations (calculate winnings, update user stats)
         betParticipationService.settleParticipationsForResolvedBet(bet);
 
         // Publish bet resolved event for notifications
-        publishBetResolvedEvent(bet);
+        publishBetResolvedEvent(bet, resolver.getId());
 
         return bet;
     }
@@ -177,7 +187,7 @@ public class BetResolutionService {
         betParticipationService.settleParticipationsForResolvedBet(bet);
 
         // Publish bet resolved event for notifications
-        publishBetResolvedEvent(bet);
+        publishBetResolvedEvent(bet, resolver.getId());
 
         return bet;
     }
@@ -210,10 +220,10 @@ public class BetResolutionService {
             // Update existing vote
             existingVote.updateVote(outcome, reasoning);
             BetResolutionVote savedVote = betResolutionVoteRepository.save(existingVote);
-            
-            // Check if consensus reached
-            checkAndResolveIfConsensusReached(bet);
-            
+
+            // Check if consensus reached (pass voter so they don't get notified if their vote triggers resolution)
+            checkAndResolveIfConsensusReached(bet, voter);
+
             return savedVote;
         } else {
             // Create new vote
@@ -222,12 +232,12 @@ public class BetResolutionService {
             vote.setVoter(voter);
             vote.setVotedOutcome(outcome);
             vote.setReasoning(reasoning);
-            
+
             BetResolutionVote savedVote = betResolutionVoteRepository.save(vote);
-            
-            // Check if consensus reached
-            checkAndResolveIfConsensusReached(bet);
-            
+
+            // Check if consensus reached (pass voter so they don't get notified if their vote triggers resolution)
+            checkAndResolveIfConsensusReached(bet, voter);
+
             return savedVote;
         }
     }
@@ -400,9 +410,10 @@ public class BetResolutionService {
      * and automatically resolves it if conditions are met.
      *
      * @param bet The bet to check for consensus
+     * @param triggeringVoter The user whose vote may have triggered the consensus (used to skip notification)
      * @return true if the bet was resolved, false otherwise
      */
-    public boolean checkAndResolveIfConsensusReached(Bet bet) {
+    public boolean checkAndResolveIfConsensusReached(Bet bet, User triggeringVoter) {
         Map<Bet.BetOutcome, Long> voteCounts = getVoteCounts(bet.getId());
 
         if (voteCounts.isEmpty()) {
@@ -437,7 +448,9 @@ public class BetResolutionService {
             betParticipationService.settleParticipationsForResolvedBet(bet);
 
             // Publish bet resolved event for notifications
-            publishBetResolvedEvent(bet);
+            // Pass the triggering voter's ID so they don't get notified about their own decisive vote
+            Long triggeringVoterId = triggeringVoter != null ? triggeringVoter.getId() : null;
+            publishBetResolvedEvent(bet, triggeringVoterId);
             return true;
         }
 
@@ -446,8 +459,10 @@ public class BetResolutionService {
 
     /**
      * Publishes a bet resolved event for notification processing.
+     * @param bet The bet that was resolved
+     * @param resolvedById The user ID of the resolver, or null for consensus voting
      */
-    private void publishBetResolvedEvent(Bet bet) {
+    private void publishBetResolvedEvent(Bet bet, Long resolvedById) {
         try {
             // Get all bet participations to determine winners and payouts
             List<BetParticipation> participations = betParticipationRepository.findByBetId(bet.getId());
@@ -485,7 +500,8 @@ public class BetResolutionService {
                 winnerIds,
                 loserIds,
                 payouts,
-                resolution
+                resolution,
+                resolvedById
             );
 
             eventPublisher.publishEvent(event);

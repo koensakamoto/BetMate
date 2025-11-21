@@ -11,6 +11,7 @@ interface UseNotificationsOptions {
   refreshInterval?: number;
   pageSize?: number;
   unreadOnly?: boolean;
+  enabled?: boolean; // Controls whether to fetch notifications (useful for auth gating)
 }
 
 interface UseNotificationsReturn {
@@ -38,7 +39,8 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
     autoRefresh = false,
     refreshInterval = 30000, // 30 seconds
     pageSize = 20,
-    unreadOnly: initialUnreadOnly = false
+    unreadOnly: initialUnreadOnly = false,
+    enabled = true // Default to enabled for backward compatibility
   } = options;
 
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
@@ -191,21 +193,23 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
     setUnreadOnly(newUnreadOnly);
   }, []);
 
-  // Load initial data
+  // Load initial data (only when enabled)
   useEffect(() => {
+    if (!enabled) return;
     loadNotifications();
     loadUnreadCount();
     loadStats();
-  }, [loadNotifications, loadUnreadCount, loadStats]);
+  }, [enabled, loadNotifications, loadUnreadCount, loadStats]);
 
-  // Reload when filter changes
+  // Reload when filter changes (only when enabled)
   useEffect(() => {
+    if (!enabled) return;
     loadNotifications(0, true);
-  }, [unreadOnly, loadNotifications]);
+  }, [enabled, unreadOnly, loadNotifications]);
 
-  // Auto-refresh
+  // Auto-refresh (only when enabled)
   useEffect(() => {
-    if (!autoRefresh) return;
+    if (!autoRefresh || !enabled) return;
 
     const interval = setInterval(() => {
       loadUnreadCount();
@@ -216,7 +220,7 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
     }, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [autoRefresh, refreshInterval, currentPage, loadUnreadCount, refresh]);
+  }, [autoRefresh, enabled, refreshInterval, currentPage, loadUnreadCount, refresh]);
 
   return {
     notifications,
