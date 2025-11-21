@@ -1,6 +1,7 @@
 package com.betmate.service.user;
 
 import com.betmate.entity.user.User;
+import com.betmate.entity.user.User.DevicePlatform;
 import com.betmate.entity.user.UserSettings;
 import com.betmate.entity.user.UserSettings.ProfileVisibility;
 import com.betmate.exception.user.UserNotFoundException;
@@ -165,6 +166,45 @@ public class UserService {
         settings.setProfileVisibility(visibility);
         userSettingsRepository.save(settings);
         return settings.getProfileVisibility();
+    }
+
+    // ==========================================
+    // PUSH NOTIFICATION TOKEN MANAGEMENT
+    // ==========================================
+
+    /**
+     * Registers or updates a user's push notification token.
+     *
+     * @param userId the user ID
+     * @param token the Expo push token
+     * @param platform the device platform (IOS, ANDROID, WEB)
+     */
+    @Transactional
+    public void registerPushToken(@NotNull Long userId, @NotNull String token, @NotNull DevicePlatform platform) {
+        User user = getUserById(userId);
+        user.registerPushToken(token, platform);
+        userRepository.save(user);
+    }
+
+    /**
+     * Clears a user's push notification token (e.g., on logout).
+     *
+     * @param userId the user ID
+     */
+    @Transactional
+    public void clearPushToken(@NotNull Long userId) {
+        User user = getUserById(userId);
+        user.clearPushToken();
+        userRepository.save(user);
+    }
+
+    /**
+     * Gets all users with valid push tokens.
+     *
+     * @return list of users with push tokens
+     */
+    public List<User> getUsersWithPushTokens() {
+        return userRepository.findByExpoPushTokenIsNotNullAndIsActiveTrueAndDeletedAtIsNull();
     }
 
 }

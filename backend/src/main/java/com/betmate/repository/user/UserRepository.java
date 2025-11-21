@@ -50,4 +50,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Admin queries
     @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = true AND u.deletedAt IS NULL")
     Long countActiveUsers();
+
+    // Push notification queries
+    List<User> findByExpoPushTokenIsNotNullAndIsActiveTrueAndDeletedAtIsNull();
 }

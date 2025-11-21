@@ -450,6 +450,68 @@ public class UserController {
         }
     }
 
+    // ==========================================
+    // PUSH NOTIFICATIONS
+    // ==========================================
+
+    /**
+     * Register or update push notification token for the current user.
+     */
+    @PostMapping("/push-token")
+    public ResponseEntity<?> registerPushToken(@RequestBody java.util.Map<String, String> request) {
+        try {
+            UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
+            if (userPrincipal == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            String token = request.get("token");
+            String platformStr = request.get("platform");
+
+            if (token == null || token.isBlank()) {
+                return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", "Push token is required"));
+            }
+
+            User.DevicePlatform platform = User.DevicePlatform.IOS; // Default
+            if (platformStr != null) {
+                try {
+                    platform = User.DevicePlatform.valueOf(platformStr.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    return ResponseEntity.badRequest()
+                        .body(java.util.Map.of("error", "Invalid platform. Must be IOS, ANDROID, or WEB"));
+                }
+            }
+
+            userService.registerPushToken(userPrincipal.getUserId(), token, platform);
+            return ResponseEntity.ok(java.util.Map.of("message", "Push token registered successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(java.util.Map.of("error", "Failed to register push token"));
+        }
+    }
+
+    /**
+     * Remove push notification token for the current user (e.g., on logout).
+     */
+    @DeleteMapping("/push-token")
+    public ResponseEntity<?> removePushToken() {
+        try {
+            UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
+            if (userPrincipal == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            userService.clearPushToken(userPrincipal.getUserId());
+            return ResponseEntity.ok(java.util.Map.of("message", "Push token removed successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(java.util.Map.of("error", "Failed to remove push token"));
+        }
+    }
+
     // Helper method
     private UserDetailsServiceImpl.UserPrincipal getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
