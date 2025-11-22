@@ -15,6 +15,7 @@ import com.rivalpicks.repository.betting.BetParticipationRepository;
 import com.rivalpicks.service.group.GroupService;
 import com.rivalpicks.service.messaging.MessageNotificationService;
 import com.rivalpicks.service.notification.NotificationService;
+import com.rivalpicks.service.notification.PushNotificationService;
 import com.rivalpicks.service.user.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,7 @@ public class BetNotificationListener {
 
     private final NotificationService notificationService;
     private final MessageNotificationService messageNotificationService;
+    private final PushNotificationService pushNotificationService;
     private final GroupMembershipRepository groupMembershipRepository;
     private final BetParticipationRepository betParticipationRepository;
     private final GroupService groupService;
@@ -51,12 +53,14 @@ public class BetNotificationListener {
     public BetNotificationListener(
             NotificationService notificationService,
             MessageNotificationService messageNotificationService,
+            PushNotificationService pushNotificationService,
             GroupMembershipRepository groupMembershipRepository,
             BetParticipationRepository betParticipationRepository,
             GroupService groupService,
             UserService userService) {
         this.notificationService = notificationService;
         this.messageNotificationService = messageNotificationService;
+        this.pushNotificationService = pushNotificationService;
         this.groupMembershipRepository = groupMembershipRepository;
         this.betParticipationRepository = betParticipationRepository;
         this.groupService = groupService;
@@ -126,6 +130,9 @@ public class BetNotificationListener {
                     // Send real-time notification via WebSocket
                     messageNotificationService.sendNotificationToUser(member.getId(), notification);
 
+                    // Send push notification
+                    pushNotificationService.sendPushNotification(member, notification);
+
                     notificationsCreated++;
                     logger.debug("Created notification for user: {}", member.getUsername());
 
@@ -162,7 +169,7 @@ public class BetNotificationListener {
 
             // Get all participants (regardless of stake type)
             // For CREDIT bets, we have refund amounts; for SOCIAL bets, we still need to notify
-            List<com.betmate.entity.betting.BetParticipation> allParticipations =
+            List<com.rivalpicks.entity.betting.BetParticipation> allParticipations =
                 betParticipationRepository.findByBetId(event.getBetId());
 
             if (allParticipations == null || allParticipations.isEmpty()) {
@@ -180,7 +187,7 @@ public class BetNotificationListener {
 
             // Create notification for each participant
             int notificationsCreated = 0;
-            for (com.betmate.entity.betting.BetParticipation participation : allParticipations) {
+            for (com.rivalpicks.entity.betting.BetParticipation participation : allParticipations) {
                 Long userId = participation.getUser().getId();
                 BigDecimal refundAmount = refunds.getOrDefault(userId, BigDecimal.ZERO);
 
@@ -236,6 +243,9 @@ public class BetNotificationListener {
 
                     // Send real-time notification via WebSocket
                     messageNotificationService.sendNotificationToUser(participant.getId(), notification);
+
+                    // Send push notification
+                    pushNotificationService.sendPushNotification(participant, notification);
 
                     notificationsCreated++;
                     logger.debug("Created BET_CANCELLED notification for user: {} (refund: {})",
@@ -355,6 +365,9 @@ public class BetNotificationListener {
                     // Send real-time notification via WebSocket
                     messageNotificationService.sendNotificationToUser(resolver.getId(), notification);
 
+                    // Send push notification
+                    pushNotificationService.sendPushNotification(resolver, notification);
+
                     notificationsCreated++;
                     logger.debug("Created BET_RESOLUTION_REMINDER notification for user: {} ({} hours before)",
                                resolver.getUsername(), event.getHoursUntilDeadline());
@@ -453,6 +466,9 @@ public class BetNotificationListener {
 
                     // Send real-time notification via WebSocket
                     messageNotificationService.sendNotificationToUser(member.getId(), notification);
+
+                    // Send push notification
+                    pushNotificationService.sendPushNotification(member, notification);
 
                     notificationsCreated++;
                     logger.debug("Created BET_DEADLINE notification for user: {} ({} hours before)",
@@ -579,6 +595,9 @@ public class BetNotificationListener {
 
                     // Send real-time notification via WebSocket
                     messageNotificationService.sendNotificationToUser(participant.getId(), notification);
+
+                    // Send push notification
+                    pushNotificationService.sendPushNotification(participant, notification);
 
                     notificationsCreated++;
                     logger.debug("Created BET_RESULT notification for user: {} (winner: {})",

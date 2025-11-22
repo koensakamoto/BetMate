@@ -9,7 +9,7 @@ import { useNotificationContext } from '../../contexts/NotificationContext';
  * Automatically registers for push notifications and syncs badge count.
  */
 export function PushNotificationInitializer(): null {
-  const { registerForPushNotifications, expoPushToken } = usePushNotifications();
+  const { registerForPushNotifications, fcmToken } = usePushNotifications();
   const { unreadCount, refreshUnreadCount } = useNotificationContext();
   const hasRegistered = useRef(false);
   const appState = useRef(AppState.currentState);

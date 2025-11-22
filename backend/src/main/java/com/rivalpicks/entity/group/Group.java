@@ -18,7 +18,7 @@ import com.rivalpicks.entity.messaging.Message;
 @Entity
 @Table(name = "`groups`", indexes = {
     @Index(name = "idx_group_name", columnList = "groupName"),
-    @Index(name = "idx_group_creator", columnList = "creator_id"),
+    @Index(name = "idx_group_owner", columnList = "owner_id"),
     @Index(name = "idx_group_privacy", columnList = "privacy"),
     @Index(name = "idx_group_active", columnList = "isActive"),
     @Index(name = "idx_group_deleted_at", columnList = "deletedAt")
@@ -57,8 +57,8 @@ public class Group {
     // ==========================================
     
     @ManyToOne(optional = false)
-    @JoinColumn(name = "creator_id")
-    private User creator;
+    @JoinColumn(name = "owner_id")
+    private User owner;
 
     @Column(nullable = false)
     private Integer memberCount = 1;
@@ -169,12 +169,28 @@ public class Group {
     }
 
     // Group Management
-    public User getCreator() {
-        return creator;
+    public User getOwner() {
+        return owner;
     }
-    
+
+    public void setOwner(User owner) {
+        this.owner = owner;
+    }
+
+    /**
+     * @deprecated Use getOwner() instead
+     */
+    @Deprecated
+    public User getCreator() {
+        return owner;
+    }
+
+    /**
+     * @deprecated Use setOwner() instead
+     */
+    @Deprecated
     public void setCreator(User creator) {
-        this.creator = creator;
+        this.owner = creator;
     }
 
     public Integer getMemberCount() {
@@ -259,15 +275,23 @@ public class Group {
     }
 
     /**
-     * Checks if the given user is the creator of this group.
-     * 
+     * Checks if the given user is the owner of this group.
+     *
      * @param user the user to check
-     * @return true if user is the group creator
+     * @return true if user is the group owner
      */
+    public boolean isOwner(User user) {
+        return owner != null && user != null &&
+               owner.getId() != null && user.getId() != null &&
+               owner.getId().equals(user.getId());
+    }
+
+    /**
+     * @deprecated Use isOwner() instead
+     */
+    @Deprecated
     public boolean isCreator(User user) {
-        return creator != null && user != null && 
-               creator.getId() != null && user.getId() != null &&
-               creator.getId().equals(user.getId());
+        return isOwner(user);
     }
 
     /**

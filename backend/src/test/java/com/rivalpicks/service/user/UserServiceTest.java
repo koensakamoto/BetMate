@@ -107,7 +107,7 @@ class UserServiceTest {
         
         // When & Then
         assertThatThrownBy(() -> userService.getUserById(TEST_USER_ID))
-            .isInstanceOf(com.betmate.exception.user.UserNotFoundException.class)
+            .isInstanceOf(com.rivalpicks.exception.user.UserNotFoundException.class)
             .hasMessageContaining("User not found: " + TEST_USER_ID);
         
         verify(userRepository).findById(TEST_USER_ID);
@@ -121,7 +121,7 @@ class UserServiceTest {
         
         // When & Then
         assertThatThrownBy(() -> userService.getUserById(deletedUser.getId()))
-            .isInstanceOf(com.betmate.exception.user.UserNotFoundException.class)
+            .isInstanceOf(com.rivalpicks.exception.user.UserNotFoundException.class)
             .hasMessageContaining("User not found: " + deletedUser.getId());
         
         verify(userRepository).findById(deletedUser.getId());
@@ -347,7 +347,7 @@ class UserServiceTest {
         
         // When & Then
         assertThatThrownBy(() -> userService.updateProfile(TEST_USER_ID, "New", "Name", "Test bio"))
-            .isInstanceOf(com.betmate.exception.user.UserNotFoundException.class)
+            .isInstanceOf(com.rivalpicks.exception.user.UserNotFoundException.class)
             .hasMessageContaining("User not found: " + TEST_USER_ID);
         
         verify(userRepository).findById(TEST_USER_ID);
@@ -440,7 +440,7 @@ class UserServiceTest {
         
         // When & Then
         assertThatThrownBy(() -> userService.deleteUser(TEST_USER_ID))
-            .isInstanceOf(com.betmate.exception.user.UserNotFoundException.class)
+            .isInstanceOf(com.rivalpicks.exception.user.UserNotFoundException.class)
             .hasMessageContaining("User not found: " + TEST_USER_ID);
         
         verify(userRepository).findById(TEST_USER_ID);
@@ -471,7 +471,7 @@ class UserServiceTest {
         // When & Then - UserService doesn't explicitly validate nulls, it passes them to repository
         // The actual validation would happen at the Bean Validation level in a real Spring context
         assertThatThrownBy(() -> userService.getUserById(null))
-            .isInstanceOf(com.betmate.exception.user.UserNotFoundException.class)
+            .isInstanceOf(com.rivalpicks.exception.user.UserNotFoundException.class)
             .hasMessageContaining("User not found: null");
     }
 

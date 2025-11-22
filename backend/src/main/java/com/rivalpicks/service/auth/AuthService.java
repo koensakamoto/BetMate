@@ -1,6 +1,10 @@
 package com.rivalpicks.service.auth;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.FirebaseToken;
 import com.rivalpicks.dto.auth.request.ChangePasswordRequestDto;
+import com.rivalpicks.dto.auth.request.GoogleAuthRequestDto;
 import com.rivalpicks.dto.auth.request.LoginRequestDto;
 import com.rivalpicks.dto.auth.request.RefreshTokenRequestDto;
 import com.rivalpicks.dto.auth.response.LoginResponseDto;
@@ -22,6 +26,8 @@ import com.rivalpicks.util.SecurityContextUtil;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Service for handling authentication business logic.
@@ -199,10 +205,108 @@ public class AuthService {
 
 
     /**
+     * Authenticates user via Google OAuth and returns login response with tokens.
+     * Creates a new user account if one doesn't exist for this Google account.
+     */
+    public LoginResponseDto loginWithGoogle(GoogleAuthRequestDto googleAuthRequest) {
+        log.debug("Processing Google login request for email: {}", googleAuthRequest.email());
+
+        // Verify the Google ID token with Firebase
+        FirebaseToken decodedToken;
+        try {
+            decodedToken = FirebaseAuth.getInstance().verifyIdToken(googleAuthRequest.idToken());
+            log.debug("Google ID token verified successfully for: {}", decodedToken.getEmail());
+        } catch (FirebaseAuthException e) {
+            log.error("Failed to verify Google ID token: {}", e.getMessage());
+            throw new AuthenticationException.InvalidCredentialsException("Invalid Google token");
+        }
+
+        // Verify email matches
+        String tokenEmail = decodedToken.getEmail();
+        if (tokenEmail == null || !tokenEmail.equalsIgnoreCase(googleAuthRequest.email())) {
+            log.warn("Email mismatch: token={}, request={}", tokenEmail, googleAuthRequest.email());
+            throw new AuthenticationException.InvalidCredentialsException("Email mismatch");
+        }
+
+        // Find or create user
+        Optional<User> existingUser = userService.getUserByEmail(googleAuthRequest.email());
+        User user;
+
+        if (existingUser.isPresent()) {
+            user = existingUser.get();
+            log.info("Existing user found for Google login: {}", user.getUsername());
+
+            // Update profile image if provided and user doesn't have one
+            if (googleAuthRequest.profileImageUrl() != null && user.getProfileImageUrl() == null) {
+                user.setProfileImageUrl(googleAuthRequest.profileImageUrl());
+            }
+        } else {
+            // Create new user from Google account
+            log.info("Creating new user from Google account: {}", googleAuthRequest.email());
+            user = new User();
+            user.setEmail(googleAuthRequest.email());
+            user.setFirstName(googleAuthRequest.firstName());
+            user.setLastName(googleAuthRequest.lastName());
+            user.setProfileImageUrl(googleAuthRequest.profileImageUrl());
+            user.setEmailVerified(true); // Google accounts are verified
+            user.setIsActive(true);
+
+            // Generate unique username from email
+            String baseUsername = googleAuthRequest.email().split("@")[0]
+                .toLowerCase()
+                .replaceAll("[^a-z0-9_]", "");
+            String username = baseUsername;
+            int suffix = 1;
+            while (userService.getUserByUsername(username).isPresent()) {
+                username = baseUsername + suffix++;
+            }
+            user.setUsername(username);
+
+            // Set a random password (user can't login with password, only Google)
+            user.setPasswordHash(UUID.randomUUID().toString());
+        }
+
+        // Update last login timestamp
+        user.setLastLoginAt(LocalDateTime.now());
+        User savedUser = userService.saveUser(user);
+        log.info("User saved after Google login - User: {}, Username: {}", savedUser.getId(), savedUser.getUsername());
+
+        // Award daily login reward if eligible
+        try {
+            DailyLoginRewardService.DailyRewardResult result = dailyLoginRewardService.checkAndAwardDailyReward(savedUser);
+            if (result.wasAwarded()) {
+                savedUser = userService.getUserById(savedUser.getId());
+                log.info("Daily reward awarded for Google login user: {}", savedUser.getId());
+            }
+        } catch (Exception e) {
+            log.error("Daily login reward failed for Google user: {}", savedUser.getId(), e);
+        }
+
+        // Create UserPrincipal and generate tokens
+        UserDetailsServiceImpl.UserPrincipal userPrincipal = new UserDetailsServiceImpl.UserPrincipal(savedUser);
+        String accessToken = jwtService.generateAccessToken(userPrincipal, savedUser.getId());
+        String refreshToken = jwtService.generateRefreshToken(userPrincipal, savedUser.getId());
+
+        // Set authentication in security context
+        SecurityContextUtil.setAuthentication(userPrincipal);
+
+        // Create response
+        UserProfileResponseDto userResponse = UserProfileResponseDto.fromUser(savedUser);
+
+        log.info("Google login successful for user: {}", savedUser.getUsername());
+        return new LoginResponseDto(
+            accessToken,
+            refreshToken,
+            jwtService.getJwtExpiration() / 1000,
+            userResponse
+        );
+    }
+
+    /**
      * Helper method to get user by username with proper exception handling.
      */
     private User getUserByUsername(String username) {
         return userService.getUserByUsername(username)
-            .orElseThrow(() -> new com.betmate.exception.user.UserNotFoundException("User not found: " + username));
+            .orElseThrow(() -> new com.rivalpicks.exception.user.UserNotFoundException("User not found: " + username));
     }
 }

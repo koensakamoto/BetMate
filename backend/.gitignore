@@ -37,5 +37,9 @@ logs/
 *.log
 application-local.yml
 
+### Firebase ###
+firebase-service-account.json
+**/firebase-service-account.json
+
 ### claude ###
 ../claude.md

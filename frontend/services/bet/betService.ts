@@ -87,6 +87,7 @@ export interface BetSummaryResponse {
   fixedStakeAmount?: number; // For CREDIT bets
   socialStakeDescription?: string; // For SOCIAL bets
   fulfillmentStatus?: 'PENDING' | 'PARTIALLY_FULFILLED' | 'FULFILLED'; // Fulfillment tracking status
+  hasCurrentUserClaimedFulfillment?: boolean; // Whether current user (if loser) has submitted fulfillment claim
   totalPool: number;
   totalParticipants: number;
   createdAt: string;
@@ -167,6 +168,10 @@ export interface LoserInfo {
   userId: number;
   displayName: string;
   profilePhotoUrl?: string;
+  hasClaimed: boolean;
+  claimedAt?: string;
+  proofUrl?: string;
+  proofDescription?: string;
 }
 
 export interface WinnerConfirmation {

@@ -179,8 +179,10 @@ export const handleApiResponse = <T>(response: AxiosResponse<ApiResponse<T> | T>
 
     // Check if request was unsuccessful
     if (!apiResponse.success) {
+      // Use 'status' field from backend ApiResponse, fallback to HTTP status
+      const statusCode = (apiResponse as any).status || (apiResponse as any).statusCode || response.status;
       throw new ApiError(
-        (apiResponse as any).statusCode || response.status,
+        statusCode,
         apiResponse.message || apiResponse.error || 'API request failed'
       );
     }

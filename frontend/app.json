@@ -18,7 +18,8 @@
         "NSCameraUsageDescription": "This app needs access to your camera to let you take a profile picture.",
         "UIBackgroundModes": ["remote-notification"]
       },
-      "bundleIdentifier": "com.anonymous.rivalpicks"
+      "bundleIdentifier": "com.rivalpicks.app",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -27,7 +28,7 @@
       },
       "edgeToEdgeEnabled": true,
       "usesCleartextTraffic": true,
-      "package": "com.anonymous.rivalpicks",
+      "package": "com.rivalpicks.app",
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
@@ -41,6 +42,8 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
       "expo-router",
       [
         "expo-splash-screen",

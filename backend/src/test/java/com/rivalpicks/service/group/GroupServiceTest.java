@@ -21,7 +21,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static com.betmate.service.group.GroupCreationService.DEFAULT_MAX_MEMBERS;
+import static com.rivalpicks.service.group.GroupCreationService.DEFAULT_MAX_MEMBERS;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -35,6 +35,9 @@ class GroupServiceTest {
 
     @Mock
     private GroupMembershipRepository membershipRepository;
+
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
     
     // Test data constants
     private static final Long TEST_GROUP_ID = 123L;
@@ -49,7 +52,7 @@ class GroupServiceTest {
 
     @BeforeEach
     void setUp() {
-        groupService = new GroupService(groupRepository, membershipRepository);
+        groupService = new GroupService(groupRepository, membershipRepository, eventPublisher);
         
         // Create test user
         testUser = createTestUser(TEST_USER_ID, TEST_USERNAME);
@@ -519,18 +522,18 @@ class GroupServiceTest {
     }
 
     @Test
-    @DisplayName("Should get groups by creator successfully")
-    void getGroupsByCreator_Success() {
+    @DisplayName("Should get groups by owner successfully")
+    void getGroupsByOwner_Success() {
         // Arrange
         List<Group> expectedGroups = List.of(testGroup);
-        when(groupRepository.findByCreator(testUser)).thenReturn(expectedGroups);
+        when(groupRepository.findByOwner(testUser)).thenReturn(expectedGroups);
 
         // Act
-        List<Group> result = groupService.getGroupsByCreator(testUser);
+        List<Group> result = groupService.getGroupsByOwner(testUser);
 
         // Assert
         assertThat(result).isEqualTo(expectedGroups);
-        verify(groupRepository).findByCreator(testUser);
+        verify(groupRepository).findByOwner(testUser);
     }
 
     @Test

@@ -1107,31 +1107,44 @@ export default function Profile() {
                 // Helper function to render a bet card
                 const renderBetCard = (bet: BetSummaryResponse) => {
                   const isOwedToYou = isOwedToUser(bet);
+                  const youOwe = isUserOwes(bet);
                   let badgeConfig: { bgColor: string; textColor: string; text: string };
 
                   if (bet.fulfillmentStatus === 'FULFILLED') {
+                    // Fully completed for everyone
                     badgeConfig = {
                       bgColor: 'rgba(0, 212, 170, 0.1)',
                       textColor: '#00D4AA',
                       text: 'Completed'
                     };
-                  } else if (bet.fulfillmentStatus === 'PARTIALLY_FULFILLED') {
+                  } else if (isOwedToYou) {
+                    // You won - waiting for losers to fulfill
                     badgeConfig = {
                       bgColor: 'rgba(251, 191, 36, 0.1)',
                       textColor: '#FBBF24',
-                      text: 'Partial'
-                    };
-                  } else if (isOwedToYou) {
-                    badgeConfig = {
-                      bgColor: 'rgba(0, 212, 170, 0.1)',
-                      textColor: '#00D4AA',
                       text: 'Waiting'
                     };
+                  } else if (youOwe) {
+                    // You lost - check if you've submitted proof
+                    if (bet.hasCurrentUserClaimedFulfillment) {
+                      badgeConfig = {
+                        bgColor: 'rgba(59, 130, 246, 0.1)',
+                        textColor: '#3B82F6',
+                        text: 'Submitted'
+                      };
+                    } else {
+                      badgeConfig = {
+                        bgColor: 'rgba(239, 68, 68, 0.1)',
+                        textColor: '#EF4444',
+                        text: 'To-Do'
+                      };
+                    }
                   } else {
+                    // Fallback (shouldn't happen in practice)
                     badgeConfig = {
-                      bgColor: 'rgba(239, 68, 68, 0.1)',
-                      textColor: '#EF4444',
-                      text: 'To-Do'
+                      bgColor: 'rgba(156, 163, 175, 0.1)',
+                      textColor: '#9CA3AF',
+                      text: 'Pending'
                     };
                   }
 

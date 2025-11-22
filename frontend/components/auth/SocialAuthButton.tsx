@@ -1,9 +1,9 @@
 import React from 'react';
-import { Text, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Text, TouchableOpacity, ActivityIndicator, View } from 'react-native';
+import { Ionicons, AntDesign } from '@expo/vector-icons';
 
 interface SocialAuthButtonProps {
-  provider: 'google';
+  provider: 'google' | 'apple';
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
@@ -20,15 +20,20 @@ export default function SocialAuthButton({
       case 'google':
         return {
           title: 'Continue with Google',
-          icon: 'g-translate' as keyof typeof MaterialIcons.glyphMap, // Using available icon
           backgroundColor: 'rgba(255, 255, 255, 0.08)',
           textColor: '#ffffff',
           borderColor: 'rgba(255, 255, 255, 0.15)'
         };
+      case 'apple':
+        return {
+          title: 'Continue with Apple',
+          backgroundColor: '#ffffff',
+          textColor: '#000000',
+          borderColor: '#ffffff'
+        };
       default:
         return {
           title: 'Continue',
-          icon: 'login' as keyof typeof MaterialIcons.glyphMap,
           backgroundColor: 'rgba(255, 255, 255, 0.08)',
           textColor: '#ffffff',
           borderColor: 'rgba(255, 255, 255, 0.15)'
@@ -37,6 +42,17 @@ export default function SocialAuthButton({
   };
 
   const config = getProviderConfig();
+
+  const renderIcon = () => {
+    switch (provider) {
+      case 'google':
+        return <AntDesign name="google" size={18} color={config.textColor} style={{ marginRight: 12 }} />;
+      case 'apple':
+        return <Ionicons name="logo-apple" size={20} color={config.textColor} style={{ marginRight: 10 }} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <TouchableOpacity
@@ -61,12 +77,7 @@ export default function SocialAuthButton({
         <ActivityIndicator size="small" color={config.textColor} />
       ) : (
         <>
-          <MaterialIcons 
-            name={config.icon} 
-            size={18} 
-            color={config.textColor}
-            style={{ marginRight: 12 }}
-          />
+          {renderIcon()}
           <Text style={{
             fontSize: 16,
             fontWeight: '600',

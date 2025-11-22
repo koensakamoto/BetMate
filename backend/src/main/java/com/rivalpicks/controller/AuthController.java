@@ -1,6 +1,7 @@
 package com.rivalpicks.controller;
 
 import com.rivalpicks.dto.auth.request.ChangePasswordRequestDto;
+import com.rivalpicks.dto.auth.request.GoogleAuthRequestDto;
 import com.rivalpicks.dto.auth.request.LoginRequestDto;
 import com.rivalpicks.dto.auth.request.RefreshTokenRequestDto;
 import com.rivalpicks.dto.auth.response.LoginResponseDto;
@@ -76,6 +77,16 @@ public class AuthController {
     public ResponseEntity<ApiResponse<UserProfileResponseDto>> getCurrentUserInfo() {
         UserProfileResponseDto userProfile = authService.getCurrentUserProfile();
         ApiResponse<UserProfileResponseDto> response = ApiResponse.success(userProfile, "User profile retrieved successfully");
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Authenticate user via Google OAuth.
+     */
+    @PostMapping("/google")
+    public ResponseEntity<ApiResponse<LoginResponseDto>> loginWithGoogle(@Valid @RequestBody GoogleAuthRequestDto googleAuthRequest) {
+        LoginResponseDto loginResponse = authService.loginWithGoogle(googleAuthRequest);
+        ApiResponse<LoginResponseDto> response = ApiResponse.success(loginResponse, "Google login successful");
         return ResponseEntity.ok(response);
     }
 

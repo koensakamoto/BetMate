@@ -128,6 +128,9 @@ public class GroupMembershipService {
                     long memberCount = membershipRepository.countActiveMembers(group);
                     groupService.updateMemberCount(group.getId(), (int) memberCount);
 
+                    // Publish event to notify existing members
+                    publishMemberJoinedEvent(user, group, false);
+
                     return savedMembership;
                 } else {
                     // Pending request for PRIVATE and SECRET groups
@@ -447,8 +450,14 @@ public class GroupMembershipService {
 
     /**
      * User leaves a group.
+     * Note: The group owner cannot leave - they must transfer ownership first.
      */
     public void leaveGroup(@NotNull User user, @NotNull Group group) {
+        // Check if user is the owner - owner cannot leave without transferring ownership
+        if (group.isOwner(user)) {
+            throw new GroupMembershipException("Group owner cannot leave. Transfer ownership first.");
+        }
+
         // Check if user is a member
         Optional<GroupMembership> membership = membershipRepository.findByUserAndGroupAndIsActiveTrue(user, group);
         if (membership.isEmpty()) {
@@ -458,11 +467,11 @@ public class GroupMembershipService {
         LocalDateTime leftAt = LocalDateTime.now();
         int rowsUpdated;
 
-        // If user is an admin, check if they're the last admin
+        // If user is an admin, check if they're the last admin (excluding owner check since owner can't reach here)
         if (membership.get().getRole() == GroupMembership.MemberRole.ADMIN) {
             long adminCount = membershipRepository.countActiveAdmins(group);
             if (adminCount <= 1) {
-                throw new GroupMembershipException("Cannot leave group - user is the only admin");
+                throw new GroupMembershipException("Cannot leave group - you are the only admin");
             }
             rowsUpdated = membershipRepository.atomicLeaveGroupAdmin(user, group, leftAt);
         } else {
@@ -728,12 +737,12 @@ public class GroupMembershipService {
         // Capture old role BEFORE updating (needed for event)
         GroupMembership.MemberRole oldRole = membership.getRole();
 
-        // Prevent demoting the group creator from admin
-        if (group.getCreator().getId().equals(targetUser.getId()) &&
+        // Prevent demoting the group owner from admin
+        if (group.isOwner(targetUser) &&
             oldRole == GroupMembership.MemberRole.ADMIN &&
             newRole != GroupMembership.MemberRole.ADMIN) {
-            System.out.println("❌ [SERVICE DEBUG] Cannot demote group creator from admin");
-            throw new GroupMembershipException("Cannot demote the group creator from admin role");
+            System.out.println("❌ [SERVICE DEBUG] Cannot demote group owner from admin");
+            throw new GroupMembershipException("Cannot demote the group owner from admin role");
         }
 
         // Update the role
@@ -931,6 +940,53 @@ public class GroupMembershipService {
         membership.setStatus(GroupMembership.MembershipStatus.REJECTED);
         membership.setIsActive(false);
         membershipRepository.save(membership);
+    }
+
+    /**
+     * Transfers ownership of a group to another member.
+     * Only the current owner can transfer ownership.
+     * The new owner must be an active member of the group.
+     *
+     * @param currentOwner the current owner initiating the transfer
+     * @param newOwner the user to transfer ownership to
+     * @param group the group
+     */
+    public void transferOwnership(@NotNull User currentOwner, @NotNull User newOwner, @NotNull Group group) {
+        // Verify the current user is the owner
+        if (!group.isOwner(currentOwner)) {
+            throw new GroupMembershipException("Only the group owner can transfer ownership");
+        }
+
+        // Verify the new owner is not the same as current owner
+        if (currentOwner.getId().equals(newOwner.getId())) {
+            throw new GroupMembershipException("Cannot transfer ownership to yourself");
+        }
+
+        // Verify the new owner is an active member of the group
+        Optional<GroupMembership> newOwnerMembership = membershipRepository.findByUserAndGroupAndIsActiveTrue(newOwner, group);
+        if (newOwnerMembership.isEmpty()) {
+            throw new GroupMembershipException("New owner must be an active member of the group");
+        }
+
+        // Get current owner's membership
+        Optional<GroupMembership> currentOwnerMembership = membershipRepository.findByUserAndGroupAndIsActiveTrue(currentOwner, group);
+        if (currentOwnerMembership.isEmpty()) {
+            throw new GroupMembershipException("Current owner membership not found");
+        }
+
+        // Transfer ownership - update the group's owner
+        group.setOwner(newOwner);
+        groupService.saveGroup(group);
+
+        // Promote the new owner to ADMIN role if not already
+        GroupMembership newOwnerMembershipEntity = newOwnerMembership.get();
+        if (newOwnerMembershipEntity.getRole() != GroupMembership.MemberRole.ADMIN) {
+            newOwnerMembershipEntity.setRole(GroupMembership.MemberRole.ADMIN);
+            membershipRepository.save(newOwnerMembershipEntity);
+        }
+
+        logger.info("Group ownership transferred: groupId={}, from={}, to={}",
+            group.getId(), currentOwner.getUsername(), newOwner.getUsername());
     }
 
 }

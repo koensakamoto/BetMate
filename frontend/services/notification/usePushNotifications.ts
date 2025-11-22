@@ -6,6 +6,19 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { apiClient } from '../api/baseClient';
 
+// Check if we're running in Expo Go (no native modules available)
+const isExpoGo = Constants.appOwnership === 'expo';
+
+// Dynamically import Firebase messaging only when not in Expo Go
+let messaging: any = null;
+if (!isExpoGo) {
+  try {
+    messaging = require('@react-native-firebase/messaging').default;
+  } catch (e) {
+    console.log('Firebase messaging not available (likely Expo Go environment)');
+  }
+}
+
 // Configure how notifications appear when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -18,7 +31,7 @@ Notifications.setNotificationHandler({
 });
 
 interface UsePushNotificationsReturn {
-  expoPushToken: string | null;
+  fcmToken: string | null;
   notification: Notifications.Notification | null;
   error: string | null;
   isLoading: boolean;
@@ -27,27 +40,34 @@ interface UsePushNotificationsReturn {
 }
 
 /**
- * Hook for managing push notifications with Expo.
+ * Hook for managing push notifications with Firebase Cloud Messaging (FCM).
  * Handles permission requests, token registration, and notification handling.
  */
 export function usePushNotifications(): UsePushNotificationsReturn {
-  const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
+  const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [notification, setNotification] = useState<Notifications.Notification | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const notificationListener = useRef<Notifications.EventSubscription>();
-  const responseListener = useRef<Notifications.EventSubscription>();
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
   const router = useRouter();
 
   /**
-   * Registers the device for push notifications and sends token to backend.
+   * Registers the device for push notifications and sends FCM token to backend.
    */
   const registerForPushNotifications = useCallback(async (): Promise<string | null> => {
     setIsLoading(true);
     setError(null);
 
     try {
+      // Check if Firebase messaging is available (not in Expo Go)
+      if (!messaging) {
+        console.log('Push notifications not available in Expo Go. Use a development build for full functionality.');
+        setError('Push notifications not available in Expo Go');
+        return null;
+      }
+
       // Check if it's a physical device (push notifications don't work on simulators/emulators)
       if (!Device.isDevice) {
         console.log('Push notifications require a physical device');
@@ -55,35 +75,29 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         return null;
       }
 
-      // Check existing permissions
+      // Request permission for iOS (Android doesn't need explicit permission for FCM)
+      if (Platform.OS === 'ios') {
+        const authStatus = await messaging().requestPermission();
+        const enabled =
+          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+        if (!enabled) {
+          console.log('Push notification permissions not granted');
+          setError('Push notification permissions not granted');
+          return null;
+        }
+      }
+
+      // Also request expo-notifications permission for local notification display
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      // Request permissions if not already granted
       if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
+        await Notifications.requestPermissionsAsync();
       }
 
-      if (finalStatus !== 'granted') {
-        console.log('Push notification permissions not granted');
-        setError('Push notification permissions not granted');
-        return null;
-      }
-
-      // Get the Expo push token
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-
-      if (!projectId) {
-        console.warn('No project ID found for push notifications');
-      }
-
-      const tokenResponse = await Notifications.getExpoPushTokenAsync({
-        projectId,
-      });
-
-      const token = tokenResponse.data;
-      console.log('Expo Push Token:', token);
+      // Get the FCM token
+      const token = await messaging().getToken();
+      console.log('FCM Token:', token);
 
       // Determine platform
       const platform = Platform.OS === 'ios' ? 'IOS' : Platform.OS === 'android' ? 'ANDROID' : 'WEB';
@@ -94,13 +108,13 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           token,
           platform,
         });
-        console.log('Push token registered with backend');
+        console.log('FCM token registered with backend');
       } catch (backendError) {
-        console.error('Failed to register push token with backend:', backendError);
+        console.error('Failed to register FCM token with backend:', backendError);
         // Don't fail completely - token is still valid locally
       }
 
-      setExpoPushToken(token);
+      setFcmToken(token);
 
       // Set up notification channel for Android
       if (Platform.OS === 'android') {
@@ -139,10 +153,16 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     try {
       // Remove token from backend
       await apiClient.delete('/users/push-token');
-      console.log('Push token removed from backend');
-      setExpoPushToken(null);
+      console.log('FCM token removed from backend');
+
+      // Delete the FCM token from the device (only if messaging is available)
+      if (messaging) {
+        await messaging().deleteToken();
+      }
+
+      setFcmToken(null);
     } catch (err) {
-      console.error('Failed to unregister push token:', err);
+      console.error('Failed to unregister FCM token:', err);
     }
   }, []);
 
@@ -176,18 +196,96 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     // Listener for when user taps on a notification
     responseListener.current = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
 
+    // Skip Firebase messaging setup if not available (Expo Go)
+    if (!messaging) {
+      console.log('FCM listeners skipped - not available in Expo Go');
+      return () => {
+        notificationListener.current?.remove();
+        responseListener.current?.remove();
+      };
+    }
+
+    // FCM foreground message handler - display as local notification
+    const unsubscribeForeground = messaging().onMessage(async (remoteMessage: any) => {
+      console.log('FCM message received in foreground:', remoteMessage);
+
+      // Display as local notification using expo-notifications
+      if (remoteMessage.notification) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: remoteMessage.notification.title || '',
+            body: remoteMessage.notification.body || '',
+            data: remoteMessage.data,
+            sound: 'default',
+          },
+          trigger: null, // Show immediately
+        });
+      }
+    });
+
+    // FCM background/quit message handler for navigation
+    const unsubscribeBackground = messaging().onNotificationOpenedApp((remoteMessage: any) => {
+      console.log('FCM notification opened app from background:', remoteMessage);
+      const data = remoteMessage.data;
+
+      if (data?.type === 'GROUP_MESSAGE' && data?.groupId) {
+        router.push(`/group/${data.groupId}/chat`);
+      } else if (data?.screen) {
+        router.push(data.screen as any);
+      } else if (data?.actionUrl && typeof data.actionUrl === 'string') {
+        const route = data.actionUrl.replace(/^\//, '');
+        router.push(`/${route}` as any);
+      }
+    });
+
+    // Check if app was opened from a quit state by a notification
+    messaging()
+      .getInitialNotification()
+      .then((remoteMessage: any) => {
+        if (remoteMessage) {
+          console.log('FCM notification opened app from quit state:', remoteMessage);
+          const data = remoteMessage.data;
+
+          if (data?.type === 'GROUP_MESSAGE' && data?.groupId) {
+            router.push(`/group/${data.groupId}/chat`);
+          } else if (data?.screen) {
+            router.push(data.screen as any);
+          } else if (data?.actionUrl && typeof data.actionUrl === 'string') {
+            const route = data.actionUrl.replace(/^\//, '');
+            router.push(`/${route}` as any);
+          }
+        }
+      });
+
+    // FCM token refresh handler
+    const unsubscribeTokenRefresh = messaging().onTokenRefresh(async (newToken: string) => {
+      console.log('FCM token refreshed:', newToken);
+      setFcmToken(newToken);
+
+      // Send new token to backend
+      const platform = Platform.OS === 'ios' ? 'IOS' : Platform.OS === 'android' ? 'ANDROID' : 'WEB';
+      try {
+        await apiClient.post('/users/push-token', {
+          token: newToken,
+          platform,
+        });
+        console.log('Refreshed FCM token registered with backend');
+      } catch (err) {
+        console.error('Failed to register refreshed FCM token:', err);
+      }
+    });
+
     return () => {
-      if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
-      }
-      if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
-      }
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
+      unsubscribeForeground();
+      unsubscribeBackground();
+      unsubscribeTokenRefresh();
     };
-  }, [handleNotificationResponse]);
+  }, [handleNotificationResponse, router]);
 
   return {
-    expoPushToken,
+    fcmToken,
     notification,
     error,
     isLoading,
@@ -212,7 +310,7 @@ export async function scheduleLocalNotification(
       data,
       sound: 'default',
     },
-    trigger: { seconds },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds },
   });
 }
 

@@ -4,25 +4,26 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
-import AuthHeader from '../../components/auth/AuthHeader';
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
+import SocialAuthButton from '../../components/auth/SocialAuthButton';
+import CompleteProfileModal from '../../components/auth/CompleteProfileModal';
+import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 
 export default function Signup() {
   const insets = useSafeAreaInsets();
-  const { signup, isLoading, error, clearError } = useAuth();
-  
+  const { signup, loginWithGoogle, isLoading, error, clearError, refreshUser } = useAuth();
+  const { signIn: googleSignIn } = useGoogleAuth();
+
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
     username: '',
     email: '',
-    password: '',
-    confirmPassword: ''
+    password: ''
   });
-  const [acceptTerms, setAcceptTerms] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -50,18 +51,6 @@ export default function Signup() {
   const validateForm = (): boolean => {
     const newErrors: {[key: string]: string} = {};
 
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    } else if (formData.firstName.trim().length < 2) {
-      newErrors.firstName = 'First name must be at least 2 characters';
-    }
-
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
-    } else if (formData.lastName.trim().length < 2) {
-      newErrors.lastName = 'Last name must be at least 2 characters';
-    }
-
     if (!formData.username.trim()) {
       newErrors.username = 'Username is required';
     } else if (!validateUsername(formData.username)) {
@@ -82,19 +71,50 @@ export default function Signup() {
       newErrors.password = 'Password should include uppercase, lowercase, and numbers';
     }
 
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    if (!acceptTerms) {
-      Alert.alert('Terms Required', 'Please accept the Terms of Service to continue.');
-      return false;
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSocialAuth = async (provider: 'google' | 'apple') => {
+    try {
+      setSocialLoading(provider);
+
+      if (provider === 'google') {
+        console.log('🔄 [SIGNUP] Starting Google sign-in...');
+        const result = await googleSignIn();
+
+        console.log('✅ [SIGNUP] Google sign-in successful, logging in...');
+        await loginWithGoogle({
+          idToken: result.idToken,
+          email: result.user.email,
+          firstName: result.user.givenName || undefined,
+          lastName: result.user.familyName || undefined,
+          profileImageUrl: result.user.photo || undefined,
+        });
+
+        console.log('✅ [SIGNUP] Google login complete!');
+        // Navigation will be handled by auth state change
+      } else if (provider === 'apple') {
+        // TODO: Implement Apple Sign-In
+        console.log('Apple Sign-In not yet implemented');
+        Alert.alert('Coming Soon', 'Apple Sign-In will be available soon.');
+      }
+    } catch (error: any) {
+      console.error('❌ [SIGNUP] Social auth failed:', error);
+
+      if (error.code === 'CANCELLED') {
+        // User cancelled, don't show error
+        return;
+      }
+
+      Alert.alert(
+        'Sign-In Failed',
+        error.message || 'An error occurred during sign-in. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setSocialLoading(null);
+    }
   };
 
   const handleSignup = async () => {
@@ -106,16 +126,12 @@ export default function Signup() {
     }
 
     const signupData = {
-      firstName: formData.firstName.trim(),
-      lastName: formData.lastName.trim(),
       username: formData.username.trim(),
       email: formData.email.trim(),
       password: formData.password
     };
 
     console.log('📝 [SIGNUP] Form data prepared:', {
-      firstName: signupData.firstName,
-      lastName: signupData.lastName,
       username: signupData.username,
       email: signupData.email,
       passwordLength: signupData.password.length
@@ -125,7 +141,8 @@ export default function Signup() {
       console.log('🔄 [SIGNUP] Calling signup function...');
       await signup(signupData);
       console.log('✅ [SIGNUP] Signup successful!');
-      // Navigation will be handled by auth state change
+      // Show profile completion modal
+      setShowProfileModal(true);
     } catch (error: any) {
       console.error('❌ [SIGNUP] Signup failed with error:', error);
       console.error('❌ [SIGNUP] Error name:', error?.name);
@@ -207,38 +224,41 @@ export default function Signup() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <AuthHeader
-          title="Create Account"
-          subtitle="Join the betting community"
-          showBackButton={true}
-          onBackPress={() => router.back()}
-        />
-
         <View style={{ paddingHorizontal: 20 }}>
+          {/* Back button */}
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.15)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: 20
+            }}
+          >
+            <MaterialIcons
+              name="arrow-back"
+              size={18}
+              color="#ffffff"
+            />
+          </TouchableOpacity>
+
+          {/* Title */}
+          <Text style={{
+            fontSize: 28,
+            fontWeight: '700',
+            color: '#ffffff',
+            letterSpacing: -0.5,
+            marginBottom: 24
+          }}>
+            Create Account
+          </Text>
           {/* Signup Form */}
           <View style={{ marginBottom: 16 }}>
-            <AuthInput
-              label="First Name"
-              value={formData.firstName}
-              onChangeText={(text) => updateField('firstName', text)}
-              placeholder="Enter your first name"
-              autoCapitalize="words"
-              error={errors.firstName}
-              isValid={formData.firstName.trim().length >= 2}
-              maxLength={50}
-            />
-
-            <AuthInput
-              label="Last Name"
-              value={formData.lastName}
-              onChangeText={(text) => updateField('lastName', text)}
-              placeholder="Enter your last name"
-              autoCapitalize="words"
-              error={errors.lastName}
-              isValid={formData.lastName.trim().length >= 2}
-              maxLength={50}
-            />
-
             <AuthInput
               label="Username"
               value={formData.username}
@@ -311,74 +331,6 @@ export default function Signup() {
               </View>
             )}
 
-            <AuthInput
-              label="Confirm Password"
-              value={formData.confirmPassword}
-              onChangeText={(text) => updateField('confirmPassword', text)}
-              placeholder="Confirm your password"
-              secureTextEntry={true}
-              autoCapitalize="none"
-              error={errors.confirmPassword}
-              isValid={formData.confirmPassword.length > 0 && formData.password === formData.confirmPassword}
-            />
-
-            {/* Terms Acceptance */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'flex-start',
-                marginBottom: 20
-              }}
-            >
-              <TouchableOpacity
-                onPress={() => setAcceptTerms(!acceptTerms)}
-                style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 3,
-                  borderWidth: 1.5,
-                  borderColor: acceptTerms ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
-                  backgroundColor: acceptTerms ? '#00D4AA' : 'transparent',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 10,
-                  marginTop: 1
-                }}
-              >
-                {acceptTerms && (
-                  <MaterialIcons name="check" size={12} color="#000000" />
-                )}
-              </TouchableOpacity>
-              <View style={{ flex: 1 }}>
-                <Text style={{
-                  fontSize: 13,
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  lineHeight: 18
-                }}>
-                  I agree to the{' '}
-                  <Text
-                    style={{ color: '#00D4AA', fontWeight: '500', textDecorationLine: 'underline' }}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      router.push('/terms-of-service');
-                    }}
-                  >
-                    Terms of Service
-                  </Text>
-                  {' '}and{' '}
-                  <Text
-                    style={{ color: '#00D4AA', fontWeight: '500', textDecorationLine: 'underline' }}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      router.push('/privacy-policy');
-                    }}
-                  >
-                    Privacy Policy
-                  </Text>
-                </Text>
-              </View>
-            </View>
-
             {/* Create Account Button */}
             <AuthButton
               title="Create Account"
@@ -387,10 +339,113 @@ export default function Signup() {
               disabled={isLoading}
               variant="primary"
             />
-          </View>
 
+            {/* Divider */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginVertical: 20
+            }}>
+              <View style={{
+                flex: 1,
+                height: 1,
+                backgroundColor: 'rgba(255, 255, 255, 0.08)'
+              }} />
+              <Text style={{
+                fontSize: 13,
+                color: 'rgba(255, 255, 255, 0.4)',
+                marginHorizontal: 12,
+                fontWeight: '500'
+              }}>
+                or
+              </Text>
+              <View style={{
+                flex: 1,
+                height: 1,
+                backgroundColor: 'rgba(255, 255, 255, 0.08)'
+              }} />
+            </View>
+
+            {/* Social Auth */}
+            <View style={{ gap: 12 }}>
+              <SocialAuthButton
+                provider="apple"
+                onPress={() => handleSocialAuth('apple')}
+                loading={socialLoading === 'apple'}
+                disabled={socialLoading !== null}
+              />
+              <SocialAuthButton
+                provider="google"
+                onPress={() => handleSocialAuth('google')}
+                loading={socialLoading === 'google'}
+                disabled={socialLoading !== null}
+              />
+            </View>
+
+            {/* Already have account */}
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginTop: 24,
+              marginBottom: 16
+            }}>
+              <Text style={{
+                fontSize: 14,
+                color: 'rgba(255, 255, 255, 0.6)'
+              }}>
+                Already have an account?{' '}
+              </Text>
+              <TouchableOpacity onPress={() => router.push('/auth/login')}>
+                <Text style={{
+                  fontSize: 14,
+                  color: '#00D4AA',
+                  fontWeight: '600'
+                }}>
+                  Sign In
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Terms - applies to all signup methods */}
+            <Text style={{
+              fontSize: 12,
+              color: 'rgba(255, 255, 255, 0.5)',
+              textAlign: 'center',
+              lineHeight: 18
+            }}>
+              By signing up, you agree to our{' '}
+              <Text
+                style={{ color: '#00D4AA', textDecorationLine: 'underline' }}
+                onPress={() => router.push('/terms-of-service')}
+              >
+                Terms of Service
+              </Text>
+              {' '}and{' '}
+              <Text
+                style={{ color: '#00D4AA', textDecorationLine: 'underline' }}
+                onPress={() => router.push('/privacy-policy')}
+              >
+                Privacy Policy
+              </Text>
+            </Text>
+          </View>
         </View>
       </ScrollView>
+
+      {/* Profile Completion Modal */}
+      <CompleteProfileModal
+        visible={showProfileModal}
+        onComplete={async () => {
+          setShowProfileModal(false);
+          await refreshUser();
+          // Navigation handled by auth state change
+        }}
+        onSkip={() => {
+          setShowProfileModal(false);
+          // Navigation handled by auth state change
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }

@@ -26,6 +26,7 @@ import com.rivalpicks.service.group.GroupService;
 import com.rivalpicks.service.group.GroupMembershipService;
 import com.rivalpicks.service.user.UserService;
 import com.rivalpicks.service.FileStorageService;
+import com.rivalpicks.repository.betting.LoserFulfillmentClaimRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -63,6 +64,7 @@ public class BetController {
     private final GroupMembershipService groupMembershipService;
     private final UserService userService;
     private final FileStorageService fileStorageService;
+    private final LoserFulfillmentClaimRepository loserFulfillmentClaimRepository;
 
     @Autowired
     public BetController(BetService betService,
@@ -74,7 +76,8 @@ public class BetController {
                         GroupService groupService,
                         GroupMembershipService groupMembershipService,
                         UserService userService,
-                        FileStorageService fileStorageService) {
+                        FileStorageService fileStorageService,
+                        LoserFulfillmentClaimRepository loserFulfillmentClaimRepository) {
         this.betService = betService;
         this.betCreationService = betCreationService;
         this.betParticipationService = betParticipationService;
@@ -85,6 +88,7 @@ public class BetController {
         this.groupMembershipService = groupMembershipService;
         this.userService = userService;
         this.fileStorageService = fileStorageService;
+        this.loserFulfillmentClaimRepository = loserFulfillmentClaimRepository;
     }
 
     /**
@@ -675,6 +679,11 @@ public class BetController {
         response.setFixedStakeAmount(bet.getFixedStakeAmount());
         response.setSocialStakeDescription(bet.getSocialStakeDescription());
         response.setFulfillmentStatus(bet.getFulfillmentStatus());
+
+        // Check if current user has claimed fulfillment (for losers)
+        boolean hasClaimedFulfillment = loserFulfillmentClaimRepository.existsByBetIdAndLoserId(
+            bet.getId(), currentUser.getId());
+        response.setHasCurrentUserClaimedFulfillment(hasClaimedFulfillment);
 
         // Set user context - check if current user has participated in this bet
         boolean hasParticipated = betParticipationService.hasUserParticipated(currentUser, bet.getId());

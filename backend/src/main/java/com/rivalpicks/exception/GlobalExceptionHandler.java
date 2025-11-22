@@ -1,11 +1,11 @@
 package com.rivalpicks.exception;
 
-import com.rivalpicks.service.user.UserService;
 import com.rivalpicks.dto.common.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.FieldError;
@@ -26,10 +26,11 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     /**
-     * Helper method to create ErrorResponse with common fields.
+     * Helper method to create ResponseEntity with proper HTTP status code.
      */
-    private ApiResponse<Void> createErrorResponse(HttpStatus status, String error, String message, String path) {
-        return ApiResponse.error(error, message, status.value(), path);
+    private ResponseEntity<ApiResponse<Void>> createErrorResponse(HttpStatus status, String error, String message, String path) {
+        ApiResponse<Void> response = ApiResponse.error(error, message, status.value(), path);
+        return ResponseEntity.status(status).body(response);
     }
 
     /**
@@ -40,7 +41,7 @@ public class GlobalExceptionHandler {
         BadCredentialsException.class,
         UsernameNotFoundException.class
     })
-    public ApiResponse<Void> handleAuthenticationExceptions(RuntimeException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleAuthenticationExceptions(RuntimeException ex, HttpServletRequest request) {
         log.warn("Authentication failed for request {}: {}", request.getRequestURI(), ex.getMessage());
         return createErrorResponse(HttpStatus.UNAUTHORIZED, "Authentication Failed", ex.getMessage(), request.getRequestURI());
     }
@@ -49,7 +50,7 @@ public class GlobalExceptionHandler {
      * Handles account locked exceptions.
      */
     @ExceptionHandler(AuthenticationException.AccountLockedException.class)
-    public ApiResponse<Void> handleAccountLockedException(
+    public ResponseEntity<ApiResponse<Void>> handleAccountLockedException(
             AuthenticationException.AccountLockedException ex, HttpServletRequest request) {
         log.warn("Account locked attempt for request {}: {}", request.getRequestURI(), ex.getMessage());
         return createErrorResponse(HttpStatus.LOCKED, "Account Locked", ex.getMessage(), request.getRequestURI());
@@ -59,7 +60,7 @@ public class GlobalExceptionHandler {
      * Handles inactive account exceptions.
      */
     @ExceptionHandler(AuthenticationException.InactiveAccountException.class)
-    public ApiResponse<Void> handleInactiveAccountException(
+    public ResponseEntity<ApiResponse<Void>> handleInactiveAccountException(
             AuthenticationException.InactiveAccountException ex, HttpServletRequest request) {
         log.warn("Inactive account access attempt for request {}: {}", request.getRequestURI(), ex.getMessage());
         return createErrorResponse(HttpStatus.FORBIDDEN, "Account Inactive", ex.getMessage(), request.getRequestURI());
@@ -73,7 +74,7 @@ public class GlobalExceptionHandler {
         JwtException.InvalidSignatureException.class,
         JwtException.InvalidTokenException.class
     })
-    public ApiResponse<Void> handleJwtExceptions(JwtException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleJwtExceptions(JwtException ex, HttpServletRequest request) {
         log.warn("JWT token error for request {}: {}", request.getRequestURI(), ex.getMessage());
         return createErrorResponse(HttpStatus.UNAUTHORIZED, "Token Error", ex.getMessage(), request.getRequestURI());
     }
@@ -82,7 +83,7 @@ public class GlobalExceptionHandler {
      * Handles malformed JWT token exceptions.
      */
     @ExceptionHandler(JwtException.MalformedTokenException.class)
-    public ApiResponse<Void> handleMalformedTokenException(
+    public ResponseEntity<ApiResponse<Void>> handleMalformedTokenException(
             JwtException.MalformedTokenException ex, HttpServletRequest request) {
         log.warn("Malformed JWT token for request: {} - {}", request.getRequestURI(), ex.getMessage());
         return createErrorResponse(HttpStatus.BAD_REQUEST, "Malformed Token", "JWT token is malformed", request.getRequestURI());
@@ -91,9 +92,9 @@ public class GlobalExceptionHandler {
     /**
      * Handles user not found exceptions.
      */
-    @ExceptionHandler(com.betmate.exception.user.UserNotFoundException.class)
-    public ApiResponse<Void> handleUserNotFoundException(
-            com.betmate.exception.user.UserNotFoundException ex, HttpServletRequest request) {
+    @ExceptionHandler(com.rivalpicks.exception.user.UserNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUserNotFoundException(
+            com.rivalpicks.exception.user.UserNotFoundException ex, HttpServletRequest request) {
         log.warn("User not found for request {}: {}", request.getRequestURI(), ex.getMessage());
         return createErrorResponse(HttpStatus.NOT_FOUND, "User Not Found", "User not found", request.getRequestURI());
     }
@@ -102,20 +103,20 @@ public class GlobalExceptionHandler {
      * Handles validation exceptions from @Valid annotations.
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ApiResponse<Void> handleValidationExceptions(
+    public ResponseEntity<ApiResponse<Void>> handleValidationExceptions(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
-        
-        log.warn("Validation failed for request {}: {} validation errors", 
+
+        log.warn("Validation failed for request {}: {} validation errors",
                 request.getRequestURI(), ex.getBindingResult().getErrorCount());
-        
+
         // Debug log each validation error
         ex.getBindingResult().getFieldErrors().forEach(fieldError -> {
-            log.warn("Field validation error - Field: {}, Message: {}, Rejected Value: {}", 
-                    fieldError.getField(), 
+            log.warn("Field validation error - Field: {}, Message: {}, Rejected Value: {}",
+                    fieldError.getField(),
                     fieldError.getDefaultMessage(),
                     fieldError.getRejectedValue());
         });
-        
+
         Map<String, Object> errors = ex.getBindingResult().getFieldErrors().stream()
             .collect(Collectors.toMap(
                 FieldError::getField,
@@ -124,15 +125,16 @@ public class GlobalExceptionHandler {
                     "rejectedValue", fieldError.getRejectedValue() != null ? fieldError.getRejectedValue() : "null"
                 )
             ));
-        
-        return ApiResponse.validationError("Request validation failed", errors, request.getRequestURI());
+
+        ApiResponse<Void> response = ApiResponse.validationError("Request validation failed", errors, request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     /**
      * Handles constraint violation exceptions.
      */
     @ExceptionHandler(ConstraintViolationException.class)
-    public ApiResponse<Void> handleConstraintViolationException(
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolationException(
             ConstraintViolationException ex, HttpServletRequest request) {
         log.warn("Constraint violation for request {}: {}", request.getRequestURI(), ex.getMessage());
         return createErrorResponse(HttpStatus.BAD_REQUEST, "Constraint Violation", "Request validation failed", request.getRequestURI());
@@ -142,7 +144,7 @@ public class GlobalExceptionHandler {
      * Handles method argument type mismatch exceptions.
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ApiResponse<Void> handleMethodArgumentTypeMismatch(
+    public ResponseEntity<ApiResponse<Void>> handleMethodArgumentTypeMismatch(
             MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
         log.warn("Method argument type mismatch for request {}: {}", request.getRequestURI(), ex.getMessage());
         String message = String.format("Invalid value '%s' for parameter '%s'", ex.getValue(), ex.getName());
@@ -152,9 +154,9 @@ public class GlobalExceptionHandler {
     /**
      * Handles bet participation exceptions.
      */
-    @ExceptionHandler(com.betmate.exception.betting.BetParticipationException.class)
-    public ApiResponse<Void> handleBetParticipationException(
-            com.betmate.exception.betting.BetParticipationException ex, HttpServletRequest request) {
+    @ExceptionHandler(com.rivalpicks.exception.betting.BetParticipationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBetParticipationException(
+            com.rivalpicks.exception.betting.BetParticipationException ex, HttpServletRequest request) {
         log.warn("Bet participation error for request {}: {}", request.getRequestURI(), ex.getMessage());
         return createErrorResponse(HttpStatus.BAD_REQUEST, "Bet Participation Error", ex.getMessage(), request.getRequestURI());
     }
@@ -162,9 +164,9 @@ public class GlobalExceptionHandler {
     /**
      * Handles group membership exceptions.
      */
-    @ExceptionHandler(com.betmate.exception.group.GroupMembershipException.class)
-    public ApiResponse<Void> handleGroupMembershipException(
-            com.betmate.exception.group.GroupMembershipException ex, HttpServletRequest request) {
+    @ExceptionHandler(com.rivalpicks.exception.group.GroupMembershipException.class)
+    public ResponseEntity<ApiResponse<Void>> handleGroupMembershipException(
+            com.rivalpicks.exception.group.GroupMembershipException ex, HttpServletRequest request) {
         log.warn("Group membership error for request {}: {}", request.getRequestURI(), ex.getMessage());
         return createErrorResponse(HttpStatus.BAD_REQUEST, "Group Membership Error", ex.getMessage(), request.getRequestURI());
     }
@@ -173,7 +175,7 @@ public class GlobalExceptionHandler {
      * Handles contact/support exceptions.
      */
     @ExceptionHandler(ContactException.class)
-    public ApiResponse<Void> handleContactException(ContactException ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleContactException(ContactException ex, HttpServletRequest request) {
         log.warn("Contact operation error for request {}: {}", request.getRequestURI(), ex.getMessage());
         return createErrorResponse(HttpStatus.BAD_REQUEST, "Contact Error", ex.getMessage(), request.getRequestURI());
     }
@@ -182,7 +184,7 @@ public class GlobalExceptionHandler {
      * Handles all other unexpected exceptions.
      */
     @ExceptionHandler(Exception.class)
-    public ApiResponse<Void> handleGenericException(Exception ex, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Void>> handleGenericException(Exception ex, HttpServletRequest request) {
         log.error("Unexpected error for request {}: {}", request.getRequestURI(), ex.getMessage(), ex);
         return createErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "An unexpected error occurred", request.getRequestURI());
     }

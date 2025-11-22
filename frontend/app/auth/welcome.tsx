@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Text, View, ScrollView, StatusBar, Image, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -10,14 +10,19 @@ const icon = require("../../assets/images/icon.png");
 
 export default function Welcome() {
   const insets = useSafeAreaInsets();
+  const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
 
-  const handleSocialAuth = async (provider: 'google') => {
+  const handleSocialAuth = async (provider: 'google' | 'apple') => {
     try {
+      setSocialLoading(provider);
       // TODO: Implement actual social authentication
       console.log(`Authenticating with ${provider}`);
-      // For now, just show alert
+      // Simulate loading for demo purposes
+      await new Promise(resolve => setTimeout(resolve, 1500));
     } catch (error) {
       console.error('Social auth failed:', error);
+    } finally {
+      setSocialLoading(null);
     }
   };
 
@@ -182,10 +187,20 @@ export default function Welcome() {
             }} />
           </View>
           
-          <SocialAuthButton
-            provider="google"
-            onPress={() => handleSocialAuth('google')}
-          />
+          <View style={{ gap: 12 }}>
+            <SocialAuthButton
+              provider="apple"
+              onPress={() => handleSocialAuth('apple')}
+              loading={socialLoading === 'apple'}
+              disabled={socialLoading !== null}
+            />
+            <SocialAuthButton
+              provider="google"
+              onPress={() => handleSocialAuth('google')}
+              loading={socialLoading === 'google'}
+              disabled={socialLoading !== null}
+            />
+          </View>
         </View>
 
         {/* Legal Footer */}

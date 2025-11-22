@@ -34,9 +34,9 @@ class UserCreditServiceTest {
         // Create a mock TransactionService that does nothing (tests don't verify transaction persistence)
         TransactionService transactionService = new TransactionService(null) {
             @Override
-            public com.betmate.entity.user.Transaction createTransaction(
-                    com.betmate.entity.user.User user,
-                    com.betmate.entity.user.Transaction.TransactionType type,
+            public com.rivalpicks.entity.user.Transaction createTransaction(
+                    com.rivalpicks.entity.user.User user,
+                    com.rivalpicks.entity.user.Transaction.TransactionType type,
                     java.math.BigDecimal amount,
                     String reason,
                     java.math.BigDecimal balanceBefore,
@@ -565,7 +565,7 @@ class UserCreditServiceTest {
             }
             User user = users.get(userId);
             if (user == null) {
-                throw new com.betmate.exception.user.UserNotFoundException("User not found with ID: " + userId);
+                throw new com.rivalpicks.exception.user.UserNotFoundException("User not found with ID: " + userId);
             }
             return user;
         }

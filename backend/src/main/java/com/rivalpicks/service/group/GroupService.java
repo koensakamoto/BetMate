@@ -4,11 +4,13 @@ import com.rivalpicks.dto.group.request.GroupUpdateRequestDto;
 import com.rivalpicks.entity.group.Group;
 import com.rivalpicks.entity.group.GroupMembership;
 import com.rivalpicks.entity.user.User;
+import com.rivalpicks.event.group.GroupDeletedEvent;
 import com.rivalpicks.exception.group.GroupNotFoundException;
 import com.rivalpicks.repository.group.GroupRepository;
 import com.rivalpicks.repository.group.GroupMembershipRepository;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -16,6 +18,7 @@ import org.springframework.validation.annotation.Validated;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Core group management service handling CRUD operations and basic group data.
@@ -28,11 +31,14 @@ public class GroupService {
 
     private final GroupRepository groupRepository;
     private final GroupMembershipRepository membershipRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
-    public GroupService(GroupRepository groupRepository, GroupMembershipRepository membershipRepository) {
+    public GroupService(GroupRepository groupRepository, GroupMembershipRepository membershipRepository,
+                       ApplicationEventPublisher eventPublisher) {
         this.groupRepository = groupRepository;
         this.membershipRepository = membershipRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -75,10 +81,10 @@ public class GroupService {
     }
 
     /**
-     * Retrieves groups created by a specific user.
+     * Retrieves groups owned by a specific user.
      */
-    public List<Group> getGroupsByCreator(@NotNull User creator) {
-        return groupRepository.findByCreator(creator);
+    public List<Group> getGroupsByOwner(@NotNull User owner) {
+        return groupRepository.findByOwner(owner);
     }
 
     /**
@@ -122,15 +128,35 @@ public class GroupService {
      * Soft deletes a group by setting deletedAt timestamp and deactivating all memberships.
      */
     @Transactional
-    public void deleteGroup(@NotNull Group group) {
+    public void deleteGroup(@NotNull Group group, @NotNull User deletedBy) {
         LocalDateTime now = LocalDateTime.now();
+
+        // Get all member IDs before deactivating (for notification)
+        List<GroupMembership> memberships = membershipRepository.findByGroup(group);
+        List<Long> memberIds = memberships.stream()
+            .filter(m -> m.getIsActive())
+            .map(m -> m.getUser().getId())
+            .collect(Collectors.toList());
+
+        // Get display name (fallback to username if null)
+        String deletedByName = deletedBy.getDisplayName() != null
+            ? deletedBy.getDisplayName()
+            : deletedBy.getUsername();
+
+        // Publish event before deactivating memberships
+        eventPublisher.publishEvent(new GroupDeletedEvent(
+            group.getId(),
+            group.getGroupName(),
+            deletedBy.getId(),
+            deletedByName,
+            memberIds
+        ));
 
         // Mark group as deleted
         group.setDeletedAt(now);
         groupRepository.save(group);
 
         // Deactivate all memberships for this group
-        List<GroupMembership> memberships = membershipRepository.findByGroup(group);
         for (GroupMembership membership : memberships) {
             membership.setIsActive(false);
             membership.setLeftAt(now);

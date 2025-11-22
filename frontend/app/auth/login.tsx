@@ -7,19 +7,21 @@ import { useAuth } from '../../contexts/AuthContext';
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
 import SocialAuthButton from '../../components/auth/SocialAuthButton';
+import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 
 const icon = require("../../assets/images/icon.png");
 
 export default function Login() {
   const insets = useSafeAreaInsets();
-  const { login, isLoading, error, clearError } = useAuth();
+  const { login, loginWithGoogle, isLoading, error, clearError } = useAuth();
+  const { signIn: googleSignIn } = useGoogleAuth();
   
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
-  const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -51,8 +53,7 @@ export default function Login() {
     try {
       await login({
         email: formData.email,
-        password: formData.password,
-        rememberMe
+        password: formData.password
       });
       // Navigation will be handled by auth state change
     } catch (error) {
@@ -64,12 +65,45 @@ export default function Login() {
     }
   };
 
-  const handleSocialAuth = async (provider: 'google') => {
+  const handleSocialAuth = async (provider: 'google' | 'apple') => {
     try {
-      // TODO: Implement actual social authentication
-      console.log(`Authenticating with ${provider}`);
-    } catch (error) {
-      console.error('Social auth failed:', error);
+      setSocialLoading(provider);
+
+      if (provider === 'google') {
+        console.log('🔄 [LOGIN] Starting Google sign-in...');
+        const result = await googleSignIn();
+
+        console.log('✅ [LOGIN] Google sign-in successful, logging in...');
+        await loginWithGoogle({
+          idToken: result.idToken,
+          email: result.user.email,
+          firstName: result.user.givenName || undefined,
+          lastName: result.user.familyName || undefined,
+          profileImageUrl: result.user.photo || undefined,
+        });
+
+        console.log('✅ [LOGIN] Google login complete!');
+        // Navigation will be handled by auth state change
+      } else if (provider === 'apple') {
+        // TODO: Implement Apple Sign-In
+        console.log('Apple Sign-In not yet implemented');
+        Alert.alert('Coming Soon', 'Apple Sign-In will be available soon.');
+      }
+    } catch (error: any) {
+      console.error('❌ [LOGIN] Social auth failed:', error);
+
+      if (error.code === 'CANCELLED') {
+        // User cancelled, don't show error
+        return;
+      }
+
+      Alert.alert(
+        'Sign-In Failed',
+        error.message || 'An error occurred during sign-in. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setSocialLoading(null);
     }
   };
 
@@ -93,18 +127,21 @@ export default function Login() {
         translucent={true}
       />
       
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View 
-          style={{ 
-            flex: 1,
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            flexGrow: 1,
             paddingTop: insets.top + 20,
             paddingBottom: insets.bottom + 16,
             paddingHorizontal: 24,
             justifyContent: 'space-between'
           }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Top Section */}
           <View>
@@ -125,7 +162,7 @@ export default function Login() {
                 justifyContent: 'center',
                 marginBottom: 16
               }}>
-                <Image 
+                <Image
                   source={icon}
                   style={{
                     width: 42,
@@ -182,44 +219,13 @@ export default function Login() {
                 showPasswordToggle={true}
               />
 
-              {/* Remember Me & Forgot Password */}
+              {/* Forgot Password */}
               <View style={{
                 flexDirection: 'row',
-                justifyContent: 'space-between',
+                justifyContent: 'flex-end',
                 alignItems: 'center',
-                marginBottom: 24
+                marginBottom: 20
               }}>
-                <TouchableOpacity
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center'
-                  }}
-                  onPress={() => setRememberMe(!rememberMe)}
-                >
-                  <View style={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: 3,
-                    borderWidth: 1.5,
-                    borderColor: rememberMe ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
-                    backgroundColor: rememberMe ? '#00D4AA' : 'transparent',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 6
-                  }}>
-                    {rememberMe && (
-                      <MaterialIcons name="check" size={10} color="#000000" />
-                    )}
-                  </View>
-                  <Text style={{
-                    fontSize: 13,
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    fontWeight: '500'
-                  }}>
-                    Remember me
-                  </Text>
-                </TouchableOpacity>
-
                 <TouchableOpacity
                   onPress={() => router.push('/auth/forgot-password')}
                 >
@@ -270,10 +276,18 @@ export default function Login() {
             </View>
 
             {/* Social Auth */}
-            <View>
+            <View style={{ gap: 12, marginBottom: 24 }}>
+              <SocialAuthButton
+                provider="apple"
+                onPress={() => handleSocialAuth('apple')}
+                loading={socialLoading === 'apple'}
+                disabled={socialLoading !== null}
+              />
               <SocialAuthButton
                 provider="google"
                 onPress={() => handleSocialAuth('google')}
+                loading={socialLoading === 'google'}
+                disabled={socialLoading !== null}
               />
             </View>
           </View>
@@ -329,7 +343,7 @@ export default function Login() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );

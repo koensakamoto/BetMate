@@ -51,6 +51,9 @@ public class BetSummaryResponseDto {
     private Boolean hasInsurance;
     private Integer insuranceRefundPercentage;
 
+    // Fulfillment claim status for current user (losers only)
+    private Boolean hasCurrentUserClaimedFulfillment;
+
     // Constructors
     public BetSummaryResponseDto() {}
 
@@ -237,5 +240,13 @@ public class BetSummaryResponseDto {
 
     public void setInsuranceRefundPercentage(Integer insuranceRefundPercentage) {
         this.insuranceRefundPercentage = insuranceRefundPercentage;
+    }
+
+    public Boolean getHasCurrentUserClaimedFulfillment() {
+        return hasCurrentUserClaimedFulfillment;
+    }
+
+    public void setHasCurrentUserClaimedFulfillment(Boolean hasCurrentUserClaimedFulfillment) {
+        this.hasCurrentUserClaimedFulfillment = hasCurrentUserClaimedFulfillment;
     }
 }

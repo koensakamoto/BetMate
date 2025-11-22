@@ -30,7 +30,7 @@ export interface GroupSummaryResponse {
   description?: string;
   groupPictureUrl?: string;
   privacy: 'PUBLIC' | 'PRIVATE' | 'SECRET';
-  creatorUsername: string;
+  ownerUsername: string;
   memberCount: number;
   maxMembers?: number;
   isActive: boolean;
@@ -270,6 +270,17 @@ export class GroupService extends BaseApiService {
    */
   async rejectInvitation(membershipId: number): Promise<void> {
     return this.post<void>(API_ENDPOINTS.GROUP_REJECT_INVITATION(membershipId), {});
+  }
+
+  /**
+   * Transfer group ownership to another member.
+   * Only the current owner can transfer ownership.
+   */
+  async transferOwnership(groupId: number, newOwnerId: number): Promise<{ message: string; newOwnerId: string; newOwnerUsername: string }> {
+    return this.post<{ message: string; newOwnerId: string; newOwnerUsername: string }>(
+      `/groups/${groupId}/transfer-ownership`,
+      { newOwnerId }
+    );
   }
 }
 

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image, ActivityIndicator, Alert, Linking } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { betService, FulfillmentDetails } from '../../services/bet/betService';
 import { useAuth } from '../../contexts/AuthContext';
 import { ENV } from '../../config/env';
@@ -23,10 +23,20 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
   const [fulfillmentDetails, setFulfillmentDetails] = useState<FulfillmentDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const hasLoadedRef = useRef(false);
+  const navigatedToSubmitProofRef = useRef(false);
 
-  useEffect(() => {
-    loadFulfillmentDetails();
-  }, [betId]);
+  // Reload fulfillment details when screen comes into focus, but only on initial load
+  // or when returning from submit-proof (where data changes)
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasLoadedRef.current || navigatedToSubmitProofRef.current) {
+        loadFulfillmentDetails();
+        hasLoadedRef.current = true;
+        navigatedToSubmitProofRef.current = false;
+      }
+    }, [betId])
+  );
 
   // Get full image URL helper
   const getFullImageUrl = useCallback((imageUrl: string | null | undefined): string | null => {
@@ -59,6 +69,7 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
   };
 
   const handleLoserClaim = () => {
+    navigatedToSubmitProofRef.current = true;
     router.push({
       pathname: '/submit-proof',
       params: {
@@ -66,32 +77,6 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
         betTitle: betTitle,
       },
     });
-  };
-
-  const handleWinnerConfirm = async () => {
-    Alert.alert(
-      'Confirm Receipt',
-      'Are you confirming that you received the stake?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            try {
-              setSubmitting(true);
-              await betService.winnerConfirmFulfilled(betId);
-              await loadFulfillmentDetails();
-              onRefresh?.();
-              Alert.alert('Success', 'Your confirmation has been recorded');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to record confirmation');
-            } finally {
-              setSubmitting(false);
-            }
-          },
-        },
-      ]
-    );
   };
 
   if (loading) {
@@ -112,9 +97,9 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
     return null;
   }
 
-  const currentUserIsWinner = fulfillmentDetails.winners.some(w => w.userId === user?.id);
   const currentUserIsLoser = fulfillmentDetails.losers.some(l => l.userId === user?.id);
-  const currentUserHasConfirmed = fulfillmentDetails.winners.find(w => w.userId === user?.id)?.hasConfirmed;
+  const currentUserLoserClaim = fulfillmentDetails.losers.find(l => l.userId === user?.id);
+  const currentUserHasClaimed = currentUserLoserClaim?.hasClaimed ?? false;
 
   const getStatusColor = () => {
     switch (fulfillmentDetails.status) {
@@ -251,13 +236,33 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
           <Text style={{ fontSize: 13, fontWeight: '500', color: 'rgba(255, 255, 255, 0.6)', marginBottom: 8 }}>Losers</Text>
           {fulfillmentDetails.losers.map((loser) => {
             const fullImageUrl = getFullImageUrl(loser.profilePhotoUrl);
+            const canViewProof = loser.hasClaimed;
+
+            const handleLoserCardPress = () => {
+              if (canViewProof) {
+                router.push({
+                  pathname: '/view-proof',
+                  params: {
+                    loserName: loser.displayName,
+                    claimedAt: loser.claimedAt || '',
+                    proofUrl: loser.proofUrl || '',
+                    proofDescription: loser.proofDescription || '',
+                    betTitle: betTitle,
+                  },
+                });
+              }
+            };
+
             return (
-              <View
+              <TouchableOpacity
                 key={loser.userId}
+                onPress={handleLoserCardPress}
+                disabled={!canViewProof}
+                activeOpacity={canViewProof ? 0.7 : 1}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: 12,
+                  justifyContent: 'space-between',
                   backgroundColor: 'rgba(255, 255, 255, 0.05)',
                   borderRadius: 8,
                   padding: 12,
@@ -266,73 +271,44 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
                   borderColor: 'rgba(255, 255, 255, 0.08)'
                 }}
               >
-                {fullImageUrl ? (
-                  <Image
-                    source={{ uri: fullImageUrl }}
-                    style={{ width: 32, height: 32, borderRadius: 16 }}
-                  />
-                ) : (
-                  <View style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '600' }}>
-                      {getUserInitials(loser.displayName)}
-                    </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  {fullImageUrl ? (
+                    <Image
+                      source={{ uri: fullImageUrl }}
+                      style={{ width: 32, height: 32, borderRadius: 16 }}
+                    />
+                  ) : (
+                    <View style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '600' }}>
+                        {getUserInitials(loser.displayName)}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={{ color: '#ffffff' }}>{loser.displayName}</Text>
+                </View>
+                {loser.hasClaimed ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <MaterialIcons name="check-circle" size={18} color="#10b981" />
+                    <MaterialIcons name="chevron-right" size={18} color="rgba(255, 255, 255, 0.4)" />
                   </View>
+                ) : (
+                  <Text style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: 12 }}>Pending</Text>
                 )}
-                <Text style={{ color: '#ffffff' }}>{loser.displayName}</Text>
-              </View>
+              </TouchableOpacity>
             );
           })}
-          {fulfillmentDetails.loserClaimedAt && (
-            <View style={{
-              backgroundColor: 'rgba(59, 130, 246, 0.15)',
-              borderWidth: 1,
-              borderColor: 'rgba(59, 130, 246, 0.3)',
-              borderRadius: 8,
-              padding: 12,
-              marginTop: 8
-            }}>
-              <Text style={{ color: '#60a5fa', fontSize: 13 }}>
-                Loser has claimed they fulfilled the stake
-              </Text>
-              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 11, marginTop: 4 }}>
-                {new Date(fulfillmentDetails.loserClaimedAt).toLocaleDateString()}
-              </Text>
-              {fulfillmentDetails.loserProofDescription && (
-                <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(59, 130, 246, 0.2)' }}>
-                  <Text style={{ color: '#60a5fa', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>
-                    Proof Description:
-                  </Text>
-                  <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 12 }}>
-                    {fulfillmentDetails.loserProofDescription}
-                  </Text>
-                </View>
-              )}
-              {fulfillmentDetails.loserProofUrl && (
-                <View style={{ marginTop: 8 }}>
-                  <Text style={{ color: '#60a5fa', fontSize: 12, fontWeight: '500', marginBottom: 4 }}>
-                    Proof Photo:
-                  </Text>
-                  <Image
-                    source={{ uri: getFullImageUrl(fulfillmentDetails.loserProofUrl) || undefined }}
-                    style={{ width: '100%', height: 200, borderRadius: 8 }}
-                    resizeMode="cover"
-                  />
-                </View>
-              )}
-            </View>
-          )}
         </View>
       )}
 
       {/* Action Buttons */}
-      {currentUserIsLoser && !fulfillmentDetails.loserClaimedAt && (
+      {currentUserIsLoser && !currentUserHasClaimed && (
         <TouchableOpacity
           onPress={handleLoserClaim}
           disabled={submitting}
@@ -353,28 +329,7 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
         </TouchableOpacity>
       )}
 
-      {currentUserIsWinner && !currentUserHasConfirmed && (
-        <TouchableOpacity
-          onPress={handleWinnerConfirm}
-          disabled={submitting}
-          style={{
-            backgroundColor: '#059669',
-            borderRadius: 8,
-            padding: 16
-          }}
-          activeOpacity={0.8}
-        >
-          {submitting ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <Text style={{ color: '#ffffff', fontWeight: '600', textAlign: 'center' }}>
-              Mark as Received
-            </Text>
-          )}
-        </TouchableOpacity>
-      )}
-
-      {currentUserIsWinner && currentUserHasConfirmed && (
+      {currentUserIsLoser && currentUserHasClaimed && (
         <View style={{
           backgroundColor: 'rgba(16, 185, 129, 0.15)',
           borderWidth: 1,
@@ -383,7 +338,7 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
           padding: 12
         }}>
           <Text style={{ color: '#34d399', textAlign: 'center' }}>
-            You have confirmed receipt of the stake
+            You have claimed fulfillment of the stake
           </Text>
         </View>
       )}

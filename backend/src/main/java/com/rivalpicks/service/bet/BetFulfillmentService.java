@@ -4,11 +4,13 @@ import com.rivalpicks.entity.betting.Bet;
 import com.rivalpicks.entity.betting.BetFulfillment;
 import com.rivalpicks.entity.betting.BetParticipation;
 import com.rivalpicks.entity.betting.FulfillmentStatus;
+import com.rivalpicks.entity.betting.LoserFulfillmentClaim;
 import com.rivalpicks.entity.user.User;
 import com.rivalpicks.exception.betting.BetFulfillmentException;
 import com.rivalpicks.repository.betting.BetFulfillmentRepository;
 import com.rivalpicks.repository.betting.BetParticipationRepository;
 import com.rivalpicks.repository.betting.BetRepository;
+import com.rivalpicks.repository.betting.LoserFulfillmentClaimRepository;
 import com.rivalpicks.repository.user.UserRepository;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,16 +34,19 @@ public class BetFulfillmentService {
     private final BetRepository betRepository;
     private final BetParticipationRepository participationRepository;
     private final BetFulfillmentRepository fulfillmentRepository;
+    private final LoserFulfillmentClaimRepository loserClaimRepository;
     private final UserRepository userRepository;
 
     @Autowired
     public BetFulfillmentService(BetRepository betRepository,
                                  BetParticipationRepository participationRepository,
                                  BetFulfillmentRepository fulfillmentRepository,
+                                 LoserFulfillmentClaimRepository loserClaimRepository,
                                  UserRepository userRepository) {
         this.betRepository = betRepository;
         this.participationRepository = participationRepository;
         this.fulfillmentRepository = fulfillmentRepository;
+        this.loserClaimRepository = loserClaimRepository;
         this.userRepository = userRepository;
     }
 
@@ -68,6 +73,7 @@ public class BetFulfillmentService {
     /**
      * Loser claims they have fulfilled the social stake (optional).
      * This is informational only - fulfillment is complete when all winners confirm.
+     * Now supports per-loser claims with individual proof.
      *
      * @param betId the bet ID
      * @param userId the loser user ID
@@ -93,17 +99,21 @@ public class BetFulfillmentService {
             throw new BetFulfillmentException("User is not a loser of this bet");
         }
 
-        // Record loser's claim using atomic update to bypass validation
-        // This avoids loading the entire entity and triggering validation on unrelated fields
-        LocalDateTime claimedAt = LocalDateTime.now();
+        // Check if this loser has already claimed
+        if (loserClaimRepository.existsByBetIdAndLoserId(betId, userId)) {
+            throw new BetFulfillmentException("You have already claimed fulfillment for this bet");
+        }
+
+        // Save individual loser claim
         String finalProofUrl = (proofUrl != null && !proofUrl.trim().isEmpty()) ? proofUrl : null;
         String finalProofDescription = (proofDescription != null && !proofDescription.trim().isEmpty()) ? proofDescription : null;
 
-        int updated = betRepository.updateLoserClaimAtomically(betId, claimedAt, finalProofUrl, finalProofDescription);
+        LoserFulfillmentClaim claim = new LoserFulfillmentClaim(betId, userId, finalProofUrl, finalProofDescription);
+        loserClaimRepository.save(claim);
 
-        if (updated == 0) {
-            throw new BetFulfillmentException("Failed to update loser claim for bet: " + betId);
-        }
+        // Also update bet-level claim for backwards compatibility (use most recent claim)
+        LocalDateTime claimedAt = LocalDateTime.now();
+        betRepository.updateLoserClaimAtomically(betId, claimedAt, finalProofUrl, finalProofDescription);
     }
 
     /**
@@ -196,11 +206,16 @@ public class BetFulfillmentService {
         List<BetParticipation> winners = getWinners(bet);
         List<BetParticipation> losers = getLosers(bet);
         List<BetFulfillment> confirmations = fulfillmentRepository.findByBetId(betId);
+        List<LoserFulfillmentClaim> loserClaims = loserClaimRepository.findByBetId(betId);
 
         // Map winner IDs for easy lookup
         List<Long> confirmedWinnerIds = confirmations.stream()
                 .map(BetFulfillment::getWinnerId)
                 .collect(Collectors.toList());
+
+        // Map loser claims by loser ID for easy lookup
+        java.util.Map<Long, LoserFulfillmentClaim> loserClaimMap = loserClaims.stream()
+                .collect(Collectors.toMap(LoserFulfillmentClaim::getLoserId, claim -> claim));
 
         return new FulfillmentDetails(
                 bet.getId(),
@@ -223,11 +238,18 @@ public class BetFulfillmentService {
                         ))
                         .collect(Collectors.toList()),
                 losers.stream()
-                        .map(p -> new LoserInfo(
-                                p.getUser().getId(),
-                                p.getUser().getDisplayName(),
-                                p.getUser().getProfileImageUrl()
-                        ))
+                        .map(p -> {
+                            LoserFulfillmentClaim claim = loserClaimMap.get(p.getUser().getId());
+                            return new LoserInfo(
+                                    p.getUser().getId(),
+                                    p.getUser().getDisplayName(),
+                                    p.getUser().getProfileImageUrl(),
+                                    claim != null,
+                                    claim != null ? claim.getClaimedAt() : null,
+                                    claim != null ? claim.getProofUrl() : null,
+                                    claim != null ? claim.getProofDescription() : null
+                            );
+                        })
                         .collect(Collectors.toList()),
                 confirmations.stream()
                         .map(c -> new WinnerConfirmation(
@@ -299,7 +321,11 @@ public class BetFulfillmentService {
     public record LoserInfo(
             Long userId,
             String displayName,
-            String profilePhotoUrl
+            String profilePhotoUrl,
+            boolean hasClaimed,
+            LocalDateTime claimedAt,
+            String proofUrl,
+            String proofDescription
     ) {}
 
     /**

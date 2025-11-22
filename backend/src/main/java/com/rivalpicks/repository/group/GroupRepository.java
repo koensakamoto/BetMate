@@ -24,7 +24,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
     // Group status queries
     List<Group> findByIsActiveTrueAndDeletedAtIsNull();
     List<Group> findByPrivacy(Group.Privacy privacy);
-    List<Group> findByCreator(User creator);
+    List<Group> findByOwner(User owner);
     
     // Membership queries
     List<Group> findByMemberCountGreaterThan(Integer minMembers);

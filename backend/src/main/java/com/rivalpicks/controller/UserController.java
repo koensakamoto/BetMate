@@ -98,7 +98,7 @@ public class UserController {
             User user = userRegistrationService.registerUser(serviceRequest);
             System.out.println("=== USER CREATED SUCCESSFULLY ===");
             return ResponseEntity.status(HttpStatus.CREATED).body(UserProfileResponseDto.fromUser(user));
-        } catch (com.betmate.exception.user.UserRegistrationException e) {
+        } catch (com.rivalpicks.exception.user.UserRegistrationException e) {
             System.err.println("=== REGISTRATION EXCEPTION ===");
             System.err.println("Registration exception: " + e.getMessage());
             e.printStackTrace();
@@ -354,7 +354,7 @@ public class UserController {
                     return ResponseEntity.ok(LimitedUserProfileResponseDto.fromUser(user,
                         "This profile is private"));
             }
-        } catch (com.betmate.exception.user.UserNotFoundException e) {
+        } catch (com.rivalpicks.exception.user.UserNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
@@ -385,7 +385,7 @@ public class UserController {
         try {
             UserStatisticsService.UserStatistics stats = userStatisticsService.getUserStatistics(id);
             return ResponseEntity.ok(stats);
-        } catch (com.betmate.exception.user.UserNotFoundException e) {
+        } catch (com.rivalpicks.exception.user.UserNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }

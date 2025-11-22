@@ -1,44 +1,36 @@
 package com.rivalpicks.service.notification;
 
+import com.google.firebase.messaging.*;
 import com.rivalpicks.entity.messaging.Notification;
 import com.rivalpicks.entity.user.User;
 import com.rivalpicks.repository.messaging.NotificationRepository;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
- * Service for sending push notifications via Expo Push Notification Service.
- *
- * Expo Push API: https://docs.expo.dev/push-notifications/sending-notifications/
+ * Service for sending push notifications via Firebase Cloud Messaging (FCM).
  */
 @Service
 public class PushNotificationService {
 
     private static final Logger logger = LoggerFactory.getLogger(PushNotificationService.class);
-    private static final String EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
-    private static final int MAX_BATCH_SIZE = 100;
+    private static final int MAX_BATCH_SIZE = 500; // FCM allows up to 500 per batch
 
-    private final RestTemplate restTemplate;
+    private final FirebaseMessaging firebaseMessaging;
     private final NotificationRepository notificationRepository;
 
     @Autowired
-    public PushNotificationService(NotificationRepository notificationRepository) {
-        this.restTemplate = new RestTemplate();
+    public PushNotificationService(FirebaseMessaging firebaseMessaging, NotificationRepository notificationRepository) {
+        this.firebaseMessaging = firebaseMessaging;
         this.notificationRepository = notificationRepository;
     }
 
@@ -56,10 +48,12 @@ public class PushNotificationService {
         }
 
         try {
-            ExpoPushMessage message = createExpoPushMessage(user.getExpoPushToken(), notification);
-            sendToExpo(List.of(message));
+            Message message = buildMessage(user.getExpoPushToken(), notification);
+            String messageId = firebaseMessaging.send(message);
             markNotificationAsPushSent(notification);
-            logger.info("Push notification sent to user {}", user.getId());
+            logger.info("Push notification sent to user {}, messageId: {}", user.getId(), messageId);
+        } catch (FirebaseMessagingException e) {
+            handleFirebaseException(user.getId(), user.getExpoPushToken(), e);
         } catch (Exception e) {
             logger.error("Failed to send push notification to user {}: {}", user.getId(), e.getMessage());
         }
@@ -75,17 +69,37 @@ public class PushNotificationService {
      */
     @Async
     public void sendPushNotifications(List<User> users, String title, String body, Map<String, Object> data) {
-        List<ExpoPushMessage> messages = new ArrayList<>();
+        List<Message> messages = new ArrayList<>();
+
+        // Convert data values to strings (FCM requires string values)
+        Map<String, String> stringData = data.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> String.valueOf(e.getValue())
+                ));
 
         for (User user : users) {
             if (user.hasPushToken()) {
-                ExpoPushMessage message = new ExpoPushMessage();
-                message.to = user.getExpoPushToken();
-                message.title = title;
-                message.body = body;
-                message.data = data;
-                message.sound = "default";
-                message.priority = "high";
+                Message message = Message.builder()
+                        .setToken(user.getExpoPushToken())
+                        .setNotification(com.google.firebase.messaging.Notification.builder()
+                                .setTitle(title)
+                                .setBody(body)
+                                .build())
+                        .putAllData(stringData)
+                        .setAndroidConfig(AndroidConfig.builder()
+                                .setPriority(AndroidConfig.Priority.HIGH)
+                                .setNotification(AndroidNotification.builder()
+                                        .setChannelId("default")
+                                        .setSound("default")
+                                        .build())
+                                .build())
+                        .setApnsConfig(ApnsConfig.builder()
+                                .setAps(Aps.builder()
+                                        .setSound("default")
+                                        .build())
+                                .build())
+                        .build();
                 messages.add(message);
             }
         }
@@ -97,11 +111,23 @@ public class PushNotificationService {
 
         // Send in batches
         for (int i = 0; i < messages.size(); i += MAX_BATCH_SIZE) {
-            List<ExpoPushMessage> batch = messages.subList(i, Math.min(i + MAX_BATCH_SIZE, messages.size()));
+            List<Message> batch = messages.subList(i, Math.min(i + MAX_BATCH_SIZE, messages.size()));
             try {
-                sendToExpo(batch);
-                logger.info("Sent batch of {} push notifications", batch.size());
-            } catch (Exception e) {
+                BatchResponse response = firebaseMessaging.sendEach(batch);
+                logger.info("Sent batch of {} push notifications, {} successful, {} failed",
+                        batch.size(), response.getSuccessCount(), response.getFailureCount());
+
+                // Log failures
+                if (response.getFailureCount() > 0) {
+                    List<SendResponse> responses = response.getResponses();
+                    for (int j = 0; j < responses.size(); j++) {
+                        if (!responses.get(j).isSuccessful()) {
+                            logger.warn("Push notification failed: {}",
+                                    responses.get(j).getException().getMessage());
+                        }
+                    }
+                }
+            } catch (FirebaseMessagingException e) {
                 logger.error("Failed to send push notification batch: {}", e.getMessage());
             }
         }
@@ -136,57 +162,49 @@ public class PushNotificationService {
     }
 
     /**
-     * Creates an Expo push message from a notification entity.
+     * Builds an FCM message from a notification entity.
      */
-    private ExpoPushMessage createExpoPushMessage(String pushToken, Notification notification) {
-        ExpoPushMessage message = new ExpoPushMessage();
-        message.to = pushToken;
-        message.title = notification.getTitle();
-        message.body = notification.getMessage();
-        message.sound = "default";
-        message.priority = notification.isHighPriority() ? "high" : "default";
-        message.data = Map.of(
-            "notificationId", notification.getId(),
-            "type", notification.getNotificationType().name(),
-            "relatedEntityId", notification.getRelatedEntityId() != null ? notification.getRelatedEntityId() : "",
-            "relatedEntityType", notification.getRelatedEntityType() != null ? notification.getRelatedEntityType() : "",
-            "actionUrl", notification.getActionUrl() != null ? notification.getActionUrl() : ""
+    private Message buildMessage(String fcmToken, Notification notification) {
+        Map<String, String> data = Map.of(
+                "notificationId", String.valueOf(notification.getId()),
+                "type", notification.getNotificationType().name(),
+                "relatedEntityId", notification.getRelatedEntityId() != null ? String.valueOf(notification.getRelatedEntityId()) : "",
+                "relatedEntityType", notification.getRelatedEntityType() != null ? notification.getRelatedEntityType() : "",
+                "actionUrl", notification.getActionUrl() != null ? notification.getActionUrl() : ""
         );
-        return message;
+
+        return Message.builder()
+                .setToken(fcmToken)
+                .setNotification(com.google.firebase.messaging.Notification.builder()
+                        .setTitle(notification.getTitle())
+                        .setBody(notification.getMessage())
+                        .build())
+                .putAllData(data)
+                .setAndroidConfig(AndroidConfig.builder()
+                        .setPriority(notification.isHighPriority() ? AndroidConfig.Priority.HIGH : AndroidConfig.Priority.NORMAL)
+                        .setNotification(AndroidNotification.builder()
+                                .setChannelId("default")
+                                .setSound("default")
+                                .build())
+                        .build())
+                .setApnsConfig(ApnsConfig.builder()
+                        .setAps(Aps.builder()
+                                .setSound("default")
+                                .build())
+                        .build())
+                .build();
     }
 
     /**
-     * Sends messages to Expo Push API.
+     * Handles Firebase messaging exceptions.
      */
-    private void sendToExpo(List<ExpoPushMessage> messages) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Accept", "application/json");
-        headers.set("Accept-Encoding", "gzip, deflate");
-
-        HttpEntity<List<ExpoPushMessage>> request = new HttpEntity<>(messages, headers);
-
-        try {
-            ExpoPushResponse response = restTemplate.postForObject(
-                EXPO_PUSH_URL,
-                request,
-                ExpoPushResponse.class
-            );
-
-            if (response != null && response.data != null) {
-                for (int i = 0; i < response.data.size(); i++) {
-                    ExpoPushTicket ticket = response.data.get(i);
-                    if ("error".equals(ticket.status)) {
-                        logger.warn("Push notification failed for token {}: {} - {}",
-                            i < messages.size() ? messages.get(i).to : "unknown",
-                            ticket.message,
-                            ticket.details != null ? ticket.details.error : "no details");
-                    }
-                }
-            }
-        } catch (Exception e) {
-            logger.error("Error calling Expo Push API: {}", e.getMessage());
-            throw e;
+    private void handleFirebaseException(Long userId, String token, FirebaseMessagingException e) {
+        MessagingErrorCode errorCode = e.getMessagingErrorCode();
+        if (errorCode == MessagingErrorCode.UNREGISTERED || errorCode == MessagingErrorCode.INVALID_ARGUMENT) {
+            // Token is invalid or user uninstalled app - should clear token from user
+            logger.warn("Invalid FCM token for user {}, token should be cleared: {}", userId, e.getMessage());
+        } else {
+            logger.error("FCM error for user {}: {} - {}", userId, errorCode, e.getMessage());
         }
     }
 
@@ -197,35 +215,5 @@ public class PushNotificationService {
     public void markNotificationAsPushSent(Notification notification) {
         notification.markPushSent();
         notificationRepository.save(notification);
-    }
-
-    // ==========================================
-    // Expo Push API DTOs
-    // ==========================================
-
-    public static class ExpoPushMessage {
-        public String to;
-        public String title;
-        public String body;
-        public String sound;
-        public String priority;
-        public Map<String, Object> data;
-        @JsonProperty("channelId")
-        public String channelId = "default";
-    }
-
-    public static class ExpoPushResponse {
-        public List<ExpoPushTicket> data;
-    }
-
-    public static class ExpoPushTicket {
-        public String status;
-        public String id;
-        public String message;
-        public ExpoPushTicketDetails details;
-    }
-
-    public static class ExpoPushTicketDetails {
-        public String error;
     }
 }

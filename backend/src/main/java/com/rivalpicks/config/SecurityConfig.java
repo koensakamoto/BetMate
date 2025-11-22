@@ -39,7 +39,8 @@ public class SecurityConfig {
     private static final String[] PUBLIC_AUTH_ENDPOINTS = {
         "/api/auth/login",
         "/api/auth/refresh",
-        "/api/auth/logout"
+        "/api/auth/logout",
+        "/api/auth/google"
         // Note: /api/auth/me and /api/auth/change-password require authentication and are NOT in this list
     };
     

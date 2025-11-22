@@ -226,6 +226,32 @@ public class GroupController {
     }
 
     /**
+     * Transfer group ownership to another member.
+     * Only the current owner can transfer ownership.
+     */
+    @PostMapping("/{groupId}/transfer-ownership")
+    public ResponseEntity<Map<String, String>> transferOwnership(
+            @PathVariable Long groupId,
+            @Valid @RequestBody com.rivalpicks.dto.group.request.TransferOwnershipRequestDto request,
+            Authentication authentication) {
+
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        Group group = groupService.getGroupById(groupId);
+        User newOwner = userService.getUserById(request.getNewOwnerId());
+
+        // Transfer ownership
+        groupMembershipService.transferOwnership(currentUser, newOwner, group);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Ownership transferred successfully");
+        response.put("newOwnerId", newOwner.getId().toString());
+        response.put("newOwnerUsername", newOwner.getUsername());
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Join a group.
      * For PUBLIC groups with auto-approve, user joins immediately as MEMBER.
      * For PRIVATE groups or groups without auto-approve, creates a pending request.
@@ -305,11 +331,11 @@ public class GroupController {
             .orElseThrow(() -> new RuntimeException("User not found"));
         Group group = groupService.getGroupById(groupId);
 
-        // Check if user is authorized to update the group (creator or admin)
-        boolean isCreator = group.getCreator().getId().equals(currentUser.getId());
+        // Check if user is authorized to update the group (owner or admin)
+        boolean isOwner = group.isOwner(currentUser);
         boolean isAdmin = groupMembershipService.isAdmin(currentUser, group);
 
-        if (!isCreator && !isAdmin) {
+        if (!isOwner && !isAdmin) {
             throw new RuntimeException("Access denied - insufficient permissions to update this group");
         }
 
@@ -331,12 +357,12 @@ public class GroupController {
             .orElseThrow(() -> new RuntimeException("User not found"));
         Group group = groupService.getGroupById(groupId);
 
-        // Only the creator can delete the group
-        if (!group.getCreator().getId().equals(currentUser.getId())) {
-            throw new RuntimeException("Access denied - only the group creator can delete the group");
+        // Only the owner can delete the group
+        if (!group.isOwner(currentUser)) {
+            throw new RuntimeException("Access denied - only the group owner can delete the group");
         }
 
-        groupService.deleteGroup(group);
+        groupService.deleteGroup(group, currentUser);
         return ResponseEntity.noContent().build();
     }
 
@@ -353,11 +379,11 @@ public class GroupController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
             Group group = groupService.getGroupById(groupId);
 
-            // Check if user is authorized (creator or admin)
-            boolean isCreator = group.getCreator().getId().equals(currentUser.getId());
+            // Check if user is authorized (owner or admin)
+            boolean isOwner = group.isOwner(currentUser);
             boolean isAdmin = groupMembershipService.isAdmin(currentUser, group);
 
-            if (!isCreator && !isAdmin) {
+            if (!isOwner && !isAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("Access denied - insufficient permissions to upload group picture");
             }
@@ -446,7 +472,7 @@ public class GroupController {
         response.setDescription(group.getDescription());
         response.setGroupPictureUrl(group.getGroupPictureUrl());
         response.setPrivacy(group.getPrivacy());
-        response.setCreatorUsername(group.getCreator().getUsername());
+        response.setOwnerUsername(group.getOwner().getUsername());
         response.setMemberCount(group.getMemberCount());
         response.setMaxMembers(group.getMaxMembers());
         response.setIsActive(group.getIsActive());

@@ -19,7 +19,7 @@ import org.mockito.quality.Strictness;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import static com.betmate.service.group.GroupCreationService.DEFAULT_MAX_MEMBERS;
+import static com.rivalpicks.service.group.GroupCreationService.DEFAULT_MAX_MEMBERS;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;

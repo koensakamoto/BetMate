@@ -15,7 +15,7 @@ public class GroupResponseDto {
     private String description;
     private String groupPictureUrl;
     private Group.Privacy privacy;
-    private UserProfileResponseDto creator;
+    private UserProfileResponseDto owner;
     private Integer memberCount;
     private Integer maxMembers;
     private Boolean isActive;
@@ -34,7 +34,7 @@ public class GroupResponseDto {
     public GroupResponseDto() {}
 
     public GroupResponseDto(Long id, String groupName, String description, String groupPictureUrl,
-                          Group.Privacy privacy, UserProfileResponseDto creator, Integer memberCount,
+                          Group.Privacy privacy, UserProfileResponseDto owner, Integer memberCount,
                           Integer maxMembers, Boolean isActive, Long totalMessages,
                           LocalDateTime lastMessageAt, UserProfileResponseDto lastMessageUser,
                           LocalDateTime createdAt, LocalDateTime updatedAt) {
@@ -43,7 +43,7 @@ public class GroupResponseDto {
         this.description = description;
         this.groupPictureUrl = groupPictureUrl;
         this.privacy = privacy;
-        this.creator = creator;
+        this.owner = owner;
         this.memberCount = memberCount;
         this.maxMembers = maxMembers;
         this.isActive = isActive;
@@ -95,12 +95,12 @@ public class GroupResponseDto {
         this.privacy = privacy;
     }
 
-    public UserProfileResponseDto getCreator() {
-        return creator;
+    public UserProfileResponseDto getOwner() {
+        return owner;
     }
 
-    public void setCreator(UserProfileResponseDto creator) {
-        this.creator = creator;
+    public void setOwner(UserProfileResponseDto owner) {
+        this.owner = owner;
     }
 
     public Integer getMemberCount() {

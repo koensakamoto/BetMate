@@ -232,7 +232,9 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
   // Helper functions for invite functionality
   const generateInviteLink = () => {
     const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
-    const link = `https://rivalpicks.app/invite/${currentGroupId}`;
+    // Use custom scheme for now - works in dev and production
+    // For production with universal links, change to: https://rivalpicks.app/invite/${currentGroupId}
+    const link = `rivalpicks://invite/${currentGroupId}`;
     setInviteLink(link);
     return link;
   };
@@ -240,10 +242,19 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
   const handleShareInviteLink = async () => {
     try {
       const link = generateInviteLink();
-      await Share.share({
-        message: `Join my group "${groupData.name}" on RivalPicks! ${link}`,
-        url: link,
-      });
+      const shareMessage = `You're invited to join "${groupData.name}" on RivalPicks!\n\nCompete with friends, make predictions, and see who comes out on top.\n\n${link}`;
+
+      // iOS handles message and url differently - use platform-specific sharing
+      if (Platform.OS === 'ios') {
+        await Share.share({
+          message: shareMessage,
+          url: undefined,
+        });
+      } else {
+        await Share.share({
+          message: shareMessage,
+        });
+      }
     } catch (error) {
       Alert.alert('Error', 'Failed to share invite link');
     }

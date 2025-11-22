@@ -22,6 +22,14 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+export interface GoogleAuthRequest {
+  idToken: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  profileImageUrl?: string;
+}
+
 export interface RefreshTokenRequest {
   refreshToken: string;
 }
@@ -204,6 +212,39 @@ export class AuthService extends BaseApiService {
       tokenPreview: accessToken ? `${accessToken.substring(0, 20)}...` : 'null'
     });
     return !!accessToken;
+  }
+
+  /**
+   * Login with Google OAuth
+   */
+  async loginWithGoogle(googleData: GoogleAuthRequest): Promise<LoginResponse> {
+    console.log('🔐 [AuthService] Google login attempt starting...', {
+      email: googleData.email,
+    });
+
+    try {
+      const response = await this.post<LoginResponse>(
+        '/auth/google',
+        googleData
+      );
+
+      console.log('✅ [AuthService] Google login successful!', {
+        userId: response.user?.id,
+        username: response.user?.username,
+      });
+
+      // Store tokens securely
+      await tokenStorage.setTokens(
+        response.accessToken,
+        response.refreshToken
+      );
+
+      return response;
+    } catch (error) {
+      console.error('❌ [AuthService] Google login failed:', error);
+      await tokenStorage.clearTokens();
+      throw error;
+    }
   }
 
   /**

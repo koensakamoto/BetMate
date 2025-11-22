@@ -7,6 +7,7 @@ import com.rivalpicks.entity.user.User;
 import com.rivalpicks.repository.messaging.NotificationRepository;
 import com.rivalpicks.repository.user.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,11 +25,13 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final PushNotificationService pushNotificationService;
 
     @Autowired
-    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository) {
+    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository, @Lazy PushNotificationService pushNotificationService) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
+        this.pushNotificationService = pushNotificationService;
     }
 
     /**
@@ -133,6 +136,9 @@ public class NotificationService {
                 "FRIENDSHIP"
             );
             System.out.println("DEBUG: Successfully created notification with ID: " + notification.getId() + ", relatedEntityId: " + notification.getRelatedEntityId() + ", relatedEntityType: " + notification.getRelatedEntityType());
+
+            // Send push notification
+            pushNotificationService.sendPushNotification(accepter, notification);
         } catch (Exception e) {
             System.err.println("ERROR: Failed to create friend request notification: " + e.getMessage());
             e.printStackTrace();
@@ -158,6 +164,9 @@ public class NotificationService {
                 "USER"
             );
             System.out.println("DEBUG: Successfully created friend request accepted notification with ID: " + notification.getId());
+
+            // Send push notification
+            pushNotificationService.sendPushNotification(requester, notification);
         } catch (Exception e) {
             System.err.println("ERROR: Failed to create friend request accepted notification: " + e.getMessage());
             e.printStackTrace();

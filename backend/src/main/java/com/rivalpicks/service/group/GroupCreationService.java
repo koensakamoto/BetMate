@@ -85,7 +85,7 @@ public class GroupCreationService {
         // Set max members with default
         Integer maxMembers = request.getMaxMembers();
         group.setMaxMembers(maxMembers != null ? maxMembers : DEFAULT_MAX_MEMBERS);
-        group.setCreator(creator);
+        group.setOwner(creator);
         
         // Set defaults
         group.setMemberCount(1); // Creator is first member

@@ -26,8 +26,8 @@ export interface User {
 }
 
 export interface SignupData {
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   username: string;
   email: string;
   password: string;
@@ -45,12 +45,21 @@ export interface AuthError {
   statusCode?: number;
 }
 
+export interface GoogleLoginData {
+  idToken: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  profileImageUrl?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   error: AuthError | null;
   isAuthenticated: boolean;
   login: (data: LoginData) => Promise<void>;
+  loginWithGoogle: (data: GoogleLoginData) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
@@ -230,8 +239,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
 
       const response = await authService.signup({
-        firstName: data.firstName,
-        lastName: data.lastName,
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
         username: data.username,
         email: data.email,
         password: data.password,
@@ -246,6 +255,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(authError);
       setUser(null); // Clear user state on signup failure
       errorLog('Signup failed:', error);
+      throw authError;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginWithGoogle = async (data: GoogleLoginData) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await authService.loginWithGoogle({
+        idToken: data.idToken,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        profileImageUrl: data.profileImageUrl,
+      });
+
+      const transformedUser = transformUser(response.user);
+      setUser(transformedUser);
+
+      debugLog('Google login successful for user:', transformedUser.username);
+    } catch (error) {
+      const authError = handleAuthError(error);
+      setError(authError);
+      setUser(null);
+      errorLog('Google login failed:', error);
       throw authError;
     } finally {
       setIsLoading(false);
@@ -332,6 +369,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     error,
     isAuthenticated,
     login,
+    loginWithGoogle,
     signup,
     logout,
     forgotPassword,

@@ -1,4 +1,4 @@
-package com.betmate
+package com.rivalpicks.app
 
 import android.app.Application
 import android.content.res.Configuration

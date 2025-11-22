@@ -6,6 +6,7 @@ import com.rivalpicks.entity.messaging.Notification;
 import com.rivalpicks.entity.messaging.Notification.NotificationType;
 import com.rivalpicks.entity.messaging.Notification.NotificationPriority;
 import com.rivalpicks.entity.user.User;
+import com.rivalpicks.event.group.GroupDeletedEvent;
 import com.rivalpicks.event.group.GroupInvitationEvent;
 import com.rivalpicks.event.group.GroupJoinRequestEvent;
 import com.rivalpicks.event.group.GroupMemberJoinedEvent;
@@ -16,6 +17,7 @@ import com.rivalpicks.repository.user.UserRepository;
 import com.rivalpicks.service.group.GroupService;
 import com.rivalpicks.service.messaging.MessageNotificationService;
 import com.rivalpicks.service.notification.NotificationService;
+import com.rivalpicks.service.notification.PushNotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +40,7 @@ public class GroupNotificationListener {
 
     private final NotificationService notificationService;
     private final MessageNotificationService messageNotificationService;
+    private final PushNotificationService pushNotificationService;
     private final GroupMembershipRepository groupMembershipRepository;
     private final GroupService groupService;
     private final UserRepository userRepository;
@@ -46,11 +49,13 @@ public class GroupNotificationListener {
     public GroupNotificationListener(
             NotificationService notificationService,
             MessageNotificationService messageNotificationService,
+            PushNotificationService pushNotificationService,
             GroupMembershipRepository groupMembershipRepository,
             GroupService groupService,
             UserRepository userRepository) {
         this.notificationService = notificationService;
         this.messageNotificationService = messageNotificationService;
+        this.pushNotificationService = pushNotificationService;
         this.groupMembershipRepository = groupMembershipRepository;
         this.groupService = groupService;
         this.userRepository = userRepository;
@@ -125,6 +130,9 @@ public class GroupNotificationListener {
                     // Send real-time notification via WebSocket
                     messageNotificationService.sendNotificationToUser(admin.getId(), notification);
 
+                    // Send push notification
+                    pushNotificationService.sendPushNotification(admin, notification);
+
                     notificationsCreated++;
                     logger.debug("Created join request notification for admin: {}", admin.getUsername());
 
@@ -194,6 +202,9 @@ public class GroupNotificationListener {
 
             // 5. Send real-time notification via WebSocket
             messageNotificationService.sendNotificationToUser(invitedUser.getId(), notification);
+
+            // 6. Send push notification
+            pushNotificationService.sendPushNotification(invitedUser, notification);
 
             logger.info("Successfully created GROUP_INVITE notification for user: {}", invitedUser.getUsername());
 
@@ -268,6 +279,9 @@ public class GroupNotificationListener {
 
                     // Send real-time notification via WebSocket
                     messageNotificationService.sendNotificationToUser(member.getId(), notification);
+
+                    // Send push notification
+                    pushNotificationService.sendPushNotification(member, notification);
 
                     notificationsCreated++;
                     logger.debug("Created member joined notification for user: {}", member.getUsername());
@@ -372,6 +386,9 @@ public class GroupNotificationListener {
                     // Send real-time notification via WebSocket
                     messageNotificationService.sendNotificationToUser(member.getId(), notification);
 
+                    // Send push notification
+                    pushNotificationService.sendPushNotification(member, notification);
+
                     notificationsCreated++;
                     logger.debug("Created member left notification for user: {}", member.getUsername());
 
@@ -415,6 +432,9 @@ public class GroupNotificationListener {
 
                     // Send real-time notification via WebSocket
                     messageNotificationService.sendNotificationToUser(removedUser.getId(), notification);
+
+                    // Send push notification
+                    pushNotificationService.sendPushNotification(removedUser, notification);
 
                     notificationsCreated++;
                     logger.debug("Created removal notification for removed user: {}", removedUser.getUsername());
@@ -492,12 +512,96 @@ public class GroupNotificationListener {
             // 5. Send real-time notification via WebSocket
             messageNotificationService.sendNotificationToUser(targetUser.getId(), notification);
 
+            // 6. Send push notification
+            pushNotificationService.sendPushNotification(targetUser, notification);
+
             logger.info("Successfully created GROUP_ROLE_CHANGED notification for user: {}",
                        targetUser.getUsername());
 
         } catch (Exception e) {
             // Log error but don't throw - we don't want notification failures to break role changes
             logger.error("Failed to process GROUP_ROLE_CHANGED event for group {}: {}",
+                        event.getGroupId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Handles GroupDeletedEvent by creating notifications for all group members.
+     * Uses TransactionalEventListener with AFTER_COMMIT to ensure the deletion was successful.
+     * Runs asynchronously to avoid blocking the deletion process.
+     *
+     * @param event The GroupDeletedEvent containing group and member information
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Async
+    public void handleGroupDeletedEvent(GroupDeletedEvent event) {
+        try {
+            logger.info("Processing GROUP_DELETED event for group: {} deleted by user: {}",
+                       event.getGroupName(), event.getDeletedById());
+
+            // Create notification for each member (excluding the person who deleted the group)
+            int notificationsCreated = 0;
+            for (Long memberId : event.getMemberIds()) {
+                // Skip the person who deleted the group
+                if (memberId.equals(event.getDeletedById())) {
+                    logger.debug("Skipping notification for group deleter: user ID {}", memberId);
+                    continue;
+                }
+
+                try {
+                    // Get the user entity
+                    User member = userRepository.findById(memberId).orElse(null);
+                    if (member == null) {
+                        logger.warn("User {} not found for group deleted notification", memberId);
+                        continue;
+                    }
+
+                    // Create notification title and message
+                    String title = "Group Deleted: " + event.getGroupName();
+                    String message = event.getDeletedByName() + " deleted the group \"" + event.getGroupName() + "\"";
+
+                    // Ensure title and message don't exceed maximum lengths
+                    if (title.length() > 100) {
+                        title = title.substring(0, 97) + "...";
+                    }
+                    if (message.length() > 500) {
+                        message = message.substring(0, 497) + "...";
+                    }
+
+                    // Create the notification in the database
+                    Notification notification = notificationService.createNotification(
+                        member,
+                        title,
+                        message,
+                        NotificationType.GROUP_DELETED,
+                        NotificationPriority.HIGH,  // High priority since the group no longer exists
+                        null,  // No actionUrl - group is deleted
+                        event.getGroupId(),
+                        "GROUP"
+                    );
+
+                    // Send real-time notification via WebSocket
+                    messageNotificationService.sendNotificationToUser(member.getId(), notification);
+
+                    // Send push notification
+                    pushNotificationService.sendPushNotification(member, notification);
+
+                    notificationsCreated++;
+                    logger.debug("Created GROUP_DELETED notification for user: {}", member.getUsername());
+
+                } catch (Exception e) {
+                    // Log error for individual notification but continue processing others
+                    logger.error("Failed to create notification for user {}: {}",
+                               memberId, e.getMessage());
+                }
+            }
+
+            logger.info("Successfully created {} GROUP_DELETED notifications for group {}",
+                       notificationsCreated, event.getGroupId());
+
+        } catch (Exception e) {
+            // Log error but don't throw - we don't want notification failures to break group deletion
+            logger.error("Failed to process GROUP_DELETED event for group {}: {}",
                         event.getGroupId(), e.getMessage(), e);
         }
     }

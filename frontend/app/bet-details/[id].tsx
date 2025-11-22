@@ -409,7 +409,7 @@ export default function BetDetails() {
       // Show success message
       Alert.alert('Success', `Bet placed successfully!\nAmount: $${amount}\nOption: ${selectedOption || customValue}`);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('=== BET PLACEMENT ERROR ===');
       console.error('Error placing bet:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
@@ -418,7 +418,9 @@ export default function BetDetails() {
         console.error('Response data:', JSON.stringify(error.response.data, null, 2));
       }
       haptic.error();
-      Alert.alert('Error', 'Failed to place bet. Please try again.');
+      // Show the actual error message from the API if available
+      const errorMessage = error?.message || error?.response?.data?.message || 'Failed to place bet. Please try again.';
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsJoining(false);
     }
