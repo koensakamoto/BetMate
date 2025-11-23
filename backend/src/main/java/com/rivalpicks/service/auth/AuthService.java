@@ -1,12 +1,20 @@
 package com.rivalpicks.service.auth;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseAuthException;
-import com.google.firebase.auth.FirebaseToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+import com.rivalpicks.dto.auth.request.AppleAuthRequestDto;
 import com.rivalpicks.dto.auth.request.ChangePasswordRequestDto;
 import com.rivalpicks.dto.auth.request.GoogleAuthRequestDto;
 import com.rivalpicks.dto.auth.request.LoginRequestDto;
 import com.rivalpicks.dto.auth.request.RefreshTokenRequestDto;
+import org.jose4j.jwk.HttpsJwks;
+import org.jose4j.jwt.JwtClaims;
+import org.jose4j.jwt.MalformedClaimException;
+import org.jose4j.jwt.consumer.JwtConsumer;
+import org.jose4j.jwt.consumer.JwtConsumerBuilder;
+import org.jose4j.keys.resolvers.HttpsJwksVerificationKeyResolver;
 import com.rivalpicks.dto.auth.response.LoginResponseDto;
 import com.rivalpicks.dto.auth.response.TokenResponseDto;
 import com.rivalpicks.dto.user.response.UserProfileResponseDto;
@@ -19,6 +27,7 @@ import com.rivalpicks.service.user.UserService;
 import com.rivalpicks.service.user.DailyLoginRewardService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -26,6 +35,7 @@ import com.rivalpicks.util.SecurityContextUtil;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -43,6 +53,17 @@ public class AuthService {
     private final AuthenticationService authenticationService;
     private final UserService userService;
     private final DailyLoginRewardService dailyLoginRewardService;
+    private final GoogleIdTokenVerifier googleIdTokenVerifier;
+
+    // Google OAuth Web Client ID - should match the one used in the mobile app
+    private static final String GOOGLE_CLIENT_ID = "46395801472-6u4laj3io3ls67jephok6ls6r47v6c84.apps.googleusercontent.com";
+
+    // Apple Sign-In configuration
+    private static final String APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys";
+    private static final String APPLE_ISSUER = "https://appleid.apple.com";
+    private static final String APPLE_BUNDLE_ID = "com.rivalpicks.app";
+
+    private final HttpsJwksVerificationKeyResolver appleKeyResolver;
 
     @Autowired
     public AuthService(AuthenticationManager authenticationManager,
@@ -55,7 +76,21 @@ public class AuthService {
         this.authenticationService = authenticationService;
         this.userService = userService;
         this.dailyLoginRewardService = dailyLoginRewardService;
+
+        // Initialize Google ID token verifier
+        this.googleIdTokenVerifier = new GoogleIdTokenVerifier.Builder(
+                new NetHttpTransport(),
+                GsonFactory.getDefaultInstance())
+                .setAudience(Collections.singletonList(GOOGLE_CLIENT_ID))
+                .build();
+
+        // Initialize Apple JWKS key resolver
+        HttpsJwks appleJwks = new HttpsJwks(APPLE_JWKS_URL);
+        this.appleKeyResolver = new HttpsJwksVerificationKeyResolver(appleJwks);
+
         log.info("AuthService initialized with all dependencies");
+        log.info("Google OAuth configured with client ID: {}...", GOOGLE_CLIENT_ID.substring(0, 20));
+        log.info("Apple Sign-In configured with bundle ID: {}", APPLE_BUNDLE_ID);
     }
 
     /**
@@ -211,21 +246,34 @@ public class AuthService {
     public LoginResponseDto loginWithGoogle(GoogleAuthRequestDto googleAuthRequest) {
         log.debug("Processing Google login request for email: {}", googleAuthRequest.email());
 
-        // Verify the Google ID token with Firebase
-        FirebaseToken decodedToken;
+        // Verify the Google ID token using Google's API
+        GoogleIdToken idToken;
         try {
-            decodedToken = FirebaseAuth.getInstance().verifyIdToken(googleAuthRequest.idToken());
-            log.debug("Google ID token verified successfully for: {}", decodedToken.getEmail());
-        } catch (FirebaseAuthException e) {
+            idToken = googleIdTokenVerifier.verify(googleAuthRequest.idToken());
+            if (idToken == null) {
+                log.error("Google ID token verification returned null - token is invalid");
+                throw new AuthenticationException.InvalidCredentialsException("Invalid Google token");
+            }
+            log.debug("Google ID token verified successfully");
+        } catch (Exception e) {
             log.error("Failed to verify Google ID token: {}", e.getMessage());
             throw new AuthenticationException.InvalidCredentialsException("Invalid Google token");
         }
 
+        // Get payload from verified token
+        GoogleIdToken.Payload payload = idToken.getPayload();
+        String tokenEmail = payload.getEmail();
+
         // Verify email matches
-        String tokenEmail = decodedToken.getEmail();
         if (tokenEmail == null || !tokenEmail.equalsIgnoreCase(googleAuthRequest.email())) {
             log.warn("Email mismatch: token={}, request={}", tokenEmail, googleAuthRequest.email());
             throw new AuthenticationException.InvalidCredentialsException("Email mismatch");
+        }
+
+        // Verify email is verified by Google
+        if (!Boolean.TRUE.equals(payload.getEmailVerified())) {
+            log.warn("Google email not verified for: {}", tokenEmail);
+            throw new AuthenticationException.InvalidCredentialsException("Google email not verified");
         }
 
         // Find or create user
@@ -235,11 +283,7 @@ public class AuthService {
         if (existingUser.isPresent()) {
             user = existingUser.get();
             log.info("Existing user found for Google login: {}", user.getUsername());
-
-            // Update profile image if provided and user doesn't have one
-            if (googleAuthRequest.profileImageUrl() != null && user.getProfileImageUrl() == null) {
-                user.setProfileImageUrl(googleAuthRequest.profileImageUrl());
-            }
+            // Note: We don't update profile image from Google - users can upload their own
         } else {
             // Create new user from Google account
             log.info("Creating new user from Google account: {}", googleAuthRequest.email());
@@ -247,7 +291,8 @@ public class AuthService {
             user.setEmail(googleAuthRequest.email());
             user.setFirstName(googleAuthRequest.firstName());
             user.setLastName(googleAuthRequest.lastName());
-            user.setProfileImageUrl(googleAuthRequest.profileImageUrl());
+            // Note: Profile image is NOT set from Google - frontend will show initials
+            // Users can upload their own profile image later
             user.setEmailVerified(true); // Google accounts are verified
             user.setIsActive(true);
 
@@ -294,6 +339,141 @@ public class AuthService {
         UserProfileResponseDto userResponse = UserProfileResponseDto.fromUser(savedUser);
 
         log.info("Google login successful for user: {}", savedUser.getUsername());
+        return new LoginResponseDto(
+            accessToken,
+            refreshToken,
+            jwtService.getJwtExpiration() / 1000,
+            userResponse
+        );
+    }
+
+    /**
+     * Authenticates user via Apple Sign-In and returns login response with tokens.
+     * Creates a new user account if one doesn't exist for this Apple account.
+     *
+     * Note: Apple only provides email and name on FIRST sign-in.
+     * We must store this info and use the Apple user ID for subsequent lookups.
+     */
+    public LoginResponseDto loginWithApple(AppleAuthRequestDto appleAuthRequest) {
+        log.debug("Processing Apple login request for user ID: {}", appleAuthRequest.userId());
+
+        // Verify the Apple identity token
+        JwtClaims claims;
+        try {
+            JwtConsumer jwtConsumer = new JwtConsumerBuilder()
+                    .setVerificationKeyResolver(appleKeyResolver)
+                    .setExpectedIssuer(APPLE_ISSUER)
+                    .setExpectedAudience(APPLE_BUNDLE_ID)
+                    .setRequireExpirationTime()
+                    .setRequireSubject()
+                    .build();
+
+            claims = jwtConsumer.processToClaims(appleAuthRequest.identityToken());
+            log.debug("Apple identity token verified successfully");
+        } catch (Exception e) {
+            log.error("Failed to verify Apple identity token: {}", e.getMessage());
+            throw new AuthenticationException.InvalidCredentialsException("Invalid Apple token");
+        }
+
+        // Extract subject (Apple user ID) from token
+        String tokenSubject;
+        try {
+            tokenSubject = claims.getSubject();
+        } catch (MalformedClaimException e) {
+            log.error("Failed to extract subject from Apple token: {}", e.getMessage());
+            throw new AuthenticationException.InvalidCredentialsException("Invalid Apple token");
+        }
+
+        // Verify user ID matches
+        if (!tokenSubject.equals(appleAuthRequest.userId())) {
+            log.warn("Apple user ID mismatch: token={}, request={}", tokenSubject, appleAuthRequest.userId());
+            throw new AuthenticationException.InvalidCredentialsException("Apple user ID mismatch");
+        }
+
+        // Try to find existing user by Apple user ID (stored as external provider ID)
+        // For now, we'll use email lookup as primary, then fall back to creating new user
+        User user;
+        Optional<User> existingUser = Optional.empty();
+
+        // First try to find by email if provided
+        if (appleAuthRequest.email() != null && !appleAuthRequest.email().isEmpty()) {
+            existingUser = userService.getUserByEmail(appleAuthRequest.email());
+        }
+
+        if (existingUser.isPresent()) {
+            user = existingUser.get();
+            log.info("Existing user found for Apple login: {}", user.getUsername());
+        } else {
+            // Create new user from Apple account
+            log.info("Creating new user from Apple account: {}", appleAuthRequest.userId());
+            user = new User();
+
+            // Apple may or may not provide email (user can choose to hide it)
+            String email = appleAuthRequest.email();
+            if (email == null || email.isEmpty()) {
+                // Generate a placeholder email using Apple user ID
+                email = appleAuthRequest.userId() + "@privaterelay.appleid.com";
+            }
+            user.setEmail(email);
+
+            // Apple only provides name on first sign-in
+            if (appleAuthRequest.firstName() != null) {
+                user.setFirstName(appleAuthRequest.firstName());
+            }
+            if (appleAuthRequest.lastName() != null) {
+                user.setLastName(appleAuthRequest.lastName());
+            }
+
+            user.setEmailVerified(true); // Apple accounts are verified
+            user.setIsActive(true);
+
+            // Generate unique username
+            String baseUsername;
+            if (appleAuthRequest.firstName() != null && !appleAuthRequest.firstName().isEmpty()) {
+                baseUsername = appleAuthRequest.firstName().toLowerCase().replaceAll("[^a-z0-9_]", "");
+            } else {
+                baseUsername = "user";
+            }
+
+            String username = baseUsername;
+            int suffix = 1;
+            while (userService.getUserByUsername(username).isPresent()) {
+                username = baseUsername + suffix++;
+            }
+            user.setUsername(username);
+
+            // Set a random password (user can't login with password, only Apple)
+            user.setPasswordHash(UUID.randomUUID().toString());
+        }
+
+        // Update last login timestamp
+        user.setLastLoginAt(LocalDateTime.now());
+        User savedUser = userService.saveUser(user);
+        log.info("User saved after Apple login - User: {}, Username: {}", savedUser.getId(), savedUser.getUsername());
+
+        // Award daily login reward if eligible
+        try {
+            DailyLoginRewardService.DailyRewardResult result = dailyLoginRewardService.checkAndAwardDailyReward(savedUser);
+            if (result.wasAwarded()) {
+                savedUser = userService.getUserById(savedUser.getId());
+                log.info("Daily reward awarded for Apple login user: {}", savedUser.getId());
+            }
+        } catch (Exception e) {
+            log.error("Daily login reward failed for Apple user: {}", savedUser.getId(), e);
+        }
+
+        // Create UserPrincipal and generate tokens
+        UserDetailsServiceImpl.UserPrincipal userPrincipal = new UserDetailsServiceImpl.UserPrincipal(savedUser);
+        String accessToken = jwtService.generateAccessToken(userPrincipal, savedUser.getId());
+        String refreshToken = jwtService.generateRefreshToken(userPrincipal, savedUser.getId());
+
+        // Set authentication in security context
+        SecurityContextUtil.setAuthentication(userPrincipal);
+
+        // Create response
+        UserProfileResponseDto userResponse = UserProfileResponseDto.fromUser(savedUser);
+
+        log.info("Apple login successful for user: {}", savedUser.getUsername());
         return new LoginResponseDto(
             accessToken,
             refreshToken,

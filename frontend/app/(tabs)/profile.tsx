@@ -13,6 +13,7 @@ import { formatNumber, formatPercentage } from '../../utils/formatters';
 import { storeService, InventoryItemResponse } from '../../services/store/storeService';
 import InventoryItemDetailSheet from '../../components/store/InventoryItemDetailSheet';
 import { betService, BetSummaryResponse } from '../../services/bet/betService';
+import { Avatar } from '../../components/common/Avatar';
 
 const icon = require("../../assets/images/icon.png");
 
@@ -470,42 +471,16 @@ export default function Profile() {
           {/* Avatar & Basic Info */}
           <View style={{ alignItems: 'center', marginBottom: 20 }}>
             <View style={{ position: 'relative', marginBottom: 12 }}>
-              {getFullImageUrl(userProfile?.profileImageUrl) ? (
-                <Image
-                  source={{ uri: getFullImageUrl(userProfile?.profileImageUrl)! }}
-                  style={{
-                    width: 90,
-                    height: 90,
-                    borderRadius: 45
-                  }}
-                  defaultSource={icon}
-                />
-              ) : (
-                <View style={{
-                  width: 90,
-                  height: 90,
-                  borderRadius: 45,
-                  backgroundColor: 'rgba(0, 212, 170, 0.2)',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}>
-                  <Text style={{
-                    fontSize: 32,
-                    fontWeight: '700',
-                    color: '#00D4AA'
-                  }}>
-                    {userProfile?.firstName?.charAt(0).toUpperCase() || ''}{userProfile?.lastName?.charAt(0).toUpperCase() || ''}
-                  </Text>
-                </View>
-              )}
-              {/* Subtle ring indicator */}
-              <View style={{
-                position: 'absolute',
-                inset: -3,
-                borderRadius: 48,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.1)'
-              }} />
+              <Avatar
+                imageUrl={userProfile?.profileImageUrl}
+                firstName={userProfile?.firstName}
+                lastName={userProfile?.lastName}
+                username={userProfile?.username}
+                userId={userProfile?.id}
+                size="lg"
+                showBorder
+                borderColor="rgba(255, 255, 255, 0.1)"
+              />
             </View>
             
             <View style={{ alignItems: 'center', marginBottom: 16 }}>

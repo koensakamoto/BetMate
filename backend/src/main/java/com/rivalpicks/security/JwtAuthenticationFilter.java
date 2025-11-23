@@ -46,6 +46,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         "/api/auth/login",
         "/api/auth/refresh",
         "/api/auth/logout",
+        "/api/auth/google",
+        "/api/auth/apple",
         // Note: /api/auth/me and /api/auth/change-password require authentication and are NOT in this list
         "/api/users/register",
         "/api/users/availability/**",

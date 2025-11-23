@@ -53,6 +53,14 @@ export interface GoogleLoginData {
   profileImageUrl?: string;
 }
 
+export interface AppleLoginData {
+  identityToken: string;
+  userId: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -60,6 +68,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (data: LoginData) => Promise<void>;
   loginWithGoogle: (data: GoogleLoginData) => Promise<void>;
+  loginWithApple: (data: AppleLoginData) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
@@ -289,6 +298,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const loginWithApple = async (data: AppleLoginData) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await authService.loginWithApple({
+        identityToken: data.identityToken,
+        userId: data.userId,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+      });
+
+      const transformedUser = transformUser(response.user);
+      setUser(transformedUser);
+
+      debugLog('Apple login successful for user:', transformedUser.username);
+    } catch (error) {
+      const authError = handleAuthError(error);
+      setError(authError);
+      setUser(null);
+      errorLog('Apple login failed:', error);
+      throw authError;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       setIsLoading(true);
@@ -370,6 +407,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     login,
     loginWithGoogle,
+    loginWithApple,
     signup,
     logout,
     forgotPassword,

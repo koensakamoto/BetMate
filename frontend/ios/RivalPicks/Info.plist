@@ -4,6 +4,8 @@
   <dict>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
+    <key>CFBundleAllowMixedLocalizations</key>
+    <true/>
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
@@ -29,7 +31,6 @@
         <array>
           <string>rivalpicks</string>
           <string>com.rivalpicks.app</string>
-          <string>com.googleusercontent.apps.46395801472-6u4laj3io3ls67jephok6ls6r47v6c84</string>
         </array>
       </dict>
     </array>

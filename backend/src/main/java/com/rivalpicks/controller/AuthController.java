@@ -1,5 +1,6 @@
 package com.rivalpicks.controller;
 
+import com.rivalpicks.dto.auth.request.AppleAuthRequestDto;
 import com.rivalpicks.dto.auth.request.ChangePasswordRequestDto;
 import com.rivalpicks.dto.auth.request.GoogleAuthRequestDto;
 import com.rivalpicks.dto.auth.request.LoginRequestDto;
@@ -87,6 +88,16 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResponseDto>> loginWithGoogle(@Valid @RequestBody GoogleAuthRequestDto googleAuthRequest) {
         LoginResponseDto loginResponse = authService.loginWithGoogle(googleAuthRequest);
         ApiResponse<LoginResponseDto> response = ApiResponse.success(loginResponse, "Google login successful");
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Authenticate user via Apple Sign-In.
+     */
+    @PostMapping("/apple")
+    public ResponseEntity<ApiResponse<LoginResponseDto>> loginWithApple(@Valid @RequestBody AppleAuthRequestDto appleAuthRequest) {
+        LoginResponseDto loginResponse = authService.loginWithApple(appleAuthRequest);
+        ApiResponse<LoginResponseDto> response = ApiResponse.success(loginResponse, "Apple login successful");
         return ResponseEntity.ok(response);
     }
 

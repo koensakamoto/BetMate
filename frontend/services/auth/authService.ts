@@ -30,6 +30,14 @@ export interface GoogleAuthRequest {
   profileImageUrl?: string;
 }
 
+export interface AppleAuthRequest {
+  identityToken: string;
+  userId: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
 export interface RefreshTokenRequest {
   refreshToken: string;
 }
@@ -242,6 +250,40 @@ export class AuthService extends BaseApiService {
       return response;
     } catch (error) {
       console.error('❌ [AuthService] Google login failed:', error);
+      await tokenStorage.clearTokens();
+      throw error;
+    }
+  }
+
+  /**
+   * Login with Apple OAuth
+   */
+  async loginWithApple(appleData: AppleAuthRequest): Promise<LoginResponse> {
+    console.log('🔐 [AuthService] Apple login attempt starting...', {
+      userId: appleData.userId,
+      email: appleData.email,
+    });
+
+    try {
+      const response = await this.post<LoginResponse>(
+        '/auth/apple',
+        appleData
+      );
+
+      console.log('✅ [AuthService] Apple login successful!', {
+        userId: response.user?.id,
+        username: response.user?.username,
+      });
+
+      // Store tokens securely
+      await tokenStorage.setTokens(
+        response.accessToken,
+        response.refreshToken
+      );
+
+      return response;
+    } catch (error) {
+      console.error('❌ [AuthService] Apple login failed:', error);
       await tokenStorage.clearTokens();
       throw error;
     }

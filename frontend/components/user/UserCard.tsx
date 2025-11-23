@@ -2,8 +2,7 @@ import React, { useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, Image, ActivityIndicator, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { haptic } from '../../utils/haptics';
-
-const icon = require("../../assets/images/icon.png");
+import { Avatar } from '../common/Avatar';
 
 export interface UserCardProps {
   id: number;
@@ -89,29 +88,17 @@ function UserCard({
         }}
       >
       {/* User Avatar */}
-      <View style={{ position: 'relative', marginRight: 12 }}>
-        <Image
-          source={profileImageUrl ? { uri: profileImageUrl } : icon}
-          style={{
-            width: 50,
-            height: 50,
-            borderRadius: 25
-          }}
+      <View style={{ marginRight: 12 }}>
+        <Avatar
+          imageUrl={profileImageUrl}
+          firstName={firstName}
+          lastName={lastName}
+          username={username}
+          userId={id}
+          customSize={50}
+          showOnlineIndicator={true}
+          isOnline={isActive}
         />
-        {/* Active status indicator */}
-        {isActive && (
-          <View style={{
-            position: 'absolute',
-            bottom: 0,
-            right: 0,
-            width: 14,
-            height: 14,
-            borderRadius: 7,
-            backgroundColor: '#00D4AA',
-            borderWidth: 2,
-            borderColor: '#0a0a0f'
-          }} />
-        )}
       </View>
 
       {/* User Info */}

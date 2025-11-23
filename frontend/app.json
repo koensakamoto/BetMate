@@ -10,6 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
@@ -45,6 +46,7 @@
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
       "expo-router",
+      "expo-apple-authentication",
       [
         "expo-splash-screen",
         {

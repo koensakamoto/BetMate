@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { groupService, type GroupMemberResponse, type PendingRequestResponse } from '../../services/group/groupService';
 import { debugLog, errorLog, ENV } from '../../config/env';
+import { Avatar } from '../common/Avatar';
 
 interface GroupMembersTabProps {
   groupData: {
@@ -525,52 +526,17 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
           }}
         >
           {/* Avatar */}
-          <View style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            backgroundColor: isOnline(member) ? 'rgba(0, 212, 170, 0.2)' : 'rgba(255, 255, 255, 0.12)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginRight: 12,
-            position: 'relative',
-            overflow: 'hidden',
-            borderWidth: member.profilePictureUrl ? 2 : 0,
-            borderColor: isOnline(member) ? '#00D4AA' : 'rgba(255, 255, 255, 0.2)'
-          }}>
-            {getFullImageUrl(member.profilePictureUrl) ? (
-              <Image
-                source={{ uri: getFullImageUrl(member.profilePictureUrl)! }}
-                style={{
-                  width: '100%',
-                  height: '100%'
-                }}
-                resizeMode="cover"
-              />
-            ) : (
-              <Text style={{
-                fontSize: 18,
-                fontWeight: '700',
-                color: isOnline(member) ? '#00D4AA' : '#ffffff'
-              }}>
-                {getDisplayName(member).charAt(0).toUpperCase()}
-              </Text>
-            )}
-
-            {/* Online Indicator */}
-            {isOnline(member) && (
-              <View style={{
-                position: 'absolute',
-                bottom: 2,
-                right: 2,
-                width: 12,
-                height: 12,
-                borderRadius: 6,
-                backgroundColor: '#00D4AA',
-                borderWidth: 2,
-                borderColor: '#0a0a0f'
-              }} />
-            )}
+          <View style={{ marginRight: 12 }}>
+            <Avatar
+              imageUrl={member.profilePictureUrl}
+              firstName={member.firstName}
+              lastName={member.lastName}
+              username={member.username}
+              userId={member.userId}
+              size="md"
+              showOnlineIndicator={true}
+              isOnline={isOnline(member)}
+            />
           </View>
 
           {/* Member Info */}

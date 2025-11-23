@@ -8,13 +8,15 @@ import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
 import SocialAuthButton from '../../components/auth/SocialAuthButton';
 import { useGoogleAuth } from '../../hooks/useGoogleAuth';
+import { useAppleAuth } from '../../hooks/useAppleAuth';
 
 const icon = require("../../assets/images/icon.png");
 
 export default function Login() {
   const insets = useSafeAreaInsets();
-  const { login, loginWithGoogle, isLoading, error, clearError } = useAuth();
+  const { login, loginWithGoogle, loginWithApple, isLoading, error, clearError } = useAuth();
   const { signIn: googleSignIn } = useGoogleAuth();
+  const { signIn: appleSignIn, isAvailable: isAppleAvailable } = useAppleAuth();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -85,9 +87,21 @@ export default function Login() {
         console.log('✅ [LOGIN] Google login complete!');
         // Navigation will be handled by auth state change
       } else if (provider === 'apple') {
-        // TODO: Implement Apple Sign-In
-        console.log('Apple Sign-In not yet implemented');
-        Alert.alert('Coming Soon', 'Apple Sign-In will be available soon.');
+        // Don't check isAppleAvailable - just try the sign-in and let it fail with a better error
+        console.log('🔄 [LOGIN] Starting Apple sign-in...');
+        const result = await appleSignIn();
+
+        console.log('✅ [LOGIN] Apple sign-in successful, logging in...');
+        await loginWithApple({
+          identityToken: result.identityToken,
+          userId: result.user.id,
+          email: result.user.email || undefined,
+          firstName: result.user.fullName?.givenName || undefined,
+          lastName: result.user.fullName?.familyName || undefined,
+        });
+
+        console.log('✅ [LOGIN] Apple login complete!');
+        // Navigation will be handled by auth state change
       }
     } catch (error: any) {
       console.error('❌ [LOGIN] Social auth failed:', error);

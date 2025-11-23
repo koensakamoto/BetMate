@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-
-const icon = require("../../assets/images/icon.png");
+import { Avatar } from '../common/Avatar';
 
 interface ProfileHeaderProps {
+  userId?: number;
   username: string;
   firstName?: string;
   lastName?: string;
@@ -18,6 +18,7 @@ interface ProfileHeaderProps {
 }
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({
+  userId,
   username,
   firstName,
   lastName,
@@ -126,15 +127,15 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             shadowRadius: 8,
             elevation: 8
           }}>
-            <Image
-              source={profileImageUrl ? { uri: profileImageUrl } : icon}
-              style={{
-                width: 120,
-                height: 120,
-                borderRadius: 60,
-                borderWidth: 4,
-                borderColor: '#0a0a0f'
-              }}
+            <Avatar
+              imageUrl={profileImageUrl}
+              firstName={firstName}
+              lastName={lastName}
+              username={username}
+              userId={userId}
+              size="xl"
+              showBorder
+              borderColor="#0a0a0f"
             />
 
             {/* Verification Badge */}
