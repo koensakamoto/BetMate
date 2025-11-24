@@ -98,6 +98,32 @@ public class UserService {
     }
 
     /**
+     * Changes a user's username.
+     *
+     * @param userId      the user's ID
+     * @param newUsername the new username
+     * @return the updated user
+     * @throws IllegalArgumentException if username is invalid or already taken
+     */
+    @Transactional
+    public User changeUsername(@NotNull Long userId, @NotNull String newUsername) {
+        User user = getUserById(userId);
+
+        // Check if new username is same as current (case-insensitive)
+        if (newUsername.equalsIgnoreCase(user.getUsername())) {
+            throw new IllegalArgumentException("New username is the same as your current username");
+        }
+
+        // Check if username is already taken
+        if (existsByUsername(newUsername)) {
+            throw new IllegalArgumentException("Username is already taken");
+        }
+
+        user.setUsername(newUsername);
+        return userRepository.save(user);
+    }
+
+    /**
      * Update user's profile picture URL
      */
     @Transactional

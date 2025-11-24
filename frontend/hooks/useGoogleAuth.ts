@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Platform, NativeModules } from 'react-native';
 
-// Web client ID from Firebase Console
-const WEB_CLIENT_ID = '46395801472-6u4laj3io3ls67jephok6ls6r47v6c84.apps.googleusercontent.com';
+// OAuth Client IDs from Firebase Console
+const WEB_CLIENT_ID = '46395801472-bl69o6cbgtnek5e8uljom7bm02biqpt3.apps.googleusercontent.com';
+const IOS_CLIENT_ID = '46395801472-bl69o6cbgtnek5e8uljom7bm02biqpt3.apps.googleusercontent.com';
 
 // Dynamically import Google Sign-In to avoid crash in Expo Go
 let GoogleSignin: any = null;
@@ -69,6 +70,7 @@ export function useGoogleAuth() {
     try {
       GoogleSignin.configure({
         webClientId: WEB_CLIENT_ID,
+        iosClientId: IOS_CLIENT_ID, // iOS requires this
         offlineAccess: true,
         scopes: ['profile', 'email'],
       });

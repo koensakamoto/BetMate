@@ -53,6 +53,44 @@ export interface ProfileVisibilityResponse {
   visibility: ProfileVisibility;
 }
 
+// Username change DTOs
+export interface UsernameChangeRequest {
+  newUsername: string;
+}
+
+export interface UsernameChangeResponse {
+  success: boolean;
+  message: string;
+  newUsername: string | null;
+}
+
+// Email change DTOs
+export interface EmailChangeRequest {
+  newEmail: string;
+  currentPassword: string;
+}
+
+export interface EmailChangeConfirmRequest {
+  token: string;
+}
+
+export interface EmailChangeResponse {
+  success: boolean;
+  message: string;
+  email: string | null;
+}
+
+export interface EmailChangeValidationResponse {
+  valid: boolean;
+  pendingEmail?: string;
+  message?: string;
+}
+
+export interface UsernameAvailabilityResponse {
+  available: boolean;
+  errorMessage: string | null;
+}
+
 export class UserService extends BaseApiService {
   constructor() {
     super(''); // User endpoints use the root API path
@@ -172,6 +210,57 @@ export class UserService extends BaseApiService {
           'Content-Type': 'multipart/form-data',
         },
       }
+    );
+  }
+
+  // ==========================================
+  // USERNAME & EMAIL CHANGES
+  // ==========================================
+
+  /**
+   * Check if a username is available
+   */
+  async checkUsernameAvailability(username: string): Promise<UsernameAvailabilityResponse> {
+    return this.get<UsernameAvailabilityResponse>(API_ENDPOINTS.USER_USERNAME_AVAILABILITY(username));
+  }
+
+  /**
+   * Change current user's username
+   */
+  async changeUsername(newUsername: string): Promise<UsernameChangeResponse> {
+    return this.put<UsernameChangeResponse>(
+      API_ENDPOINTS.USER_PROFILE_USERNAME,
+      { newUsername }
+    );
+  }
+
+  /**
+   * Request email change - sends verification email to new address
+   */
+  async requestEmailChange(newEmail: string, currentPassword: string): Promise<EmailChangeResponse> {
+    return this.post<EmailChangeResponse>(
+      API_ENDPOINTS.USER_PROFILE_EMAIL_REQUEST,
+      { newEmail, currentPassword }
+    );
+  }
+
+  /**
+   * Confirm email change with verification token
+   */
+  async confirmEmailChange(token: string): Promise<EmailChangeResponse> {
+    return this.post<EmailChangeResponse>(
+      API_ENDPOINTS.USER_PROFILE_EMAIL_CONFIRM,
+      { token }
+    );
+  }
+
+  /**
+   * Validate email change token
+   */
+  async validateEmailChangeToken(token: string): Promise<EmailChangeValidationResponse> {
+    return this.get<EmailChangeValidationResponse>(
+      API_ENDPOINTS.USER_PROFILE_EMAIL_VALIDATE,
+      { params: { token } }
     );
   }
 }

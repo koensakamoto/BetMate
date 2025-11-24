@@ -56,7 +56,7 @@ public class AuthService {
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
 
     // Google OAuth Web Client ID - should match the one used in the mobile app
-    private static final String GOOGLE_CLIENT_ID = "46395801472-6u4laj3io3ls67jephok6ls6r47v6c84.apps.googleusercontent.com";
+    private static final String GOOGLE_CLIENT_ID = "46395801472-bl69o6cbgtnek5e8uljom7bm02biqpt3.apps.googleusercontent.com";
 
     // Apple Sign-In configuration
     private static final String APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys";
@@ -355,11 +355,14 @@ public class AuthService {
      * We must store this info and use the Apple user ID for subsequent lookups.
      */
     public LoginResponseDto loginWithApple(AppleAuthRequestDto appleAuthRequest) {
-        log.debug("Processing Apple login request for user ID: {}", appleAuthRequest.userId());
+        log.info("Processing Apple login request for user ID: {}", appleAuthRequest.userId());
+        log.debug("Apple auth request details - email: {}, firstName: {}, lastName: {}",
+            appleAuthRequest.email(), appleAuthRequest.firstName(), appleAuthRequest.lastName());
 
         // Verify the Apple identity token
         JwtClaims claims;
         try {
+            log.debug("Building JWT consumer with issuer: {} and audience: {}", APPLE_ISSUER, APPLE_BUNDLE_ID);
             JwtConsumer jwtConsumer = new JwtConsumerBuilder()
                     .setVerificationKeyResolver(appleKeyResolver)
                     .setExpectedIssuer(APPLE_ISSUER)
@@ -368,11 +371,15 @@ public class AuthService {
                     .setRequireSubject()
                     .build();
 
+            log.debug("Processing Apple identity token...");
             claims = jwtConsumer.processToClaims(appleAuthRequest.identityToken());
-            log.debug("Apple identity token verified successfully");
+            log.info("Apple identity token verified successfully");
         } catch (Exception e) {
-            log.error("Failed to verify Apple identity token: {}", e.getMessage());
-            throw new AuthenticationException.InvalidCredentialsException("Invalid Apple token");
+            log.error("Failed to verify Apple identity token. Error type: {}, Message: {}",
+                e.getClass().getSimpleName(), e.getMessage(), e);
+            throw new AuthenticationException.InvalidCredentialsException(
+                "Invalid Apple token: " + e.getMessage()
+            );
         }
 
         // Extract subject (Apple user ID) from token
@@ -390,31 +397,32 @@ public class AuthService {
             throw new AuthenticationException.InvalidCredentialsException("Apple user ID mismatch");
         }
 
-        // Try to find existing user by Apple user ID (stored as external provider ID)
-        // For now, we'll use email lookup as primary, then fall back to creating new user
+        // Try to find existing user by Apple user ID
+        // Apple may not provide email on subsequent logins, so we generate a consistent placeholder
         User user;
         Optional<User> existingUser = Optional.empty();
 
-        // First try to find by email if provided
+        // Determine the email to use for lookup
+        String lookupEmail;
         if (appleAuthRequest.email() != null && !appleAuthRequest.email().isEmpty()) {
-            existingUser = userService.getUserByEmail(appleAuthRequest.email());
+            // Use provided email (first sign-in or user shared email)
+            lookupEmail = appleAuthRequest.email();
+        } else {
+            // Generate placeholder email using Apple user ID (same as first sign-in)
+            lookupEmail = appleAuthRequest.userId() + "@privaterelay.appleid.com";
         }
+
+        // Try to find user by email (works for both provided and placeholder emails)
+        existingUser = userService.getUserByEmail(lookupEmail);
 
         if (existingUser.isPresent()) {
             user = existingUser.get();
-            log.info("Existing user found for Apple login: {}", user.getUsername());
+            log.info("Existing user found for Apple login: {} (email: {})", user.getUsername(), lookupEmail);
         } else {
             // Create new user from Apple account
-            log.info("Creating new user from Apple account: {}", appleAuthRequest.userId());
+            log.info("Creating new user from Apple account: {} with email: {}", appleAuthRequest.userId(), lookupEmail);
             user = new User();
-
-            // Apple may or may not provide email (user can choose to hide it)
-            String email = appleAuthRequest.email();
-            if (email == null || email.isEmpty()) {
-                // Generate a placeholder email using Apple user ID
-                email = appleAuthRequest.userId() + "@privaterelay.appleid.com";
-            }
-            user.setEmail(email);
+            user.setEmail(lookupEmail);
 
             // Apple only provides name on first sign-in
             if (appleAuthRequest.firstName() != null) {

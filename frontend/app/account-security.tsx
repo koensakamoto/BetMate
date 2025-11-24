@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { userService } from '../services/user/userService';
+import { userService, ProfileVisibility } from '../services/user/userService';
 import { debugLog, errorLog } from '../config/env';
 import { File, Paths } from 'expo-file-system/next';
 import * as Sharing from 'expo-sharing';
@@ -11,6 +11,41 @@ import * as Sharing from 'expo-sharing';
 export default function AccountSecurity() {
   const insets = useSafeAreaInsets();
   const [isExportingData, setIsExportingData] = useState(false);
+  const [profileVisibility, setProfileVisibility] = useState<ProfileVisibility>('PUBLIC');
+  const [isLoadingVisibility, setIsLoadingVisibility] = useState(true);
+  const [isSavingVisibility, setIsSavingVisibility] = useState(false);
+
+  useEffect(() => {
+    loadProfileVisibility();
+  }, []);
+
+  const loadProfileVisibility = async () => {
+    try {
+      setIsLoadingVisibility(true);
+      const response = await userService.getProfileVisibility();
+      setProfileVisibility(response.visibility);
+    } catch (err) {
+      errorLog('Failed to load profile visibility:', err);
+    } finally {
+      setIsLoadingVisibility(false);
+    }
+  };
+
+  const handleVisibilityChange = async (newVisibility: ProfileVisibility) => {
+    if (newVisibility === profileVisibility) return;
+
+    try {
+      setIsSavingVisibility(true);
+      await userService.updateProfileVisibility(newVisibility);
+      setProfileVisibility(newVisibility);
+      debugLog('Profile visibility updated to:', newVisibility);
+    } catch (err) {
+      errorLog('Failed to update profile visibility:', err);
+      Alert.alert('Error', 'Failed to update profile visibility. Please try again.');
+    } finally {
+      setIsSavingVisibility(false);
+    }
+  };
 
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <View style={{ marginBottom: 32 }}>
@@ -107,16 +142,92 @@ export default function AccountSecurity() {
         </View>
       </View>
       
-      <MaterialIcons 
-        name="chevron-right" 
-        size={18} 
-        color="rgba(255, 255, 255, 0.3)" 
+      <MaterialIcons
+        name="chevron-right"
+        size={18}
+        color="rgba(255, 255, 255, 0.3)"
       />
     </TouchableOpacity>
   );
 
+  const VisibilityOption = ({
+    value,
+    title,
+    description,
+    icon,
+    isLast = false
+  }: {
+    value: ProfileVisibility;
+    title: string;
+    description: string;
+    icon: string;
+    isLast?: boolean;
+  }) => {
+    const isSelected = profileVisibility === value;
+    return (
+      <TouchableOpacity
+        onPress={() => handleVisibilityChange(value)}
+        disabled={isSavingVisibility || isLoadingVisibility}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          borderBottomWidth: isLast ? 0 : 0.5,
+          borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+          opacity: (isSavingVisibility || isLoadingVisibility) ? 0.6 : 1
+        }}
+        activeOpacity={0.7}
+      >
+        <View style={{
+          width: 20,
+          height: 20,
+          borderRadius: 10,
+          borderWidth: 2,
+          borderColor: isSelected ? '#00D4AA' : 'rgba(255, 255, 255, 0.3)',
+          backgroundColor: isSelected ? '#00D4AA' : 'transparent',
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginRight: 12
+        }}>
+          {isSelected && (
+            <MaterialIcons name="check" size={12} color="#ffffff" />
+          )}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{
+            fontSize: 15,
+            color: '#ffffff',
+            marginBottom: 2
+          }}>
+            {title}
+          </Text>
+          <Text style={{
+            fontSize: 13,
+            color: 'rgba(255, 255, 255, 0.6)'
+          }}>
+            {description}
+          </Text>
+        </View>
+        <MaterialIcons
+          name={icon as any}
+          size={18}
+          color={isSelected ? '#00D4AA' : 'rgba(255, 255, 255, 0.4)'}
+        />
+      </TouchableOpacity>
+    );
+  };
+
   const handleChangePassword = () => {
     router.push('/change-password');
+  };
+
+  const handleChangeUsername = () => {
+    router.push('/change-username');
+  };
+
+  const handleChangeEmail = () => {
+    router.push('/change-email');
   };
 
   const handleTwoFactor = () => {
@@ -286,17 +397,65 @@ export default function AccountSecurity() {
               fontWeight: '700',
               color: '#ffffff'
             }}>
-              Account Security
+              Account & Privacy
             </Text>
             <Text style={{
               fontSize: 14,
               color: 'rgba(255, 255, 255, 0.5)',
               marginTop: 4
             }}>
-              Protect your account and data
+              Manage your account and privacy settings
             </Text>
           </View>
         </View>
+
+        {/* Account Information */}
+        <Section title="Account Information">
+          <SecurityItem
+            title="Change Username"
+            description="Update your unique @username"
+            onPress={handleChangeUsername}
+            icon="alternate-email"
+          />
+          <SecurityItem
+            title="Change Email"
+            description="Update your email address"
+            onPress={handleChangeEmail}
+            icon="email"
+            isLast={true}
+          />
+        </Section>
+
+        {/* Privacy */}
+        <Section title="Privacy">
+          {isLoadingVisibility ? (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <ActivityIndicator size="small" color="#00D4AA" />
+            </View>
+          ) : (
+            <>
+              <VisibilityOption
+                value="PUBLIC"
+                title="Public"
+                description="Anyone can view your profile and stats"
+                icon="public"
+              />
+              <VisibilityOption
+                value="FRIENDS"
+                title="Friends Only"
+                description="Only friends can view your full profile"
+                icon="people"
+              />
+              <VisibilityOption
+                value="PRIVATE"
+                title="Private"
+                description="Only you can see your full profile"
+                icon="lock"
+                isLast={true}
+              />
+            </>
+          )}
+        </Section>
 
         {/* Password & Authentication */}
         <Section title="Password & Authentication">

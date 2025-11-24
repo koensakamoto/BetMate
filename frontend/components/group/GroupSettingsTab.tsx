@@ -340,88 +340,115 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
 
   return (
     <View>
-      {/* Group Photo */}
+      {/* Group Photo Section */}
       <View style={{
-        alignItems: 'center',
-        marginBottom: 16
+        paddingVertical: 16,
+        borderBottomWidth: 0.5,
+        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+        marginBottom: 8
       }}>
+        {/* Avatar Display */}
         <View style={{
-          width: 80,
-          height: 80,
-          borderRadius: 40,
-          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          justifyContent: 'center',
           alignItems: 'center',
-          borderWidth: 2,
-          borderColor: 'rgba(0, 212, 170, 0.3)',
-          marginBottom: 12
+          marginBottom: 20
         }}>
           {currentGroupPhotoUrl ? (
             <Image
               source={{ uri: currentGroupPhotoUrl }}
               style={{
-                width: 80,
-                height: 80,
-                borderRadius: 40
+                width: 100,
+                height: 100,
+                borderRadius: 50,
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                borderWidth: 2,
+                borderColor: 'rgba(255, 255, 255, 0.1)'
               }}
+              resizeMode="cover"
+              defaultSource={icon}
             />
           ) : (
-            <MaterialIcons
-              name="groups"
-              size={32}
-              color="rgba(255, 255, 255, 0.4)"
-            />
+            <View style={{
+              width: 100,
+              height: 100,
+              borderRadius: 50,
+              backgroundColor: 'rgba(0, 212, 170, 0.2)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              borderWidth: 2,
+              borderColor: 'rgba(0, 212, 170, 0.3)'
+            }}>
+              <Text style={{
+                fontSize: 36,
+                fontWeight: '700',
+                color: '#00D4AA'
+              }}>
+                {groupData.name
+                  .split(' ')
+                  .slice(0, 2)
+                  .map(word => word.charAt(0).toUpperCase())
+                  .join('')}
+              </Text>
+            </View>
           )}
         </View>
 
-        {/* Photo Options */}
+        {/* Upload Buttons */}
         <View style={{
           flexDirection: 'row',
-          gap: 8,
-          width: '100%'
+          gap: 12
         }}>
+          {/* Photo Library Button */}
           <TouchableOpacity
             onPress={pickImage}
             disabled={isUpdating}
             style={{
               flex: 1,
-              backgroundColor: 'rgba(0, 212, 170, 0.15)',
-              borderRadius: 8,
-              paddingVertical: 8,
-              paddingHorizontal: 12,
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: 12,
+              paddingVertical: 14,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-              borderWidth: 1,
-              borderColor: 'rgba(0, 212, 170, 0.3)',
+              gap: 8,
               opacity: isUpdating ? 0.5 : 1
             }}
           >
-            <MaterialIcons name="photo-library" size={16} color="#00D4AA" style={{ marginRight: 6 }} />
-            <Text style={{ color: '#00D4AA', fontSize: 13, fontWeight: '600' }}>
-              Gallery
+            <MaterialIcons name="photo-library" size={20} color="#00D4AA" />
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '600',
+              color: '#ffffff'
+            }}>
+              Photo Library
             </Text>
           </TouchableOpacity>
 
+          {/* Camera Button */}
           <TouchableOpacity
             onPress={takePhoto}
             disabled={isUpdating}
             style={{
               flex: 1,
-              backgroundColor: 'rgba(0, 212, 170, 0.15)',
-              borderRadius: 8,
-              paddingVertical: 8,
-              paddingHorizontal: 12,
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: 12,
+              paddingVertical: 14,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-              borderWidth: 1,
-              borderColor: 'rgba(0, 212, 170, 0.3)',
+              gap: 8,
               opacity: isUpdating ? 0.5 : 1
             }}
           >
-            <MaterialIcons name="camera-alt" size={16} color="#00D4AA" style={{ marginRight: 6 }} />
-            <Text style={{ color: '#00D4AA', fontSize: 13, fontWeight: '600' }}>
+            <MaterialIcons name="camera-alt" size={20} color="#00D4AA" />
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '600',
+              color: '#ffffff'
+            }}>
               Camera
             </Text>
           </TouchableOpacity>
@@ -821,111 +848,106 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
         )}
       </SettingSection>
 
-      {/* Leave Group */}
-      <TouchableOpacity
-        onPress={handleLeaveGroup}
-        disabled={isUpdating}
-        style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.03)',
-          borderRadius: 16,
-          padding: 16,
-          marginBottom: 12,
-          borderWidth: 0.5,
-          borderColor: 'rgba(255, 152, 0, 0.2)',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          opacity: isUpdating ? 0.5 : 1
+      {/* Group Actions */}
+      <View style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 16,
+        borderWidth: 0.5,
+        borderColor: 'rgba(255, 255, 255, 0.08)'
+      }}>
+        <Text style={{
+          fontSize: 14,
+          fontWeight: '600',
+          color: '#ffffff',
+          marginBottom: 12
         }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{
-            width: 24,
-            height: 24,
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginRight: 12
-          }}>
-            <MaterialIcons
-              name="exit-to-app"
-              size={18}
-              color="#FF9800"
-            />
-          </View>
-          <View>
-            <Text style={{
-              fontSize: 15,
-              fontWeight: '500',
-              color: '#FF9800',
-              marginBottom: 2
-            }}>
-              Leave Group
-            </Text>
-            <Text style={{
-              fontSize: 13,
-              color: 'rgba(255, 152, 0, 0.7)'
-            }}>
-              Leave this group as admin
-            </Text>
-          </View>
-        </View>
-        <MaterialIcons
-          name="chevron-right"
-          size={20}
-          color="rgba(255, 152, 0, 0.6)"
-        />
-      </TouchableOpacity>
+          Group Actions
+        </Text>
 
-      {/* Danger Zone */}
-      <TouchableOpacity
-        onPress={handleDeleteGroup}
-        style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.03)',
-          borderRadius: 16,
-          padding: 16,
-          marginBottom: 16,
-          borderWidth: 0.5,
-          borderColor: 'rgba(239, 68, 68, 0.2)',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{
-            width: 24,
-            height: 24,
-            justifyContent: 'center',
+        {/* Leave Group */}
+        <TouchableOpacity
+          onPress={handleLeaveGroup}
+          disabled={isUpdating}
+          style={{
+            flexDirection: 'row',
             alignItems: 'center',
-            marginRight: 12
+            justifyContent: 'space-between',
+            paddingVertical: 12,
+            borderBottomWidth: 0.5,
+            borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+            opacity: isUpdating ? 0.6 : 1
           }}>
-            <MaterialIcons
-              name="delete-forever"
-              size={18}
-              color="#EF4444"
-            />
-          </View>
-          <View>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{
+              width: 24,
+              height: 24,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginRight: 12
+            }}>
+              <MaterialIcons
+                name="exit-to-app"
+                size={18}
+                color="#EF4444"
+              />
+            </View>
             <Text style={{
               fontSize: 15,
               fontWeight: '500',
-              color: '#EF4444',
-              marginBottom: 2
+              color: '#EF4444'
+            }}>
+              {isUpdating ? 'Leaving...' : 'Leave Group'}
+            </Text>
+          </View>
+          <MaterialIcons
+            name="chevron-right"
+            size={20}
+            color="rgba(239, 68, 68, 0.6)"
+          />
+        </TouchableOpacity>
+
+        {/* Delete Group */}
+        <TouchableOpacity
+          onPress={handleDeleteGroup}
+          disabled={isUpdating}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingVertical: 12,
+            opacity: isUpdating ? 0.6 : 1
+          }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{
+              width: 24,
+              height: 24,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginRight: 12
+            }}>
+              <MaterialIcons
+                name="delete-forever"
+                size={18}
+                color="#EF4444"
+              />
+            </View>
+            <Text style={{
+              fontSize: 15,
+              fontWeight: '500',
+              color: '#EF4444'
             }}>
               Delete Group
             </Text>
-            <Text style={{
-              fontSize: 13,
-              color: 'rgba(239, 68, 68, 0.7)'
-            }}>
-              Permanently delete this group
-            </Text>
           </View>
-        </View>
-        <MaterialIcons
-          name="chevron-right"
-          size={20}
-          color="rgba(239, 68, 68, 0.6)"
-        />
-      </TouchableOpacity>
+          <MaterialIcons
+            name="chevron-right"
+            size={20}
+            color="rgba(239, 68, 68, 0.6)"
+          />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };

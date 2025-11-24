@@ -304,9 +304,17 @@ export class AuthService extends BaseApiService {
    */
   async resetPassword(token: string, newPassword: string): Promise<void> {
     return this.post<void>(
-      '/auth/reset-password', // Assuming this endpoint exists
-      { token, password: newPassword }
+      '/auth/reset-password',
+      { token, newPassword }
     );
+  }
+
+  /**
+   * Validate password reset token
+   */
+  async validateResetToken(token: string): Promise<boolean> {
+    const response = await this.get<boolean>(`/auth/reset-password/validate?token=${token}`);
+    return response;
   }
 
   /**

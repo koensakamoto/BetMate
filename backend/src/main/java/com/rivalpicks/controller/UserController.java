@@ -1,19 +1,25 @@
 package com.rivalpicks.controller;
 
 import com.rivalpicks.dto.common.ErrorResponseDto;
+import com.rivalpicks.dto.user.request.EmailChangeConfirmRequestDto;
+import com.rivalpicks.dto.user.request.EmailChangeRequestDto;
 import com.rivalpicks.dto.user.request.UserAvailabilityCheckRequestDto;
 import com.rivalpicks.dto.user.request.UserProfileUpdateRequestDto;
 import com.rivalpicks.dto.user.request.UserRegistrationRequestDto;
+import com.rivalpicks.dto.user.request.UsernameChangeRequestDto;
+import com.rivalpicks.dto.user.response.EmailChangeResponseDto;
 import com.rivalpicks.dto.user.response.LimitedUserProfileResponseDto;
 import com.rivalpicks.dto.user.response.UserAvailabilityResponseDto;
 import com.rivalpicks.dto.user.response.UserProfileResponseDto;
 import com.rivalpicks.dto.user.response.UserSearchResultResponseDto;
 import com.rivalpicks.dto.user.response.TransactionResponseDto;
+import com.rivalpicks.dto.user.response.UsernameChangeResponseDto;
 import com.rivalpicks.entity.user.UserSettings.ProfileVisibility;
 import com.rivalpicks.service.user.FriendshipService;
 import com.rivalpicks.entity.user.Transaction;
 import com.rivalpicks.entity.user.User;
 import com.rivalpicks.service.FileStorageService;
+import com.rivalpicks.service.security.EmailChangeService;
 import com.rivalpicks.service.security.UserDetailsServiceImpl;
 import com.rivalpicks.service.user.DailyLoginRewardService;
 import com.rivalpicks.service.user.TransactionService;
@@ -52,12 +58,13 @@ public class UserController {
     private final TransactionService transactionService;
     private final DailyLoginRewardService dailyLoginRewardService;
     private final FriendshipService friendshipService;
+    private final EmailChangeService emailChangeService;
 
     @Autowired
     public UserController(UserService userService, UserRegistrationService userRegistrationService,
                          UserStatisticsService userStatisticsService, FileStorageService fileStorageService,
                          TransactionService transactionService, DailyLoginRewardService dailyLoginRewardService,
-                         FriendshipService friendshipService) {
+                         FriendshipService friendshipService, EmailChangeService emailChangeService) {
         this.userService = userService;
         this.userRegistrationService = userRegistrationService;
         this.userStatisticsService = userStatisticsService;
@@ -65,6 +72,7 @@ public class UserController {
         this.transactionService = transactionService;
         this.dailyLoginRewardService = dailyLoginRewardService;
         this.friendshipService = friendshipService;
+        this.emailChangeService = emailChangeService;
     }
 
     // ==========================================
@@ -302,11 +310,133 @@ public class UserController {
             if (userPrincipal == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
-            
+
             userService.deleteUser(userPrincipal.getUserId());
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // ==========================================
+    // USERNAME & EMAIL CHANGES
+    // ==========================================
+
+    /**
+     * Change current user's username.
+     */
+    @PutMapping("/profile/username")
+    public ResponseEntity<?> changeUsername(@Valid @RequestBody UsernameChangeRequestDto request) {
+        try {
+            UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
+            if (userPrincipal == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            User updatedUser = userService.changeUsername(userPrincipal.getUserId(), request.newUsername());
+            return ResponseEntity.ok(new UsernameChangeResponseDto(
+                true,
+                "Username changed successfully",
+                updatedUser.getUsername()
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new UsernameChangeResponseDto(
+                false,
+                e.getMessage(),
+                null
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new UsernameChangeResponseDto(false, "Failed to change username", null));
+        }
+    }
+
+    /**
+     * Request email change - sends verification email to new address.
+     * Requires current password for security.
+     */
+    @PostMapping("/profile/email/request")
+    public ResponseEntity<?> requestEmailChange(@Valid @RequestBody EmailChangeRequestDto request) {
+        try {
+            UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
+            if (userPrincipal == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            emailChangeService.requestEmailChange(
+                userPrincipal.getUserId(),
+                request.newEmail(),
+                request.currentPassword()
+            );
+
+            return ResponseEntity.ok(new EmailChangeResponseDto(
+                true,
+                "Verification email sent to " + request.newEmail() + ". Please check your inbox.",
+                request.newEmail()
+            ));
+        } catch (com.rivalpicks.exception.AuthenticationException.InvalidCredentialsException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new EmailChangeResponseDto(false, e.getMessage(), null));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                .body(new EmailChangeResponseDto(false, e.getMessage(), null));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new EmailChangeResponseDto(false, "Failed to request email change", null));
+        }
+    }
+
+    /**
+     * Confirm email change with verification token.
+     */
+    @PostMapping("/profile/email/confirm")
+    public ResponseEntity<?> confirmEmailChange(@Valid @RequestBody EmailChangeConfirmRequestDto request) {
+        try {
+            User updatedUser = emailChangeService.confirmEmailChange(request.token());
+            return ResponseEntity.ok(new EmailChangeResponseDto(
+                true,
+                "Email changed successfully",
+                updatedUser.getEmail()
+            ));
+        } catch (com.rivalpicks.exception.AuthenticationException.InvalidCredentialsException e) {
+            return ResponseEntity.badRequest()
+                .body(new EmailChangeResponseDto(false, e.getMessage(), null));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                .body(new EmailChangeResponseDto(false, e.getMessage(), null));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new EmailChangeResponseDto(false, "Failed to confirm email change", null));
+        }
+    }
+
+    /**
+     * Validate email change token (for frontend to check before showing confirm screen).
+     */
+    @GetMapping("/profile/email/validate")
+    public ResponseEntity<?> validateEmailChangeToken(@RequestParam String token) {
+        try {
+            boolean valid = emailChangeService.validateToken(token);
+            if (valid) {
+                String pendingEmail = emailChangeService.getPendingEmailForToken(token).orElse(null);
+                return ResponseEntity.ok(java.util.Map.of(
+                    "valid", true,
+                    "pendingEmail", pendingEmail != null ? pendingEmail : ""
+                ));
+            } else {
+                return ResponseEntity.ok(java.util.Map.of(
+                    "valid", false,
+                    "message", "Token is invalid or expired"
+                ));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.ok(java.util.Map.of(
+                "valid", false,
+                "message", "Failed to validate token"
+            ));
         }
     }
 

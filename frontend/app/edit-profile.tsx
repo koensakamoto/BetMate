@@ -559,7 +559,6 @@ export default function EditProfile() {
             />
           </View>
 
-
           {/* Error Message */}
           {error && (
             <View style={{

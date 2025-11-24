@@ -106,7 +106,6 @@ public class BetNotificationListener {
                     String title = "New Bet in " + event.getGroupName();
                     String message = event.getCreatorName() + " created a bet: " + event.getBetTitle();
                     String actionUrl = "/bets/" + event.getBetId();
-
                     // Ensure title and message don't exceed maximum lengths
                     if (title.length() > 100) {
                         title = title.substring(0, 97) + "...";

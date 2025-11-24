@@ -228,15 +228,9 @@ export default function Settings() {
         {/* Account & Profile */}
         <SettingSection title="Account & Profile">
           <SettingItem
-            materialIcon="person"
-            title="Profile Settings"
-            description="Edit your profile information"
-            onPress={() => router.push('/profile-settings')}
-          />
-          <SettingItem
             materialIcon="security"
-            title="Account Security"
-            description="Password, two-factor authentication"
+            title="Account & Privacy"
+            description="Username, email, password, privacy settings"
             onPress={() => router.push('/account-security')}
           />
         </SettingSection>

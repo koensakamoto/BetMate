@@ -2,13 +2,16 @@ package com.rivalpicks.controller;
 
 import com.rivalpicks.dto.auth.request.AppleAuthRequestDto;
 import com.rivalpicks.dto.auth.request.ChangePasswordRequestDto;
+import com.rivalpicks.dto.auth.request.ForgotPasswordRequestDto;
 import com.rivalpicks.dto.auth.request.GoogleAuthRequestDto;
 import com.rivalpicks.dto.auth.request.LoginRequestDto;
 import com.rivalpicks.dto.auth.request.RefreshTokenRequestDto;
+import com.rivalpicks.dto.auth.request.ResetPasswordRequestDto;
 import com.rivalpicks.dto.auth.response.LoginResponseDto;
 import com.rivalpicks.dto.auth.response.TokenResponseDto;
 import com.rivalpicks.dto.user.response.UserProfileResponseDto;
 import com.rivalpicks.service.auth.AuthService;
+import com.rivalpicks.service.security.PasswordResetService;
 import com.rivalpicks.dto.common.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,10 +27,12 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
     @Autowired
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, PasswordResetService passwordResetService) {
         this.authService = authService;
+        this.passwordResetService = passwordResetService;
     }
 
     /**
@@ -98,6 +103,38 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResponseDto>> loginWithApple(@Valid @RequestBody AppleAuthRequestDto appleAuthRequest) {
         LoginResponseDto loginResponse = authService.loginWithApple(appleAuthRequest);
         ApiResponse<LoginResponseDto> response = ApiResponse.success(loginResponse, "Apple login successful");
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Request password reset email.
+     * Always returns success to prevent email enumeration.
+     */
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDto forgotPasswordRequest) {
+        passwordResetService.requestPasswordReset(forgotPasswordRequest.email());
+        ApiResponse<Void> response = ApiResponse.success("If an account exists with this email, you will receive a password reset link shortly.");
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Reset password using a valid reset token.
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequestDto resetPasswordRequest) {
+        passwordResetService.resetPassword(resetPasswordRequest.token(), resetPasswordRequest.newPassword());
+        ApiResponse<Void> response = ApiResponse.success("Password has been reset successfully. You can now log in with your new password.");
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Validate a password reset token.
+     * Used by frontend to check if token is valid before showing reset form.
+     */
+    @GetMapping("/reset-password/validate")
+    public ResponseEntity<ApiResponse<Boolean>> validateResetToken(@RequestParam String token) {
+        boolean isValid = passwordResetService.validateToken(token);
+        ApiResponse<Boolean> response = ApiResponse.success(isValid, isValid ? "Token is valid" : "Token is invalid or expired");
         return ResponseEntity.ok(response);
     }
 
