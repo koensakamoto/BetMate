@@ -11,18 +11,18 @@ interface UseNotificationsOptions {
   refreshInterval?: number;
   pageSize?: number;
   unreadOnly?: boolean;
-  enabled?: boolean; // Controls whether to fetch notifications (useful for auth gating)
+  enabled?: boolean;
 }
 
 interface UseNotificationsReturn {
   notifications: NotificationResponse[];
   loading: boolean;
+  refreshing: boolean;
   error: string | null;
   hasMore: boolean;
   unreadCount: number;
   stats: NotificationStats | null;
 
-  // Actions
   loadNotifications: () => Promise<void>;
   loadMore: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -30,32 +30,70 @@ interface UseNotificationsReturn {
   markAllAsRead: () => Promise<void>;
   addNotification: (notification: NotificationResponse) => void;
 
-  // Filters
   setUnreadOnly: (unreadOnly: boolean) => void;
 }
+
+interface CachedData {
+  notifications: NotificationResponse[];
+  hasMore: boolean;
+  currentPage: number;
+  loaded: boolean;
+  lastFetched: number; // timestamp
+}
+
+// Cache TTL in milliseconds (2 minutes)
+const CACHE_TTL_MS = 2 * 60 * 1000;
+
+// Module-level cache that persists across component mounts
+const globalCache = {
+  all: { notifications: [], hasMore: true, currentPage: 0, loaded: false, lastFetched: 0 } as CachedData,
+  unread: { notifications: [], hasMore: true, currentPage: 0, loaded: false, lastFetched: 0 } as CachedData,
+  unreadCount: 0,
+  stats: null as NotificationStats | null,
+  metaLoaded: false
+};
 
 export function useNotifications(options: UseNotificationsOptions = {}): UseNotificationsReturn {
   const {
     autoRefresh = false,
-    refreshInterval = 30000, // 30 seconds
+    refreshInterval = 30000,
     pageSize = 20,
     unreadOnly: initialUnreadOnly = false,
-    enabled = true // Default to enabled for backward compatibility
+    enabled = true
   } = options;
 
-  const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
+  const [unreadOnly, setUnreadOnlyState] = useState(initialUnreadOnly);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [stats, setStats] = useState<NotificationStats | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [unreadOnly, setUnreadOnly] = useState(initialUnreadOnly);
 
-  // Load notifications
-  const loadNotifications = useCallback(async (page = 0, reset = true) => {
+  // Local state that syncs with global cache
+  const [unreadCount, setUnreadCount] = useState(globalCache.unreadCount);
+  const [stats, setStats] = useState(globalCache.stats);
+  const [, forceUpdate] = useState({});
+
+  // Get current cache key
+  const cacheKey = unreadOnly ? 'unread' : 'all';
+
+  // Check if cache is stale
+  const isCacheStale = useCallback((cache: CachedData) => {
+    if (!cache.loaded) return true;
+    return Date.now() - cache.lastFetched > CACHE_TTL_MS;
+  }, []);
+
+  // Load notifications (silent = no loading state, for background refresh)
+  const loadNotifications = useCallback(async (page = 0, reset = true, forceRefresh = false, silent = false) => {
+    const cache = globalCache[cacheKey];
+
+    // Skip if already loaded, not stale, and not forcing refresh
+    if (cache.loaded && !forceRefresh && !isCacheStale(cache) && page === 0 && reset) {
+      return;
+    }
+
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       setError(null);
 
       const response = await notificationService.getNotifications({
@@ -64,61 +102,78 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
         unreadOnly
       });
 
-      // Handle case where response might not have expected structure
       let content = response?.content || [];
 
-      // Filter out any invalid notifications (missing required fields)
-      // Note: Backend sends 'message' field, not 'content'
       content = content.filter(notification =>
         notification &&
         notification.id &&
         (notification.title || notification.message || notification.content)
       );
 
-      const isLast = response?.last !== false; // default to true if undefined
+      const isLast = response?.last !== false;
 
       if (reset) {
-        setNotifications(content);
+        globalCache[cacheKey] = {
+          notifications: content,
+          hasMore: !isLast,
+          currentPage: page,
+          loaded: true,
+          lastFetched: Date.now()
+        };
       } else {
-        setNotifications(prev => {
-          const existing = prev || [];
-          // Avoid duplicates when paginating
-          const existingIds = new Set(existing.map(n => n.id));
-          const newNotifications = content.filter(n => !existingIds.has(n.id));
-          return [...existing, ...newNotifications];
-        });
+        const existingIds = new Set(cache.notifications.map(n => n.id));
+        const newNotifications = content.filter(n => !existingIds.has(n.id));
+        globalCache[cacheKey] = {
+          notifications: [...cache.notifications, ...newNotifications],
+          hasMore: !isLast,
+          currentPage: page,
+          loaded: true,
+          lastFetched: Date.now()
+        };
       }
 
-      setHasMore(!isLast);
-      setCurrentPage(page);
+      forceUpdate({});
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load notifications');
       console.error('Error loading notifications:', err);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  }, [pageSize, unreadOnly]);
+  }, [pageSize, unreadOnly, cacheKey, isCacheStale]);
 
-  // Load more notifications (pagination)
+  // Load more
   const loadMore = useCallback(async () => {
-    if (!hasMore || loading) return;
-    await loadNotifications(currentPage + 1, false);
-  }, [hasMore, loading, currentPage, loadNotifications]);
+    const cache = globalCache[cacheKey];
+    if (!cache.hasMore || loading) return;
+    await loadNotifications(cache.currentPage + 1, false);
+  }, [cacheKey, loading, loadNotifications]);
 
-  // Refresh notifications
+  // Refresh (pull-to-refresh)
   const refresh = useCallback(async () => {
-    await loadNotifications(0, true);
+    setRefreshing(true);
+    try {
+      await loadNotifications(0, true, true);
+      const count = await notificationService.getUnreadCount();
+      globalCache.unreadCount = count || 0;
+      setUnreadCount(count || 0);
+    } finally {
+      setRefreshing(false);
+    }
   }, [loadNotifications]);
 
   // Load unread count
   const loadUnreadCount = useCallback(async () => {
     try {
       const count = await notificationService.getUnreadCount();
-      setUnreadCount(count || 0); // Default to 0 if undefined
+      globalCache.unreadCount = count || 0;
+      setUnreadCount(count || 0);
+      return count || 0;
     } catch (err) {
       console.error('Error loading unread count:', err);
-      setUnreadCount(0); // Set to 0 on error
+      return globalCache.unreadCount;
     }
   }, []);
 
@@ -126,119 +181,151 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
   const loadStats = useCallback(async () => {
     try {
       const statistics = await notificationService.getStats();
-      setStats(statistics || null); // Keep as null if undefined
+      globalCache.stats = statistics || null;
+      setStats(statistics || null);
     } catch (err) {
       console.error('Error loading notification stats:', err);
-      setStats(null); // Set to null on error
     }
   }, []);
 
-  // Mark notification as read
+  // Check staleness and refresh in background if needed
+  const checkAndRefreshIfStale = useCallback(async () => {
+    const cache = globalCache[cacheKey];
+
+    // Only check if cache exists and is stale
+    if (!cache.loaded || !isCacheStale(cache)) {
+      return;
+    }
+
+    // Fetch current unread count from server
+    const serverUnreadCount = await loadUnreadCount();
+
+    // If count differs, do a silent background refresh
+    if (serverUnreadCount !== globalCache.unreadCount || isCacheStale(cache)) {
+      await loadNotifications(0, true, true, true); // silent refresh
+    }
+  }, [cacheKey, isCacheStale, loadUnreadCount, loadNotifications]);
+
+  // Mark as read
   const markAsRead = useCallback(async (notificationId: number) => {
     try {
       await notificationService.markAsRead(notificationId);
 
-      // Update local state
-      setNotifications(prev =>
-        prev.map(notification =>
-          notification.id === notificationId
-            ? { ...notification, isRead: true, readAt: new Date().toISOString() }
-            : notification
-        )
-      );
+      // Update both caches
+      ['all', 'unread'].forEach(key => {
+        globalCache[key as 'all' | 'unread'].notifications =
+          globalCache[key as 'all' | 'unread'].notifications.map(n =>
+            n.id === notificationId
+              ? { ...n, isRead: true, readAt: new Date().toISOString() }
+              : n
+          );
+      });
 
-      // Update unread count
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      globalCache.unreadCount = Math.max(0, globalCache.unreadCount - 1);
+      setUnreadCount(globalCache.unreadCount);
+      forceUpdate({});
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to mark notification as read');
-      console.error('Error marking notification as read:', err);
+      throw err;
     }
   }, []);
 
-  // Mark all notifications as read
+  // Mark all as read
   const markAllAsRead = useCallback(async () => {
     try {
       await notificationService.markAllAsRead();
 
-      // Update local state
-      setNotifications(prev =>
-        prev.map(notification => ({
-          ...notification,
-          isRead: true,
-          readAt: new Date().toISOString()
-        }))
-      );
+      ['all', 'unread'].forEach(key => {
+        globalCache[key as 'all' | 'unread'].notifications =
+          globalCache[key as 'all' | 'unread'].notifications.map(n => ({
+            ...n,
+            isRead: true,
+            readAt: new Date().toISOString()
+          }));
+      });
 
-      // Update unread count
+      globalCache.unreadCount = 0;
       setUnreadCount(0);
+      forceUpdate({});
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to mark all notifications as read');
-      console.error('Error marking all notifications as read:', err);
     }
   }, []);
 
-  // Add new notification (for real-time updates)
+  // Add new notification
   const addNotification = useCallback((notification: NotificationResponse) => {
-    setNotifications(prev => [notification, ...prev]);
+    // Add to all cache
+    globalCache.all.notifications = [notification, ...globalCache.all.notifications];
 
+    // Add to unread cache if unread
     if (!notification.isRead) {
-      setUnreadCount(prev => prev + 1);
+      globalCache.unread.notifications = [notification, ...globalCache.unread.notifications];
+      globalCache.unreadCount += 1;
+      setUnreadCount(globalCache.unreadCount);
     }
+
+    forceUpdate({});
   }, []);
 
   // Handle filter change
-  const handleSetUnreadOnly = useCallback((newUnreadOnly: boolean) => {
-    setUnreadOnly(newUnreadOnly);
+  const setUnreadOnly = useCallback((newUnreadOnly: boolean) => {
+    setUnreadOnlyState(newUnreadOnly);
   }, []);
 
-  // Load initial data (only when enabled)
+  // On mount: show cached data, check staleness in background
   useEffect(() => {
     if (!enabled) return;
-    loadNotifications();
+
+    const cache = globalCache[cacheKey];
+
+    if (!cache.loaded) {
+      // First load - fetch with loading state
+      loadNotifications(0, true);
+    } else {
+      // Have cache - check staleness in background
+      checkAndRefreshIfStale();
+    }
+  }, [enabled, cacheKey, loadNotifications, checkAndRefreshIfStale]);
+
+  // Initial load of unread count and stats (once)
+  useEffect(() => {
+    if (!enabled || globalCache.metaLoaded) return;
+    globalCache.metaLoaded = true;
     loadUnreadCount();
     loadStats();
-  }, [enabled, loadNotifications, loadUnreadCount, loadStats]);
+  }, [enabled, loadUnreadCount, loadStats]);
 
-  // Reload when filter changes (only when enabled)
-  useEffect(() => {
-    if (!enabled) return;
-    loadNotifications(0, true);
-  }, [enabled, unreadOnly, loadNotifications]);
-
-  // Auto-refresh (only when enabled)
+  // Auto-refresh unread count
   useEffect(() => {
     if (!autoRefresh || !enabled) return;
 
     const interval = setInterval(() => {
       loadUnreadCount();
-      // Only refresh if on first page to avoid disrupting user's reading
-      if (currentPage === 0) {
-        refresh();
-      }
     }, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [autoRefresh, enabled, refreshInterval, currentPage, loadUnreadCount, refresh]);
+  }, [autoRefresh, enabled, refreshInterval, loadUnreadCount]);
+
+  const currentCache = globalCache[cacheKey];
 
   return {
-    notifications,
+    notifications: currentCache.notifications,
     loading,
+    refreshing,
     error,
-    hasMore,
+    hasMore: currentCache.hasMore,
     unreadCount,
     stats,
 
-    // Actions
-    loadNotifications: () => loadNotifications(0, true),
+    loadNotifications: () => loadNotifications(0, true, true),
     loadMore,
     refresh,
     markAsRead,
     markAllAsRead,
     addNotification,
 
-    // Filters
-    setUnreadOnly: handleSetUnreadOnly
+    setUnreadOnly
   };
 }

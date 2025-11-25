@@ -78,7 +78,7 @@ public class BetCreationService {
         betParticipationService.createCreatorParticipation(creator, bet);
 
         // Publish bet created event for notifications
-        publishBetCreatedEvent(bet);
+        publishBetCreatedEvent(bet, request);
 
         return bet;
     }
@@ -259,8 +259,14 @@ public class BetCreationService {
     /**
      * Publishes a bet created event for notification processing.
      */
-    private void publishBetCreatedEvent(Bet bet) {
+    private void publishBetCreatedEvent(Bet bet, BetCreationRequest request) {
         try {
+            // Get assigned resolver IDs for ASSIGNED_RESOLVERS method
+            List<Long> assignedResolverIds = null;
+            if (request.resolutionMethod() == Bet.BetResolutionMethod.ASSIGNED_RESOLVERS) {
+                assignedResolverIds = request.resolverUserIds();
+            }
+
             BetCreatedEvent event = new BetCreatedEvent(
                 bet.getId(),
                 bet.getTitle(),
@@ -271,7 +277,9 @@ public class BetCreationService {
                 bet.getCreator().getDisplayName(),
                 bet.getMinimumBet(),
                 bet.getBettingDeadline(),
-                bet.getResolveDate()
+                bet.getResolveDate(),
+                request.resolutionMethod().name(),
+                assignedResolverIds
             );
 
             eventPublisher.publishEvent(event);

@@ -4,6 +4,7 @@ import com.rivalpicks.event.base.DomainEvent;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class BetCreatedEvent extends DomainEvent {
     private final Long betId;
@@ -16,10 +17,13 @@ public class BetCreatedEvent extends DomainEvent {
     private final BigDecimal minimumBet;
     private final LocalDateTime bettingDeadline;
     private final LocalDateTime resolutionDate;
+    private final String resolutionMethod;
+    private final List<Long> assignedResolverIds;
 
     public BetCreatedEvent(Long betId, String betTitle, String betDescription,
                           Long groupId, String groupName, Long creatorId, String creatorName,
-                          BigDecimal minimumBet, LocalDateTime bettingDeadline, LocalDateTime resolutionDate) {
+                          BigDecimal minimumBet, LocalDateTime bettingDeadline, LocalDateTime resolutionDate,
+                          String resolutionMethod, List<Long> assignedResolverIds) {
         super("BET_CREATED");
         this.betId = betId;
         this.betTitle = betTitle;
@@ -31,6 +35,8 @@ public class BetCreatedEvent extends DomainEvent {
         this.minimumBet = minimumBet;
         this.bettingDeadline = bettingDeadline;
         this.resolutionDate = resolutionDate;
+        this.resolutionMethod = resolutionMethod;
+        this.assignedResolverIds = assignedResolverIds;
     }
 
     public Long getBetId() {
@@ -71,5 +77,13 @@ public class BetCreatedEvent extends DomainEvent {
 
     public LocalDateTime getResolutionDate() {
         return resolutionDate;
+    }
+
+    public String getResolutionMethod() {
+        return resolutionMethod;
+    }
+
+    public List<Long> getAssignedResolverIds() {
+        return assignedResolverIds;
     }
 }

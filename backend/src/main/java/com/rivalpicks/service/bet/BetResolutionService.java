@@ -28,9 +28,9 @@ import java.util.stream.Collectors;
 
 /**
  * Service for handling bet resolution through different methods:
- * - Creator-Only Resolution: Only the bet creator can resolve
- * - Assigned Resolver Resolution: Creator assigns specific users to resolve  
- * - Consensus Voting Resolution: Multiple people vote, majority decides
+ * - SELF: Only the bet creator can resolve
+ * - ASSIGNED_RESOLVERS: Creator assigns specific users to resolve
+ * - PARTICIPANT_VOTE: Participants vote, highest count wins (tie = draw)
  */
 @Service
 @Validated

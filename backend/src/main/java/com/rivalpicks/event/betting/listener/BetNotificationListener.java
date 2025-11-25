@@ -106,10 +106,21 @@ public class BetNotificationListener {
                 }
 
                 try {
+                    // Check if this member is an assigned resolver
+                    boolean isAssignedResolver = "ASSIGNED_RESOLVERS".equals(event.getResolutionMethod())
+                        && event.getAssignedResolverIds() != null
+                        && event.getAssignedResolverIds().contains(member.getId());
+
                     // Create notification title and message
                     String title = "New Bet in " + event.getGroupName();
                     String timeRemaining = formatTimeRemaining(event.getBettingDeadline());
-                    String message = event.getCreatorName() + " created \"" + event.getBetTitle() + "\". " + timeRemaining;
+                    String message;
+                    if (isAssignedResolver) {
+                        message = event.getCreatorName() + " created \"" + event.getBetTitle()
+                            + "\". You've been assigned as a resolver. " + timeRemaining;
+                    } else {
+                        message = event.getCreatorName() + " created \"" + event.getBetTitle() + "\". " + timeRemaining;
+                    }
                     String actionUrl = "/bets/" + event.getBetId();
                     // Ensure title and message don't exceed maximum lengths
                     if (title.length() > 100) {

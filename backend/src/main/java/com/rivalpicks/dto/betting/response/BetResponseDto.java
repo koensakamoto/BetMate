@@ -7,6 +7,7 @@ import com.rivalpicks.entity.betting.FulfillmentStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Response DTO for bet information.
@@ -67,6 +68,11 @@ public class BetResponseDto {
     private Integer insuranceRefundPercentage;
     private String insuranceTier;
     private BigDecimal insuranceRefundAmount;
+
+    // Resolver information
+    private String resolutionMethodDisplay;
+    private List<ResolverInfoDto> resolvers;
+    private VotingProgressDto votingProgress;
 
     // Constructors
     public BetResponseDto() {}
@@ -399,5 +405,30 @@ public class BetResponseDto {
 
     public void setInsuranceRefundAmount(BigDecimal insuranceRefundAmount) {
         this.insuranceRefundAmount = insuranceRefundAmount;
+    }
+
+    // Resolver information getters and setters
+    public String getResolutionMethodDisplay() {
+        return resolutionMethodDisplay;
+    }
+
+    public void setResolutionMethodDisplay(String resolutionMethodDisplay) {
+        this.resolutionMethodDisplay = resolutionMethodDisplay;
+    }
+
+    public List<ResolverInfoDto> getResolvers() {
+        return resolvers;
+    }
+
+    public void setResolvers(List<ResolverInfoDto> resolvers) {
+        this.resolvers = resolvers;
+    }
+
+    public VotingProgressDto getVotingProgress() {
+        return votingProgress;
+    }
+
+    public void setVotingProgress(VotingProgressDto votingProgress) {
+        this.votingProgress = votingProgress;
     }
 }

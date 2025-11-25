@@ -20,6 +20,20 @@ export interface CreateBetRequest {
   resolverUserIds?: number[]; // For ASSIGNED_RESOLVERS: List of user IDs who can resolve the bet
 }
 
+export interface ResolverInfo {
+  id: number;
+  username: string;
+  displayName: string;
+  profileImageUrl?: string;
+  hasVoted?: boolean;
+}
+
+export interface VotingProgress {
+  totalResolvers: number;
+  votesSubmitted: number;
+  voteDistribution?: Record<string, number>;
+}
+
 export interface BetResponse {
   id: number;
   title: string;
@@ -74,6 +88,10 @@ export interface BetResponse {
   insuranceRefundPercentage?: number;
   insuranceTier?: string;
   insuranceRefundAmount?: number;
+  // Resolver information
+  resolutionMethodDisplay?: string;
+  resolvers?: ResolverInfo[];
+  votingProgress?: VotingProgress;
 }
 
 export interface BetSummaryResponse {

@@ -18,6 +18,7 @@ export default function Notifications() {
   const {
     notifications,
     loading,
+    refreshing,
     error,
     hasMore,
     unreadCount,
@@ -51,7 +52,7 @@ export default function Notifications() {
         return 'trending-up';
       case NotificationType.BET_CREATED:
       case 'BET_CREATED':
-        return 'sports-esports';
+        return 'handshake';
       case NotificationType.BET_DEADLINE:
       case 'BET_DEADLINE':
         return 'schedule';
@@ -188,9 +189,14 @@ export default function Notifications() {
   const groupedNotifications = groupByDate(filteredNotifications);
 
   const handleNotificationPress = async (notification: NotificationResponse) => {
-    // Mark as read if not already read
-    if (!notification.isRead) {
-      await markAsRead(notification.id);
+    // Try to mark as read first (don't block navigation on failure)
+    if (notification.id) {
+      try {
+        await markAsRead(notification.id);
+      } catch (error) {
+        // Log but don't block navigation
+        console.error('Failed to mark notification as read:', error);
+      }
     }
 
     // Navigate to action URL if available
@@ -500,6 +506,7 @@ export default function Notifications() {
         paddingVertical: 8,
         paddingHorizontal: 0,
         borderRadius: 6,
+        opacity: notification.isRead ? 0.5 : 1,
       }}>
           {!isFriendRequest && !isGroupInvite && !isGroupJoinRequest && !isGroupRoleChanged && (
             <MaterialIcons
@@ -1156,7 +1163,7 @@ export default function Notifications() {
           contentInsetAdjustmentBehavior="automatic"
           refreshControl={
             <RefreshControl
-              refreshing={loading}
+              refreshing={refreshing}
               onRefresh={refresh}
               tintColor="#ffffff"
               colors={["#00D4AA"]}

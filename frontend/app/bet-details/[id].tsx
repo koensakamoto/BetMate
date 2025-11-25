@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { betService, BetResponse, BetParticipationResponse } from '../../services/bet/betService';
 import BetResolutionModal from '../../components/bet/BetResolutionModal';
 import { FulfillmentTracker } from '../../components/bet/FulfillmentTracker';
+import { ResolverInfoSection } from '../../components/bet/ResolverInfoSection';
 import { authService } from '../../services/auth/authService';
 import { useAuth } from '../../contexts/AuthContext';
 import { haptic } from '../../utils/haptics';
@@ -814,6 +815,9 @@ export default function BetDetails() {
                 {betData.stakeType === 'SOCIAL' ? 'Social' : (betData.fixedStakeAmount ? `$${betData.fixedStakeAmount} (Fixed)` : 'Variable')}
               </Text>
             </View>
+
+            {/* Resolver Information */}
+            <ResolverInfoSection bet={betData} currentUserId={user?.id || null} />
           </View>
         </View>
 
