@@ -82,14 +82,14 @@ public class GroupNotificationListener {
                 return;
             }
 
-            // 2. Get all admins and officers in the group
+            // 2. Get all admins in the group
             List<GroupMembership> adminMemberships = groupMembershipRepository
-                .findGroupAdminsAndModerators(group);
+                .findGroupAdmins(group);
 
-            logger.debug("Found {} admins/officers in group '{}'",
+            logger.debug("Found {} admins in group '{}'",
                         adminMemberships.size(), group.getGroupName());
 
-            // 3. Create notification for each admin/officer
+            // 3. Create notification for each admin
             int notificationsCreated = 0;
             for (GroupMembership membership : adminMemberships) {
                 User admin = membership.getUser();

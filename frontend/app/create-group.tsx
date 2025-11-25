@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, KeyboardAvoidingView, Platform, TextInput, Alert, Image } from 'react-native';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, KeyboardAvoidingView, Platform, TextInput, Alert, Image, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -37,8 +37,11 @@ export default function CreateGroup() {
       if (status !== 'granted') {
         Alert.alert(
           'Permission Required',
-          'Sorry, we need camera roll permissions to select a group photo.',
-          [{ text: 'OK' }]
+          'To select a group photo, please enable photo library access in Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
         );
         return;
       }
@@ -66,8 +69,11 @@ export default function CreateGroup() {
       if (status !== 'granted') {
         Alert.alert(
           'Permission Required',
-          'Sorry, we need camera permissions to take a photo.',
-          [{ text: 'OK' }]
+          'To take a group photo, please enable camera access in Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
         );
         return;
       }

@@ -8,6 +8,7 @@ import { NotificationResponse, NotificationType, NotificationPriority } from '..
 import { friendshipService } from '../services/user/friendshipService';
 import { groupService } from '../services/group/groupService';
 import { BetDeadlineCard } from '../components/notifications/BetDeadlineCard';
+import { parseBackendDate } from '../utils/dateUtils';
 
 export default function Notifications() {
   const insets = useSafeAreaInsets();
@@ -129,12 +130,17 @@ export default function Notifications() {
 
   const formatTime = (timestamp: string) => {
     const now = new Date();
-    const notificationTime = new Date(timestamp);
+    const notificationTime = parseBackendDate(timestamp);
     const diffInHours = (now.getTime() - notificationTime.getTime()) / (1000 * 60 * 60);
+
+    // Handle future timestamps or very recent (negative/zero diff)
+    if (diffInHours <= 0) {
+      return 'Just now';
+    }
 
     if (diffInHours < 1) {
       const diffInMinutes = Math.floor(diffInHours * 60);
-      return `${diffInMinutes}m`;
+      return diffInMinutes < 1 ? 'Just now' : `${diffInMinutes}m`;
     } else if (diffInHours < 24) {
       return `${Math.floor(diffInHours)}h`;
     } else {

@@ -116,7 +116,6 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
       id: bet.id.toString(),
       title: bet.title,
       description: '',  // Description not in summary, would need full bet details
-      category: bet.betType,
       timeRemaining: bettingTimeRemaining,
       resolveTimeRemaining: resolveTimeRemaining,
       participantCount: bet.totalParticipants,

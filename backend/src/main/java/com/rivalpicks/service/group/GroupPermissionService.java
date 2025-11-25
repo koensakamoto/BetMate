@@ -80,20 +80,20 @@ public class GroupPermissionService {
      * Checks if user can edit group settings.
      */
     public boolean canEditGroup(@NotNull User user, @NotNull Group group) {
-        return membershipRepository.isUserAdminOrModerator(user, group);
+        return membershipRepository.isUserAdmin(user, group);
     }
 
     /**
      * Checks if user can delete/deactivate the group.
      */
     public boolean canDeleteGroup(@NotNull User user, @NotNull Group group) {
-        return membershipRepository.isUserGroupAdmin(user, group);
+        return membershipRepository.isUserAdmin(user, group);
     }
 
     /**
      * Checks if user can invite other users to the group.
      * - PUBLIC groups: Any active member can invite
-     * - PRIVATE groups: Only admins and officers can invite
+     * - PRIVATE groups: Only admins can invite
      */
     public boolean canInviteUsers(@NotNull User user, @NotNull Group group) {
         // For public groups, any active member can invite
@@ -101,29 +101,29 @@ public class GroupPermissionService {
             return membershipRepository.existsByUserAndGroupAndIsActiveTrue(user, group);
         }
 
-        // For private groups, only admins and officers can invite
-        return membershipRepository.isUserAdminOrModerator(user, group);
+        // For private groups, only admins can invite
+        return membershipRepository.isUserAdmin(user, group);
     }
 
     /**
      * Checks if user can remove other members from the group.
      */
     public boolean canRemoveMembers(@NotNull User user, @NotNull Group group) {
-        return membershipRepository.isUserAdminOrModerator(user, group);
+        return membershipRepository.isUserAdmin(user, group);
     }
 
     /**
      * Checks if user can change roles of other members.
      */
     public boolean canChangeRoles(@NotNull User user, @NotNull Group group) {
-        return membershipRepository.isUserGroupAdmin(user, group);
+        return membershipRepository.isUserAdmin(user, group);
     }
 
     /**
      * Checks if user can manage pending join requests (approve/deny).
      */
     public boolean canManageJoinRequests(@NotNull User user, @NotNull Group group) {
-        return membershipRepository.isUserAdminOrModerator(user, group);
+        return membershipRepository.isUserAdmin(user, group);
     }
 
     /**

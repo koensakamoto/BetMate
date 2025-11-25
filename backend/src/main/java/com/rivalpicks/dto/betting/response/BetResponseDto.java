@@ -60,6 +60,7 @@ public class BetResponseDto {
     private Bet.BetOutcome userChoice;
     private BigDecimal userAmount;
     private Boolean canUserResolve;
+    private Boolean hasUserVoted;  // Whether user has already voted on resolution (for PARTICIPANT_VOTE)
 
     // Insurance information (for user's participation)
     private Boolean hasInsurance;
@@ -317,6 +318,14 @@ public class BetResponseDto {
 
     public void setCanUserResolve(Boolean canUserResolve) {
         this.canUserResolve = canUserResolve;
+    }
+
+    public Boolean getHasUserVoted() {
+        return hasUserVoted;
+    }
+
+    public void setHasUserVoted(Boolean hasUserVoted) {
+        this.hasUserVoted = hasUserVoted;
     }
 
     public FulfillmentStatus getFulfillmentStatus() {

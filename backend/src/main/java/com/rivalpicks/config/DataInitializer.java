@@ -165,8 +165,8 @@ public class DataInitializer implements CommandLineRunner {
                 membership.setIsActive(true);
                 
                 // Assign random role (most will be members)
-                if (random.nextInt(10) == 0) { // 10% chance of being moderator
-                    membership.setRole(GroupMembership.MemberRole.OFFICER);
+                if (random.nextInt(10) == 0) { // 10% chance of being admin
+                    membership.setRole(GroupMembership.MemberRole.ADMIN);
                 } else {
                     membership.setRole(GroupMembership.MemberRole.MEMBER);
                 }

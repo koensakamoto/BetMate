@@ -70,6 +70,9 @@ public class BetCreationRequestDto {
     @Size(max = 4, message = "Maximum 4 options allowed")
     private String[] options;
 
+    // For ASSIGNED_RESOLVERS: List of user IDs who can resolve the bet
+    private java.util.List<Long> resolverUserIds;
+
     // Constructors
     public BetCreationRequestDto() {}
 
@@ -192,5 +195,13 @@ public class BetCreationRequestDto {
 
     public void setOptions(String[] options) {
         this.options = options;
+    }
+
+    public java.util.List<Long> getResolverUserIds() {
+        return resolverUserIds;
+    }
+
+    public void setResolverUserIds(java.util.List<Long> resolverUserIds) {
+        this.resolverUserIds = resolverUserIds;
     }
 }

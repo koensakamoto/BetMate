@@ -27,8 +27,9 @@ public class GroupResponseDto {
     
     // Additional fields for user context
     private Boolean isUserMember;
-    private String userRole; // ADMIN, OFFICER, MEMBER
+    private String userRole; // ADMIN, MEMBER
     private String userMembershipStatus; // PENDING, APPROVED, REJECTED, LEFT
+    private String ownerUsername; // Username of the group owner
     
     // Constructors
     public GroupResponseDto() {}
@@ -189,5 +190,13 @@ public class GroupResponseDto {
 
     public void setUserMembershipStatus(String userMembershipStatus) {
         this.userMembershipStatus = userMembershipStatus;
+    }
+
+    public String getOwnerUsername() {
+        return ownerUsername;
+    }
+
+    public void setOwnerUsername(String ownerUsername) {
+        this.ownerUsername = ownerUsername;
     }
 }

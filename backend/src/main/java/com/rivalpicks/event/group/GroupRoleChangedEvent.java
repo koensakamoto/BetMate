@@ -61,16 +61,7 @@ public class GroupRoleChangedEvent extends DomainEvent {
     }
 
     public boolean wasPromoted() {
-        // MEMBER -> OFFICER or OFFICER -> ADMIN is a promotion
-        if (oldRole == MemberRole.MEMBER && newRole == MemberRole.OFFICER) {
-            return true;
-        }
-        if (oldRole == MemberRole.OFFICER && newRole == MemberRole.ADMIN) {
-            return true;
-        }
-        if (oldRole == MemberRole.MEMBER && newRole == MemberRole.ADMIN) {
-            return true;
-        }
-        return false;
+        // MEMBER -> ADMIN is a promotion
+        return oldRole == MemberRole.MEMBER && newRole == MemberRole.ADMIN;
     }
 }

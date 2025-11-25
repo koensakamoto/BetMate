@@ -433,7 +433,12 @@ public class GroupController {
         response.setLastMessageAt(group.getLastMessageAt());
         response.setCreatedAt(group.getCreatedAt());
         response.setUpdatedAt(group.getUpdatedAt());
-        
+
+        // Set owner username
+        if (group.getOwner() != null) {
+            response.setOwnerUsername(group.getOwner().getUsername());
+        }
+
         // Set user context based on membership
         // Use getAnyUserMembership to get ANY membership (including PENDING)
         java.util.Optional<GroupMembership> membershipOpt =

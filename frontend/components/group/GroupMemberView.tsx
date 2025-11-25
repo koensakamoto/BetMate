@@ -23,6 +23,7 @@ interface GroupMemberViewProps {
     groupAchievements: number;
     isAdmin: boolean;
     userRole?: string;
+    ownerUsername?: string;
   };
 }
 
@@ -43,21 +44,13 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
   // Determine initial tab from URL parameter
   const getInitialTab = () => {
     const tabParam = searchParams.tab;
-    console.log('🎯 [GroupMemberView] DEBUG: Tab parameter check:', {
-      searchParams,
-      tabParam,
-      tabParamType: typeof tabParam,
-      allParams: JSON.stringify(searchParams)
-    });
 
     if (tabParam && typeof tabParam === 'string') {
       const tabIndex = parseInt(tabParam, 10);
-      console.log('🎯 [GroupMemberView] DEBUG: Parsed tab index:', { tabIndex, isValid: !isNaN(tabIndex) && tabIndex >= 0 && tabIndex <= 3 });
       if (!isNaN(tabIndex) && tabIndex >= 0 && tabIndex <= 2) {
         return tabIndex;
       }
     }
-    console.log('🎯 [GroupMemberView] DEBUG: Using default tab 0');
     return 0; // Default to Chat tab
   };
 
@@ -68,17 +61,11 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
   const tabs = ['Chat', 'Bets', 'People'];
 
-  // Check if user is admin or officer
-  const isAdminOrOfficer = groupData.userRole === 'ADMIN' || groupData.userRole === 'OFFICER';
+  // Check if user is admin
+  const isAdmin = groupData.userRole === 'ADMIN';
 
   // Sync local state with incoming props when they change
   useEffect(() => {
-    console.log(`🔄 [GroupMemberView] Props updated:`, {
-      newName: initialGroupData.name,
-      newMemberCount: initialGroupData.memberCount,
-      currentName: groupData.name,
-      currentMemberCount: groupData.memberCount
-    });
     setGroupData(initialGroupData);
   }, [initialGroupData]);
 
@@ -94,7 +81,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
 
   // Fetch pending request count (admin/officer only)
   const fetchPendingRequestCount = useCallback(async () => {
-    if (!isAdminOrOfficer) {
+    if (!isAdmin) {
       setPendingRequestCount(0);
       return;
     }
@@ -107,14 +94,14 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
       console.error('Error fetching pending request count:', error);
       setPendingRequestCount(0);
     }
-  }, [groupData.id, isAdminOrOfficer]);
+  }, [groupData.id, isAdmin]);
 
   // Fetch pending request count on mount and when refreshing
   useEffect(() => {
-    if (isAdminOrOfficer) {
+    if (isAdmin) {
       fetchPendingRequestCount();
     }
-  }, [isAdminOrOfficer, forceRefreshCounter, fetchPendingRequestCount]);
+  }, [isAdmin, forceRefreshCounter, fetchPendingRequestCount]);
 
   // Pull-to-refresh handler
   const onRefresh = useCallback(() => {
@@ -317,7 +304,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
           {tabs.map((tab, index) => {
             const isActive = index === activeTab;
             const isPeopleTab = tab === 'People';
-            const showBadge = isPeopleTab && isAdminOrOfficer && pendingRequestCount > 0;
+            const showBadge = isPeopleTab && isAdmin && pendingRequestCount > 0;
 
             return (
               <TouchableOpacity

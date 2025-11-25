@@ -40,13 +40,11 @@ export default function Bet() {
     return (Date.now() - lastFetchTime.current) < CACHE_DURATION;
   }, []);
 
-  // Smart refresh on focus: only refetch if cache expired or forced
+  // Always refresh on focus to ensure fresh data after bet creation/updates
   useFocusEffect(
     useCallback(() => {
-      if (!isCacheValid() || myBets.length === 0 || refreshKey > 0) {
-        loadBets(false);
-      }
-    }, [refreshKey, isCacheValid, myBets.length])
+      loadBets(false);
+    }, [])
   );
 
   // Trigger refresh when URL refresh parameter changes (from bet creation)
@@ -146,7 +144,6 @@ export default function Bet() {
       id: bet.id.toString(),
       title: bet.title,
       description: '',  // Description not in summary, would need full bet details
-      category: bet.betType,
       timeRemaining: bettingTimeRemaining,
       resolveTimeRemaining: resolveTimeRemaining,
       participantCount: bet.totalParticipants,

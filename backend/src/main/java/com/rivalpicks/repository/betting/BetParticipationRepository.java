@@ -37,6 +37,7 @@ public interface BetParticipationRepository extends JpaRepository<BetParticipati
     List<BetParticipation> findByStatus(BetParticipation.ParticipationStatus status);
     List<BetParticipation> findByUserAndStatus(User user, BetParticipation.ParticipationStatus status);
     List<BetParticipation> findByBetAndStatus(Bet bet, BetParticipation.ParticipationStatus status);
+    long countByBetAndStatus(Bet bet, BetParticipation.ParticipationStatus status);
     
     // Payout queries using actualWinnings
     List<BetParticipation> findByActualWinningsGreaterThan(BigDecimal minPayout);

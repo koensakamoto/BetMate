@@ -453,6 +453,7 @@ public class BetParticipation {
         ACTIVE,     // Bet is placed and active
         WON,        // Participation won
         LOST,       // Participation lost
+        DRAW,       // Neither won nor lost (e.g., 50% correct votes in prediction bet)
         REFUNDED,   // Bet was cancelled and amount refunded
         CANCELLED   // Participation was cancelled by user (if allowed)
     }

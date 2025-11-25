@@ -11,12 +11,9 @@ import LoadingButton from '../components/common/LoadingButton';
 
 const icon = require("../assets/images/icon.png");
 
-// Helper function to round time to nearest 15-minute interval
-const roundToNearest15Minutes = (date: Date): Date => {
+// Helper function to round time to nearest minute (for testing - was 15-minute interval)
+const roundToNearestMinute = (date: Date): Date => {
   const rounded = new Date(date);
-  const minutes = rounded.getMinutes();
-  const roundedMinutes = Math.ceil(minutes / 15) * 15;
-  rounded.setMinutes(roundedMinutes);
   rounded.setSeconds(0);
   rounded.setMilliseconds(0);
   return rounded;
@@ -32,8 +29,8 @@ export default function CreateBet() {
   const [stakeType, setStakeType] = useState<'CREDIT' | 'SOCIAL'>('CREDIT');
   const [stakeAmount, setStakeAmount] = useState('');
   const [socialStakeDescription, setSocialStakeDescription] = useState('');
-  const [betEndTime, setBetEndTime] = useState(roundToNearest15Minutes(new Date(Date.now() + 24 * 60 * 60 * 1000)));
-  const [eventResolutionDate, setEventResolutionDate] = useState(roundToNearest15Minutes(new Date(Date.now() + 48 * 60 * 60 * 1000)));
+  const [betEndTime, setBetEndTime] = useState(roundToNearestMinute(new Date(Date.now() + 24 * 60 * 60 * 1000)));
+  const [eventResolutionDate, setEventResolutionDate] = useState(roundToNearestMinute(new Date(Date.now() + 48 * 60 * 60 * 1000)));
   const [resolver, setResolver] = useState<'self' | 'specific' | 'multiple' | 'group'>('self');
   const [selectedResolver, setSelectedResolver] = useState<number | null>(null);
   const [selectedResolvers, setSelectedResolvers] = useState<number[]>([]);
@@ -157,8 +154,8 @@ export default function CreateBet() {
                 title: betTitle,
                 description: betDescription || undefined,
                 betType: betType,
-                resolutionMethod: resolver === 'self' ? 'CREATOR_ONLY' :
-                                 resolver === 'specific' ? 'ASSIGNED_RESOLVER' : 'CONSENSUS_VOTING',
+                resolutionMethod: resolver === 'self' ? 'SELF' :
+                                 resolver === 'multiple' ? 'ASSIGNED_RESOLVERS' : 'PARTICIPANT_VOTE',
                 bettingDeadline: betEndTime.toISOString(),
                 resolveDate: eventResolutionDate.toISOString(),
                 stakeType: stakeType, // NEW: Stake type (CREDIT or SOCIAL)
@@ -169,9 +166,10 @@ export default function CreateBet() {
                 minimumVotesRequired: resolver === 'multiple' ? selectedResolvers.length : undefined,
                 allowCreatorVote: true, // TODO: Add this option to UI if needed
                 options: betType === 'MULTIPLE_CHOICE' ? multipleChoiceOptions.filter(opt => opt.trim()) :
-                        betType === 'PREDICTION' ? ['Prediction'] : undefined
+                        betType === 'PREDICTION' ? ['Prediction'] : undefined,
                         // COMMENTED OUT - TODO: Implement Over/Under bets later
                         // betType === 'OVER_UNDER' ? [`Over ${overUnderLine}`, `Under ${overUnderLine}`] : undefined
+                resolverUserIds: resolver === 'multiple' ? selectedResolvers : undefined
               };
 
               const response = await betService.createBet(createBetRequest);
@@ -208,7 +206,9 @@ export default function CreateBet() {
   };
 
   const addMultipleChoiceOption = () => {
-    setMultipleChoiceOptions([...multipleChoiceOptions, '']);
+    if (multipleChoiceOptions.length < 4) {
+      setMultipleChoiceOptions([...multipleChoiceOptions, '']);
+    }
   };
 
   const removeMultipleChoiceOption = (index: number) => {
@@ -696,21 +696,25 @@ export default function CreateBet() {
                   )}
                 </TouchableOpacity>
               ))}
-              <TouchableOpacity
-                onPress={addMultipleChoiceOption}
-                style={{
-                  backgroundColor: 'rgba(0, 212, 170, 0.1)',
-                  borderRadius: 8,
-                  padding: 12,
-                  marginBottom: 16,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <MaterialIcons name="add" size={20} color="#00D4AA" style={{ marginRight: 8 }} />
-                <Text style={{ fontSize: 14, color: '#00D4AA', fontWeight: '600' }}>Add Option</Text>
-              </TouchableOpacity>
+              {multipleChoiceOptions.length < 4 ? (
+                <TouchableOpacity
+                  onPress={addMultipleChoiceOption}
+                  style={{
+                    backgroundColor: 'rgba(0, 212, 170, 0.1)',
+                    borderRadius: 8,
+                    padding: 12,
+                    marginBottom: 24,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <MaterialIcons name="add" size={20} color="#00D4AA" style={{ marginRight: 8 }} />
+                  <Text style={{ fontSize: 14, color: '#00D4AA', fontWeight: '600' }}>Add Option</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={{ marginBottom: 24 }} />
+              )}
             </>
           )}
 
@@ -1075,9 +1079,8 @@ export default function CreateBet() {
           <View style={{ marginBottom: 16 }}>
             {[
               { id: 'self', title: 'Self (Bet Creator)', description: 'You will determine the outcome' },
-              { id: 'specific', title: 'Specific Person', description: 'Choose one person to resolve' },
-              { id: 'multiple', title: 'Multiple Resolvers', description: 'Majority vote from selected resolvers' },
-              { id: 'group', title: 'Group Vote', description: 'All participants vote on outcome' }
+              { id: 'multiple', title: 'Assigned Resolver(s)', description: 'Select specific people to resolve the bet' },
+              { id: 'group', title: 'Participant Vote', description: 'Participants vote to determine the winner' }
             ].map((option) => (
               <TouchableOpacity
                 key={option.id}
@@ -1140,21 +1143,28 @@ export default function CreateBet() {
           </View>
 
           {/* Resolver Selection */}
-          {(resolver === 'specific' || resolver === 'multiple') && (
+          {resolver === 'multiple' && (
             <>
               <Text style={{
                 fontSize: 13,
                 fontWeight: '500',
                 color: 'rgba(255, 255, 255, 0.8)',
+                marginBottom: 4
+              }}>
+                Select Resolver(s)
+              </Text>
+              <Text style={{
+                fontSize: 12,
+                color: 'rgba(255, 255, 255, 0.5)',
                 marginBottom: 12
               }}>
-                {resolver === 'specific' ? 'Select Resolver' : 'Select Resolvers'}
+                Choose one or more people who can resolve this bet
               </Text>
 
               <View style={{
                 backgroundColor: 'rgba(255, 255, 255, 0.03)',
                 borderRadius: 12,
-                padding: 16,
+                padding: 12,
                 marginBottom: 16
               }}>
                 {isLoadingMembers ? (
@@ -1180,22 +1190,19 @@ export default function CreateBet() {
                     <ResolverItem
                       key={member.id}
                       member={member}
-                      isMultiple={resolver === 'multiple'}
+                      isMultiple={true}
                     />
                   ))
                 )}
 
-                {((resolver === 'specific' && selectedResolver) || (resolver === 'multiple' && selectedResolvers.length > 0)) && (
+                {selectedResolvers.length > 0 && (
                   <Text style={{
                     fontSize: 12,
                     color: '#00D4AA',
                     marginTop: 8,
                     textAlign: 'center'
                   }}>
-                    {resolver === 'specific'
-                      ? '1 resolver selected'
-                      : `${selectedResolvers.length} resolver${selectedResolvers.length !== 1 ? 's' : ''} selected`
-                    }
+                    {`${selectedResolvers.length} resolver${selectedResolvers.length !== 1 ? 's' : ''} selected`}
                   </Text>
                 )}
               </View>
@@ -1262,10 +1269,10 @@ export default function CreateBet() {
                   value={showDatePicker === 'end' ? betEndTime : eventResolutionDate}
                   mode="datetime"
                   display="spinner"
-                  minuteInterval={15}
+                  minuteInterval={1}
                   onChange={(event, selectedDate) => {
                     if (selectedDate) {
-                      const roundedDate = roundToNearest15Minutes(selectedDate);
+                      const roundedDate = roundToNearestMinute(selectedDate);
                       if (showDatePicker === 'end') {
                         setBetEndTime(roundedDate);
                       } else {

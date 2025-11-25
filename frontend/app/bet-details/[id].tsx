@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert, TextInput, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, StatusBar, ActivityIndicator, Alert, TextInput, Modal } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { betService, BetResponse } from '../../services/bet/betService';
+import { betService, BetResponse, BetParticipationResponse } from '../../services/bet/betService';
 import BetResolutionModal from '../../components/bet/BetResolutionModal';
 import { FulfillmentTracker } from '../../components/bet/FulfillmentTracker';
 import { authService } from '../../services/auth/authService';
@@ -11,6 +12,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { haptic } from '../../utils/haptics';
 import LoadingButton from '../../components/common/LoadingButton';
 import { formatDisplayDate } from '../../utils/dateUtils';
+import { Avatar } from '../../components/common/Avatar';
 
 interface BetDetailsData {
   id: number;
@@ -62,6 +64,7 @@ export default function BetDetails() {
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [participants, setParticipants] = useState<BetParticipationResponse[]>([]);
 
   useEffect(() => {
     loadBetDetails();
@@ -91,11 +94,25 @@ export default function BetDetails() {
       console.log('Bet Response:', {
         id: betResponse.id,
         title: betResponse.title,
+        description: betResponse.description,
+        status: betResponse.status,
+        outcome: betResponse.outcome,
+        hasUserParticipated: betResponse.hasUserParticipated,
+        userChoice: betResponse.userChoice,
         fixedStakeAmount: betResponse.fixedStakeAmount,
         minimumBet: betResponse.minimumBet,
         maximumBet: betResponse.maximumBet
       });
       setBetData(betResponse);
+
+      // Fetch participants
+      try {
+        const participantsData = await betService.getBetParticipations(parseInt(id));
+        setParticipants(participantsData);
+      } catch (participantsError) {
+        console.log('Could not load participants:', participantsError);
+        // Non-fatal - don't show error to user
+      }
 
       // If user has already participated, pre-populate their selection and amount
       if (betResponse.hasUserParticipated) {
@@ -169,37 +186,65 @@ export default function BetDetails() {
 
   // Check if user is a resolver (regardless of bet status)
   const isUserResolver = () => {
-    if (!betData || !currentUserId) return false;
-
-    // Check based on resolution method
-    if (betData.resolutionMethod === 'CREATOR_ONLY') {
-      return betData.creator?.id === currentUserId;
-    } else if (betData.resolutionMethod === 'ASSIGNED_RESOLVER') {
-      // For now, allow creator and assume resolver check will be done on backend
-      return betData.creator?.id === currentUserId;
-    } else if (betData.resolutionMethod === 'CONSENSUS_VOTING') {
-      // In consensus voting, all participants are potential resolvers
-      return betData.hasUserParticipated;
+    if (!betData || !currentUserId) {
+      console.log('[isUserResolver] No betData or currentUserId', { betData: !!betData, currentUserId });
+      return false;
     }
 
+    console.log('[isUserResolver] Checking:', {
+      resolutionMethod: betData.resolutionMethod,
+      creatorId: betData.creator?.id,
+      currentUserId,
+      hasUserParticipated: betData.hasUserParticipated
+    });
+
+    // Check based on resolution method
+    if (betData.resolutionMethod === 'SELF') {
+      const result = betData.creator?.id === currentUserId;
+      console.log('[isUserResolver] SELF check:', result);
+      return result;
+    } else if (betData.resolutionMethod === 'ASSIGNED_RESOLVERS') {
+      // For now, allow creator and assume resolver check will be done on backend
+      // TODO: Check if user is in the assigned resolvers list
+      const result = betData.creator?.id === currentUserId;
+      console.log('[isUserResolver] ASSIGNED_RESOLVERS check:', result);
+      return result;
+    } else if (betData.resolutionMethod === 'PARTICIPANT_VOTE') {
+      // In participant voting, all participants are potential resolvers
+      const result = betData.hasUserParticipated;
+      console.log('[isUserResolver] PARTICIPANT_VOTE check:', result);
+      return result;
+    }
+
+    console.log('[isUserResolver] No matching resolution method');
     return false;
   };
 
   // Check if user can resolve the bet (must be CLOSED and be a resolver)
   const canUserResolve = () => {
-    if (!betData || !currentUserId) return false;
+    if (!betData || !currentUserId) {
+      console.log('[canUserResolve] No betData or currentUserId');
+      return false;
+    }
+
+    console.log('[canUserResolve] Checking:', { status: betData.status });
 
     // Check if bet is in CLOSED status (ready for resolution)
-    if (betData.status !== 'CLOSED') return false;
+    if (betData.status !== 'CLOSED') {
+      console.log('[canUserResolve] Status is not CLOSED');
+      return false;
+    }
 
-    return isUserResolver();
+    const result = isUserResolver();
+    console.log('[canUserResolve] Result:', result);
+    return result;
   };
 
   const handleResolveBet = async (outcome?: string, winnerUserIds?: number[], reasoning?: string) => {
     haptic.heavy();
     try {
       // Determine if this is a direct resolution or a vote
-      const resolutionType = betData?.resolutionMethod === 'CONSENSUS_VOTING' ? 'vote' : 'resolve';
+      const resolutionType = betData?.resolutionMethod === 'PARTICIPANT_VOTE' ? 'vote' : 'resolve';
 
       if (resolutionType === 'resolve') {
         await betService.resolveBet(parseInt(id), outcome, winnerUserIds, reasoning);
@@ -406,9 +451,6 @@ export default function BetDetails() {
       // Reload bet details to show updated participation state
       await loadBetDetails();
 
-      // Show success message
-      Alert.alert('Success', `Bet placed successfully!\nAmount: $${amount}\nOption: ${selectedOption || customValue}`);
-
     } catch (error: any) {
       console.error('=== BET PLACEMENT ERROR ===');
       console.error('Error placing bet:', error);
@@ -431,6 +473,67 @@ export default function BetDetails() {
       return betData.fixedStakeAmount.toString();
     }
     return userBetAmount;
+  };
+
+  // Helper function to get option text from outcome enum
+  const getOptionTextFromOutcome = (outcome: string | undefined): string => {
+    if (!outcome || !betData) return 'Unknown';
+    if (outcome === 'DRAW') return 'Draw';
+    if (outcome === 'CANCELLED') return 'Cancelled';
+
+    const optionIndexMap: Record<string, number> = {
+      'OPTION_1': 0, 'OPTION_2': 1, 'OPTION_3': 2, 'OPTION_4': 3
+    };
+    const optionIndex = optionIndexMap[outcome];
+    if (optionIndex === undefined) return outcome;
+
+    if (betData.betType === 'BINARY') {
+      return optionIndex === 0 ? 'Yes' : 'No';
+    }
+
+    const options = betData.options && betData.options.length > 0
+      ? betData.options
+      : ['Option 1', 'Option 2', 'Option 3', 'Option 4'];
+    return options[optionIndex] || `Option ${optionIndex + 1}`;
+  };
+
+  // Helper function to determine user's result
+  const getUserBetResult = (): 'WIN' | 'LOSS' | 'DRAW' | 'CANCELLED' | 'DID_NOT_PARTICIPATE' => {
+    if (!betData?.hasUserParticipated) return 'DID_NOT_PARTICIPATE';
+    if (betData.outcome === 'CANCELLED') return 'CANCELLED';
+    if (betData.outcome === 'DRAW') return 'DRAW';
+    if (!betData.outcome) return 'DID_NOT_PARTICIPATE';
+    // If user participated but userChoice is missing, try to determine from selectedOption state
+    if (!betData.userChoice) {
+      // User participated but we don't have their choice info - show as participated
+      return 'LOSS'; // Default to showing they participated
+    }
+    return betData.outcome === betData.userChoice ? 'WIN' : 'LOSS';
+  };
+
+  // Get all options for display
+  const getAllBetOptions = (): string[] => {
+    if (!betData) return [];
+    if (betData.betType === 'BINARY') {
+      return ['Yes', 'No'];
+    }
+    return betData.options && betData.options.length > 0
+      ? betData.options
+      : ['Option 1', 'Option 2', 'Option 3'];
+  };
+
+  // Check if an option is the winning option
+  const isWinningOption = (optionText: string, index: number): boolean => {
+    if (!betData?.outcome) return false;
+    const optionOutcome = `OPTION_${index + 1}`;
+    return betData.outcome === optionOutcome;
+  };
+
+  // Check if an option is the user's choice
+  const isUserChoice = (optionText: string, index: number): boolean => {
+    if (!betData?.userChoice) return false;
+    const optionOutcome = `OPTION_${index + 1}`;
+    return betData.userChoice === optionOutcome;
   };
 
   const isValidBetAmount = () => {
@@ -485,10 +588,12 @@ export default function BetDetails() {
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
       <StatusBar barStyle="light-content" backgroundColor="#0a0a0f" translucent={true} />
 
-      <ScrollView
+      <KeyboardAwareScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 20 }}
         showsVerticalScrollIndicator={false}
+        extraScrollHeight={20}
+        enableOnAndroid={true}
       >
         {/* Header Section */}
         <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
@@ -604,14 +709,16 @@ export default function BetDetails() {
             {betData.title}
           </Text>
 
-          <Text style={{
-            fontSize: 16,
-            color: 'rgba(255, 255, 255, 0.8)',
-            lineHeight: 24,
-            marginBottom: isUserResolver() && betData.status !== 'RESOLVED' ? 16 : 0
-          }}>
-            {betData.description}
-          </Text>
+          {betData.description && (
+            <Text style={{
+              fontSize: 15,
+              color: 'rgba(255, 255, 255, 0.6)',
+              lineHeight: 22,
+              marginBottom: isUserResolver() && betData.status !== 'RESOLVED' ? 16 : 0
+            }}>
+              {betData.description}
+            </Text>
+          )}
 
           {/* Resolver Badge - Show when user is resolver and bet is not resolved */}
           {isUserResolver() && betData.status !== 'RESOLVED' && (
@@ -710,7 +817,8 @@ export default function BetDetails() {
           </View>
         </View>
 
-        {/* Betting Options Section */}
+        {/* Bet Options / Results Section - Hide entirely for PREDICTION bets (they use custom value input) */}
+        {betData.betType !== 'PREDICTION' && (
         <View style={{
           backgroundColor: 'rgba(255, 255, 255, 0.04)',
           borderRadius: 18,
@@ -720,167 +828,395 @@ export default function BetDetails() {
           borderWidth: 1,
           borderColor: 'rgba(255, 255, 255, 0.08)'
         }}>
-          <Text style={{
-            fontSize: 16,
-            fontWeight: '600',
-            color: '#ffffff',
+          {/* Header */}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             marginBottom: 16
           }}>
-            {betData.hasUserParticipated ? 'Your Selection' : 'Bet Options'}
-          </Text>
-
-
-          {betData.betType === 'MULTIPLE_CHOICE' ? (
-            <View style={{ gap: 8 }}>
-              {(betData.options && betData.options.length > 0 ? betData.options : ['Option 1', 'Option 2', 'Option 3']).map((option, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => handleOptionSelect(option)}
-                  disabled={betData.status !== 'OPEN'}
-                  style={{
-                    backgroundColor: selectedOption === option ? 'rgba(0, 212, 170, 0.1)' : 'rgba(255, 255, 255, 0.03)',
-                    borderRadius: 14,
-                    padding: 16,
-                    borderWidth: selectedOption === option ? 2 : 1,
-                    borderColor: selectedOption === option ? '#00D4AA' : 'rgba(255, 255, 255, 0.06)',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    opacity: betData.status !== 'OPEN' ? 0.6 : 1
-                  }}
-                >
+            <Text style={{
+              fontSize: 16,
+              fontWeight: '600',
+              color: '#ffffff'
+            }}>
+              {betData.status === 'RESOLVED' ? 'Results' : (betData.hasUserParticipated ? 'Your Selection' : 'Bet Options')}
+            </Text>
+            {/* Show win/loss badge for participants on resolved bets */}
+            {betData.status === 'RESOLVED' && betData.hasUserParticipated === true && betData.outcome && betData.outcome !== 'CANCELLED' && betData.outcome !== 'DRAW' && (() => {
+              const result = getUserBetResult();
+              const isWin = result === 'WIN';
+              return (
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: isWin ? 'rgba(0, 212, 170, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                  paddingHorizontal: 10,
+                  paddingVertical: 5,
+                  borderRadius: 8
+                }}>
+                  <MaterialIcons
+                    name={isWin ? 'emoji-events' : 'close'}
+                    size={14}
+                    color={isWin ? '#00D4AA' : '#EF4444'}
+                    style={{ marginRight: 4 }}
+                  />
                   <Text style={{
-                    color: selectedOption === option ? '#00D4AA' : '#ffffff',
-                    fontSize: 14,
-                    fontWeight: selectedOption === option ? '600' : '500'
+                    fontSize: 12,
+                    fontWeight: '600',
+                    color: isWin ? '#00D4AA' : '#EF4444'
                   }}>
-                    {option}
+                    {isWin ? 'You Won' : 'You Lost'}
                   </Text>
-                  {selectedOption === option && (
+                </View>
+              );
+            })()}
+          </View>
+
+          {/* RESOLVED: Show results view */}
+          {betData.status === 'RESOLVED' ? (
+            betData.outcome === 'CANCELLED' ? (
+              // Cancelled state
+              <View>
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(156, 163, 175, 0.1)',
+                  padding: 14,
+                  borderRadius: 12
+                }}>
+                  <MaterialIcons name="cancel" size={20} color="#9ca3af" style={{ marginRight: 10 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#9ca3af', fontSize: 14, fontWeight: '600' }}>
+                      Bet Cancelled
+                    </Text>
+                    {betData.cancellationReason && (
+                      <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 13, marginTop: 4 }}>
+                        {betData.cancellationReason}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+            ) : betData.outcome === 'DRAW' ? (
+              // Draw state - show options with draw indicator
+              <View style={{ gap: 10 }}>
+                {/* Draw banner */}
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                  padding: 12,
+                  borderRadius: 10,
+                  marginBottom: 6
+                }}>
+                  <MaterialIcons name="balance" size={18} color="#fbbf24" style={{ marginRight: 8 }} />
+                  <Text style={{ color: '#fbbf24', fontSize: 13, fontWeight: '600' }}>
+                    Draw - No Winner
+                  </Text>
+                </View>
+
+                {/* Show all options */}
+                {getAllBetOptions().map((option, index) => {
+                  const isUserPick = isUserChoice(option, index);
+
+                  return (
+                    <View
+                      key={index}
+                      style={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                        borderRadius: 12,
+                        padding: 14,
+                        borderWidth: 1,
+                        borderColor: 'rgba(255, 255, 255, 0.06)',
+                        flexDirection: 'row',
+                        alignItems: 'center'
+                      }}
+                    >
+                      {/* Empty circle (no winner) */}
+                      <View style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        marginRight: 12
+                      }} />
+
+                      {/* Option text */}
+                      <Text style={{
+                        flex: 1,
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        fontSize: 14,
+                        fontWeight: '500'
+                      }}>
+                        {option}
+                      </Text>
+
+                      {/* User pick badge */}
+                      {isUserPick && betData.hasUserParticipated && (
+                        <View style={{
+                          backgroundColor: 'rgba(251, 191, 36, 0.2)',
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          borderRadius: 6
+                        }}>
+                          <Text style={{ color: '#fbbf24', fontSize: 10, fontWeight: '700' }}>
+                            YOU
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
+              // Normal results with options
+              <View style={{ gap: 10 }}>
+                {getAllBetOptions().map((option, index) => {
+                  const isWinner = isWinningOption(option, index);
+                  const isUserPick = isUserChoice(option, index);
+
+                  return (
+                    <View
+                      key={index}
+                      style={{
+                        backgroundColor: isWinner ? 'rgba(0, 212, 170, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                        borderRadius: 12,
+                        padding: 14,
+                        borderWidth: isWinner ? 1.5 : 1,
+                        borderColor: isWinner ? 'rgba(0, 212, 170, 0.4)' : 'rgba(255, 255, 255, 0.06)',
+                        flexDirection: 'row',
+                        alignItems: 'center'
+                      }}
+                    >
+                      {/* Checkmark circle */}
+                      <View style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        backgroundColor: isWinner ? '#00D4AA' : 'rgba(255, 255, 255, 0.1)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12
+                      }}>
+                        {isWinner && <MaterialIcons name="check" size={12} color="#000000" />}
+                      </View>
+
+                      {/* Option text */}
+                      <Text style={{
+                        flex: 1,
+                        color: isWinner ? '#00D4AA' : 'rgba(255, 255, 255, 0.6)',
+                        fontSize: 14,
+                        fontWeight: isWinner ? '600' : '500'
+                      }}>
+                        {option}
+                      </Text>
+
+                      {/* Badges */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        {isWinner && (
+                          <View style={{
+                            backgroundColor: 'rgba(0, 212, 170, 0.2)',
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderRadius: 6
+                          }}>
+                            <Text style={{ color: '#00D4AA', fontSize: 10, fontWeight: '700' }}>
+                              CORRECT
+                            </Text>
+                          </View>
+                        )}
+                        {isUserPick && betData.hasUserParticipated && (
+                          <View style={{
+                            backgroundColor: isWinner ? 'rgba(0, 212, 170, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderRadius: 6
+                          }}>
+                            <Text style={{ color: isWinner ? '#00D4AA' : '#EF4444', fontSize: 10, fontWeight: '700' }}>
+                              YOU
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )
+          ) : (
+            // NOT RESOLVED: Show betting options (existing UI)
+            <>
+              {betData.betType === 'MULTIPLE_CHOICE' ? (
+                <View style={{ gap: 8 }}>
+                  {(betData.options && betData.options.length > 0 ? betData.options : ['Option 1', 'Option 2', 'Option 3']).map((option, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => handleOptionSelect(option)}
+                      disabled={betData.status !== 'OPEN'}
+                      style={{
+                        backgroundColor: selectedOption === option ? 'rgba(0, 212, 170, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                        borderRadius: 14,
+                        padding: 16,
+                        borderWidth: selectedOption === option ? 2 : 1,
+                        borderColor: selectedOption === option ? '#00D4AA' : 'rgba(255, 255, 255, 0.06)',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        opacity: betData.status !== 'OPEN' ? 0.6 : 1
+                      }}
+                    >
+                      <Text style={{
+                        color: selectedOption === option ? '#00D4AA' : '#ffffff',
+                        fontSize: 14,
+                        fontWeight: selectedOption === option ? '600' : '500'
+                      }}>
+                        {option}
+                      </Text>
+                      {selectedOption === option && (
+                        <View style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: 10,
+                          backgroundColor: '#00D4AA',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          <MaterialIcons name="check" size={14} color="#000000" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : betData.betType === 'BINARY' ? (
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => handleOptionSelect('Yes')}
+                    disabled={betData.status !== 'OPEN'}
+                    style={{
+                      flex: 1,
+                      backgroundColor: selectedOption === 'Yes' ? 'rgba(0, 212, 170, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                      borderRadius: 14,
+                      padding: 16,
+                      borderWidth: selectedOption === 'Yes' ? 2 : 1,
+                      borderColor: selectedOption === 'Yes' ? '#00D4AA' : 'rgba(255, 255, 255, 0.06)',
+                      alignItems: 'center',
+                      opacity: betData.status !== 'OPEN' ? 0.6 : 1
+                    }}
+                  >
+                    <Text style={{
+                      color: selectedOption === 'Yes' ? '#00D4AA' : '#ffffff',
+                      fontSize: 14,
+                      fontWeight: selectedOption === 'Yes' ? '600' : '500'
+                    }}>
+                      Yes
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => handleOptionSelect('No')}
+                    disabled={betData.status !== 'OPEN'}
+                    style={{
+                      flex: 1,
+                      backgroundColor: selectedOption === 'No' ? 'rgba(255, 59, 48, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                      borderRadius: 14,
+                      padding: 16,
+                      borderWidth: selectedOption === 'No' ? 2 : 1,
+                      borderColor: selectedOption === 'No' ? '#FF3B30' : 'rgba(255, 255, 255, 0.06)',
+                      alignItems: 'center',
+                      opacity: betData.status !== 'OPEN' ? 0.6 : 1
+                    }}
+                  >
+                    <Text style={{
+                      color: selectedOption === 'No' ? '#FF3B30' : '#ffffff',
+                      fontSize: 14,
+                      fontWeight: selectedOption === 'No' ? '600' : '500'
+                    }}>
+                      No
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+            </>
+          )}
+        </View>
+        )}
+
+        {/* Participants Overview - Clickable Card (only show if there are participants) */}
+        {participants.length > 0 && (
+          <TouchableOpacity
+            onPress={() => router.push(`/bet-participants/${betData.id}`)}
+            activeOpacity={0.7}
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.04)',
+              borderRadius: 18,
+              marginHorizontal: 20,
+              marginBottom: 24,
+              padding: 20,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.08)'
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                {/* Stacked Avatars */}
+                <View style={{ flexDirection: 'row', marginRight: 12 }}>
+                  {participants.slice(0, 4).map((participant, index) => (
+                    <View
+                      key={participant.participationId}
+                      style={{
+                        marginLeft: index > 0 ? -10 : 0,
+                        borderWidth: 2,
+                        borderColor: '#0a0a0f',
+                        borderRadius: 18,
+                        zIndex: 4 - index
+                      }}
+                    >
+                      <Avatar
+                        imageUrl={participant.profileImageUrl}
+                        firstName={participant.displayName?.split(' ')[0] || participant.username}
+                        lastName={participant.displayName?.split(' ')[1] || ''}
+                        username={participant.username}
+                        userId={participant.userId}
+                        customSize={32}
+                      />
+                    </View>
+                  ))}
+                  {(betData.totalParticipants || 0) > 4 && (
                     <View style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      backgroundColor: '#00D4AA',
+                      marginLeft: -10,
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      borderWidth: 2,
+                      borderColor: '#0a0a0f',
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}>
-                      <MaterialIcons name="check" size={14} color="#000000" />
+                      <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 10, fontWeight: '600' }}>
+                        +{(betData.totalParticipants || 0) - 4}
+                      </Text>
                     </View>
                   )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : betData.betType === 'BINARY' ? (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
-                onPress={() => handleOptionSelect('Yes')}
-                disabled={betData.status !== 'OPEN'}
-                style={{
-                  flex: 1,
-                  backgroundColor: selectedOption === 'Yes' ? 'rgba(0, 212, 170, 0.1)' : 'rgba(255, 255, 255, 0.03)',
-                  borderRadius: 14,
-                  padding: 16,
-                  borderWidth: selectedOption === 'Yes' ? 2 : 1,
-                  borderColor: selectedOption === 'Yes' ? '#00D4AA' : 'rgba(255, 255, 255, 0.06)',
-                  alignItems: 'center',
-                  opacity: betData.status !== 'OPEN' ? 0.6 : 1
-                }}
-              >
-                <Text style={{
-                  color: selectedOption === 'Yes' ? '#00D4AA' : '#ffffff',
-                  fontSize: 14,
-                  fontWeight: selectedOption === 'Yes' ? '600' : '500'
-                }}>
-                  Yes
-                </Text>
-              </TouchableOpacity>
+                </View>
 
-              <TouchableOpacity
-                onPress={() => handleOptionSelect('No')}
-                disabled={betData.status !== 'OPEN'}
-                style={{
-                  flex: 1,
-                  backgroundColor: selectedOption === 'No' ? 'rgba(255, 59, 48, 0.1)' : 'rgba(255, 255, 255, 0.03)',
-                  borderRadius: 14,
-                  padding: 16,
-                  borderWidth: selectedOption === 'No' ? 2 : 1,
-                  borderColor: selectedOption === 'No' ? '#FF3B30' : 'rgba(255, 255, 255, 0.06)',
-                  alignItems: 'center',
-                  opacity: betData.status !== 'OPEN' ? 0.6 : 1
-                }}
-              >
-                <Text style={{
-                  color: selectedOption === 'No' ? '#FF3B30' : '#ffffff',
-                  fontSize: 14,
-                  fontWeight: selectedOption === 'No' ? '600' : '500'
-                }}>
-                  No
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View>
-              <Text style={{
-                color: 'rgba(255, 255, 255, 0.7)',
-                fontSize: 12,
-                marginBottom: 8
-              }}>
-                Enter your prediction value
-              </Text>
-              <TextInput
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  color: '#ffffff',
-                  fontSize: 14,
-                  borderWidth: customValue ? 1 : 0,
-                  borderColor: customValue ? 'rgba(0, 212, 170, 0.3)' : 'transparent',
-                  opacity: betData.status !== 'OPEN' ? 0.6 : 1
-                }}
-                value={customValue}
-                onChangeText={setCustomValue}
-                placeholder="Enter your prediction"
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                editable={betData.status === 'OPEN'}
-              />
-            </View>
-          )}
-        </View>
+                {/* Text */}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: '600' }}>
+                    {betData.totalParticipants || 0} {(betData.totalParticipants || 0) === 1 ? 'Participant' : 'Participants'}
+                  </Text>
+                  <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 12, marginTop: 2 }}>
+                    Tap to view all
+                  </Text>
+                </View>
+              </View>
 
-        {/* Participants Overview */}
-        <View style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.04)',
-          borderRadius: 18,
-          marginHorizontal: 20,
-          marginBottom: 24,
-          padding: 24,
-          borderWidth: 1,
-          borderColor: 'rgba(255, 255, 255, 0.08)'
-        }}>
-          <Text style={{
-            fontSize: 16,
-            fontWeight: '600',
-            color: '#ffffff',
-            marginBottom: 16
-          }}>
-            Participants ({betData.totalParticipants || 0})
-          </Text>
-
-          {betData.totalParticipants && betData.totalParticipants > 0 ? (
-            <View style={{ gap: 12 }}>
-              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
-                {betData.totalParticipants} user{betData.totalParticipants > 1 ? 's' : ''} {betData.totalParticipants > 1 ? 'have' : 'has'} joined this bet
-              </Text>
+              {/* Chevron */}
+              <MaterialIcons name="chevron-right" size={24} color="rgba(255, 255, 255, 0.3)" />
             </View>
-          ) : (
-            <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
-              No participants yet
-            </Text>
-          )}
-        </View>
+          </TouchableOpacity>
+        )}
 
         {/* Bet Amount Section */}
         <View style={{
@@ -1081,54 +1417,6 @@ export default function BetDetails() {
           </View>
         )}
 
-        {/* Resolution Information */}
-        <View style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.04)',
-          borderRadius: 18,
-          marginHorizontal: 20,
-          marginBottom: 24,
-          padding: 24,
-          borderWidth: 1,
-          borderColor: 'rgba(255, 255, 255, 0.08)'
-        }}>
-          <Text style={{
-            fontSize: 16,
-            fontWeight: '600',
-            color: '#ffffff',
-            marginBottom: 16
-          }}>
-            Resolution
-          </Text>
-
-          <View style={{ gap: 12 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>Resolved by</Text>
-              <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '500' }}>
-                {betData.resolvedBy === 'CREATOR' ? 'Bet Creator' :
-                 betData.resolvedBy === 'PARTICIPANTS' ? 'Participants' : 'Admin'}
-              </Text>
-            </View>
-
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>Evidence Required</Text>
-              <Text style={{ color: betData.evidenceRequired ? '#00D4AA' : 'rgba(255, 255, 255, 0.6)', fontSize: 14, fontWeight: '500' }}>
-                {betData.evidenceRequired ? 'Yes' : 'No'}
-              </Text>
-            </View>
-
-            {betData.evidenceRequired && betData.evidenceDescription && (
-              <View style={{ marginTop: 8 }}>
-                <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 12, marginBottom: 4 }}>
-                  Evidence Requirements:
-                </Text>
-                <Text style={{ color: '#ffffff', fontSize: 14, lineHeight: 22 }}>
-                  {betData.evidenceDescription}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-
         {/* Fulfillment Tracking - Show only for RESOLVED SOCIAL bets */}
         {betData.status === 'RESOLVED' && betData.stakeType === 'SOCIAL' && betData.socialStakeDescription && (
           <View style={{ marginHorizontal: 20, marginBottom: 20 }}>
@@ -1137,6 +1425,44 @@ export default function BetDetails() {
               betTitle={betData.title}
               socialStakeDescription={betData.socialStakeDescription}
               onRefresh={loadBetDetails}
+            />
+          </View>
+        )}
+
+        {/* Prediction Input - Show for PREDICTION bets right above Join Bet */}
+        {betData.betType === 'PREDICTION' && betData.status === 'OPEN' && !betData.hasUserParticipated && (
+          <View style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+            borderRadius: 18,
+            marginHorizontal: 20,
+            marginBottom: 16,
+            padding: 24,
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.08)'
+          }}>
+            <Text style={{
+              fontSize: 16,
+              fontWeight: '600',
+              color: '#ffffff',
+              marginBottom: 12
+            }}>
+              Your Prediction
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                borderRadius: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                color: '#ffffff',
+                fontSize: 15,
+                borderWidth: customValue ? 1.5 : 1,
+                borderColor: customValue ? 'rgba(0, 212, 170, 0.4)' : 'rgba(255, 255, 255, 0.1)'
+              }}
+              value={customValue}
+              onChangeText={setCustomValue}
+              placeholder="Enter your prediction"
+              placeholderTextColor="rgba(255, 255, 255, 0.4)"
             />
           </View>
         )}
@@ -1200,34 +1526,57 @@ export default function BetDetails() {
             marginTop: 20,
             marginBottom: 40
           }}>
-            <TouchableOpacity
-              onPress={() => setShowResolutionModal(true)}
-              style={{
-                backgroundColor: '#00D4AA',
-                borderRadius: 14,
-                paddingVertical: 16,
-                alignItems: 'center',
-                shadowColor: '#00D4AA',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 8,
-                flexDirection: 'row',
-                justifyContent: 'center'
-              }}
-            >
-              <MaterialIcons name="gavel" size={20} color="#000000" style={{ marginRight: 8 }} />
-              <Text style={{
-                color: '#000000',
-                fontSize: 16,
-                fontWeight: '700'
-              }}>
-                {betData.resolutionMethod === 'CONSENSUS_VOTING' ? 'Vote on Resolution' : 'Resolve Bet'}
-              </Text>
-            </TouchableOpacity>
+            {/* Show disabled state if user has already voted (for PARTICIPANT_VOTE) */}
+            {betData.resolutionMethod === 'PARTICIPANT_VOTE' && betData.hasUserVoted ? (
+              <View
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: 14,
+                  paddingVertical: 16,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center'
+                }}
+              >
+                <MaterialIcons name="check-circle" size={20} color="#00D4AA" style={{ marginRight: 8 }} />
+                <Text style={{
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  fontSize: 16,
+                  fontWeight: '700'
+                }}>
+                  Vote Submitted
+                </Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => setShowResolutionModal(true)}
+                style={{
+                  backgroundColor: '#00D4AA',
+                  borderRadius: 14,
+                  paddingVertical: 16,
+                  alignItems: 'center',
+                  shadowColor: '#00D4AA',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
+                  flexDirection: 'row',
+                  justifyContent: 'center'
+                }}
+              >
+                <MaterialIcons name="gavel" size={20} color="#000000" style={{ marginRight: 8 }} />
+                <Text style={{
+                  color: '#000000',
+                  fontSize: 16,
+                  fontWeight: '700'
+                }}>
+                  {betData.resolutionMethod === 'PARTICIPANT_VOTE' ? 'Vote on Resolution' : 'Resolve Bet'}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Resolution Modal */}
       <BetResolutionModal
@@ -1235,7 +1584,7 @@ export default function BetDetails() {
         onClose={() => setShowResolutionModal(false)}
         onResolve={handleResolveBet}
         bet={betData}
-        resolutionType={betData?.resolutionMethod === 'CONSENSUS_VOTING' ? 'vote' : 'resolve'}
+        resolutionType={betData?.resolutionMethod === 'PARTICIPANT_VOTE' ? 'vote' : 'resolve'}
       />
 
       {/* Cancel Bet Modal */}

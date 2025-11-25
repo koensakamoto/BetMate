@@ -13,13 +13,13 @@ interface GroupMembersTabProps {
     id: string | string[];
     memberCount: number;
     userRole?: string;
+    ownerUsername?: string;
   };
   forceRefresh?: number; // Increment this to force a refresh
 }
 
 const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefresh }) => {
   const insets = useSafeAreaInsets();
-
   const [activeFilter, setActiveFilter] = useState('All');
   const [members, setMembers] = useState<GroupMemberResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -31,7 +31,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
   const [inviteLink, setInviteLink] = useState('');
   const [pendingRequests, setPendingRequests] = useState<PendingRequestResponse[]>([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
-  const memberFilters = ['All', 'Admins', 'Officers'];
+  const memberFilters = ['All', 'Admins'];
 
   // Cache management: 5 minute cache
   const lastFetchTime = useRef<number>(0);
@@ -41,14 +41,14 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
     return (Date.now() - lastFetchTime.current) < CACHE_DURATION;
   }, []);
 
-  // Check if user is admin or officer
-  const isAdminOrOfficer = useMemo(() => {
-    return groupData.userRole === 'ADMIN' || groupData.userRole === 'OFFICER';
+  // Check if user is admin
+  const isAdmin = useMemo(() => {
+    return groupData.userRole === 'ADMIN';
   }, [groupData.userRole]);
 
   // Fetch pending join requests (admin/officer only)
   const fetchPendingRequests = useCallback(async () => {
-    if (!isAdminOrOfficer) return;
+    if (!isAdmin) return;
 
     setIsLoadingRequests(true);
     try {
@@ -68,7 +68,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
     } finally {
       setIsLoadingRequests(false);
     }
-  }, [groupData.id, isAdminOrOfficer]);
+  }, [groupData.id, isAdmin]);
 
 
   // Fetch group members with caching
@@ -137,10 +137,10 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
 
   // Fetch pending requests on mount if user is admin/officer
   useEffect(() => {
-    if (isAdminOrOfficer && groupData.id) {
+    if (isAdmin && groupData.id) {
       fetchPendingRequests();
     }
-  }, [groupData.id, isAdminOrOfficer, fetchPendingRequests]);
+  }, [groupData.id, isAdmin, fetchPendingRequests]);
 
   // Filter members based on selected filter - memoized to avoid recalculating on every render
   const filteredMembers = useMemo(() => {
@@ -151,13 +151,14 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
 
     switch (activeFilter) {
       case 'Admins':
-        return members.filter(member => member.role === 'ADMIN');
-      case 'Officers':
-        return members.filter(member => member.role === 'OFFICER');
+        // Include both admins and the owner (owner has admin privileges)
+        return members.filter(member =>
+          member.role === 'ADMIN' || member.username === groupData.ownerUsername
+        );
       default:
         return members;
     }
-  }, [members, activeFilter]);
+  }, [members, activeFilter, groupData.ownerUsername]);
 
   // Helper function to check if member is online
   const isOnline = (member: GroupMemberResponse): boolean => {
@@ -304,7 +305,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
         marginBottom: 20
       }}>
         {/* Pending Requests Button - Always visible for admins/officers */}
-        {isAdminOrOfficer && (
+        {isAdmin && (
           <View style={{ flex: 1 }}>
             <TouchableOpacity
               onPress={() => {
@@ -357,10 +358,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
         {/* Invite Members Button - Always visible */}
         <View style={{ flex: 1 }}>
           <TouchableOpacity
-            onPress={() => {
-              console.log('🎯 Invite button pressed, opening modal');
-              setShowInviteModal(true);
-            }}
+            onPress={() => setShowInviteModal(true)}
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
               borderRadius: 10,
@@ -555,7 +553,22 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
                 {getDisplayName(member)}
               </Text>
 
-              {(member.role === 'ADMIN' || member.role === 'OFFICER') && (
+              {member.username === groupData.ownerUsername ? (
+                <View style={{
+                  backgroundColor: 'rgba(255, 140, 0, 0.2)',
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 4
+                }}>
+                  <Text style={{
+                    fontSize: 10,
+                    fontWeight: '600',
+                    color: '#FF8C00'
+                  }}>
+                    OWNER
+                  </Text>
+                </View>
+              ) : member.role === 'ADMIN' && (
                 <View style={{
                   backgroundColor: 'rgba(255, 215, 0, 0.2)',
                   paddingHorizontal: 6,
@@ -567,7 +580,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
                     fontWeight: '600',
                     color: '#FFD700'
                   }}>
-                    {member.role}
+                    ADMIN
                   </Text>
                 </View>
               )}
@@ -626,7 +639,6 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
       )}
 
       {/* Simple Invite Modal */}
-      {console.log('🔍 Modal state:', { showInviteModal })}
       <Modal
         visible={showInviteModal}
         transparent={true}
@@ -711,10 +723,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
               marginBottom: 12
             }}>
               <TouchableOpacity
-                onPress={() => {
-                  console.log('🎯 Share Link tab pressed');
-                  setInviteMethod('link');
-                }}
+                onPress={() => setInviteMethod('link')}
                 style={{
                   flex: 1,
                   paddingVertical: 8,
@@ -733,10 +742,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => {
-                  console.log('🎯 By Username tab pressed');
-                  setInviteMethod('username');
-                }}
+                onPress={() => setInviteMethod('username')}
                 style={{
                   flex: 1,
                   paddingVertical: 8,
@@ -757,7 +763,6 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
             </View>
 
             {/* Content based on selected method */}
-            {console.log('🔍 Current inviteMethod:', inviteMethod)}
             {inviteMethod === 'link' ? (
               <View style={{ width: '100%' }}>
                 <Text style={{
@@ -816,7 +821,6 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
               </View>
             ) : (
               <View style={{ width: '100%' }}>
-                {console.log('🎯 Rendering username input section')}
                 <TextInput
                   style={{
                     width: '100%',

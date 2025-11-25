@@ -71,10 +71,6 @@ export default function BetResolutionModal({
       return;
     }
 
-    if (resolutionType === 'vote' && !reasoning.trim()) {
-      Alert.alert('Error', 'Please provide reasoning for your vote');
-      return;
-    }
 
     Alert.alert(
       resolutionType === 'resolve' ? 'Resolve Bet?' : 'Submit Vote?',
@@ -375,7 +371,7 @@ export default function BetResolutionModal({
                 fontWeight: '600',
                 marginBottom: 8
               }}>
-                {resolutionType === 'resolve' ? 'Resolution Notes (Optional):' : 'Reasoning (Required):'}
+                {resolutionType === 'resolve' ? 'Resolution Notes (Optional):' : 'Reasoning (Optional):'}
               </Text>
 
               <TextInput

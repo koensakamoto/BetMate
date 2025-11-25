@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Text, View, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
+import { Text, View, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { PendingRequestResponse } from '../../services/group/groupService';
-import { ENV } from '../../config/env';
+import { Avatar } from '../common/Avatar';
 
 interface PendingRequestCardProps {
   request: PendingRequestResponse;
@@ -52,14 +52,6 @@ const PendingRequestCard: React.FC<PendingRequestCardProps> = ({ request, onAppr
     );
   };
 
-  const getFullImageUrl = (relativePath: string | null | undefined): string | null => {
-    if (!relativePath) return null;
-    if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
-      return relativePath;
-    }
-    return `${ENV.API_BASE_URL}${relativePath}`;
-  };
-
   const formatRequestTime = (dateString: string): string => {
     const requestDate = new Date(dateString);
     const now = new Date();
@@ -90,34 +82,15 @@ const PendingRequestCard: React.FC<PendingRequestCardProps> = ({ request, onAppr
       alignItems: 'center'
     }}>
       {/* Avatar */}
-      <View style={{
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-        overflow: 'hidden'
-      }}>
-        {getFullImageUrl(request.profilePictureUrl) ? (
-          <Image
-            source={{ uri: getFullImageUrl(request.profilePictureUrl)! }}
-            style={{
-              width: '100%',
-              height: '100%'
-            }}
-            resizeMode="cover"
-          />
-        ) : (
-          <Text style={{
-            fontSize: 16,
-            fontWeight: '700',
-            color: 'rgba(255, 255, 255, 0.6)'
-          }}>
-            {displayName.charAt(0).toUpperCase()}
-          </Text>
-        )}
+      <View style={{ marginRight: 12 }}>
+        <Avatar
+          imageUrl={request.profilePictureUrl}
+          firstName={request.displayName?.split(' ')[0]}
+          lastName={request.displayName?.split(' ').slice(1).join(' ')}
+          username={request.username}
+          userId={request.userId}
+          customSize={44}
+        />
       </View>
 
       {/* User Info */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Image, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -82,8 +82,11 @@ export default function EditProfile() {
       if (status !== 'granted') {
         Alert.alert(
           'Permission Required',
-          'Sorry, we need camera roll permissions to change your profile picture.',
-          [{ text: 'OK' }]
+          'To select a profile picture, please enable photo library access in Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
         );
         return;
       }
@@ -111,8 +114,11 @@ export default function EditProfile() {
       if (status !== 'granted') {
         Alert.alert(
           'Permission Required',
-          'Sorry, we need camera permissions to take a photo.',
-          [{ text: 'OK' }]
+          'To take a profile picture, please enable camera access in Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
         );
         return;
       }

@@ -76,8 +76,8 @@ public class BetScheduledTaskService {
      * Scheduled task to process bets when their resolution deadline has been reached.
      * Runs every 5 minutes.
      * Handles different resolution methods:
-     * - CONSENSUS_VOTING: Auto-resolve if consensus is reached
-     * - CREATOR_ONLY/ASSIGNED_RESOLVER: Publish notification for manual resolution
+     * - PARTICIPANT_VOTE: Auto-resolve if consensus is reached
+     * - SELF/ASSIGNED_RESOLVERS: Publish notification for manual resolution
      */
     @Scheduled(fixedDelayString = "${bet.scheduling.process-resolvable-interval-ms:300000}") // Default: 5 minutes
     @Transactional
@@ -103,20 +103,28 @@ public class BetScheduledTaskService {
 
     /**
      * Process a bet that has reached its resolution deadline.
-     * Behavior depends on the bet's resolution method.
+     * Behavior depends on the bet's type and resolution method.
      */
     private void processResolutionDeadline(Bet bet) {
+        log.info("Processing resolution deadline for bet {} (type: {}, method: {})",
+                bet.getId(), bet.getBetType(), bet.getResolutionMethod());
+
+        // Handle based on bet type first
+        if (bet.getBetType() == Bet.BetType.PREDICTION) {
+            handlePredictionBetResolution(bet);
+            return;
+        }
+
+        // Handle MULTIPLE_CHOICE bets based on resolution method
         BetResolutionMethod method = bet.getResolutionMethod();
 
-        log.info("Processing resolution deadline for bet {} with method {}", bet.getId(), method);
-
         switch (method) {
-            case CONSENSUS_VOTING:
-                handleConsensusVotingResolution(bet);
+            case PARTICIPANT_VOTE:
+                handleParticipantVoteResolution(bet);
                 break;
 
-            case CREATOR_ONLY:
-            case ASSIGNED_RESOLVER:
+            case SELF:
+            case ASSIGNED_RESOLVERS:
                 handleManualResolutionRequired(bet);
                 break;
 
@@ -126,34 +134,53 @@ public class BetScheduledTaskService {
     }
 
     /**
-     * Handle consensus voting bets at resolution deadline.
-     * Auto-resolve if consensus has been reached, otherwise notify voters.
+     * Handle PREDICTION bets at resolution deadline.
+     * Always resolves based on current votes for each participant:
+     * - >50% correct votes → WINNER
+     * - =50% correct votes → DRAW
+     * - <50% correct votes → LOSER
+     * - No votes → DRAW
      */
-    private void handleConsensusVotingResolution(Bet bet) {
+    private void handlePredictionBetResolution(Bet bet) {
         try {
-            // Check if consensus has been reached and auto-resolve if yes
-            // Pass null for triggeringVoter since this is a scheduled task, not a user action
-            boolean resolved = betResolutionService.checkAndResolveIfConsensusReached(bet, null);
+            // Resolve prediction bet with current votes (deadline reached = always resolve)
+            boolean resolved = betResolutionService.resolvePredictionBetWithCurrentVotes(bet, null);
 
             if (resolved) {
-                log.info("Bet {} auto-resolved via consensus voting", bet.getId());
+                log.info("Prediction bet {} resolved at deadline", bet.getId());
             } else {
-                log.info("Bet {} reached resolution deadline but consensus not yet reached. " +
-                        "Current votes: {}, Required: {}",
-                        bet.getId(),
-                        betResolutionService.getVoteCounts(bet.getId()).values().stream().mapToLong(Long::longValue).sum(),
-                        bet.getMinimumVotesRequired());
-
-                // Publish event to notify voters that deadline has passed
-                publishBetAwaitingResolutionEvent(bet);
+                log.error("Failed to resolve prediction bet {} at deadline", bet.getId());
             }
         } catch (Exception e) {
-            log.error("Failed to handle consensus voting resolution for bet {}: {}", bet.getId(), e.getMessage(), e);
+            log.error("Failed to handle prediction bet resolution for bet {}: {}", bet.getId(), e.getMessage(), e);
         }
     }
 
     /**
-     * Handle bets that require manual resolution (CREATOR_ONLY or ASSIGNED_RESOLVER).
+     * Handle MULTIPLE_CHOICE participant vote bets at resolution deadline.
+     * Always resolves the bet based on current votes:
+     * - No votes → DRAW
+     * - One option with highest votes → That option wins
+     * - Tie for highest votes → DRAW
+     */
+    private void handleParticipantVoteResolution(Bet bet) {
+        try {
+            // Resolve bet with current votes (deadline reached = always resolve)
+            // Pass null for triggeringVoter since this is a scheduled task, not a user action
+            boolean resolved = betResolutionService.resolveWithCurrentVotes(bet, null);
+
+            if (resolved) {
+                log.info("Bet {} resolved at deadline with outcome: {}", bet.getId(), bet.getOutcome());
+            } else {
+                log.error("Failed to resolve bet {} at deadline", bet.getId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to handle participant vote resolution for bet {}: {}", bet.getId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Handle bets that require manual resolution (SELF or ASSIGNED_RESOLVERS).
      * These cannot be auto-resolved, so we publish an event to notify the resolvers.
      */
     private void handleManualResolutionRequired(Bet bet) {
@@ -173,6 +200,7 @@ public class BetScheduledTaskService {
                     bet.getId(),
                     bet.getTitle(),
                     bet.getGroup().getId(),
+                    bet.getGroup().getGroupName(),
                     bet.getBettingDeadline(),
                     bet.getTotalParticipants()
             );
@@ -344,7 +372,7 @@ public class BetScheduledTaskService {
         try {
             // Get assigned resolver IDs if applicable
             List<Long> assignedResolverIds = java.util.Collections.emptyList();
-            if (bet.getResolutionMethod() == BetResolutionMethod.ASSIGNED_RESOLVER) {
+            if (bet.getResolutionMethod() == BetResolutionMethod.ASSIGNED_RESOLVERS) {
                 List<BetResolver> resolvers = betResolverRepository.findByBetAndIsActiveTrue(bet);
                 assignedResolverIds = resolvers.stream()
                         .map(resolver -> resolver.getResolver().getId())

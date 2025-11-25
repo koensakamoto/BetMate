@@ -7,6 +7,7 @@ import com.rivalpicks.entity.messaging.Notification.NotificationPriority;
 import com.rivalpicks.entity.user.User;
 import com.rivalpicks.event.betting.BetCancelledEvent;
 import com.rivalpicks.event.betting.BetCreatedEvent;
+import com.rivalpicks.event.betting.BetDeadlineReachedEvent;
 import com.rivalpicks.event.betting.BetResolutionDeadlineApproachingEvent;
 import com.rivalpicks.event.betting.BetDeadlineApproachingEvent;
 import com.rivalpicks.event.betting.BetResolvedEvent;
@@ -28,6 +29,9 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 
@@ -104,7 +108,8 @@ public class BetNotificationListener {
                 try {
                     // Create notification title and message
                     String title = "New Bet in " + event.getGroupName();
-                    String message = event.getCreatorName() + " created a bet: " + event.getBetTitle();
+                    String timeRemaining = formatTimeRemaining(event.getBettingDeadline());
+                    String message = event.getCreatorName() + " created \"" + event.getBetTitle() + "\". " + timeRemaining;
                     String actionUrl = "/bets/" + event.getBetId();
                     // Ensure title and message don't exceed maximum lengths
                     if (title.length() > 100) {
@@ -285,13 +290,13 @@ public class BetNotificationListener {
             String resolutionMethod = event.getResolutionMethod();
 
             switch (resolutionMethod) {
-                case "CREATOR_ONLY":
+                case "SELF":
                     // Only notify the creator
                     userIdsToNotify.add(event.getCreatorId());
                     logger.debug("Notifying creator only for bet {}", event.getBetId());
                     break;
 
-                case "ASSIGNED_RESOLVER":
+                case "ASSIGNED_RESOLVERS":
                     // Notify all assigned resolvers
                     if (event.getAssignedResolverIds() != null && !event.getAssignedResolverIds().isEmpty()) {
                         userIdsToNotify.addAll(event.getAssignedResolverIds());
@@ -303,10 +308,10 @@ public class BetNotificationListener {
                     }
                     break;
 
-                case "CONSENSUS_VOTING":
+                case "PARTICIPANT_VOTE":
                     // Notify the creator (voters should already be aware)
                     userIdsToNotify.add(event.getCreatorId());
-                    logger.debug("Notifying creator for consensus voting bet {}", event.getBetId());
+                    logger.debug("Notifying creator for participant vote bet {}", event.getBetId());
                     break;
 
                 default:
@@ -491,6 +496,105 @@ public class BetNotificationListener {
     }
 
     /**
+     * Handles BetDeadlineReachedEvent by creating notifications for all group members.
+     * Participants are informed that the bet has closed and to await results.
+     * Non-participants are informed that they missed their chance.
+     * Runs asynchronously to avoid blocking the scheduled task.
+     *
+     * @param event The BetDeadlineReachedEvent containing bet and group information
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Async
+    public void handleBetDeadlineReachedEvent(BetDeadlineReachedEvent event) {
+        try {
+            logger.info("Processing BET_DEADLINE_REACHED event for bet ID: {} in group: {}",
+                       event.getBetId(), event.getGroupName());
+
+            // 1. Get the group entity
+            Group group = groupService.getGroupById(event.getGroupId());
+            if (group == null) {
+                logger.warn("Group {} not found for bet {}", event.getGroupId(), event.getBetId());
+                return;
+            }
+
+            // 2. Get all active users in the group
+            List<User> groupMembers = groupMembershipRepository.findUsersByGroup(group);
+            logger.debug("Found {} members in group '{}'", groupMembers.size(), group.getGroupName());
+
+            // 3. Get all users who placed bets (participants)
+            List<Long> participantIds = betParticipationRepository.findByBetId(event.getBetId()).stream()
+                    .map(participation -> participation.getUser().getId())
+                    .collect(java.util.stream.Collectors.toList());
+            logger.debug("Found {} participants for bet {}", participantIds.size(), event.getBetId());
+
+            // 4. Create notification for each group member
+            int notificationsCreated = 0;
+            for (User member : groupMembers) {
+                try {
+                    boolean isParticipant = participantIds.contains(member.getId());
+
+                    // Create notification title and message
+                    String title = "Bet Closed: " + event.getGroupName();
+                    String message;
+
+                    if (isParticipant) {
+                        message = "The bet '" + event.getBetTitle() + "' has closed with " +
+                                event.getTotalParticipants() + " participant" +
+                                (event.getTotalParticipants() == 1 ? "" : "s") + ". Await the results!";
+                    } else {
+                        message = "The bet '" + event.getBetTitle() + "' has closed. You missed your chance to participate.";
+                    }
+
+                    String actionUrl = "/bets/" + event.getBetId();
+
+                    // Ensure title and message don't exceed maximum lengths
+                    if (title.length() > 100) {
+                        title = title.substring(0, 97) + "...";
+                    }
+                    if (message.length() > 500) {
+                        message = message.substring(0, 497) + "...";
+                    }
+
+                    // Create the notification in the database
+                    Notification notification = notificationService.createNotification(
+                        member,
+                        title,
+                        message,
+                        NotificationType.BET_DEADLINE,
+                        NotificationPriority.NORMAL,
+                        actionUrl,
+                        event.getBetId(),
+                        "BET"
+                    );
+
+                    // Send real-time notification via WebSocket
+                    messageNotificationService.sendNotificationToUser(member.getId(), notification);
+
+                    // Send push notification
+                    pushNotificationService.sendPushNotification(member, notification);
+
+                    notificationsCreated++;
+                    logger.debug("Created BET_DEADLINE_REACHED notification for user: {} (participant: {})",
+                               member.getUsername(), isParticipant);
+
+                } catch (Exception e) {
+                    // Log error for individual notification but continue processing others
+                    logger.error("Failed to create notification for user {}: {}",
+                               member.getUsername(), e.getMessage());
+                }
+            }
+
+            logger.info("Successfully created {} BET_DEADLINE_REACHED notifications for bet {}",
+                       notificationsCreated, event.getBetId());
+
+        } catch (Exception e) {
+            // Log error but don't throw - we don't want notification failures to break scheduled tasks
+            logger.error("Failed to process BET_DEADLINE_REACHED event for bet {}: {}",
+                        event.getBetId(), e.getMessage(), e);
+        }
+    }
+
+    /**
      * Handles BetResolvedEvent by creating notifications for all bet participants.
      * Winners receive congratulatory messages with HIGH priority, losers receive informational
      * messages with NORMAL priority.
@@ -616,6 +720,38 @@ public class BetNotificationListener {
             // Log error but don't throw - we don't want notification failures to break bet resolution
             logger.error("Failed to process BET_RESOLVED event for bet {}: {}",
                         event.getBetId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Formats the time remaining until a deadline in a human-readable format.
+     *
+     * @param deadline The deadline to format
+     * @return A formatted string like "Closes in 15 minutes!" or "Closes in 2 hours."
+     */
+    private String formatTimeRemaining(LocalDateTime deadline) {
+        if (deadline == null) {
+            return "Join now!";
+        }
+
+        // Use UTC since deadlines are stored in UTC
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        long totalMinutes = Duration.between(now, deadline).toMinutes();
+
+        if (totalMinutes <= 0) {
+            return "Closes soon!";
+        } else if (totalMinutes < 60) {
+            return "Closes in " + totalMinutes + " minute" + (totalMinutes == 1 ? "" : "s") + "!";
+        } else if (totalMinutes < 1440) { // < 24 hours
+            long hours = totalMinutes / 60;
+            return "Closes in " + hours + " hour" + (hours == 1 ? "" : "s") + ".";
+        } else {
+            long days = totalMinutes / 1440;
+            long remainingHours = (totalMinutes % 1440) / 60;
+            if (remainingHours > 0) {
+                return "Closes in " + days + " day" + (days == 1 ? "" : "s") + " " + remainingHours + "h.";
+            }
+            return "Closes in " + days + " day" + (days == 1 ? "" : "s") + ".";
         }
     }
 }

@@ -4,11 +4,13 @@ import com.rivalpicks.entity.betting.Bet;
 import com.rivalpicks.entity.betting.BetParticipation;
 import com.rivalpicks.entity.betting.BetParticipation.ParticipationStatus;
 import com.rivalpicks.entity.betting.BetPrediction;
+import com.rivalpicks.entity.betting.BetResolver;
 import com.rivalpicks.entity.betting.BetStakeType;
 import com.rivalpicks.entity.user.User;
 import com.rivalpicks.exception.betting.BetParticipationException;
 import com.rivalpicks.repository.betting.BetParticipationRepository;
 import com.rivalpicks.repository.betting.BetPredictionRepository;
+import com.rivalpicks.repository.betting.BetResolverRepository;
 import com.rivalpicks.service.user.UserCreditService;
 import com.rivalpicks.service.user.UserStatisticsService;
 import jakarta.validation.constraints.DecimalMin;
@@ -36,6 +38,7 @@ public class BetParticipationService {
 
     private final BetParticipationRepository participationRepository;
     private final BetPredictionRepository predictionRepository;
+    private final BetResolverRepository betResolverRepository;
     private final BetService betService;
     private final UserCreditService creditService;
     private final UserStatisticsService statisticsService;
@@ -44,12 +47,14 @@ public class BetParticipationService {
     @Autowired
     public BetParticipationService(BetParticipationRepository participationRepository,
                                  BetPredictionRepository predictionRepository,
+                                 BetResolverRepository betResolverRepository,
                                  BetService betService,
                                  UserCreditService creditService,
                                  UserStatisticsService statisticsService,
                                  InsuranceService insuranceService) {
         this.participationRepository = participationRepository;
         this.predictionRepository = predictionRepository;
+        this.betResolverRepository = betResolverRepository;
         this.betService = betService;
         this.creditService = creditService;
         this.statisticsService = statisticsService;
@@ -112,6 +117,9 @@ public class BetParticipationService {
         prediction.setParticipation(savedParticipation);
         prediction.setPredictedValue(predictionValue);
         predictionRepository.save(prediction);
+
+        // For PARTICIPANT_VOTE bets, create a resolver entry for the participant
+        createResolverForParticipantVoteBet(bet, user);
 
         // Update bet statistics (prediction bets use option 1)
         updateBetStatistics(bet, 1, betAmount);
@@ -177,12 +185,15 @@ public class BetParticipationService {
             insuranceService.applyInsuranceToBet(user, savedParticipation, insuranceItemId);
         }
 
+        // For PARTICIPANT_VOTE bets, create a resolver entry for the participant
+        createResolverForParticipantVoteBet(bet, user);
+
         // Update bet statistics
         updateBetStatistics(bet, chosenOption, betAmount);
-        
+
         // Update user statistics
         statisticsService.incrementActiveBets(user.getId());
-        
+
         return savedParticipation;
     }
 
@@ -301,14 +312,23 @@ public class BetParticipationService {
     }
 
     /**
-     * Checks if user has an ACTIVE participation in a bet.
+     * Checks if user has participated in a bet (regardless of current status).
+     * Returns true for ACTIVE, WON, LOST, or DRAW participations.
+     * Returns false only for CANCELLED or REFUNDED participations (user backed out).
      */
     @Transactional(readOnly = true)
     public boolean hasUserParticipated(@NotNull User user, @NotNull Long betId) {
         Bet bet = betService.getBetById(betId);
-        // Only check for ACTIVE participations - cancelled/resolved participations don't count as "joined"
         Optional<BetParticipation> participation = participationRepository.findByUserAndBet(user, bet);
-        return participation.isPresent() && participation.get().getStatus() == ParticipationStatus.ACTIVE;
+        if (participation.isEmpty()) {
+            return false;
+        }
+        ParticipationStatus status = participation.get().getStatus();
+        // User participated if they have any status except CANCELLED or REFUNDED
+        return status == ParticipationStatus.ACTIVE ||
+               status == ParticipationStatus.WON ||
+               status == ParticipationStatus.LOST ||
+               status == ParticipationStatus.DRAW;
     }
 
     private void validateBetForParticipation(Bet bet, User user, BigDecimal betAmount) {
@@ -507,6 +527,29 @@ public class BetParticipationService {
         }
 
         return refunds;
+    }
+
+    /**
+     * Creates a resolver entry for a participant when they join a PARTICIPANT_VOTE bet.
+     * This allows them to vote on the bet resolution.
+     */
+    private void createResolverForParticipantVoteBet(Bet bet, User participant) {
+        if (bet.getResolutionMethod() != Bet.BetResolutionMethod.PARTICIPANT_VOTE) {
+            return;
+        }
+
+        // Check if resolver already exists (shouldn't happen, but be safe)
+        if (betResolverRepository.existsByBetAndResolverAndIsActiveTrue(bet, participant)) {
+            return;
+        }
+
+        BetResolver resolver = new BetResolver();
+        resolver.setBet(bet);
+        resolver.setResolver(participant);
+        resolver.setAssignedBy(bet.getCreator());
+        resolver.setAssignmentReason("Participant in PARTICIPANT_VOTE bet");
+        resolver.setCanVoteOnly(true); // Participants can only vote, not resolve independently
+        betResolverRepository.save(resolver);
     }
 
 }

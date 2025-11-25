@@ -6,7 +6,7 @@ export interface CreateBetRequest {
   title: string;
   description?: string;
   betType: 'MULTIPLE_CHOICE' | 'PREDICTION'; // | 'OVER_UNDER' (COMMENTED OUT - TODO: Implement later)
-  resolutionMethod: 'CREATOR_ONLY' | 'ASSIGNED_RESOLVER' | 'CONSENSUS_VOTING';
+  resolutionMethod: 'SELF' | 'ASSIGNED_RESOLVERS' | 'PARTICIPANT_VOTE';
   bettingDeadline: string; // ISO string
   resolveDate?: string; // ISO string
   minimumBet: number; // DEPRECATED: For backward compatibility with variable-stake bets
@@ -17,6 +17,7 @@ export interface CreateBetRequest {
   minimumVotesRequired?: number;
   allowCreatorVote?: boolean;
   options?: string[];
+  resolverUserIds?: number[]; // For ASSIGNED_RESOLVERS: List of user IDs who can resolve the bet
 }
 
 export interface BetResponse {
@@ -28,6 +29,8 @@ export interface BetResponse {
   cancellationReason?: string;
   outcome?: string;
   resolutionMethod: string;
+  resolutionComment?: string; // Notes from resolver about the resolution
+  options?: string[]; // Bet options for MULTIPLE_CHOICE bets
   creator: {
     id: number;
     username: string;
@@ -65,6 +68,7 @@ export interface BetResponse {
   userChoice?: string;
   userAmount?: number;
   canUserResolve: boolean;
+  hasUserVoted?: boolean;  // Whether user has already voted on resolution (for PARTICIPANT_VOTE)
   // Insurance information (for user's participation)
   hasInsurance?: boolean;
   insuranceRefundPercentage?: number;
@@ -136,7 +140,7 @@ export interface ResolveBetRequest {
 
 export interface VoteOnResolutionRequest {
   outcome: string;
-  reasoning: string;
+  reasoning?: string;
 }
 
 // Fulfillment tracking interfaces

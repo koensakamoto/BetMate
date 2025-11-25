@@ -557,26 +557,12 @@ public class GroupMembershipService {
         GroupMembership actorMembership = actorMembershipOpt.get();
         GroupMembership targetMembership = targetMembershipOpt.get();
 
-        // Enforce role-based restrictions:
-        // - Admins can remove anyone
-        // - Officers can only remove regular members (not other officers or admins)
-        if (actorMembership.getRole() == GroupMembership.MemberRole.OFFICER) {
-            if (targetMembership.getRole() == GroupMembership.MemberRole.ADMIN ||
-                targetMembership.getRole() == GroupMembership.MemberRole.OFFICER) {
-                throw new GroupMembershipException("Officers can only remove regular members, not admins or other officers");
-            }
-        }
+        // Owner can remove anyone, including any admin (no restrictions)
+        boolean isOwner = group.isOwner(actor);
 
-        // Check if target is an admin and if they're the last admin
-        if (targetMembership.getRole() == GroupMembership.MemberRole.ADMIN) {
-            long adminCount = membershipRepository.findByGroupAndRole(group, GroupMembership.MemberRole.ADMIN)
-                .stream()
-                .filter(GroupMembership::getIsActive)
-                .count();
-
-            if (adminCount <= 1) {
-                throw new GroupMembershipException("Cannot remove user - user is the only admin");
-            }
+        // Non-owner admins cannot remove other admins
+        if (!isOwner && targetMembership.getRole() == GroupMembership.MemberRole.ADMIN) {
+            throw new GroupMembershipException("Only the group owner can remove admins");
         }
 
         // Directly update the membership
@@ -667,19 +653,11 @@ public class GroupMembershipService {
     }
 
     /**
-     * Checks if user is admin or moderator of the group.
-     */
-    @Transactional(readOnly = true)
-    public boolean isAdminOrModerator(@NotNull User user, @NotNull Group group) {
-        return membershipRepository.isUserAdminOrModerator(user, group);
-    }
-
-    /**
      * Checks if user is admin of the group.
      */
     @Transactional(readOnly = true)
     public boolean isAdmin(@NotNull User user, @NotNull Group group) {
-        return membershipRepository.isUserGroupAdmin(user, group);
+        return membershipRepository.isUserAdmin(user, group);
     }
 
     /**

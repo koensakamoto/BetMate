@@ -283,7 +283,7 @@ class BetResolutionIntegrationTest {
         bet.setStakeType(BetStakeType.CREDIT);
         bet.setFixedStakeAmount(BigDecimal.TEN);
         bet.setStatus(Bet.BetStatus.OPEN);
-        bet.setResolutionMethod(Bet.BetResolutionMethod.CREATOR_ONLY);
+        bet.setResolutionMethod(Bet.BetResolutionMethod.SELF);
         bet.setBettingDeadline(LocalDateTime.now().plusDays(7));
         bet.setResolveDate(LocalDateTime.now().plusDays(14));
         bet.setOption1("Option 1");

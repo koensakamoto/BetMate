@@ -20,7 +20,8 @@ export default function MemberProfile() {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const currentUserRole = groupData?.userRole;
-  const canManageMembers = currentUserRole === 'ADMIN' || currentUserRole === 'OFFICER';
+  const isOwner = user?.username === groupData?.ownerUsername;
+  const canManageMembers = currentUserRole === 'ADMIN';
 
   useEffect(() => {
     fetchData();
@@ -118,35 +119,6 @@ export default function MemberProfile() {
     return `${diffDays} days ago`;
   };
 
-  const handlePromoteToOfficer = async () => {
-    if (!member) return;
-
-    Alert.alert(
-      'Promote Member',
-      `Are you sure you want to promote ${getDisplayName(member)} to Officer?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Promote',
-          onPress: async () => {
-            setIsUpdating(true);
-            try {
-              const numericGroupId = Array.isArray(groupId) ? parseInt(groupId[0]) : parseInt(groupId as string);
-              await groupService.updateMemberRole(numericGroupId, member.id, 'OFFICER');
-              setMember(prev => prev ? { ...prev, role: 'OFFICER' } : null);
-              Alert.alert('Success', `${getDisplayName(member)} has been promoted to Officer`);
-            } catch (error) {
-              console.error('Error promoting member:', error);
-              Alert.alert('Error', 'Failed to promote member. Please try again.');
-            } finally {
-              setIsUpdating(false);
-            }
-          }
-        }
-      ]
-    );
-  };
-
   const handlePromoteToAdmin = async () => {
     if (!member) return;
 
@@ -162,7 +134,7 @@ export default function MemberProfile() {
             try {
               const numericGroupId = Array.isArray(groupId) ? parseInt(groupId[0]) : parseInt(groupId as string);
               await groupService.updateMemberRole(numericGroupId, member.id, 'ADMIN');
-              setMember(prev => prev ? { ...prev, role: 'ADMIN' } : null);
+              setMember(prev => prev ? { ...prev, role: 'ADMIN' as const } : null);
               Alert.alert('Success', `${getDisplayName(member)} has been promoted to Admin`);
             } catch (error) {
               console.error('Error promoting member:', error);
@@ -180,7 +152,7 @@ export default function MemberProfile() {
     if (!member) return;
 
     Alert.alert(
-      'Demote Officer',
+      'Demote Admin',
       `Are you sure you want to demote ${getDisplayName(member)} to Member?`,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -192,7 +164,7 @@ export default function MemberProfile() {
             try {
               const numericGroupId = Array.isArray(groupId) ? parseInt(groupId[0]) : parseInt(groupId as string);
               await groupService.updateMemberRole(numericGroupId, member.id, 'MEMBER');
-              setMember(prev => prev ? { ...prev, role: 'MEMBER' } : null);
+              setMember(prev => prev ? { ...prev, role: 'MEMBER' as const } : null);
               Alert.alert('Success', `${getDisplayName(member)} has been demoted to Member`);
             } catch (error) {
               console.error('Error demoting member:', error);
@@ -372,21 +344,43 @@ export default function MemberProfile() {
               flexDirection: 'row',
               alignItems: 'center'
             }}>
-              <MaterialIcons
-                name={member.role === 'ADMIN' ? 'star' : member.role === 'OFFICER' ? 'shield' : 'person'}
-                size={15}
-                color={member.role === 'ADMIN' ? '#FFD700' : member.role === 'OFFICER' ? '#00D4AA' : 'rgba(255, 255, 255, 0.5)'}
-                style={{ marginRight: 5 }}
-              />
-              <Text style={{
-                fontSize: 12,
-                fontWeight: '600',
-                color: member.role === 'ADMIN' ? '#FFD700' : member.role === 'OFFICER' ? '#00D4AA' : 'rgba(255, 255, 255, 0.6)',
-                letterSpacing: 0.5,
-                textTransform: 'uppercase'
-              }}>
-                {member.role}
-              </Text>
+              {member.username === groupData?.ownerUsername ? (
+                <>
+                  <MaterialIcons
+                    name="workspace-premium"
+                    size={15}
+                    color="#FF8C00"
+                    style={{ marginRight: 5 }}
+                  />
+                  <Text style={{
+                    fontSize: 12,
+                    fontWeight: '600',
+                    color: '#FF8C00',
+                    letterSpacing: 0.5,
+                    textTransform: 'uppercase'
+                  }}>
+                    OWNER
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <MaterialIcons
+                    name={member.role === 'ADMIN' ? 'star' : 'person'}
+                    size={15}
+                    color={member.role === 'ADMIN' ? '#FFD700' : 'rgba(255, 255, 255, 0.5)'}
+                    style={{ marginRight: 5 }}
+                  />
+                  <Text style={{
+                    fontSize: 12,
+                    fontWeight: '600',
+                    color: member.role === 'ADMIN' ? '#FFD700' : 'rgba(255, 255, 255, 0.6)',
+                    letterSpacing: 0.5,
+                    textTransform: 'uppercase'
+                  }}>
+                    {member.role}
+                  </Text>
+                </>
+              )}
             </View>
           </View>
 
@@ -521,8 +515,8 @@ export default function MemberProfile() {
             </View>
           </View>
 
-          {/* Management Actions - Only show for non-admin members */}
-          {canManageMembers && member.id !== user?.id && member.role !== 'ADMIN' && (
+          {/* Management Actions */}
+          {canManageMembers && member.id !== user?.id && (
             <View style={{
               paddingTop: 18,
               borderTopWidth: 0.5,
@@ -539,10 +533,10 @@ export default function MemberProfile() {
                 Management
               </Text>
 
-              {/* Promote/Demote Button */}
-              {member.role === 'MEMBER' ? (
+              {/* Promote to Admin Button (for MEMBER role) */}
+              {member.role === 'MEMBER' && (
                 <TouchableOpacity
-                  onPress={handlePromoteToOfficer}
+                  onPress={handlePromoteToAdmin}
                   disabled={isUpdating}
                   activeOpacity={0.7}
                   style={{
@@ -556,14 +550,14 @@ export default function MemberProfile() {
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
-                    <MaterialIcons name="trending-up" size={16} color="#00D4AA" style={{ marginRight: 7 }} />
+                    <MaterialIcons name="workspace-premium" size={16} color="#FFD700" style={{ marginRight: 7 }} />
                     <Text style={{
                       fontSize: 14,
                       fontWeight: '600',
                       color: '#ffffff',
                       flex: 1
                     }}>
-                      Promote to Officer
+                      Promote to Admin
                     </Text>
                   </View>
                   <Text style={{
@@ -571,87 +565,50 @@ export default function MemberProfile() {
                     color: 'rgba(255, 255, 255, 0.4)',
                     marginLeft: 23
                   }}>
-                    Grant officer permissions
+                    Grant full admin permissions
                   </Text>
                 </TouchableOpacity>
-              ) : member.role === 'OFFICER' ? (
-                <>
-                  {/* Promote to Admin Button */}
-                  <TouchableOpacity
-                    onPress={handlePromoteToAdmin}
-                    disabled={isUpdating}
-                    activeOpacity={0.7}
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                      borderWidth: 0.5,
-                      borderColor: 'rgba(255, 255, 255, 0.08)',
-                      borderRadius: 11,
-                      padding: 13,
-                      marginBottom: 9,
-                      opacity: isUpdating ? 0.5 : 1
-                    }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
-                      <MaterialIcons name="workspace-premium" size={16} color="#FFD700" style={{ marginRight: 7 }} />
-                      <Text style={{
-                        fontSize: 14,
-                        fontWeight: '600',
-                        color: '#ffffff',
-                        flex: 1
-                      }}>
-                        Promote to Admin
-                      </Text>
-                    </View>
+              )}
+
+              {/* Demote to Member Button (Owner only, for ADMIN role) */}
+              {member.role === 'ADMIN' && isOwner && (
+                <TouchableOpacity
+                  onPress={handleDemoteToMember}
+                  disabled={isUpdating}
+                  activeOpacity={0.7}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                    borderWidth: 0.5,
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
+                    borderRadius: 11,
+                    padding: 13,
+                    marginBottom: 9,
+                    opacity: isUpdating ? 0.5 : 1
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+                    <MaterialIcons name="trending-down" size={16} color="#FFA500" style={{ marginRight: 7 }} />
                     <Text style={{
-                      fontSize: 12,
-                      color: 'rgba(255, 255, 255, 0.4)',
-                      marginLeft: 23
+                      fontSize: 14,
+                      fontWeight: '600',
+                      color: '#ffffff',
+                      flex: 1
                     }}>
-                      Grant full admin permissions
+                      Demote to Member
                     </Text>
-                  </TouchableOpacity>
+                  </View>
+                  <Text style={{
+                    fontSize: 12,
+                    color: 'rgba(255, 255, 255, 0.4)',
+                    marginLeft: 23
+                  }}>
+                    Remove admin permissions
+                  </Text>
+                </TouchableOpacity>
+              )}
 
-                  {/* Demote to Member Button (Admin only) */}
-                  {currentUserRole === 'ADMIN' && (
-                    <TouchableOpacity
-                      onPress={handleDemoteToMember}
-                      disabled={isUpdating}
-                      activeOpacity={0.7}
-                      style={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                        borderWidth: 0.5,
-                        borderColor: 'rgba(255, 255, 255, 0.08)',
-                        borderRadius: 11,
-                        padding: 13,
-                        marginBottom: 9,
-                        opacity: isUpdating ? 0.5 : 1
-                      }}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
-                        <MaterialIcons name="trending-down" size={16} color="#FFA500" style={{ marginRight: 7 }} />
-                        <Text style={{
-                          fontSize: 14,
-                          fontWeight: '600',
-                          color: '#ffffff',
-                          flex: 1
-                        }}>
-                          Demote to Member
-                        </Text>
-                      </View>
-                      <Text style={{
-                        fontSize: 12,
-                        color: 'rgba(255, 255, 255, 0.4)',
-                        marginLeft: 23
-                      }}>
-                        Remove officer permissions
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </>
-              ) : null}
-
-              {/* Remove Button */}
-              {((currentUserRole === 'ADMIN') || (currentUserRole === 'OFFICER' && member.role === 'MEMBER')) && (
+              {/* Remove Button - Admins can remove members, only owner can remove admins */}
+              {(member.role === 'MEMBER' || (member.role === 'ADMIN' && isOwner)) && (
                 <TouchableOpacity
                   onPress={handleRemoveMember}
                   disabled={isUpdating}

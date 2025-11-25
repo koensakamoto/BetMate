@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, StatusBar, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator } from 'react-native';
+import { Text, View, StatusBar, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator, Linking } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -141,7 +141,14 @@ export default function ProfileSettings() {
       // Request camera permissions
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Camera permission is required to take photos.');
+        Alert.alert(
+          'Permission Required',
+          'To take a profile picture, please enable camera access in Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
         return;
       }
 
@@ -167,7 +174,14 @@ export default function ProfileSettings() {
       // Request media library permissions
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Photo library permission is required to choose photos.');
+        Alert.alert(
+          'Permission Required',
+          'To select a profile picture, please enable photo library access in Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
         return;
       }
 

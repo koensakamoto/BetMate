@@ -11,7 +11,7 @@ public class BetResolutionDeadlineApproachingEvent extends DomainEvent {
     private final Long groupId;
     private final String groupName;
     private final LocalDateTime resolveDate;
-    private final String resolutionMethod; // CREATOR_ONLY, ASSIGNED_RESOLVER, CONSENSUS_VOTING
+    private final String resolutionMethod; // SELF, ASSIGNED_RESOLVERS, PARTICIPANT_VOTE
     private final Long creatorId;
     private final List<Long> assignedResolverIds;
     private final int hoursUntilDeadline; // 24 or 1

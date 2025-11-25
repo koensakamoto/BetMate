@@ -114,6 +114,9 @@ public class BetFulfillmentService {
         // Also update bet-level claim for backwards compatibility (use most recent claim)
         LocalDateTime claimedAt = LocalDateTime.now();
         betRepository.updateLoserClaimAtomically(betId, claimedAt, finalProofUrl, finalProofDescription);
+
+        // Recalculate fulfillment status based on loser claims (auto-complete)
+        recalculateFulfillmentStatus(bet);
     }
 
     /**
@@ -157,29 +160,30 @@ public class BetFulfillmentService {
     }
 
     /**
-     * Recalculates and updates the bet's fulfillment status based on winner confirmations.
+     * Recalculates and updates the bet's fulfillment status based on loser proof submissions.
+     * Fulfillment is auto-completed when losers submit proof (no winner confirmation needed).
      *
      * @param bet the bet
      */
     public void recalculateFulfillmentStatus(@NotNull Bet bet) {
-        List<BetParticipation> winners = getWinners(bet);
-        long totalWinners = winners.size();
+        List<BetParticipation> losers = getLosers(bet);
+        long totalLosers = losers.size();
 
-        if (totalWinners == 0) {
-            // No winners (shouldn't happen for resolved bets, but handle gracefully)
+        if (totalLosers == 0) {
+            // No losers (shouldn't happen for resolved bets, but handle gracefully)
             bet.setFulfillmentStatus(FulfillmentStatus.FULFILLED);
             bet.setAllWinnersConfirmedAt(LocalDateTime.now());
         } else {
-            long confirmationCount = fulfillmentRepository.countByBetId(bet.getId());
+            long losersFulfilledCount = loserClaimRepository.countByBetId(bet.getId());
 
-            if (confirmationCount == 0) {
+            if (losersFulfilledCount == 0) {
                 bet.setFulfillmentStatus(FulfillmentStatus.PENDING);
                 bet.setAllWinnersConfirmedAt(null);
-            } else if (confirmationCount < totalWinners) {
+            } else if (losersFulfilledCount < totalLosers) {
                 bet.setFulfillmentStatus(FulfillmentStatus.PARTIALLY_FULFILLED);
                 bet.setAllWinnersConfirmedAt(null);
             } else {
-                // All winners confirmed
+                // All losers have submitted proof - fulfillment complete
                 bet.setFulfillmentStatus(FulfillmentStatus.FULFILLED);
                 bet.setAllWinnersConfirmedAt(LocalDateTime.now());
             }
@@ -224,7 +228,7 @@ public class BetFulfillmentService {
                 bet.getFulfillmentStatus(),
                 winners.size(),
                 losers.size(),
-                confirmations.size(),
+                loserClaims.size(),  // confirmationCount now represents losers who fulfilled (not winner confirmations)
                 bet.getLoserClaimedFulfilledAt(),
                 bet.getLoserFulfillmentProofUrl(),
                 bet.getLoserFulfillmentProofDescription(),

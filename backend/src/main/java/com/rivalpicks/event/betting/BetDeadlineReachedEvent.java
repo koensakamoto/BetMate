@@ -12,15 +12,17 @@ public class BetDeadlineReachedEvent extends DomainEvent {
     private final Long betId;
     private final String betTitle;
     private final Long groupId;
+    private final String groupName;
     private final LocalDateTime bettingDeadline;
     private final int totalParticipants;
 
-    public BetDeadlineReachedEvent(Long betId, String betTitle, Long groupId,
+    public BetDeadlineReachedEvent(Long betId, String betTitle, Long groupId, String groupName,
                                    LocalDateTime bettingDeadline, int totalParticipants) {
         super("BET_DEADLINE_REACHED");
         this.betId = betId;
         this.betTitle = betTitle;
         this.groupId = groupId;
+        this.groupName = groupName;
         this.bettingDeadline = bettingDeadline;
         this.totalParticipants = totalParticipants;
     }
@@ -35,6 +37,10 @@ public class BetDeadlineReachedEvent extends DomainEvent {
 
     public Long getGroupId() {
         return groupId;
+    }
+
+    public String getGroupName() {
+        return groupName;
     }
 
     public LocalDateTime getBettingDeadline() {

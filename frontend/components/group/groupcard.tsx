@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { Text, View, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { ENV } from '../../config/env';
+import { Avatar } from '../common/Avatar';
 
 interface MemberPreview {
     id: number;
@@ -52,12 +53,6 @@ const GroupCard: React.FC<GroupCardProps> = ({
         return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
     }, [name]);
 
-    // Get user initials from member data
-    const getUserInitials = useCallback((member: MemberPreview) => {
-        const first = member.firstName?.charAt(0)?.toUpperCase() || '';
-        const last = member.lastName?.charAt(0)?.toUpperCase() || '';
-        return first + last || member.username?.charAt(0)?.toUpperCase() || '?';
-    }, []);
 
     // Get full image URL
     const getFullImageUrl = useCallback((imageUrl: string | null | undefined): string | null => {
@@ -84,33 +79,23 @@ const GroupCard: React.FC<GroupCardProps> = ({
 
         return (
             <View style={styles.avatarsContainer}>
-                {displayMembers.map((member, index) => {
-                    const profileImageUrl = getFullImageUrl(member.profileImageUrl);
-
-                    return profileImageUrl ? (
-                        <Image
-                            key={member.id}
-                            source={{ uri: profileImageUrl }}
-                            style={[
-                                styles.avatar,
-                                index > 0 && { marginLeft: -6 }
-                            ]}
+                {displayMembers.map((member, index) => (
+                    <View
+                        key={member.id}
+                        style={[
+                            index > 0 && { marginLeft: -6 }
+                        ]}
+                    >
+                        <Avatar
+                            imageUrl={member.profileImageUrl}
+                            firstName={member.firstName}
+                            lastName={member.lastName}
+                            username={member.username}
+                            userId={member.id}
+                            customSize={24}
                         />
-                    ) : (
-                        <View
-                            key={member.id}
-                            style={[
-                                styles.avatar,
-                                styles.avatarInitials,
-                                index > 0 && { marginLeft: -6 }
-                            ]}
-                        >
-                            <Text style={styles.avatarInitialsText}>
-                                {getUserInitials(member)}
-                            </Text>
-                        </View>
-                    );
-                })}
+                    </View>
+                ))}
                 {remainingCount > 0 && (
                     <View style={[styles.avatar, styles.avatarExtra, { marginLeft: -6 }]}>
                         <Text style={styles.avatarExtraText}>

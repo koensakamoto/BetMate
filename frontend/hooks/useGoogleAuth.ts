@@ -3,7 +3,7 @@ import { Platform, NativeModules } from 'react-native';
 
 // OAuth Client IDs from Firebase Console
 const WEB_CLIENT_ID = '46395801472-bl69o6cbgtnek5e8uljom7bm02biqpt3.apps.googleusercontent.com';
-const IOS_CLIENT_ID = '46395801472-bl69o6cbgtnek5e8uljom7bm02biqpt3.apps.googleusercontent.com';
+const IOS_CLIENT_ID = '46395801472-6u4laj3io3ls67jephok6ls6r47v6c84.apps.googleusercontent.com';
 
 // Dynamically import Google Sign-In to avoid crash in Expo Go
 let GoogleSignin: any = null;
@@ -68,9 +68,15 @@ export function useGoogleAuth() {
     }
 
     try {
+      console.log('🔧 [GoogleAuth] Configuring with:');
+      console.log('  - webClientId:', WEB_CLIENT_ID);
+      console.log('  - iosClientId:', IOS_CLIENT_ID);
+      console.log('  - Expected URL scheme:', `com.googleusercontent.apps.${IOS_CLIENT_ID.split('.')[0]}`);
+      console.log('  - Platform:', Platform.OS);
+
       GoogleSignin.configure({
         webClientId: WEB_CLIENT_ID,
-        iosClientId: IOS_CLIENT_ID, // iOS requires this
+        iosClientId: IOS_CLIENT_ID,
         offlineAccess: true,
         scopes: ['profile', 'email'],
       });
@@ -91,12 +97,19 @@ export function useGoogleAuth() {
 
     try {
       console.log('🔄 [GoogleAuth] Starting sign-in...');
+      console.log('🔄 [GoogleAuth] isConfigured:', isConfigured);
+      console.log('🔄 [GoogleAuth] Current config - webClientId:', WEB_CLIENT_ID);
+      console.log('🔄 [GoogleAuth] Current config - iosClientId:', IOS_CLIENT_ID);
 
       // Check if play services are available (Android only)
+      console.log('🔄 [GoogleAuth] Checking play services...');
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      console.log('🔄 [GoogleAuth] Play services check passed');
 
       // Sign in
+      console.log('🔄 [GoogleAuth] Calling GoogleSignin.signIn()...');
       const response = await GoogleSignin.signIn();
+      console.log('🔄 [GoogleAuth] signIn response received:', JSON.stringify(response, null, 2));
 
       if (isSuccessResponse && isSuccessResponse(response)) {
         const { data } = response;
@@ -121,10 +134,18 @@ export function useGoogleAuth() {
       } else {
         throw new Error('Sign-in was cancelled');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [GoogleAuth] Sign-in failed:', error);
+      console.error('❌ [GoogleAuth] Error details:', {
+        message: error?.message,
+        code: error?.code,
+        name: error?.name,
+        stack: error?.stack,
+        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+      });
 
       if (isErrorWithCode && isErrorWithCode(error)) {
+        console.log('❌ [GoogleAuth] Error has code:', error.code);
         switch ((error as any).code) {
           case statusCodes?.SIGN_IN_CANCELLED:
             throw { code: 'CANCELLED', message: 'Sign-in was cancelled' };
@@ -137,7 +158,7 @@ export function useGoogleAuth() {
         }
       }
 
-      throw { code: 'UNKNOWN', message: 'An unexpected error occurred' };
+      throw { code: 'UNKNOWN', message: error?.message || 'An unexpected error occurred' };
     }
   };
 

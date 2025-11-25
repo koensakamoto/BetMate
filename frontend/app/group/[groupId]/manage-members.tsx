@@ -18,11 +18,12 @@ export default function ManageMembers() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedMembers, setSelectedMembers] = useState<Set<number>>(new Set());
 
-  const filters = ['All', 'Admins', 'Officers', 'Members'];
+  const filters = ['All', 'Admins', 'Members'];
 
   // Get current user's role and permissions
   const currentUserRole = groupData?.userRole;
-  const canManageMembers = currentUserRole === 'ADMIN' || currentUserRole === 'OFFICER';
+  const isOwner = user?.username === groupData?.ownerUsername;
+  const canManageMembers = currentUserRole === 'ADMIN';
 
   useEffect(() => {
     fetchData();
@@ -70,9 +71,6 @@ export default function ManageMembers() {
       case 'Admins':
         filtered = filtered.filter(member => member.role === 'ADMIN');
         break;
-      case 'Officers':
-        filtered = filtered.filter(member => member.role === 'OFFICER');
-        break;
       case 'Members':
         filtered = filtered.filter(member => member.role === 'MEMBER');
         break;
@@ -116,18 +114,16 @@ export default function ManageMembers() {
 
     // Role management based on permissions
     if (currentUserRole === 'ADMIN') {
-      // Admins can promote/demote anyone and remove anyone
+      // Admins can promote members to admin and demote admins to member
       if (member.role === 'MEMBER') {
-        actions.push({ text: 'Promote to Officer', onPress: () => handlePromoteToOfficer(member) });
-      } else if (member.role === 'OFFICER') {
-        actions.push({ text: 'Demote to Member', onPress: () => handleDemoteToMember(member) });
-      }
-      actions.push({ text: 'Remove Member', onPress: () => handleRemoveMember(member), style: 'destructive' });
-    } else if (currentUserRole === 'OFFICER') {
-      // Officers can only promote regular members to officer and remove regular members
-      if (member.role === 'MEMBER') {
-        actions.push({ text: 'Promote to Officer', onPress: () => handlePromoteToOfficer(member) });
+        actions.push({ text: 'Promote to Admin', onPress: () => handlePromoteToAdmin(member) });
         actions.push({ text: 'Remove Member', onPress: () => handleRemoveMember(member), style: 'destructive' });
+      } else if (member.role === 'ADMIN') {
+        // Only owner can remove other admins
+        if (isOwner) {
+          actions.push({ text: 'Demote to Member', onPress: () => handleDemoteToMember(member) });
+          actions.push({ text: 'Remove Member', onPress: () => handleRemoveMember(member), style: 'destructive' });
+        }
       }
     }
 
@@ -140,10 +136,10 @@ export default function ManageMembers() {
     );
   };
 
-  const handlePromoteToOfficer = async (member: GroupMemberResponse) => {
+  const handlePromoteToAdmin = async (member: GroupMemberResponse) => {
     Alert.alert(
       'Promote Member',
-      `Are you sure you want to promote ${getDisplayName(member)} to Officer?`,
+      `Are you sure you want to promote ${getDisplayName(member)} to Admin?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -151,14 +147,14 @@ export default function ManageMembers() {
           onPress: async () => {
             try {
               const numericGroupId = Array.isArray(groupId) ? parseInt(groupId[0]) : parseInt(groupId as string);
-              await groupService.updateMemberRole(numericGroupId, member.id, 'OFFICER');
+              await groupService.updateMemberRole(numericGroupId, member.id, 'ADMIN');
 
               // Update local state
               setMembers(prev =>
-                prev.map(m => m.id === member.id ? { ...m, role: 'OFFICER' } : m)
+                prev.map(m => m.id === member.id ? { ...m, role: 'ADMIN' as const } : m)
               );
 
-              Alert.alert('Success', `${getDisplayName(member)} has been promoted to Officer`);
+              Alert.alert('Success', `${getDisplayName(member)} has been promoted to Admin`);
             } catch (error) {
               console.error('Error promoting member:', error);
               Alert.alert('Error', 'Failed to promote member. Please try again.');
@@ -171,7 +167,7 @@ export default function ManageMembers() {
 
   const handleDemoteToMember = async (member: GroupMemberResponse) => {
     Alert.alert(
-      'Demote Officer',
+      'Demote Admin',
       `Are you sure you want to demote ${getDisplayName(member)} to Member?`,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -185,7 +181,7 @@ export default function ManageMembers() {
 
               // Update local state
               setMembers(prev =>
-                prev.map(m => m.id === member.id ? { ...m, role: 'MEMBER' } : m)
+                prev.map(m => m.id === member.id ? { ...m, role: 'MEMBER' as const } : m)
               );
 
               Alert.alert('Success', `${getDisplayName(member)} has been demoted to Member`);
@@ -252,9 +248,11 @@ export default function ManageMembers() {
       if (m.id === user?.id) return false; // Can't manage yourself
 
       if (currentUserRole === 'ADMIN') {
-        return true; // Admins can manage everyone
-      } else if (currentUserRole === 'OFFICER') {
-        return m.role === 'MEMBER'; // Officers can only manage regular members
+        // Admins can manage members, but only owner can manage other admins
+        if (m.role === 'ADMIN') {
+          return isOwner;
+        }
+        return true;
       }
 
       return false;
@@ -269,31 +267,24 @@ export default function ManageMembers() {
 
     // Determine available bulk actions based on role and selected members
     if (currentUserRole === 'ADMIN') {
-      // Check if any selected members can be promoted
+      // Check if any selected members can be promoted to admin
       const promotableMembers = manageableMembers.filter(m => m.role === 'MEMBER');
       if (promotableMembers.length > 0) {
         actions.push({
-          text: `Promote ${promotableMembers.length} to Officer`,
+          text: `Promote ${promotableMembers.length} to Admin`,
           onPress: () => handleBulkPromote(promotableMembers)
         });
       }
 
-      // Check if any selected members can be demoted
-      const demotableMembers = manageableMembers.filter(m => m.role === 'OFFICER');
-      if (demotableMembers.length > 0) {
-        actions.push({
-          text: `Demote ${demotableMembers.length} to Member`,
-          onPress: () => handleBulkDemote(demotableMembers)
-        });
-      }
-    } else if (currentUserRole === 'OFFICER') {
-      // Officers can only promote regular members
-      const promotableMembers = manageableMembers.filter(m => m.role === 'MEMBER');
-      if (promotableMembers.length > 0) {
-        actions.push({
-          text: `Promote ${promotableMembers.length} to Officer`,
-          onPress: () => handleBulkPromote(promotableMembers)
-        });
+      // Check if any selected admins can be demoted (owner only)
+      if (isOwner) {
+        const demotableMembers = manageableMembers.filter(m => m.role === 'ADMIN');
+        if (demotableMembers.length > 0) {
+          actions.push({
+            text: `Demote ${demotableMembers.length} to Member`,
+            onPress: () => handleBulkDemote(demotableMembers)
+          });
+        }
       }
     }
 
@@ -312,7 +303,7 @@ export default function ManageMembers() {
   const handleBulkPromote = async (membersToPromote: GroupMemberResponse[]) => {
     Alert.alert(
       'Bulk Promote',
-      `Are you sure you want to promote ${membersToPromote.length} members to Officer?`,
+      `Are you sure you want to promote ${membersToPromote.length} members to Admin?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -324,7 +315,7 @@ export default function ManageMembers() {
               // Execute all promotions
               await Promise.all(
                 membersToPromote.map(member =>
-                  groupService.updateMemberRole(numericGroupId, member.id, 'OFFICER')
+                  groupService.updateMemberRole(numericGroupId, member.id, 'ADMIN')
                 )
               );
 
@@ -332,13 +323,13 @@ export default function ManageMembers() {
               setMembers(prev =>
                 prev.map(m =>
                   membersToPromote.some(promoted => promoted.id === m.id)
-                    ? { ...m, role: 'OFFICER' }
+                    ? { ...m, role: 'ADMIN' as const }
                     : m
                 )
               );
 
               setSelectedMembers(new Set());
-              Alert.alert('Success', `${membersToPromote.length} members have been promoted to Officer`);
+              Alert.alert('Success', `${membersToPromote.length} members have been promoted to Admin`);
             } catch (error) {
               console.error('Error bulk promoting members:', error);
               Alert.alert('Error', 'Failed to promote some members. Please try again.');
@@ -352,7 +343,7 @@ export default function ManageMembers() {
   const handleBulkDemote = async (membersToDemote: GroupMemberResponse[]) => {
     Alert.alert(
       'Bulk Demote',
-      `Are you sure you want to demote ${membersToDemote.length} officers to Member?`,
+      `Are you sure you want to demote ${membersToDemote.length} admins to Member?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -373,13 +364,13 @@ export default function ManageMembers() {
               setMembers(prev =>
                 prev.map(m =>
                   membersToDemote.some(demoted => demoted.id === m.id)
-                    ? { ...m, role: 'MEMBER' }
+                    ? { ...m, role: 'MEMBER' as const }
                     : m
                 )
               );
 
               setSelectedMembers(new Set());
-              Alert.alert('Success', `${membersToDemote.length} officers have been demoted to Member`);
+              Alert.alert('Success', `${membersToDemote.length} admins have been demoted to Member`);
             } catch (error) {
               console.error('Error bulk demoting members:', error);
               Alert.alert('Error', 'Failed to demote some members. Please try again.');
@@ -662,9 +653,9 @@ export default function ManageMembers() {
                       {getDisplayName(member)}
                     </Text>
 
-                    {(member.role === 'ADMIN' || member.role === 'OFFICER') && (
+                    {member.username === groupData?.ownerUsername ? (
                       <View style={{
-                        backgroundColor: member.role === 'ADMIN' ? 'rgba(255, 215, 0, 0.2)' : 'rgba(0, 212, 170, 0.2)',
+                        backgroundColor: 'rgba(255, 140, 0, 0.2)',
                         paddingHorizontal: 6,
                         paddingVertical: 2,
                         borderRadius: 4,
@@ -673,9 +664,25 @@ export default function ManageMembers() {
                         <Text style={{
                           fontSize: 10,
                           fontWeight: '600',
-                          color: member.role === 'ADMIN' ? '#FFD700' : '#00D4AA'
+                          color: '#FF8C00'
                         }}>
-                          {member.role}
+                          OWNER
+                        </Text>
+                      </View>
+                    ) : member.role === 'ADMIN' && (
+                      <View style={{
+                        backgroundColor: 'rgba(255, 215, 0, 0.2)',
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 4,
+                        flexShrink: 0
+                      }}>
+                        <Text style={{
+                          fontSize: 10,
+                          fontWeight: '600',
+                          color: '#FFD700'
+                        }}>
+                          ADMIN
                         </Text>
                       </View>
                     )}

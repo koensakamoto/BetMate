@@ -76,8 +76,8 @@ public class Bet {
     private BetOutcome outcome;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private BetResolutionMethod resolutionMethod = BetResolutionMethod.CREATOR_ONLY;
+    @Column(nullable = false, columnDefinition = "VARCHAR(50)")
+    private BetResolutionMethod resolutionMethod = BetResolutionMethod.SELF;
 
     @Column(nullable = false)
     private Integer minimumVotesRequired = 1; // For consensus voting
@@ -666,8 +666,8 @@ public class Bet {
      * @return true if bet is open and before deadline
      */
     public boolean isOpenForBetting() {
-        return status == BetStatus.OPEN && 
-               bettingDeadline.isAfter(LocalDateTime.now()) &&
+        return status == BetStatus.OPEN &&
+               bettingDeadline.isAfter(LocalDateTime.now(ZoneOffset.UTC)) &&
                isActive && !isDeleted();
     }
 
@@ -844,8 +844,8 @@ public class Bet {
      * Methods for resolving bets.
      */
     public enum BetResolutionMethod {
-        CREATOR_ONLY,       // Only the bet creator can resolve
-        ASSIGNED_RESOLVER,  // Creator assigns specific users to resolve
-        CONSENSUS_VOTING    // Multiple people vote, majority decides
+        SELF,               // Only the bet creator can resolve
+        ASSIGNED_RESOLVERS, // Creator assigns specific users to resolve
+        PARTICIPANT_VOTE    // All participants vote, majority decides
     }
 }

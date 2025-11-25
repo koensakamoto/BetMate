@@ -295,43 +295,6 @@ export default function ChangeUsername() {
             )}
           </View>
 
-          {/* Preview Card - Shows when available */}
-          {isAvailable && newUsername && (
-            <View style={{
-              backgroundColor: 'rgba(0, 212, 170, 0.08)',
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: 'rgba(0, 212, 170, 0.15)',
-              padding: 16,
-              marginBottom: 24,
-              flexDirection: 'row',
-              alignItems: 'center'
-            }}>
-              <View style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: 'rgba(0, 212, 170, 0.2)',
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginRight: 14
-              }}>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: '#00D4AA' }}>
-                  {newUsername.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, color: 'rgba(0, 212, 170, 0.8)', fontWeight: '500', marginBottom: 2 }}>
-                  PREVIEW
-                </Text>
-                <Text style={{ fontSize: 16, color: '#ffffff', fontWeight: '600' }}>
-                  @{newUsername}
-                </Text>
-              </View>
-              <MaterialIcons name="check-circle" size={20} color="#00D4AA" />
-            </View>
-          )}
-
           {/* Guidelines */}
           <View style={{
             backgroundColor: 'rgba(255, 255, 255, 0.03)',

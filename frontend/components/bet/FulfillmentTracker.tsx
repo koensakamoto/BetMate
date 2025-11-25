@@ -173,7 +173,7 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <MaterialIcons name="groups" size={18} color="#9ca3af" />
           <Text style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-            {fulfillmentDetails.confirmationCount} of {fulfillmentDetails.totalWinners} winners confirmed
+            {fulfillmentDetails.confirmationCount} of {fulfillmentDetails.totalLosers} losers fulfilled
           </Text>
         </View>
       </View>
@@ -221,9 +221,6 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
                   )}
                   <Text style={{ color: '#ffffff' }}>{winner.displayName}</Text>
                 </View>
-                {winner.hasConfirmed && (
-                  <MaterialIcons name="check-circle" size={18} color="#10b981" />
-                )}
               </View>
             );
           })}
@@ -296,10 +293,11 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
                 {loser.hasClaimed ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <MaterialIcons name="check-circle" size={18} color="#10b981" />
+                    <Text style={{ color: '#10b981', fontSize: 12, fontWeight: '600' }}>Fulfilled</Text>
                     <MaterialIcons name="chevron-right" size={18} color="rgba(255, 255, 255, 0.4)" />
                   </View>
                 ) : (
-                  <Text style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: 12 }}>Pending</Text>
+                  <Text style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: 12 }}>Not Submitted</Text>
                 )}
               </TouchableOpacity>
             );
@@ -353,7 +351,7 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = ({
           padding: 16
         }}>
           <Text style={{ color: '#34d399', textAlign: 'center', fontWeight: '500' }}>
-            All winners have confirmed! Stake fulfilled.
+            All losers have fulfilled the stake!
           </Text>
           <Text style={{ color: 'rgba(255, 255, 255, 0.6)', textAlign: 'center', fontSize: 11, marginTop: 4 }}>
             Completed on {new Date(fulfillmentDetails.allWinnersConfirmedAt).toLocaleDateString()}

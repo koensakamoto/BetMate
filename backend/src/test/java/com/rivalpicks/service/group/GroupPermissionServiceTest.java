@@ -32,7 +32,6 @@ class GroupPermissionServiceTest {
 
     private User testUser;
     private User adminUser;
-    private User moderatorUser;
     private User nonMemberUser;
     private Group publicGroup;
     private Group privateGroup;
@@ -51,12 +50,8 @@ class GroupPermissionServiceTest {
         adminUser.setId(2L);
         adminUser.setUsername("admin");
 
-        moderatorUser = new User();
-        moderatorUser.setId(3L);
-        moderatorUser.setUsername("moderator");
-
         nonMemberUser = new User();
-        nonMemberUser.setId(4L);
+        nonMemberUser.setId(3L);
         nonMemberUser.setUsername("nonmember");
 
         // Public group
@@ -230,25 +225,16 @@ class GroupPermissionServiceTest {
     @Test
     @DisplayName("Should allow admins to edit groups")
     void canEditGroup_Admin_AllowsAccess() {
-        when(membershipRepository.isUserAdminOrModerator(adminUser, publicGroup)).thenReturn(true);
+        when(membershipRepository.isUserAdmin(adminUser, publicGroup)).thenReturn(true);
 
         boolean result = permissionService.canEditGroup(adminUser, publicGroup);
         assertTrue(result);
     }
 
     @Test
-    @DisplayName("Should allow moderators to edit groups")
-    void canEditGroup_Moderator_AllowsAccess() {
-        when(membershipRepository.isUserAdminOrModerator(moderatorUser, publicGroup)).thenReturn(true);
-
-        boolean result = permissionService.canEditGroup(moderatorUser, publicGroup);
-        assertTrue(result);
-    }
-
-    @Test
     @DisplayName("Should deny regular members from editing groups")
     void canEditGroup_RegularMember_DeniesAccess() {
-        when(membershipRepository.isUserAdminOrModerator(testUser, publicGroup)).thenReturn(false);
+        when(membershipRepository.isUserAdmin(testUser, publicGroup)).thenReturn(false);
 
         boolean result = permissionService.canEditGroup(testUser, publicGroup);
         assertFalse(result);
@@ -257,43 +243,43 @@ class GroupPermissionServiceTest {
     @Test
     @DisplayName("Should allow only admins to delete groups")
     void canDeleteGroup_Admin_AllowsAccess() {
-        when(membershipRepository.isUserGroupAdmin(adminUser, publicGroup)).thenReturn(true);
+        when(membershipRepository.isUserAdmin(adminUser, publicGroup)).thenReturn(true);
 
         boolean result = permissionService.canDeleteGroup(adminUser, publicGroup);
         assertTrue(result);
     }
 
     @Test
-    @DisplayName("Should deny moderators from deleting groups")
-    void canDeleteGroup_Moderator_DeniesAccess() {
-        when(membershipRepository.isUserGroupAdmin(moderatorUser, publicGroup)).thenReturn(false);
+    @DisplayName("Should deny regular members from deleting groups")
+    void canDeleteGroup_RegularMember_DeniesAccess() {
+        when(membershipRepository.isUserAdmin(testUser, publicGroup)).thenReturn(false);
 
-        boolean result = permissionService.canDeleteGroup(moderatorUser, publicGroup);
+        boolean result = permissionService.canDeleteGroup(testUser, publicGroup);
         assertFalse(result);
     }
 
     @Test
-    @DisplayName("Should allow admins to invite users")
-    void canInviteUsers_Admin_AllowsAccess() {
-        when(membershipRepository.isUserAdminOrModerator(adminUser, publicGroup)).thenReturn(true);
+    @DisplayName("Should allow admins to invite users to private groups")
+    void canInviteUsers_AdminPrivateGroup_AllowsAccess() {
+        when(membershipRepository.isUserAdmin(adminUser, privateGroup)).thenReturn(true);
 
-        boolean result = permissionService.canInviteUsers(adminUser, publicGroup);
+        boolean result = permissionService.canInviteUsers(adminUser, privateGroup);
         assertTrue(result);
     }
 
     @Test
-    @DisplayName("Should allow moderators to invite users")
-    void canInviteUsers_Moderator_AllowsAccess() {
-        when(membershipRepository.isUserAdminOrModerator(moderatorUser, publicGroup)).thenReturn(true);
+    @DisplayName("Should allow any member to invite users to public groups")
+    void canInviteUsers_MemberPublicGroup_AllowsAccess() {
+        when(membershipRepository.existsByUserAndGroupAndIsActiveTrue(testUser, publicGroup)).thenReturn(true);
 
-        boolean result = permissionService.canInviteUsers(moderatorUser, publicGroup);
+        boolean result = permissionService.canInviteUsers(testUser, publicGroup);
         assertTrue(result);
     }
 
     @Test
     @DisplayName("Should allow admins to remove members")
     void canRemoveMembers_Admin_AllowsAccess() {
-        when(membershipRepository.isUserAdminOrModerator(adminUser, publicGroup)).thenReturn(true);
+        when(membershipRepository.isUserAdmin(adminUser, publicGroup)).thenReturn(true);
 
         boolean result = permissionService.canRemoveMembers(adminUser, publicGroup);
         assertTrue(result);
@@ -302,18 +288,18 @@ class GroupPermissionServiceTest {
     @Test
     @DisplayName("Should allow only admins to change roles")
     void canChangeRoles_Admin_AllowsAccess() {
-        when(membershipRepository.isUserGroupAdmin(adminUser, publicGroup)).thenReturn(true);
+        when(membershipRepository.isUserAdmin(adminUser, publicGroup)).thenReturn(true);
 
         boolean result = permissionService.canChangeRoles(adminUser, publicGroup);
         assertTrue(result);
     }
 
     @Test
-    @DisplayName("Should deny moderators from changing roles")
-    void canChangeRoles_Moderator_DeniesAccess() {
-        when(membershipRepository.isUserGroupAdmin(moderatorUser, publicGroup)).thenReturn(false);
+    @DisplayName("Should deny regular members from changing roles")
+    void canChangeRoles_RegularMember_DeniesAccess() {
+        when(membershipRepository.isUserAdmin(testUser, publicGroup)).thenReturn(false);
 
-        boolean result = permissionService.canChangeRoles(moderatorUser, publicGroup);
+        boolean result = permissionService.canChangeRoles(testUser, publicGroup);
         assertFalse(result);
     }
 
@@ -362,8 +348,7 @@ class GroupPermissionServiceTest {
     void requirePermission_AllPermissionTypes() {
         // Setup mocks for various permissions
         when(membershipRepository.existsByUserAndGroupAndIsActiveTrue(testUser, publicGroup)).thenReturn(true);
-        when(membershipRepository.isUserAdminOrModerator(testUser, publicGroup)).thenReturn(true);
-        when(membershipRepository.isUserGroupAdmin(testUser, publicGroup)).thenReturn(true);
+        when(membershipRepository.isUserAdmin(testUser, publicGroup)).thenReturn(true);
 
         // Test each permission type
         assertDoesNotThrow(() -> permissionService.requirePermission(testUser, publicGroup, GroupPermission.VIEW_GROUP));

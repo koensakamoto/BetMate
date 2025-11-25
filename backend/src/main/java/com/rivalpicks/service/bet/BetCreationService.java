@@ -1,13 +1,17 @@
 package com.rivalpicks.service.bet;
 
 import com.rivalpicks.entity.betting.Bet;
+import com.rivalpicks.entity.betting.BetResolver;
 import com.rivalpicks.entity.betting.BetStakeType;
 import com.rivalpicks.entity.betting.FulfillmentStatus;
 import com.rivalpicks.entity.group.Group;
 import com.rivalpicks.entity.user.User;
 import com.rivalpicks.event.betting.BetCreatedEvent;
 import com.rivalpicks.exception.betting.BetCreationException;
+import com.rivalpicks.repository.betting.BetResolverRepository;
+import com.rivalpicks.repository.user.UserRepository;
 import com.rivalpicks.service.group.GroupPermissionService;
+import com.rivalpicks.service.group.GroupMembershipService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +22,7 @@ import org.springframework.validation.annotation.Validated;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Service dedicated to bet creation and validation.
@@ -31,15 +36,24 @@ public class BetCreationService {
     private final BetService betService;
     private final BetParticipationService betParticipationService;
     private final GroupPermissionService permissionService;
+    private final GroupMembershipService groupMembershipService;
+    private final BetResolverRepository betResolverRepository;
+    private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
     public BetCreationService(BetService betService, BetParticipationService betParticipationService,
                              GroupPermissionService permissionService,
+                             GroupMembershipService groupMembershipService,
+                             BetResolverRepository betResolverRepository,
+                             UserRepository userRepository,
                              ApplicationEventPublisher eventPublisher) {
         this.betService = betService;
         this.betParticipationService = betParticipationService;
         this.permissionService = permissionService;
+        this.groupMembershipService = groupMembershipService;
+        this.betResolverRepository = betResolverRepository;
+        this.userRepository = userRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -49,13 +63,16 @@ public class BetCreationService {
     public Bet createBet(@NotNull User creator, @NotNull Group group, @Valid BetCreationRequest request) {
         // Check permissions
         permissionService.requirePermission(creator, group, GroupPermissionService.GroupPermission.CREATE_BET);
-        
+
         // Validate request
-        validateBetCreationRequest(request);
-        
+        validateBetCreationRequest(request, group);
+
         // Create bet
         Bet bet = createBetFromRequest(creator, group, request);
         bet = betService.saveBet(bet);
+
+        // Create resolvers based on resolution method
+        createResolversForBet(bet, creator, request);
 
         // Create creator participation so bet appears in "My Bets"
         betParticipationService.createCreatorParticipation(creator, bet);
@@ -66,7 +83,7 @@ public class BetCreationService {
         return bet;
     }
 
-    private void validateBetCreationRequest(BetCreationRequest request) {
+    private void validateBetCreationRequest(BetCreationRequest request, Group group) {
         // Validate deadline is in the future
         if (request.bettingDeadline().isBefore(LocalDateTime.now().plusMinutes(5))) {
             throw new BetCreationException("Betting deadline must be at least 5 minutes in the future");
@@ -107,6 +124,23 @@ public class BetCreationService {
         if (request.maximumBet() != null && request.minimumBet() != null
             && request.maximumBet().compareTo(request.minimumBet()) < 0) {
             throw new BetCreationException("Maximum bet must be greater than minimum bet");
+        }
+
+        // Validate resolver requirements based on resolution method
+        if (request.resolutionMethod() == Bet.BetResolutionMethod.ASSIGNED_RESOLVERS) {
+            if (request.resolverUserIds() == null || request.resolverUserIds().isEmpty()) {
+                throw new BetCreationException("At least one resolver must be assigned for ASSIGNED_RESOLVERS resolution method");
+            }
+
+            // Validate all resolver users exist and are members of the group
+            for (Long userId : request.resolverUserIds()) {
+                User resolverUser = userRepository.findById(userId)
+                    .orElseThrow(() -> new BetCreationException("Resolver user not found: " + userId));
+
+                if (!groupMembershipService.isMember(resolverUser, group)) {
+                    throw new BetCreationException("Resolver user " + userId + " is not a member of the group");
+                }
+            }
         }
 
         // Validate bet type and options - multiple choice can have 2-4 options
@@ -180,6 +214,46 @@ public class BetCreationService {
         bet.setPoolForOption2(BigDecimal.ZERO);
 
         return bet;
+    }
+
+    /**
+     * Creates resolvers for the bet based on the resolution method.
+     * - SELF: Creates a BetResolver for the creator
+     * - ASSIGNED_RESOLVERS: Creates BetResolver entries for each assigned user
+     * - PARTICIPANT_VOTE: No resolvers created at bet creation (created when users join)
+     */
+    private void createResolversForBet(Bet bet, User creator, BetCreationRequest request) {
+        switch (request.resolutionMethod()) {
+            case SELF -> {
+                // Create resolver for creator
+                BetResolver resolver = new BetResolver();
+                resolver.setBet(bet);
+                resolver.setResolver(creator);
+                resolver.setAssignedBy(creator);
+                resolver.setAssignmentReason("Bet creator (SELF resolution)");
+                resolver.setCanVoteOnly(false);
+                betResolverRepository.save(resolver);
+            }
+            case ASSIGNED_RESOLVERS -> {
+                // Create resolvers for each assigned user
+                for (Long userId : request.resolverUserIds()) {
+                    User resolverUser = userRepository.findById(userId)
+                        .orElseThrow(() -> new BetCreationException("Resolver user not found: " + userId));
+
+                    BetResolver resolver = new BetResolver();
+                    resolver.setBet(bet);
+                    resolver.setResolver(resolverUser);
+                    resolver.setAssignedBy(creator);
+                    resolver.setAssignmentReason("Assigned by bet creator");
+                    resolver.setCanVoteOnly(false);
+                    betResolverRepository.save(resolver);
+                }
+            }
+            case PARTICIPANT_VOTE -> {
+                // No resolvers created at bet creation
+                // Resolvers will be created when participants join the bet
+            }
+        }
     }
 
     /**
@@ -265,7 +339,10 @@ public class BetCreationService {
         @Min(value = 1, message = "Minimum votes required must be at least 1")
         Integer minimumVotesRequired,
 
-        Boolean allowCreatorVote
+        Boolean allowCreatorVote,
+
+        // For ASSIGNED_RESOLVERS: List of user IDs who can resolve the bet
+        List<Long> resolverUserIds
     ) {}
 
 }

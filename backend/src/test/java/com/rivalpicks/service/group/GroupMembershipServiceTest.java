@@ -42,7 +42,6 @@ class GroupMembershipServiceTest {
 
     private User testUser;
     private User adminUser;
-    private User moderatorUser;
     private User regularUser;
     private Group testGroup;
     private GroupMembership testMembership;
@@ -57,12 +56,8 @@ class GroupMembershipServiceTest {
         adminUser.setId(2L);
         adminUser.setUsername("admin");
 
-        moderatorUser = new User();
-        moderatorUser.setId(3L);
-        moderatorUser.setUsername("moderator");
-
         regularUser = new User();
-        regularUser.setId(4L);
+        regularUser.setId(3L);
         regularUser.setUsername("regular");
 
         testGroup = new Group();
@@ -162,19 +157,10 @@ class GroupMembershipServiceTest {
     }
 
     @Test
-    void inviteUserToGroup_ModeratorInvitingAdmin_ThrowsException() {
-        when(membershipRepository.isUserAdminOrModerator(moderatorUser, testGroup)).thenReturn(true);
-        when(membershipRepository.isUserGroupAdmin(moderatorUser, testGroup)).thenReturn(false);
-
-        assertThrows(GroupMembershipException.class, () -> 
-            membershipService.inviteUserToGroup(moderatorUser, testUser, testGroup, GroupMembership.MemberRole.ADMIN));
-    }
-
-    @Test
     void inviteUserToGroup_RegularUserInviting_ThrowsException() {
-        when(membershipRepository.isUserAdminOrModerator(regularUser, testGroup)).thenReturn(false);
+        when(permissionService.canInviteUsers(regularUser, testGroup)).thenReturn(false);
 
-        assertThrows(GroupMembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () ->
             membershipService.inviteUserToGroup(regularUser, testUser, testGroup, GroupMembership.MemberRole.MEMBER));
     }
 
@@ -219,14 +205,14 @@ class GroupMembershipServiceTest {
     @Test
     void changeRole_AdminChangingRegularMember_Success() {
         when(permissionService.canChangeRoles(adminUser, testGroup)).thenReturn(true);
-        when(membershipRepository.atomicChangeRole(testUser, testGroup, GroupMembership.MemberRole.OFFICER)).thenReturn(1);
+        when(membershipRepository.atomicChangeRole(testUser, testGroup, GroupMembership.MemberRole.ADMIN)).thenReturn(1);
         when(membershipRepository.findByUserAndGroupAndIsActiveTrue(testUser, testGroup))
             .thenReturn(Optional.of(testMembership));
 
-        GroupMembership result = membershipService.changeRole(adminUser, testUser, testGroup, GroupMembership.MemberRole.OFFICER);
+        GroupMembership result = membershipService.changeRole(adminUser, testUser, testGroup, GroupMembership.MemberRole.ADMIN);
 
         assertNotNull(result);
-        verify(membershipRepository).atomicChangeRole(testUser, testGroup, GroupMembership.MemberRole.OFFICER);
+        verify(membershipRepository).atomicChangeRole(testUser, testGroup, GroupMembership.MemberRole.ADMIN);
     }
 
     @Test
@@ -242,33 +228,24 @@ class GroupMembershipServiceTest {
     }
 
     @Test
-    void changeRole_ModeratorPromotingToAdmin_ThrowsException() {
-        when(membershipRepository.isUserAdminOrModerator(moderatorUser, testGroup)).thenReturn(true);
-        when(membershipRepository.isUserGroupAdmin(moderatorUser, testGroup)).thenReturn(false);
-
-        assertThrows(GroupMembershipException.class, () -> 
-            membershipService.changeRole(moderatorUser, testUser, testGroup, GroupMembership.MemberRole.ADMIN));
-    }
-
-    @Test
     void changeRole_RegularUserChangingRole_ThrowsException() {
-        when(membershipRepository.isUserAdminOrModerator(regularUser, testGroup)).thenReturn(false);
+        when(permissionService.canChangeRoles(regularUser, testGroup)).thenReturn(false);
 
-        assertThrows(GroupMembershipException.class, () -> 
-            membershipService.changeRole(regularUser, testUser, testGroup, GroupMembership.MemberRole.OFFICER));
+        assertThrows(GroupMembershipException.class, () ->
+            membershipService.changeRole(regularUser, testUser, testGroup, GroupMembership.MemberRole.ADMIN));
     }
 
     @Test
     void changeRole_LastAdminBeingDemoted_ThrowsException() {
-        when(membershipRepository.isUserAdminOrModerator(adminUser, testGroup)).thenReturn(true);
+        when(permissionService.canChangeRoles(adminUser, testGroup)).thenReturn(true);
         when(membershipRepository.atomicChangeRole(testUser, testGroup, GroupMembership.MemberRole.MEMBER)).thenReturn(0);
-        
+
         GroupMembership adminMembership = new GroupMembership();
         adminMembership.setRole(GroupMembership.MemberRole.ADMIN);
         when(membershipRepository.findByUserAndGroupAndIsActiveTrue(testUser, testGroup))
             .thenReturn(Optional.of(adminMembership));
 
-        assertThrows(GroupMembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () ->
             membershipService.changeRole(adminUser, testUser, testGroup, GroupMembership.MemberRole.MEMBER));
     }
 
@@ -277,22 +254,23 @@ class GroupMembershipServiceTest {
 
     @Test
     void removeMember_RegularUserRemoving_ThrowsException() {
-        when(membershipRepository.isUserAdminOrModerator(regularUser, testGroup)).thenReturn(false);
+        when(permissionService.canRemoveMembers(regularUser, testGroup)).thenReturn(false);
 
-        assertThrows(GroupMembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () ->
             membershipService.removeMember(regularUser, testUser, testGroup));
     }
 
     @Test
     void removeMember_SelfRemoval_ThrowsException() {
-        when(membershipRepository.isUserAdminOrModerator(testUser, testGroup)).thenReturn(true);
+        when(permissionService.canRemoveMembers(testUser, testGroup)).thenReturn(true);
 
-        assertThrows(GroupMembershipException.class, () -> 
+        assertThrows(GroupMembershipException.class, () ->
             membershipService.removeMember(testUser, testUser, testGroup));
     }
 
     @Test
-    void removeMember_LastAdmin_ThrowsException() {
+    void removeMember_AdminRemovingAdmin_ThrowsException() {
+        // Non-owner admin trying to remove another admin should fail
         when(permissionService.canRemoveMembers(adminUser, testGroup)).thenReturn(true);
 
         GroupMembership actorMembership = new GroupMembership();
@@ -305,8 +283,8 @@ class GroupMembershipServiceTest {
         when(membershipRepository.findByUserAndGroupAndIsActiveTrue(testUser, testGroup))
             .thenReturn(Optional.of(targetMembership));
 
-        when(membershipRepository.findByGroupAndRole(testGroup, GroupMembership.MemberRole.ADMIN))
-            .thenReturn(List.of(targetMembership)); // Only one admin
+        // adminUser is not the owner
+        testGroup.setOwner(regularUser);
 
         assertThrows(GroupMembershipException.class, () ->
             membershipService.removeMember(adminUser, testUser, testGroup));
@@ -385,35 +363,8 @@ class GroupMembershipServiceTest {
     }
 
     @Test
-    void isAdminOrModerator_UserIsAdmin_ReturnsTrue() {
-        when(membershipRepository.isUserAdminOrModerator(adminUser, testGroup)).thenReturn(true);
-
-        boolean result = membershipService.isAdminOrModerator(adminUser, testGroup);
-
-        assertTrue(result);
-    }
-
-    @Test
-    void isAdminOrModerator_UserIsModerator_ReturnsTrue() {
-        when(membershipRepository.isUserAdminOrModerator(moderatorUser, testGroup)).thenReturn(true);
-
-        boolean result = membershipService.isAdminOrModerator(moderatorUser, testGroup);
-
-        assertTrue(result);
-    }
-
-    @Test
-    void isAdminOrModerator_RegularUser_ReturnsFalse() {
-        when(membershipRepository.isUserAdminOrModerator(regularUser, testGroup)).thenReturn(false);
-
-        boolean result = membershipService.isAdminOrModerator(regularUser, testGroup);
-
-        assertFalse(result);
-    }
-
-    @Test
     void isAdmin_UserIsAdmin_ReturnsTrue() {
-        when(membershipRepository.isUserGroupAdmin(adminUser, testGroup)).thenReturn(true);
+        when(membershipRepository.isUserAdmin(adminUser, testGroup)).thenReturn(true);
 
         boolean result = membershipService.isAdmin(adminUser, testGroup);
 
@@ -422,7 +373,7 @@ class GroupMembershipServiceTest {
 
     @Test
     void isAdmin_UserNotAdmin_ReturnsFalse() {
-        when(membershipRepository.isUserGroupAdmin(regularUser, testGroup)).thenReturn(false);
+        when(membershipRepository.isUserAdmin(regularUser, testGroup)).thenReturn(false);
 
         boolean result = membershipService.isAdmin(regularUser, testGroup);
 

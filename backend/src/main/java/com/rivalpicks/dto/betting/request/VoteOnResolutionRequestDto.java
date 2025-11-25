@@ -10,7 +10,6 @@ public class VoteOnResolutionRequestDto {
     @NotBlank(message = "Vote outcome is required")
     private String outcome;
 
-    @NotBlank(message = "Reasoning is required for voting")
     @Size(max = 1000, message = "Reasoning cannot exceed 1000 characters")
     private String reasoning;
 

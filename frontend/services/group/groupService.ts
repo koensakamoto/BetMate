@@ -53,7 +53,7 @@ export interface GroupMemberResponse {
   displayName?: string;
   email: string;
   profilePictureUrl?: string;
-  role: 'MEMBER' | 'OFFICER' | 'ADMIN';
+  role: 'MEMBER' | 'ADMIN';
   isActive: boolean;
   joinedAt: string;
   lastActivityAt?: string;
@@ -116,20 +116,7 @@ export class GroupService extends BaseApiService {
    * Get group details by ID
    */
   async getGroupById(id: number): Promise<GroupDetailResponse> {
-    console.log(`🔍 [GroupService] Getting group by ID: ${id}`);
-    try {
-      const result = await this.get<GroupDetailResponse>(API_ENDPOINTS.GROUP_BY_ID(id));
-      console.log(`✅ [GroupService] Successfully fetched group ${id}:`, {
-        groupName: result.groupName,
-        memberCount: result.memberCount,
-        userRole: result.userRole,
-        isUserMember: result.isUserMember
-      });
-      return result;
-    } catch (error) {
-      console.error(`💥 [GroupService] Failed to fetch group ${id}:`, error);
-      throw error;
-    }
+    return this.get<GroupDetailResponse>(API_ENDPOINTS.GROUP_BY_ID(id));
   }
 
   /**
@@ -172,7 +159,7 @@ export class GroupService extends BaseApiService {
   /**
    * Update a member's role in the group
    */
-  async updateMemberRole(groupId: number, memberId: number, newRole: 'MEMBER' | 'OFFICER'): Promise<GroupMemberResponse> {
+  async updateMemberRole(groupId: number, memberId: number, newRole: 'MEMBER' | 'ADMIN'): Promise<GroupMemberResponse> {
     return this.put<GroupMemberResponse>(`/groups/${groupId}/members/${memberId}/role`, { role: newRole });
   }
 
@@ -203,28 +190,28 @@ export class GroupService extends BaseApiService {
   }
 
   /**
-   * Get all pending join requests for a group (admin/officer only)
+   * Get all pending join requests for a group (admin only)
    */
   async getPendingRequests(groupId: number): Promise<PendingRequestResponse[]> {
     return this.get<PendingRequestResponse[]>(API_ENDPOINTS.GROUP_PENDING_REQUESTS(groupId));
   }
 
   /**
-   * Get count of pending join requests for a group (admin/officer only)
+   * Get count of pending join requests for a group (admin only)
    */
   async getPendingRequestCount(groupId: number): Promise<number> {
     return this.get<number>(API_ENDPOINTS.GROUP_PENDING_REQUESTS_COUNT(groupId));
   }
 
   /**
-   * Approve a pending join request (admin/officer only)
+   * Approve a pending join request (admin only)
    */
   async approvePendingRequest(groupId: number, requestId: number): Promise<void> {
     return this.post<void>(API_ENDPOINTS.GROUP_APPROVE_REQUEST(groupId, requestId), {});
   }
 
   /**
-   * Deny/reject a pending join request (admin/officer only)
+   * Deny/reject a pending join request (admin only)
    */
   async denyPendingRequest(groupId: number, requestId: number): Promise<void> {
     return this.post<void>(API_ENDPOINTS.GROUP_DENY_REQUEST(groupId, requestId), {});
@@ -252,7 +239,7 @@ export class GroupService extends BaseApiService {
    * Invite a user to the group by username
    * Permissions:
    * - PUBLIC groups: Any active member can invite
-   * - PRIVATE groups: Only admins and officers can invite
+   * - PRIVATE groups: Only admins can invite
    */
   async inviteUser(groupId: number, username: string): Promise<GroupMemberResponse> {
     return this.post<GroupMemberResponse>(API_ENDPOINTS.GROUP_INVITE(groupId), { username });

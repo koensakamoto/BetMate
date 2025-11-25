@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, TouchableOpacity, ScrollView, StatusBar, Image, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, StatusBar, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -7,8 +7,7 @@ import { useCallback } from 'react';
 import { friendshipService } from '../services/user/friendshipService';
 import { UserSearchResult } from '../services/user/userService';
 import { debugLog, errorLog } from '../config/env';
-
-const icon = require("../assets/images/icon.png");
+import { Avatar } from '../components/common/Avatar';
 
 export default function Friends() {
   const insets = useSafeAreaInsets();
@@ -72,7 +71,7 @@ export default function Friends() {
   }, [friends, searchQuery]);
 
   const UserItem = ({ user }: { user: UserSearchResult }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -84,13 +83,13 @@ export default function Friends() {
     >
       {/* Avatar */}
       <View style={{ position: 'relative', marginRight: 12 }}>
-        <Image 
-          source={icon}
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 22
-          }}
+        <Avatar
+          imageUrl={user.profileImageUrl}
+          firstName={user.firstName}
+          lastName={user.lastName}
+          username={user.username}
+          userId={user.id}
+          customSize={44}
         />
       </View>
 

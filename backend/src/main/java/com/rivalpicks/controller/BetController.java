@@ -27,6 +27,7 @@ import com.rivalpicks.service.group.GroupMembershipService;
 import com.rivalpicks.service.user.UserService;
 import com.rivalpicks.service.FileStorageService;
 import com.rivalpicks.repository.betting.LoserFulfillmentClaimRepository;
+import com.rivalpicks.repository.betting.BetResolutionVoteRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -65,6 +66,7 @@ public class BetController {
     private final UserService userService;
     private final FileStorageService fileStorageService;
     private final LoserFulfillmentClaimRepository loserFulfillmentClaimRepository;
+    private final BetResolutionVoteRepository betResolutionVoteRepository;
 
     @Autowired
     public BetController(BetService betService,
@@ -77,7 +79,8 @@ public class BetController {
                         GroupMembershipService groupMembershipService,
                         UserService userService,
                         FileStorageService fileStorageService,
-                        LoserFulfillmentClaimRepository loserFulfillmentClaimRepository) {
+                        LoserFulfillmentClaimRepository loserFulfillmentClaimRepository,
+                        BetResolutionVoteRepository betResolutionVoteRepository) {
         this.betService = betService;
         this.betCreationService = betCreationService;
         this.betParticipationService = betParticipationService;
@@ -89,6 +92,7 @@ public class BetController {
         this.userService = userService;
         this.fileStorageService = fileStorageService;
         this.loserFulfillmentClaimRepository = loserFulfillmentClaimRepository;
+        this.betResolutionVoteRepository = betResolutionVoteRepository;
     }
 
     /**
@@ -129,7 +133,8 @@ public class BetController {
                 request.getBettingDeadline(),
                 request.getResolveDate(),
                 request.getMinimumVotesRequired(),
-                request.getAllowCreatorVote()
+                request.getAllowCreatorVote(),
+                request.getResolverUserIds()
             );
             
             System.out.println("DEBUG: About to call betCreationService");
@@ -654,6 +659,10 @@ public class BetController {
         }
 
         response.setCanUserResolve(bet.getCreator().getId().equals(currentUser.getId()));
+
+        // Check if user has already voted on resolution (for PARTICIPANT_VOTE bets)
+        boolean hasVoted = betResolutionVoteRepository.existsByBetAndVoterAndIsActiveTrue(bet, currentUser);
+        response.setHasUserVoted(hasVoted);
 
         return response;
     }
