@@ -290,14 +290,16 @@ public class BetParticipation {
 
     /**
      * Settles the participation by calculating and setting actual winnings.
-     * 
-     * @param winnings the amount won (should be BigDecimal.ZERO for losses)
+     *
+     * @param winnings the amount won (should be BigDecimal.ZERO for losses or SOCIAL bets)
      */
     public void settle(BigDecimal winnings) {
         this.actualWinnings = winnings != null ? winnings : BigDecimal.ZERO;
         this.settledAt = LocalDateTime.now();
-        
-        if (isWinner() && winnings != null && winnings.compareTo(BigDecimal.ZERO) > 0) {
+
+        // Status is determined by isWinner() which checks if chosen option matches outcome
+        // Winnings amount is irrelevant for status (SOCIAL bets have 0 winnings but can still win)
+        if (isWinner()) {
             this.status = ParticipationStatus.WON;
         } else {
             this.status = ParticipationStatus.LOST;

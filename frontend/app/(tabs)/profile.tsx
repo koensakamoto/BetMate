@@ -45,7 +45,9 @@ export default function Profile() {
   const [unfulfilledBets, setUnfulfilledBets] = useState<BetSummaryResponse[]>([]);
   const [loadingUnfulfilledBets, setLoadingUnfulfilledBets] = useState(false);
   const [owedStakesFilter, setOwedStakesFilter] = useState<'all' | 'owed_to_you' | 'you_owe'>('all');
-  const tabs = ['Stats', 'Inventory', 'Owed Stakes'];
+  // MVP: Inventory tab commented out - focusing on social bets first
+  // const tabs = ['Stats', 'Inventory', 'Owed Stakes'];
+  const tabs = ['Stats', 'Owed Stakes'];
   const owedStakesFilters = [
     { key: 'all' as const, label: 'All' },
     { key: 'owed_to_you' as const, label: 'Owed to You' },
@@ -110,19 +112,21 @@ export default function Profile() {
     }, [isAuthenticated, authLoading, isCacheValid])
   );
 
+  // MVP: Inventory tab commented out - focusing on social bets first
   // Smart refresh for inventory on focus: refresh if on inventory tab and cache expired
-  useFocusEffect(
-    useCallback(() => {
-      if (isAuthenticated && !authLoading && activeTab === 1 && !isInventoryCacheValid()) {
-        fetchInventory(false);
-      }
-    }, [isAuthenticated, authLoading, activeTab, isInventoryCacheValid, fetchInventory])
-  );
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     if (isAuthenticated && !authLoading && activeTab === 1 && !isInventoryCacheValid()) {
+  //       fetchInventory(false);
+  //     }
+  //   }, [isAuthenticated, authLoading, activeTab, isInventoryCacheValid, fetchInventory])
+  // );
 
   // Smart refresh for owed stakes on focus: refresh if on owed stakes tab and cache expired
   useFocusEffect(
     useCallback(() => {
-      if (isAuthenticated && !authLoading && activeTab === 2 && !isOwedStakesCacheValid()) {
+      // MVP: Changed from activeTab === 2 to activeTab === 1 (Inventory tab removed)
+      if (isAuthenticated && !authLoading && activeTab === 1 && !isOwedStakesCacheValid()) {
         fetchUnfulfilledBets(false);
       }
     }, [isAuthenticated, authLoading, activeTab, isOwedStakesCacheValid, fetchUnfulfilledBets])
@@ -240,16 +244,18 @@ export default function Profile() {
     }
   }, [isAuthenticated, isOwedStakesCacheValid]);
 
+  // MVP: Inventory tab commented out - focusing on social bets first
   // Fetch inventory when Inventory tab is active
-  useEffect(() => {
-    if (activeTab === 1 && isAuthenticated) {
-      fetchInventory();
-    }
-  }, [activeTab, isAuthenticated, fetchInventory]);
+  // useEffect(() => {
+  //   if (activeTab === 1 && isAuthenticated) {
+  //     fetchInventory();
+  //   }
+  // }, [activeTab, isAuthenticated, fetchInventory]);
 
   // Fetch unfulfilled bets when Unfulfilled tab is active
   useEffect(() => {
-    if (activeTab === 2 && isAuthenticated) {
+    // MVP: Changed from activeTab === 2 to activeTab === 1 (Inventory tab removed)
+    if (activeTab === 1 && isAuthenticated) {
       fetchUnfulfilledBets();
     }
   }, [activeTab, isAuthenticated, fetchUnfulfilledBets]);
@@ -257,12 +263,14 @@ export default function Profile() {
   // Pull-to-refresh handler - force refresh all caches
   const onRefresh = useCallback(() => {
     loadUserData(true);
+    // MVP: Inventory tab commented out - focusing on social bets first
+    // if (activeTab === 1) {
+    //   fetchInventory(true); // Force refresh inventory
+    // } else
     if (activeTab === 1) {
-      fetchInventory(true); // Force refresh inventory
-    } else if (activeTab === 2) {
-      fetchUnfulfilledBets(true); // Force refresh owed stakes
+      fetchUnfulfilledBets(true); // Force refresh owed stakes (was activeTab === 2)
     }
-  }, [activeTab, fetchInventory, fetchUnfulfilledBets]);
+  }, [activeTab, fetchUnfulfilledBets]);
 
 
   // Memoize detailed stats array to avoid recalculating on every render
@@ -818,8 +826,8 @@ export default function Profile() {
             </View>
           )}
 
-          {activeTab === 1 && (
-            /* Inventory Tab */
+          {/* MVP: Inventory Tab hidden - focusing on social bets first */}
+          {false && activeTab === 999 && (
             <View>
               <Text style={{
                 fontSize: 16,
@@ -1012,8 +1020,8 @@ export default function Profile() {
             </View>
           )}
 
-          {activeTab === 2 && (
-            /* Owed Stakes Tab - With filter tabs */
+          {activeTab === 1 && (
+            /* Owed Stakes Tab - With filter tabs (was activeTab === 2, Inventory tab removed) */
             <View>
               {/* Filter Tabs */}
               <View style={{

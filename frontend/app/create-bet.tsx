@@ -26,7 +26,8 @@ export default function CreateBet() {
   const [betDescription, setBetDescription] = useState('');
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [betType, setBetType] = useState<'MULTIPLE_CHOICE' | 'PREDICTION' | 'OVER_UNDER'>('MULTIPLE_CHOICE');
-  const [stakeType, setStakeType] = useState<'CREDIT' | 'SOCIAL'>('CREDIT');
+  // MVP: Default to SOCIAL, credits disabled for now
+  const [stakeType, setStakeType] = useState<'CREDIT' | 'SOCIAL'>('SOCIAL');
   const [stakeAmount, setStakeAmount] = useState('');
   const [socialStakeDescription, setSocialStakeDescription] = useState('');
   const [betEndTime, setBetEndTime] = useState(roundToNearestMinute(new Date(Date.now() + 24 * 60 * 60 * 1000)));
@@ -800,7 +801,7 @@ export default function CreateBet() {
               )}
             </View>
 
-            {/* Stake Type Toggle */}
+            {/* MVP: Stake Type Toggle commented out - focusing on social bets first
             <Text style={{
               fontSize: 14,
               fontWeight: '600',
@@ -853,8 +854,9 @@ export default function CreateBet() {
                 </Text>
               </TouchableOpacity>
             </View>
+            */}
 
-            {/* Conditional Stake Inputs */}
+            {/* MVP: Credit stake inputs commented out - focusing on social bets first
             {stakeType === 'CREDIT' ? (
               <>
                 <Text style={{
@@ -920,7 +922,9 @@ export default function CreateBet() {
                 </View>
               </>
             ) : (
-              <>
+            */}
+            {/* Social stake input - always shown for MVP */}
+            <>
                 <Text style={{
                   fontSize: 14,
                   fontWeight: '600',
@@ -970,7 +974,7 @@ export default function CreateBet() {
                   {socialStakeDescription.length}/500
                 </Text>
               </>
-            )}
+            {/* MVP: Closing brace for credit/social conditional commented out - )} */}
           </View>
 
           {/* Bet Timing */}

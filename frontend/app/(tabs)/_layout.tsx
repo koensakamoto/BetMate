@@ -44,9 +44,11 @@ export default function TabsLayout() {
                 )
             }}
         />
+        {/* MVP: Store tab hidden - focusing on social bets first */}
         <Tabs.Screen
             name="store"
             options={{
+                href: null, // Hide from tab bar
                 title: "Store",
                 tabBarIcon: ({ color }) => (
                     <MaterialIcons name="store" size={24} color={color} />

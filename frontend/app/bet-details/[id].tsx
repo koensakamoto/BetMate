@@ -8,6 +8,7 @@ import { betService, BetResponse, BetParticipationResponse } from '../../service
 import BetResolutionModal from '../../components/bet/BetResolutionModal';
 import { FulfillmentTracker } from '../../components/bet/FulfillmentTracker';
 import { ResolverInfoSection } from '../../components/bet/ResolverInfoSection';
+import { BetJoinSuccessModal } from '../../components/bet/BetJoinSuccessModal';
 import { authService } from '../../services/auth/authService';
 import { useAuth } from '../../contexts/AuthContext';
 import { haptic } from '../../utils/haptics';
@@ -66,6 +67,7 @@ export default function BetDetails() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [participants, setParticipants] = useState<BetParticipationResponse[]>([]);
+  const [showJoinSuccessModal, setShowJoinSuccessModal] = useState(false);
 
   useEffect(() => {
     loadBetDetails();
@@ -80,6 +82,17 @@ export default function BetDetails() {
       }
     } catch (error) {
       console.error('Error loading current user:', error);
+    }
+  };
+
+  // Silent refresh for participants (no loading state)
+  const refreshParticipants = async () => {
+    if (!id) return;
+    try {
+      const participantsData = await betService.getBetParticipations(parseInt(id));
+      setParticipants(participantsData);
+    } catch (error) {
+      console.log('Could not refresh participants:', error);
     }
   };
 
@@ -205,11 +218,11 @@ export default function BetDetails() {
       console.log('[isUserResolver] SELF check:', result);
       return result;
     } else if (betData.resolutionMethod === 'ASSIGNED_RESOLVERS') {
-      // For now, allow creator and assume resolver check will be done on backend
-      // TODO: Check if user is in the assigned resolvers list
-      const result = betData.creator?.id === currentUserId;
-      console.log('[isUserResolver] ASSIGNED_RESOLVERS check:', result);
-      return result;
+      // Check if user is in the assigned resolvers list
+      const resolvers = betData.resolvers || [];
+      const isInResolversList = resolvers.some(resolver => resolver.id === currentUserId);
+      console.log('[isUserResolver] ASSIGNED_RESOLVERS check:', { isInResolversList, resolvers: resolvers.map(r => r.id), currentUserId });
+      return isInResolversList;
     } else if (betData.resolutionMethod === 'PARTICIPANT_VOTE') {
       // In participant voting, all participants are potential resolvers
       const result = betData.hasUserParticipated;
@@ -369,7 +382,6 @@ export default function BetDetails() {
         placeBetRequest = {
           amount: amount,
           predictedValue: customValue,
-          comment: undefined
         };
       } else {
         // For BINARY and MULTIPLE_CHOICE bets, map option to number
@@ -420,7 +432,6 @@ export default function BetDetails() {
         placeBetRequest = {
           chosenOption: chosenOptionNumber,
           amount: amount,
-          comment: undefined
         };
       }
 
@@ -449,8 +460,14 @@ export default function BetDetails() {
 
       haptic.success();
 
-      // Reload bet details to show updated participation state
-      await loadBetDetails();
+      // Update bet data directly from response (no reload needed)
+      setBetData(updatedBet);
+
+      // Silently refresh participants in background
+      refreshParticipants();
+
+      // Show success modal
+      setShowJoinSuccessModal(true);
 
     } catch (error: any) {
       console.error('=== BET PLACEMENT ERROR ===');
@@ -1589,6 +1606,16 @@ export default function BetDetails() {
         onResolve={handleResolveBet}
         bet={betData}
         resolutionType={betData?.resolutionMethod === 'PARTICIPANT_VOTE' ? 'vote' : 'resolve'}
+      />
+
+      {/* Bet Join Success Modal */}
+      <BetJoinSuccessModal
+        visible={showJoinSuccessModal}
+        onClose={() => setShowJoinSuccessModal(false)}
+        betTitle={betData?.title}
+        selectedOption={betData?.betType === 'PREDICTION' ? customValue : selectedOption || undefined}
+        amount={parseFloat(userBetAmount) || betData?.fixedStakeAmount}
+        isSocialBet={betData?.stakeType === 'SOCIAL'}
       />
 
       {/* Cancel Bet Modal */}

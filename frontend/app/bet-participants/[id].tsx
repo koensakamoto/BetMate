@@ -52,6 +52,19 @@ export default function BetParticipants() {
     router.back();
   };
 
+  // Sort participants: winners first when resolved, otherwise by join order
+  const sortedParticipants = [...participants].sort((a, b) => {
+    if (betData?.status === 'RESOLVED') {
+      // Winners first, then losers, then others
+      const statusOrder: Record<string, number> = { WON: 0, LOST: 1, DRAW: 2 };
+      const aOrder = statusOrder[a.status] ?? 3;
+      const bOrder = statusOrder[b.status] ?? 3;
+      return aOrder - bOrder;
+    }
+    // Default: keep original order (join order)
+    return 0;
+  });
+
   if (isLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
@@ -113,9 +126,9 @@ export default function BetParticipants() {
         contentContainerStyle={{ padding: 20 }}
         showsVerticalScrollIndicator={false}
       >
-        {participants.length > 0 ? (
+        {sortedParticipants.length > 0 ? (
           <View style={{ gap: 12 }}>
-            {participants.map((participant) => {
+            {sortedParticipants.map((participant) => {
               const isWinner = betData?.status === 'RESOLVED' && participant.status === 'WON';
               const isLoser = betData?.status === 'RESOLVED' && participant.status === 'LOST';
               const isDraw = betData?.status === 'RESOLVED' && betData?.outcome === 'DRAW';

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { formatDistanceToNow } from 'date-fns';
+import { parseBackendDate } from '../../utils/dateUtils';
 
 interface BetDeadlineCardProps {
   notification: {
@@ -89,7 +90,7 @@ export const BetDeadlineCard: React.FC<BetDeadlineCardProps> = ({ notification, 
 
   const betTitle = extractBetTitle(notification.message);
   const timeInfo = extractTimeInfo(notification.message, notification.title);
-  const timeAgo = formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true });
+  const timeAgo = formatDistanceToNow(parseBackendDate(notification.createdAt), { addSuffix: true });
   const isResolution = isResolutionDeadline(notification.title, notification.message);
 
   return (

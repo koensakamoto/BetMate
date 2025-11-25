@@ -139,46 +139,6 @@ function BetCard({
           </Text>
         </View>
 
-        {/* Time & Stake */}
-        <View style={{ alignItems: 'flex-end', maxWidth: '40%' }}>
-          {stakeType === 'SOCIAL' ? (
-            <View style={{
-              backgroundColor: 'rgba(255, 159, 0, 0.15)',
-              borderRadius: 6,
-              paddingHorizontal: 8,
-              paddingVertical: 4
-            }}>
-              <Text style={{
-                fontSize: 10,
-                color: '#FF9F00',
-                fontWeight: '600',
-                textTransform: 'uppercase'
-              }}>
-                Social
-              </Text>
-            </View>
-          ) : (
-            <>
-              <Text style={{
-                fontSize: 14,
-                color: '#ffffff',
-                fontWeight: '600',
-                marginBottom: 4
-              }}>
-                ${userStake !== undefined ? userStake : stakeAmount}
-              </Text>
-              <Text style={{
-                fontSize: 10,
-                color: 'rgba(255, 255, 255, 0.5)',
-                marginBottom: 4,
-                textTransform: 'uppercase',
-                letterSpacing: 0.5
-              }}>
-                {userStake !== undefined ? 'your stake' : 'entry fee'}
-              </Text>
-            </>
-          )}
-        </View>
       </View>
 
       {/* Time Remaining with Label */}
