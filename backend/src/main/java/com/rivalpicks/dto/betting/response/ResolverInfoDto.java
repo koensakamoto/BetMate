@@ -3,6 +3,8 @@ package com.rivalpicks.dto.betting.response;
 import com.rivalpicks.entity.betting.BetResolver;
 import com.rivalpicks.entity.user.User;
 
+import java.util.List;
+
 /**
  * DTO for resolver information in bet responses.
  */
@@ -12,6 +14,10 @@ public class ResolverInfoDto {
     private String displayName;
     private String profileImageUrl;
     private Boolean hasVoted;
+
+    // Vote details - what the resolver voted for
+    private String votedOutcome;           // For MCQ bets: the option text they voted for
+    private List<Long> votedWinnerUserIds; // For prediction bets: user IDs of winners they selected
 
     public static ResolverInfoDto fromUser(User user) {
         ResolverInfoDto dto = new ResolverInfoDto();
@@ -71,5 +77,21 @@ public class ResolverInfoDto {
 
     public void setHasVoted(Boolean hasVoted) {
         this.hasVoted = hasVoted;
+    }
+
+    public String getVotedOutcome() {
+        return votedOutcome;
+    }
+
+    public void setVotedOutcome(String votedOutcome) {
+        this.votedOutcome = votedOutcome;
+    }
+
+    public List<Long> getVotedWinnerUserIds() {
+        return votedWinnerUserIds;
+    }
+
+    public void setVotedWinnerUserIds(List<Long> votedWinnerUserIds) {
+        this.votedWinnerUserIds = votedWinnerUserIds;
     }
 }

@@ -157,17 +157,26 @@ public class BetScheduledTaskService {
     }
 
     /**
-     * Handle MULTIPLE_CHOICE participant vote bets at resolution deadline.
+     * Handle participant vote bets at resolution deadline.
+     * For BINARY/MULTIPLE_CHOICE: resolves based on outcome votes
+     * For PREDICTION: resolves based on winner selection votes (majority consensus)
+     *
      * Always resolves the bet based on current votes:
      * - No votes → DRAW
-     * - One option with highest votes → That option wins
-     * - Tie for highest votes → DRAW
+     * - BINARY/MULTIPLE_CHOICE: Option with highest votes wins, tie = DRAW
+     * - PREDICTION: Users selected by majority of resolvers win, no majority = DRAW
      */
     private void handleParticipantVoteResolution(Bet bet) {
         try {
-            // Resolve bet with current votes (deadline reached = always resolve)
-            // Pass null for triggeringVoter since this is a scheduled task, not a user action
-            boolean resolved = betResolutionService.resolveWithCurrentVotes(bet, null);
+            boolean resolved;
+
+            if (bet.getBetType() == Bet.BetType.PREDICTION) {
+                // For PREDICTION bets, use winner-based voting consensus
+                resolved = betResolutionService.resolvePredictionBetWithWinnerVotes(bet, null);
+            } else {
+                // For BINARY/MULTIPLE_CHOICE bets, use outcome-based voting
+                resolved = betResolutionService.resolveWithCurrentVotes(bet, null);
+            }
 
             if (resolved) {
                 log.info("Bet {} resolved at deadline with outcome: {}", bet.getId(), bet.getOutcome());
@@ -278,7 +287,7 @@ public class BetScheduledTaskService {
                         continue;
                     }
 
-                    publishResolutionDeadlineApproachingEvent(bet, 24);
+                    publishResolutionDeadlineApproachingEvent(bet, 24 * 60); // 1440 minutes
                     bet.setResolution24HourReminderSentAt(now);
                     betRepository.save(bet);
                     log.debug("Sent 24-hour reminder for bet {} (resolveDate: {})", bet.getId(), bet.getResolveDate());
@@ -303,7 +312,7 @@ public class BetScheduledTaskService {
                         continue;
                     }
 
-                    publishResolutionDeadlineApproachingEvent(bet, 1);
+                    publishResolutionDeadlineApproachingEvent(bet, 60); // 60 minutes
                     bet.setResolution1HourReminderSentAt(now);
                     betRepository.save(bet);
                     log.debug("Sent 1-hour reminder for bet {} (resolveDate: {})", bet.getId(), bet.getResolveDate());
@@ -351,8 +360,8 @@ public class BetScheduledTaskService {
                         log.info("Sending urgent reminder for bet {} ({} minutes until deadline)",
                                 bet.getId(), minutesUntilDeadline);
 
-                        // Send as "1-hour" reminder (close enough)
-                        publishResolutionDeadlineApproachingEvent(bet, 1);
+                        // Send with actual minutes remaining
+                        publishResolutionDeadlineApproachingEvent(bet, minutesUntilDeadline);
                         bet.setResolution1HourReminderSentAt(now);
                         betRepository.save(bet);
                     } catch (Exception e) {
@@ -368,7 +377,7 @@ public class BetScheduledTaskService {
     /**
      * Publish event for resolution deadline approaching notification.
      */
-    private void publishResolutionDeadlineApproachingEvent(Bet bet, int hoursUntilDeadline) {
+    private void publishResolutionDeadlineApproachingEvent(Bet bet, long minutesUntilDeadline) {
         try {
             // Get assigned resolver IDs if applicable
             List<Long> assignedResolverIds = java.util.Collections.emptyList();
@@ -388,11 +397,11 @@ public class BetScheduledTaskService {
                     bet.getResolutionMethod().name(),
                     bet.getCreator().getId(),
                     assignedResolverIds,
-                    hoursUntilDeadline
+                    minutesUntilDeadline
             );
             eventPublisher.publishEvent(event);
-            log.debug("Published BetResolutionDeadlineApproachingEvent for bet {} ({} hours)",
-                     bet.getId(), hoursUntilDeadline);
+            log.debug("Published BetResolutionDeadlineApproachingEvent for bet {} ({} minutes)",
+                     bet.getId(), minutesUntilDeadline);
         } catch (Exception e) {
             log.error("Failed to publish BetResolutionDeadlineApproachingEvent for bet {}: {}",
                      bet.getId(), e.getMessage(), e);
@@ -447,7 +456,7 @@ public class BetScheduledTaskService {
                         continue;
                     }
 
-                    publishBettingDeadlineApproachingEvent(bet, 24);
+                    publishBettingDeadlineApproachingEvent(bet, 24 * 60); // 1440 minutes
                     bet.setBetting24HourReminderSentAt(now);
                     betRepository.save(bet);
                 } catch (Exception e) {
@@ -472,7 +481,7 @@ public class BetScheduledTaskService {
                         continue;
                     }
 
-                    publishBettingDeadlineApproachingEvent(bet, 1);
+                    publishBettingDeadlineApproachingEvent(bet, 60); // 60 minutes
                     bet.setBetting1HourReminderSentAt(now);
                     betRepository.save(bet);
                     log.debug("Sent 1-hour betting reminder for bet {} (bettingDeadline: {})", bet.getId(), bet.getBettingDeadline());
@@ -519,8 +528,8 @@ public class BetScheduledTaskService {
                         log.info("Sending urgent betting reminder for bet {} ({} minutes until deadline)",
                                 bet.getId(), minutesUntilDeadline);
 
-                        // Send as "1-hour" reminder (close enough)
-                        publishBettingDeadlineApproachingEvent(bet, 1);
+                        // Send with actual minutes remaining
+                        publishBettingDeadlineApproachingEvent(bet, minutesUntilDeadline);
                         bet.setBetting1HourReminderSentAt(now);
                         betRepository.save(bet);
                     } catch (Exception e) {
@@ -536,7 +545,7 @@ public class BetScheduledTaskService {
     /**
      * Publish event for betting deadline approaching notification.
      */
-    private void publishBettingDeadlineApproachingEvent(Bet bet, int hoursUntilDeadline) {
+    private void publishBettingDeadlineApproachingEvent(Bet bet, long minutesUntilDeadline) {
         try {
             BetDeadlineApproachingEvent event = new BetDeadlineApproachingEvent(
                     bet.getId(),
@@ -544,11 +553,11 @@ public class BetScheduledTaskService {
                     bet.getGroup().getId(),
                     bet.getGroup().getGroupName(),
                     bet.getBettingDeadline(),
-                    hoursUntilDeadline
+                    minutesUntilDeadline
             );
             eventPublisher.publishEvent(event);
-            log.debug("Published BetDeadlineApproachingEvent for bet {} ({} hours)",
-                     bet.getId(), hoursUntilDeadline);
+            log.debug("Published BetDeadlineApproachingEvent for bet {} ({} minutes)",
+                     bet.getId(), minutesUntilDeadline);
         } catch (Exception e) {
             log.error("Failed to publish BetDeadlineApproachingEvent for bet {}: {}",
                      bet.getId(), e.getMessage(), e);

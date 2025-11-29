@@ -1,67 +1,104 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, forwardRef, useImperativeHandle, useEffect } from 'react';
 import {
-  Modal,
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
-  TextInput,
   ActivityIndicator,
-  Alert
+  Alert,
+  Keyboard,
+  Platform
 } from 'react-native';
+import {
+  BottomSheetModal,
+  BottomSheetScrollView,
+  BottomSheetTextInput,
+  BottomSheetBackdrop
+} from '@gorhom/bottom-sheet';
 import { MaterialIcons } from '@expo/vector-icons';
-import { BetResponse, betService, BetParticipationResponse } from '../../services/bet/betService';
+import { BetResponse, BetParticipationResponse } from '../../services/bet/betService';
+
+export interface BetResolutionModalRef {
+  present: () => void;
+  dismiss: () => void;
+}
 
 interface BetResolutionModalProps {
-  visible: boolean;
   onClose: () => void;
   onResolve: (outcome?: string, winnerUserIds?: number[], reasoning?: string) => Promise<void>;
   bet: BetResponse | null;
-  resolutionType: 'resolve' | 'vote'; // Direct resolution or voting
+  participations: BetParticipationResponse[];
+  resolutionType: 'resolve' | 'vote';
 }
 
-export default function BetResolutionModal({
-  visible,
+const BetResolutionModal = forwardRef<BetResolutionModalRef, BetResolutionModalProps>(({
   onClose,
   onResolve,
   bet,
+  participations,
   resolutionType
-}: BetResolutionModalProps) {
+}, ref) => {
   const [selectedOutcome, setSelectedOutcome] = useState<string | null>(null);
   const [selectedWinnerIds, setSelectedWinnerIds] = useState<number[]>([]);
   const [reasoning, setReasoning] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [participations, setParticipations] = useState<BetParticipationResponse[]>([]);
-  const [isLoadingParticipations, setIsLoadingParticipations] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-  // Load participations when modal opens
+  const bottomSheetRef = React.useRef<BottomSheetModal>(null);
+
+  // Snap points for the bottom sheet
+  const snapPoints = useMemo(() => ['80%'], []);
+
+  // Listen for keyboard events
   useEffect(() => {
-    const loadParticipations = async () => {
-      if (visible && bet) {
-        try {
-          setIsLoadingParticipations(true);
-          const data = await betService.getBetParticipations(bet.id);
-          setParticipations(data);
-        } catch (error) {
-          console.error('Error loading participations:', error);
-          Alert.alert('Error', 'Failed to load participant data');
-        } finally {
-          setIsLoadingParticipations(false);
-        }
-      }
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSubscription = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
     };
+  }, []);
 
-    loadParticipations();
-  }, [visible, bet]);
-
-  // Reset state when modal opens
-  useEffect(() => {
-    if (visible) {
+  // Expose present/dismiss methods to parent
+  useImperativeHandle(ref, () => ({
+    present: () => {
+      // Reset state when presenting
       setSelectedOutcome(null);
       setSelectedWinnerIds([]);
       setReasoning('');
+      bottomSheetRef.current?.present();
+    },
+    dismiss: () => {
+      bottomSheetRef.current?.dismiss();
     }
-  }, [visible]);
+  }));
+
+  const handleSheetChanges = useCallback((index: number) => {
+    if (index === -1) {
+      Keyboard.dismiss();
+      onClose();
+    }
+  }, [onClose]);
+
+
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+      />
+    ),
+    []
+  );
 
   if (!bet) return null;
 
@@ -70,7 +107,6 @@ export default function BetResolutionModal({
       Alert.alert('Error', 'Please select an outcome or winners');
       return;
     }
-
 
     Alert.alert(
       resolutionType === 'resolve' ? 'Resolve Bet?' : 'Submit Vote?',
@@ -84,14 +120,12 @@ export default function BetResolutionModal({
           onPress: async () => {
             setIsSubmitting(true);
             try {
-              // For winner-based resolution (PREDICTION bets)
               if (selectedWinnerIds.length > 0) {
                 await onResolve(undefined, selectedWinnerIds, reasoning);
               } else {
-                // For option-based resolution (BINARY/MULTIPLE_CHOICE)
                 await onResolve(selectedOutcome || '', undefined, reasoning);
               }
-              onClose();
+              bottomSheetRef.current?.dismiss();
             } catch (error) {
               console.error('Resolution error:', error);
               Alert.alert('Error', 'Failed to submit resolution');
@@ -159,19 +193,6 @@ export default function BetResolutionModal({
             <Text style={{ color: '#ffffff', fontSize: 15, flex: 1 }}>
               {option}
             </Text>
-
-            {/* Show participant count for this option */}
-            <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-              borderRadius: 8
-            }}>
-              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 12 }}>
-                {index === 0 ? bet.participantsForOption1 :
-                 index === 1 ? bet.participantsForOption2 : 0} participants
-              </Text>
-            </View>
           </TouchableOpacity>
         ))}
       </View>
@@ -179,18 +200,6 @@ export default function BetResolutionModal({
   };
 
   const renderExactValueOptions = () => {
-    if (isLoadingParticipations) {
-      return (
-        <View style={{ padding: 20, alignItems: 'center' }}>
-          <ActivityIndicator color="#00D4AA" />
-          <Text style={{ color: 'rgba(255, 255, 255, 0.6)', marginTop: 8 }}>
-            Loading participants...
-          </Text>
-        </View>
-      );
-    }
-
-    // Group participations by predicted value
     const predictionGroups = participations.reduce((groups, p) => {
       const prediction = p.predictedValue || p.chosenOptionText || 'Unknown';
       if (!groups[prediction]) {
@@ -242,14 +251,15 @@ export default function BetResolutionModal({
               key={prediction}
               onPress={() => {
                 if (allSelected) {
-                  // Unselect all
                   setSelectedWinnerIds(prev => prev.filter(id => !participantIds.includes(id)));
                 } else {
-                  // Select all in this group
                   setSelectedWinnerIds(prev => [...new Set([...prev, ...participantIds])]);
                 }
               }}
               style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 padding: 16,
                 backgroundColor: allSelected
                   ? 'rgba(0, 212, 170, 0.15)'
@@ -266,25 +276,15 @@ export default function BetResolutionModal({
                   : 'rgba(255, 255, 255, 0.08)'
               }}
             >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '600' }}>
-                  Prediction: {prediction}
-                </Text>
-                {allSelected && (
-                  <MaterialIcons name="check-circle" size={20} color="#00D4AA" />
-                )}
-                {someSelected && !allSelected && (
-                  <MaterialIcons name="radio-button-checked" size={20} color="rgba(0, 212, 170, 0.5)" />
-                )}
-              </View>
-
-              <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 13 }}>
-                {participants.length} participant{participants.length !== 1 ? 's' : ''}: {participants.map(p => p.displayName || p.username).join(', ')}
+              <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '600' }}>
+                {prediction}
               </Text>
-
-              <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 12, marginTop: 4 }}>
-                Total stake: ${participants.reduce((sum, p) => sum + p.betAmount, 0).toFixed(2)}
-              </Text>
+              {allSelected && (
+                <MaterialIcons name="check-circle" size={20} color="#00D4AA" />
+              )}
+              {someSelected && !allSelected && (
+                <MaterialIcons name="radio-button-checked" size={20} color="rgba(0, 212, 170, 0.5)" />
+              )}
             </TouchableOpacity>
           );
         })}
@@ -293,139 +293,125 @@ export default function BetResolutionModal({
   };
 
   return (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
+    <BottomSheetModal
+      ref={bottomSheetRef}
+      snapPoints={snapPoints}
+      onChange={handleSheetChanges}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={{
+        backgroundColor: '#1a1a1f',
+      }}
+      handleIndicatorStyle={{
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        width: 40,
+      }}
+      android_keyboardInputMode="adjustResize"
     >
-      <View style={{
-        flex: 1,
-        justifyContent: 'flex-end',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)'
-      }}>
+      <View style={{ padding: 20, flex: 1 }}>
+        {/* Header */}
         <View style={{
-          backgroundColor: '#1a1a1f',
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          padding: 20,
-          maxHeight: '80%'
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 20
         }}>
-          {/* Header */}
-          <View style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 20
+          <Text style={{
+            color: '#ffffff',
+            fontSize: 20,
+            fontWeight: '700'
           }}>
+            {resolutionType === 'resolve' ? 'Resolve Bet' : 'Vote on Resolution'}
+          </Text>
+
+          <TouchableOpacity
+            onPress={() => bottomSheetRef.current?.dismiss()}
+            disabled={isSubmitting}
+            style={{
+              padding: 4,
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              borderRadius: 20
+            }}
+          >
+            <MaterialIcons name="close" size={24} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
+
+        <BottomSheetScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Resolution Options */}
+          {bet.betType === 'MULTIPLE_CHOICE' ?
+            renderMultipleChoiceOptions() :
+            renderExactValueOptions()
+          }
+
+          {/* Reasoning Input */}
+          <View style={{ marginBottom: 20 }}>
             <Text style={{
               color: '#ffffff',
-              fontSize: 20,
-              fontWeight: '700'
+              fontSize: 16,
+              fontWeight: '600',
+              marginBottom: 8
             }}>
-              {resolutionType === 'resolve' ? 'Resolve Bet' : 'Vote on Resolution'}
+              {resolutionType === 'resolve' ? 'Resolution Notes (Optional):' : 'Reasoning (Optional):'}
             </Text>
 
-            <TouchableOpacity
-              onPress={onClose}
-              disabled={isSubmitting}
+            <BottomSheetTextInput
+              value={reasoning}
+              onChangeText={setReasoning}
+              placeholder={resolutionType === 'resolve'
+                ? "Add any notes about the resolution..."
+                : "Explain your vote decision..."}
+              placeholderTextColor="rgba(255, 255, 255, 0.3)"
+              multiline
+              numberOfLines={4}
               style={{
-                padding: 4,
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                borderRadius: 20
+                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                borderRadius: 12,
+                padding: 12,
+                color: '#ffffff',
+                fontSize: 14,
+                minHeight: 100,
+                textAlignVertical: 'top',
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.08)'
               }}
-            >
-              <MaterialIcons name="close" size={24} color="#ffffff" />
-            </TouchableOpacity>
+            />
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {/* Bet Info */}
-            <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              padding: 12,
+          {/* Submit Button */}
+          <TouchableOpacity
+            onPress={handleSubmit}
+            disabled={isSubmitting || (!selectedOutcome && selectedWinnerIds.length === 0)}
+            style={{
+              backgroundColor: (!selectedOutcome && selectedWinnerIds.length === 0) || isSubmitting
+                ? 'rgba(255, 255, 255, 0.1)'
+                : '#00D4AA',
+              paddingVertical: 16,
               borderRadius: 12,
-              marginBottom: 20
-            }}>
-              <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '600', marginBottom: 4 }}>
-                {bet.title}
-              </Text>
-              {bet.description && (
-                <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
-                  {bet.description}
-                </Text>
-              )}
-            </View>
-
-            {/* Resolution Options */}
-            {bet.betType === 'BINARY' || bet.betType === 'MULTIPLE_CHOICE' ?
-              renderMultipleChoiceOptions() :
-              renderExactValueOptions()
-            }
-
-            {/* Reasoning Input */}
-            <View style={{ marginBottom: 20 }}>
+              alignItems: 'center',
+              marginBottom: keyboardHeight > 0 ? keyboardHeight : 40
+            }}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
               <Text style={{
-                color: '#ffffff',
+                color: (!selectedOutcome && selectedWinnerIds.length === 0) ? 'rgba(255, 255, 255, 0.3)' : '#000000',
                 fontSize: 16,
-                fontWeight: '600',
-                marginBottom: 8
+                fontWeight: '700'
               }}>
-                {resolutionType === 'resolve' ? 'Resolution Notes (Optional):' : 'Reasoning (Optional):'}
+                {resolutionType === 'resolve' ? 'Resolve Bet' : 'Submit Vote'}
               </Text>
-
-              <TextInput
-                value={reasoning}
-                onChangeText={setReasoning}
-                placeholder={resolutionType === 'resolve'
-                  ? "Add any notes about the resolution..."
-                  : "Explain your vote decision..."}
-                placeholderTextColor="rgba(255, 255, 255, 0.3)"
-                multiline
-                numberOfLines={4}
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                  borderRadius: 12,
-                  padding: 12,
-                  color: '#ffffff',
-                  fontSize: 14,
-                  minHeight: 100,
-                  textAlignVertical: 'top',
-                  borderWidth: 1,
-                  borderColor: 'rgba(255, 255, 255, 0.08)'
-                }}
-              />
-            </View>
-
-            {/* Submit Button */}
-            <TouchableOpacity
-              onPress={handleSubmit}
-              disabled={isSubmitting || (!selectedOutcome && selectedWinnerIds.length === 0)}
-              style={{
-                backgroundColor: (!selectedOutcome && selectedWinnerIds.length === 0) || isSubmitting
-                  ? 'rgba(255, 255, 255, 0.1)'
-                  : '#00D4AA',
-                paddingVertical: 16,
-                borderRadius: 12,
-                alignItems: 'center',
-                marginBottom: 20
-              }}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text style={{
-                  color: (!selectedOutcome && selectedWinnerIds.length === 0) ? 'rgba(255, 255, 255, 0.3)' : '#000000',
-                  fontSize: 16,
-                  fontWeight: '700'
-                }}>
-                  {resolutionType === 'resolve' ? 'Resolve Bet' : 'Submit Vote'}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
+            )}
+          </TouchableOpacity>
+        </BottomSheetScrollView>
       </View>
-    </Modal>
+    </BottomSheetModal>
   );
-}
+});
+
+BetResolutionModal.displayName = 'BetResolutionModal';
+
+export default BetResolutionModal;

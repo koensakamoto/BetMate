@@ -3,6 +3,13 @@ import { API_ENDPOINTS } from '../../config/api';
 import { ApiResponse } from '../../types/api';
 import { apiClient } from '../api/baseClient';
 
+// React Native FormData file type (not officially typed by RN)
+interface FormDataFile {
+  uri: string;
+  type: string;
+  name: string;
+}
+
 // User DTOs matching backend
 export interface UserProfileUpdateRequest {
   firstName: string;
@@ -13,19 +20,25 @@ export interface UserProfileUpdateRequest {
 export interface UserProfileResponse {
   id: number;
   username: string;
-  email: string;
+  email?: string;
   firstName?: string;
   lastName?: string;
+  displayName?: string;
   bio?: string;
   profileImageUrl?: string;
-  createdAt: string;
+  createdAt?: string;
   lastLoginAt?: string;
-  isActive: boolean;
+  isActive?: boolean;
+  active?: boolean; // Backend returns "active" not "isActive"
   totalCredits?: number;
   totalWins?: number;
   totalLosses?: number;
   winRate?: number;
   groupMembershipCount?: number;
+  // Fields for limited/private profile responses
+  isPrivate?: boolean;
+  private?: boolean; // Backend returns "private" not "isPrivate"
+  message?: string;
 }
 
 export interface UserSearchResult {
@@ -47,7 +60,7 @@ export interface UserStatistics {
   totalGames: number;
 }
 
-export type ProfileVisibility = 'PUBLIC' | 'FRIENDS' | 'PRIVATE';
+export type ProfileVisibility = 'PUBLIC' | 'PRIVATE';
 
 export interface ProfileVisibilityResponse {
   visibility: ProfileVisibility;
@@ -194,13 +207,14 @@ export class UserService extends BaseApiService {
     const formData = new FormData();
 
     // Create file object from image URI for React Native
-    const file: any = {
+    const file: FormDataFile = {
       uri: imageUri,
       type: getContentType(fileName),
       name: fileName,
     };
 
-    formData.append('file', file);
+    // FormData.append expects Blob | string, but React Native accepts the file object
+    formData.append('file', file as unknown as Blob);
 
     return this.post<UserProfileResponse>(
       API_ENDPOINTS.USER_PROFILE_PICTURE,

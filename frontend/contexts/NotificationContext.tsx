@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 import { useNotifications, useNotificationWebSocket } from '../services/notification';
 import { useAuth } from './AuthContext';
 
@@ -40,12 +40,13 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     enabled: shouldFetchNotifications
   });
 
-  const value: NotificationContextValue = {
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  const value = useMemo<NotificationContextValue>(() => ({
     unreadCount,
     loading,
     error,
     refreshUnreadCount: refresh
-  };
+  }), [unreadCount, loading, error, refresh]);
 
   return (
     <NotificationContext.Provider value={value}>

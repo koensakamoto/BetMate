@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Text, View, ScrollView, Image, TouchableOpacity, StatusBar, RefreshControl, Alert } from 'react-native';
+import { Text, View, ScrollView, Image, TouchableOpacity, StatusBar, RefreshControl, Alert, ImageSourcePropType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -8,7 +8,9 @@ import GroupBetsTab from './GroupBetsTab';
 import GroupStatsTab from './GroupStatsTab';
 import GroupMembersTab from './GroupMembersTab';
 import GroupSettingsTab from './GroupSettingsTab';
-import { groupService } from '../../services/group/groupService';
+import { groupService, GroupDetailResponse } from '../../services/group/groupService';
+import { getAvatarColor, getAvatarColorWithOpacity, getGroupInitials as getGroupInitialsUtil } from '../../utils/avatarUtils';
+import { colors } from '../../constants/theme';
 
 interface GroupMemberViewProps {
   groupData: {
@@ -17,7 +19,7 @@ interface GroupMemberViewProps {
     description: string;
     memberCount: number;
     createdDate: string;
-    image: any;
+    image?: ImageSourcePropType;
     totalBets: number;
     userPosition: number;
     groupAchievements: number;
@@ -30,16 +32,6 @@ interface GroupMemberViewProps {
 const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGroupData }) => {
   const insets = useSafeAreaInsets();
   const searchParams = useLocalSearchParams();
-
-  // Get group initials from name
-  const getGroupInitials = useCallback((name: string) => {
-    if (!name) return 'G';
-    const words = name.trim().split(/\s+/);
-    if (words.length === 1) {
-      return words[0].charAt(0).toUpperCase();
-    }
-    return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
-  }, []);
 
   // Determine initial tab from URL parameter
   const getInitialTab = () => {
@@ -64,16 +56,19 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
   // Check if user is admin
   const isAdmin = groupData.userRole === 'ADMIN';
 
+  // Get the numeric group ID for color generation
+  const numericGroupId = typeof groupData.id === 'string' ? parseInt(groupData.id) : parseInt(groupData.id[0]);
+
   // Sync local state with incoming props when they change
   useEffect(() => {
     setGroupData(initialGroupData);
   }, [initialGroupData]);
 
-  const handleGroupUpdated = useCallback((updatedGroup: any) => {
+  const handleGroupUpdated = useCallback((updatedGroup: GroupDetailResponse) => {
     // Merge the updated settings back into our group data
     setGroupData(prev => ({
       ...prev,
-      name: updatedGroup.groupName || updatedGroup.name || prev.name,
+      name: updatedGroup.groupName || prev.name,
       description: updatedGroup.description || prev.description,
       privacy: updatedGroup.privacy
     }));
@@ -148,7 +143,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                   }
                 ]
               );
-            } catch (error: any) {
+            } catch (error) {
               console.error('Failed to leave group:', error);
               const errorMessage = error?.response?.data?.error || 'Failed to leave group. Please try again.';
               Alert.alert('Error', errorMessage);
@@ -165,14 +160,15 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
     name: groupData.name,
     description: groupData.description,
     memberCount: groupData.memberCount,
-    privacy: (groupData as any).privacy || 'PRIVATE' as 'PUBLIC' | 'PRIVATE' | 'SECRET'
+    privacy: (groupData as any).privacy || 'PRIVATE' as 'PUBLIC' | 'PRIVATE' | 'SECRET',
+    groupPictureUrl: (groupData as any).groupPictureUrl
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar
         barStyle="light-content"
-        backgroundColor="#0a0a0f"
+        backgroundColor={colors.background}
         translucent={true}
       />
 
@@ -201,12 +197,12 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                 width: 36,
                 height: 36,
                 borderRadius: 18,
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                backgroundColor: colors.surfaceStrong,
                 justifyContent: 'center',
                 alignItems: 'center'
               }}
             >
-              <MaterialIcons name="arrow-back" size={16} color="#ffffff" />
+              <MaterialIcons name="arrow-back" size={16} color={colors.textPrimary} />
             </TouchableOpacity>
 
             {/* Centered Group Info */}
@@ -232,23 +228,23 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                   height: 36,
                   borderRadius: 10,
                   marginRight: 12,
-                  backgroundColor: 'rgba(0, 212, 170, 0.2)',
+                  backgroundColor: getAvatarColorWithOpacity(numericGroupId, 0.2),
                   justifyContent: 'center',
                   alignItems: 'center'
                 }}>
                   <Text style={{
                     fontSize: 14,
                     fontWeight: '700',
-                    color: '#00D4AA'
+                    color: getAvatarColor(numericGroupId)
                   }}>
-                    {getGroupInitials(groupData.name)}
+                    {getGroupInitialsUtil(groupData.name)}
                   </Text>
                 </View>
               )}
               <Text style={{
                 fontSize: 18,
                 fontWeight: '700',
-                color: '#ffffff'
+                color: colors.textPrimary
               }}>
                 {groupData.name}
               </Text>
@@ -259,20 +255,20 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
               <TouchableOpacity
                 onPress={() => {
                   const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
-                  router.push(`/group/${currentGroupId}/config`);
+                  router.push(`/(app)/group/${currentGroupId}/config`);
                 }}
                 style={{
                   width: 36,
                   height: 36,
                   borderRadius: 18,
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  backgroundColor: colors.surfaceStrong,
                   justifyContent: 'center',
                   alignItems: 'center',
                   borderWidth: 0.5,
-                  borderColor: 'rgba(255, 255, 255, 0.15)'
+                  borderColor: colors.borderMedium
                 }}
               >
-                <MaterialIcons name="settings" size={16} color="#ffffff" />
+                <MaterialIcons name="settings" size={16} color={colors.textPrimary} />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -281,14 +277,14 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                   width: 36,
                   height: 36,
                   borderRadius: 18,
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  backgroundColor: colors.surfaceStrong,
                   justifyContent: 'center',
                   alignItems: 'center',
                   borderWidth: 0.5,
-                  borderColor: 'rgba(255, 255, 255, 0.15)'
+                  borderColor: colors.borderMedium
                 }}
               >
-                <MaterialIcons name="more-vert" size={16} color="#ffffff" />
+                <MaterialIcons name="more-vert" size={16} color={colors.textPrimary} />
               </TouchableOpacity>
             )}
           </View>
@@ -313,7 +309,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                 style={{
                   paddingBottom: 8,
                   borderBottomWidth: isActive ? 2 : 0,
-                  borderBottomColor: '#ffffff',
+                  borderBottomColor: colors.textPrimary,
                   flex: 1,
                   alignItems: 'center',
                   position: 'relative'
@@ -323,7 +319,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                   <Text style={{
                     fontSize: 14,
                     fontWeight: isActive ? '600' : '400',
-                    color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.6)'
+                    color: isActive ? colors.textPrimary : colors.textMuted
                   }} numberOfLines={1}>
                     {tab}
                   </Text>
@@ -331,7 +327,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                   {/* Badge for pending requests */}
                   {showBadge && (
                     <View style={{
-                      backgroundColor: '#00D4AA',
+                      backgroundColor: colors.primary,
                       borderRadius: 10,
                       minWidth: 18,
                       height: 18,
@@ -343,7 +339,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                       <Text style={{
                         fontSize: 11,
                         fontWeight: '700',
-                        color: '#000000'
+                        color: colors.textDark
                       }}>
                         {pendingRequestCount > 99 ? '99+' : pendingRequestCount}
                       </Text>
@@ -371,8 +367,8 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#00D4AA"
-              colors={['#00D4AA']}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
             />
           }
         >
@@ -391,8 +387,8 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#00D4AA"
-              colors={['#00D4AA']}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
             />
           }
         >

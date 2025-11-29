@@ -7,6 +7,7 @@ import com.rivalpicks.event.group.GroupInvitationEvent;
 import com.rivalpicks.event.group.GroupJoinRequestEvent;
 import com.rivalpicks.event.group.GroupMemberJoinedEvent;
 import com.rivalpicks.event.group.GroupMemberLeftEvent;
+import com.rivalpicks.event.group.GroupOwnershipTransferredEvent;
 import com.rivalpicks.event.group.GroupRoleChangedEvent;
 import com.rivalpicks.exception.group.GroupMembershipException;
 import com.rivalpicks.repository.group.GroupMembershipRepository;
@@ -965,6 +966,35 @@ public class GroupMembershipService {
 
         logger.info("Group ownership transferred: groupId={}, from={}, to={}",
             group.getId(), currentOwner.getUsername(), newOwner.getUsername());
+
+        // Publish ownership transfer event
+        publishOwnershipTransferredEvent(currentOwner, newOwner, group);
+    }
+
+    /**
+     * Publishes a GroupOwnershipTransferredEvent to notify relevant users
+     */
+    private void publishOwnershipTransferredEvent(@NotNull User previousOwner, @NotNull User newOwner, @NotNull Group group) {
+        String previousOwnerName = previousOwner.getFirstName() != null && !previousOwner.getFirstName().isEmpty()
+            ? previousOwner.getFirstName() + " " + (previousOwner.getLastName() != null ? previousOwner.getLastName() : "")
+            : previousOwner.getUsername();
+
+        String newOwnerName = newOwner.getFirstName() != null && !newOwner.getFirstName().isEmpty()
+            ? newOwner.getFirstName() + " " + (newOwner.getLastName() != null ? newOwner.getLastName() : "")
+            : newOwner.getUsername();
+
+        GroupOwnershipTransferredEvent event = new GroupOwnershipTransferredEvent(
+            group.getId(),
+            group.getGroupName(),
+            previousOwner.getId(),
+            previousOwnerName.trim(),
+            newOwner.getId(),
+            newOwnerName.trim()
+        );
+
+        eventPublisher.publishEvent(event);
+        logger.info("Published GroupOwnershipTransferredEvent for group {} (from {} to {})",
+                    group.getGroupName(), previousOwner.getUsername(), newOwner.getUsername());
     }
 
 }

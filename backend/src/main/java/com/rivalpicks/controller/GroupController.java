@@ -520,7 +520,7 @@ public class GroupController {
         response.setUsername(user.getUsername());
         response.setDisplayName(user.getFullName()); // Use getFullName() to avoid lazy loading settings
         response.setEmail(user.getEmail());
-        response.setProfilePictureUrl(user.getProfileImageUrl());
+        response.setProfileImageUrl(user.getProfileImageUrl());
         response.setRole(membership.getRole());
         response.setIsActive(membership.getIsActive());
         response.setJoinedAt(membership.getJoinedAt());

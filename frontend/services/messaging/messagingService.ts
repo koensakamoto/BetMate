@@ -1,4 +1,5 @@
 import { BaseApiService } from '../api/baseService';
+import { parseBackendDate } from '../../utils/dateUtils';
 import {
   MessageResponse,
   MessageThreadResponse,
@@ -198,15 +199,102 @@ export class MessagingService extends BaseApiService {
   formatMessageTime(timestamp: string): string {
     const date = new Date(timestamp);
     const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diffInHours < 1) {
-      const minutes = Math.floor(diffInHours * 60);
-      return minutes < 1 ? 'Just now' : `${minutes}m ago`;
-    } else if (diffInHours < 24) {
-      return `${Math.floor(diffInHours)}h ago`;
-    } else {
-      return date.toLocaleDateString();
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    return date.toLocaleDateString();
+  }
+
+  /**
+   * Format message timestamp as actual time (e.g., "2:34 PM")
+   */
+  formatMessageTimeActual(timestamp: string): string {
+    try {
+      const date = parseBackendDate(timestamp);
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return '';
+    }
+  }
+
+  /**
+   * Format date for separator display (e.g., "Today", "Yesterday", or "Nov 25")
+   */
+  formatDateSeparator(timestamp: string): string {
+    try {
+      const date = parseBackendDate(timestamp);
+      const now = new Date();
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      if (date.toDateString() === now.toDateString()) {
+        return 'Today';
+      } else if (date.toDateString() === yesterday.toDateString()) {
+        return 'Yesterday';
+      } else {
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        });
+      }
+    } catch (error) {
+      console.error('Error formatting date separator:', error);
+      return '';
+    }
+  }
+
+  /**
+   * Check if date separator should be shown between messages
+   * Returns true if date changed or time gap exceeds threshold
+   */
+  shouldShowDateSeparator(
+    currentTimestamp: string,
+    previousTimestamp: string | null,
+    gapMinutes: number = 30
+  ): boolean {
+    if (!previousTimestamp) return true; // First message always gets separator
+
+    try {
+      const current = parseBackendDate(currentTimestamp);
+      const previous = parseBackendDate(previousTimestamp);
+
+      // Different day
+      if (current.toDateString() !== previous.toDateString()) {
+        return true;
+      }
+
+      // Same day but large time gap
+      const diffMinutes = Math.abs(current.getTime() - previous.getTime()) / (1000 * 60);
+      return diffMinutes >= gapMinutes;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Check if message sequence should break (different time gap threshold)
+   */
+  shouldBreakMessageSequence(
+    currentTimestamp: string,
+    previousTimestamp: string,
+    gapMinutes: number = 5
+  ): boolean {
+    try {
+      const current = parseBackendDate(currentTimestamp);
+      const previous = parseBackendDate(previousTimestamp);
+      const diffMinutes = Math.abs(current.getTime() - previous.getTime()) / (1000 * 60);
+      return diffMinutes >= gapMinutes;
+    } catch (error) {
+      return false;
     }
   }
 

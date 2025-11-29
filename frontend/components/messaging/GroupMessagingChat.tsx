@@ -22,6 +22,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
 import TypingIndicator from './TypingIndicator';
+import DateSeparator from './DateSeparator';
 
 interface GroupMessagingChatProps {
   groupId: number;
@@ -458,19 +459,38 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   // ==========================================
 
   const renderMessage = ({ item, index }: { item: MessageResponse; index: number }) => {
-    const isLastInSequence = index === messages.length - 1 ||
-      messages[index + 1]?.senderUsername !== item.senderUsername;
+    // Note: FlatList is inverted, so index 0 is newest (bottom of screen)
+    // "Above" visually = index + 1 in array (older message)
+    const messageAbove = index < messages.length - 1 ? messages[index + 1] : null;
 
+    // First in sequence if: no message above, different sender, or 5+ min time gap
+    const isFirstInSequence = !messageAbove ||
+      messageAbove.senderUsername !== item.senderUsername ||
+      messagingService.shouldBreakMessageSequence(item.createdAt, messageAbove.createdAt);
+
+    // Show date separator when date changes or 30+ min gap from message above
+    const showDateSeparator = messagingService.shouldShowDateSeparator(
+      item.createdAt,
+      messageAbove?.createdAt || null
+    );
+
+    const dateSeparatorText = showDateSeparator
+      ? messagingService.formatDateSeparator(item.createdAt)
+      : '';
 
     return (
-      <MessageBubble
-        message={item}
-        currentUsername={effectiveUsername}
-        onReply={handleReply}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        isLastInSequence={isLastInSequence}
-      />
+      <>
+        <MessageBubble
+          message={item}
+          currentUsername={effectiveUsername}
+          onReply={handleReply}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          isFirstInSequence={isFirstInSequence}
+        />
+        {/* Date separator appears ABOVE the message visually (rendered after due to inversion) */}
+        {showDateSeparator && <DateSeparator date={dateSeparatorText} />}
+      </>
     );
   };
 

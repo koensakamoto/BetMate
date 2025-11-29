@@ -415,7 +415,20 @@ public class BetParticipationService {
     private void resolveParticipation(BetParticipation participation, Bet bet, Bet.BetOutcome outcome) {
         User user = participation.getUser();
 
-        if (participation.isWinner()) {
+        // Handle DRAW outcome - nobody wins or loses, refund stakes
+        if (outcome == Bet.BetOutcome.DRAW) {
+            participation.setStatus(BetParticipation.ParticipationStatus.DRAW);
+            participation.setActualWinnings(participation.getBetAmount()); // Get stake back
+            participation.setSettledAt(java.time.LocalDateTime.now());
+
+            // Refund stake to user (only for CREDIT bets)
+            if (bet.getStakeType() == BetStakeType.CREDIT) {
+                creditService.addCredits(user.getId(), participation.getBetAmount(),
+                    "Draw refund: " + bet.getTitle());
+            }
+
+            // Don't record win or loss for draws - it's neutral
+        } else if (participation.isWinner()) {
             // Calculate winnings based on final pool distribution
             BigDecimal winnings = calculateWinnings(participation, bet);
             participation.settle(winnings);

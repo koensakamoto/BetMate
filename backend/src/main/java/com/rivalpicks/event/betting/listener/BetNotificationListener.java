@@ -346,14 +346,17 @@ public class BetNotificationListener {
                         continue;
                     }
 
-                    // Create notification title and message
-                    String title = event.getHoursUntilDeadline() == 1
-                        ? "Urgent: Bet Resolution Needed in 1 Hour"
+                    // Create notification title and message with accurate time
+                    String timeString = formatDeadlineTime(event.getMinutesUntilDeadline());
+                    boolean isUrgent = event.isUrgent();
+
+                    String title = isUrgent
+                        ? "Urgent: Bet Resolution Needed in " + timeString
                         : "Bet Resolution Reminder: " + event.getBetTitle();
 
-                    String message = event.getHoursUntilDeadline() == 1
-                        ? "The bet '" + event.getBetTitle() + "' needs to be resolved within 1 hour. Please resolve it as soon as possible."
-                        : "The bet '" + event.getBetTitle() + "' needs to be resolved in 24 hours. Don't forget to resolve it before the deadline.";
+                    String message = isUrgent
+                        ? "The bet '" + event.getBetTitle() + "' needs to be resolved within " + timeString + ". Please resolve it as soon as possible."
+                        : "The bet '" + event.getBetTitle() + "' needs to be resolved in " + timeString + ". Don't forget to resolve it before the deadline.";
 
                     String actionUrl = "/bets/" + event.getBetId();
 
@@ -448,14 +451,16 @@ public class BetNotificationListener {
                 }
 
                 try {
-                    // Create notification title and message
+                    // Create notification title and message with accurate time
+                    String timeString = formatDeadlineTime(event.getMinutesRemaining());
+
                     String title = event.isUrgent()
-                        ? "Last Call: Bet Closing in 1 Hour"
+                        ? "Last Call: Bet Closing in " + timeString
                         : "Bet Closing Soon in " + event.getGroupName();
 
                     String message = event.isUrgent()
-                        ? "The bet '" + event.getBetTitle() + "' closes in 1 hour. Place your bet before it's too late!"
-                        : "The bet '" + event.getBetTitle() + "' closes in 24 hours. Don't miss your chance to participate!";
+                        ? "The bet '" + event.getBetTitle() + "' closes in " + timeString + ". Place your bet before it's too late!"
+                        : "The bet '" + event.getBetTitle() + "' closes in " + timeString + ". Don't miss your chance to participate!";
 
                     String actionUrl = "/bets/" + event.getBetId();
 
@@ -621,13 +626,16 @@ public class BetNotificationListener {
             logger.info("Processing BET_RESOLVED event for bet ID: {} in group: {}",
                        event.getBetId(), event.getGroupName());
 
-            // Get all participant IDs (winners + losers)
+            // Get all participant IDs (winners + losers + draws)
             List<Long> allParticipantIds = new java.util.ArrayList<>();
             if (event.getWinnerIds() != null) {
                 allParticipantIds.addAll(event.getWinnerIds());
             }
             if (event.getLoserIds() != null) {
                 allParticipantIds.addAll(event.getLoserIds());
+            }
+            if (event.getDrawIds() != null) {
+                allParticipantIds.addAll(event.getDrawIds());
             }
 
             if (allParticipantIds.isEmpty()) {
@@ -663,8 +671,9 @@ public class BetNotificationListener {
                         continue;
                     }
 
-                    // Determine if this user won or lost
+                    // Determine if this user won, lost, or drew
                     boolean isWinner = event.isWinner(userId);
+                    boolean isDraw = event.isDraw(userId);
 
                     // Create personalized notification title and message
                     String title;
@@ -677,11 +686,17 @@ public class BetNotificationListener {
                         message = "Congratulations! You won the bet '" + event.getBetTitle() +
                                 "' in " + event.getGroupName() + ".";
                         priority = NotificationPriority.HIGH;
+                    } else if (isDraw) {
+                        // Draw notification - informational message with NORMAL priority
+                        title = "It's a Draw: " + event.getBetTitle();
+                        message = "The bet '" + event.getBetTitle() + "' ended in a draw in " +
+                                event.getGroupName() + ". Your stake has been returned.";
+                        priority = NotificationPriority.NORMAL;
                     } else {
                         // Loser notification - informational message with NORMAL priority
-                        title = "Bet Resolved: " + event.getBetTitle();
-                        message = "The bet '" + event.getBetTitle() + "' has been resolved in " +
-                                event.getGroupName() + ".";
+                        title = "You Lost: " + event.getBetTitle();
+                        message = "You lost the bet '" + event.getBetTitle() + "' in " +
+                                event.getGroupName() + ". Better luck next time!";
                         priority = NotificationPriority.NORMAL;
                     }
 
@@ -714,8 +729,8 @@ public class BetNotificationListener {
                     pushNotificationService.sendPushNotification(participant, notification);
 
                     notificationsCreated++;
-                    logger.debug("Created BET_RESULT notification for user: {} (winner: {})",
-                               participant.getUsername(), isWinner);
+                    logger.debug("Created BET_RESULT notification for user: {} (winner: {}, draw: {})",
+                               participant.getUsername(), isWinner, isDraw);
 
                 } catch (Exception e) {
                     // Log error for individual notification but continue processing others
@@ -763,6 +778,32 @@ public class BetNotificationListener {
                 return "Closes in " + days + " day" + (days == 1 ? "" : "s") + " " + remainingHours + "h.";
             }
             return "Closes in " + days + " day" + (days == 1 ? "" : "s") + ".";
+        }
+    }
+
+    /**
+     * Formats a duration in minutes to a human-readable string using smooth buckets.
+     * Examples: "about 5 minutes", "about 30 minutes", "about 1 hour", "about 2 hours"
+     *
+     * @param minutes The number of minutes until the deadline
+     * @return A formatted string like "about 5 minutes" or "about 1 hour"
+     */
+    private String formatDeadlineTime(long minutes) {
+        if (minutes <= 0) {
+            return "now";
+        } else if (minutes < 10) {
+            return "about 5 minutes";
+        } else if (minutes < 20) {
+            return "about 15 minutes";
+        } else if (minutes < 45) {
+            return "about 30 minutes";
+        } else if (minutes < 90) {
+            return "about 1 hour";
+        } else if (minutes < 150) {
+            return "about 2 hours";
+        } else {
+            long hours = Math.round(minutes / 60.0);
+            return "about " + hours + " hours";
         }
     }
 }

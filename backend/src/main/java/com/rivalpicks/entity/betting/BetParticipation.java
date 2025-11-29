@@ -280,6 +280,24 @@ public class BetParticipation {
     }
 
     /**
+     * Checks if this participation is a draw (neither won nor lost).
+     *
+     * @return true if the participation status is DRAW
+     */
+    public boolean isDraw() {
+        return status == ParticipationStatus.DRAW;
+    }
+
+    /**
+     * Checks if this participation is a losing bet.
+     *
+     * @return true if the participation status is LOST
+     */
+    public boolean isLoser() {
+        return status == ParticipationStatus.LOST;
+    }
+
+    /**
      * Checks if this participation has been settled.
      * 
      * @return true if participation has been processed after bet resolution

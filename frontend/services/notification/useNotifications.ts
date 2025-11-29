@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { notificationService } from './notificationService';
 import {
   NotificationResponse,
@@ -72,6 +72,10 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
   const [stats, setStats] = useState(globalCache.stats);
   const [, forceUpdate] = useState({});
 
+  // Request deduplication refs to prevent concurrent API calls
+  const pendingLoadRequest = useRef<Promise<void> | null>(null);
+  const pendingCountRequest = useRef<Promise<number> | null>(null);
+
   // Get current cache key
   const cacheKey = unreadOnly ? 'unread' : 'all';
 
@@ -90,57 +94,73 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
       return;
     }
 
-    try {
-      if (!silent) {
-        setLoading(true);
+    // Request deduplication: if there's already a pending request, return it
+    if (pendingLoadRequest.current && page === 0 && reset) {
+      return pendingLoadRequest.current;
+    }
+
+    const doLoad = async () => {
+      try {
+        if (!silent) {
+          setLoading(true);
+        }
+        setError(null);
+
+        const response = await notificationService.getNotifications({
+          page,
+          size: pageSize,
+          unreadOnly
+        });
+
+        let content = response?.content || [];
+
+        content = content.filter(notification =>
+          notification &&
+          notification.id &&
+          (notification.title || notification.message || notification.content)
+        );
+
+        const isLast = response?.last !== false;
+
+        if (reset) {
+          globalCache[cacheKey] = {
+            notifications: content,
+            hasMore: !isLast,
+            currentPage: page,
+            loaded: true,
+            lastFetched: Date.now()
+          };
+        } else {
+          const existingIds = new Set(cache.notifications.map(n => n.id));
+          const newNotifications = content.filter(n => !existingIds.has(n.id));
+          globalCache[cacheKey] = {
+            notifications: [...cache.notifications, ...newNotifications],
+            hasMore: !isLast,
+            currentPage: page,
+            loaded: true,
+            lastFetched: Date.now()
+          };
+        }
+
+        forceUpdate({});
+
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load notifications');
+        console.error('Error loading notifications:', err);
+      } finally {
+        if (!silent) {
+          setLoading(false);
+        }
+        pendingLoadRequest.current = null;
       }
-      setError(null);
+    };
 
-      const response = await notificationService.getNotifications({
-        page,
-        size: pageSize,
-        unreadOnly
-      });
-
-      let content = response?.content || [];
-
-      content = content.filter(notification =>
-        notification &&
-        notification.id &&
-        (notification.title || notification.message || notification.content)
-      );
-
-      const isLast = response?.last !== false;
-
-      if (reset) {
-        globalCache[cacheKey] = {
-          notifications: content,
-          hasMore: !isLast,
-          currentPage: page,
-          loaded: true,
-          lastFetched: Date.now()
-        };
-      } else {
-        const existingIds = new Set(cache.notifications.map(n => n.id));
-        const newNotifications = content.filter(n => !existingIds.has(n.id));
-        globalCache[cacheKey] = {
-          notifications: [...cache.notifications, ...newNotifications],
-          hasMore: !isLast,
-          currentPage: page,
-          loaded: true,
-          lastFetched: Date.now()
-        };
-      }
-
-      forceUpdate({});
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load notifications');
-      console.error('Error loading notifications:', err);
-    } finally {
-      if (!silent) {
-        setLoading(false);
-      }
+    // Only deduplicate initial page loads with reset
+    if (page === 0 && reset) {
+      pendingLoadRequest.current = doLoad();
+      return pendingLoadRequest.current;
+    } else {
+      return doLoad();
     }
   }, [pageSize, unreadOnly, cacheKey, isCacheStale]);
 
@@ -164,17 +184,29 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
     }
   }, [loadNotifications]);
 
-  // Load unread count
+  // Load unread count with request deduplication
   const loadUnreadCount = useCallback(async () => {
-    try {
-      const count = await notificationService.getUnreadCount();
-      globalCache.unreadCount = count || 0;
-      setUnreadCount(count || 0);
-      return count || 0;
-    } catch (err) {
-      console.error('Error loading unread count:', err);
-      return globalCache.unreadCount;
+    // Return existing request if one is pending
+    if (pendingCountRequest.current) {
+      return pendingCountRequest.current;
     }
+
+    const doFetch = async () => {
+      try {
+        const count = await notificationService.getUnreadCount();
+        globalCache.unreadCount = count || 0;
+        setUnreadCount(count || 0);
+        return count || 0;
+      } catch (err) {
+        console.error('Error loading unread count:', err);
+        return globalCache.unreadCount;
+      } finally {
+        pendingCountRequest.current = null;
+      }
+    };
+
+    pendingCountRequest.current = doFetch();
+    return pendingCountRequest.current;
   }, []);
 
   // Load stats
@@ -274,20 +306,14 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
     setUnreadOnlyState(newUnreadOnly);
   }, []);
 
-  // On mount: show cached data, check staleness in background
+  // On mount: always fetch fresh data to ensure user sees all notifications
   useEffect(() => {
     if (!enabled) return;
 
-    const cache = globalCache[cacheKey];
-
-    if (!cache.loaded) {
-      // First load - fetch with loading state
-      loadNotifications(0, true);
-    } else {
-      // Have cache - check staleness in background
-      checkAndRefreshIfStale();
-    }
-  }, [enabled, cacheKey, loadNotifications, checkAndRefreshIfStale]);
+    // Always force a fresh fetch when the component mounts
+    // This ensures the user sees up-to-date data when opening inbox
+    loadNotifications(0, true, true);
+  }, [enabled, cacheKey]); // Intentionally exclude loadNotifications to run only on mount/filter change
 
   // Initial load of unread count and stats (once)
   useEffect(() => {

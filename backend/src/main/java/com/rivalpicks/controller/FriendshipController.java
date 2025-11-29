@@ -343,13 +343,14 @@ public class FriendshipController {
         User currentUser = userService.getUserById(currentUserId);
         User otherUser = friendship.getOtherUser(currentUser);
 
-        return Map.of(
-            "friendshipId", friendship.getId(),
-            "status", friendship.getStatus().name(),
-            "createdAt", friendship.getCreatedAt(),
-            "acceptedAt", friendship.getAcceptedAt(),
-            "user", mapUserToSearchResult(otherUser),
-            "isRequester", friendship.isRequester(currentUser)
-        );
+        // Use HashMap instead of Map.of() to handle null values
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("friendshipId", friendship.getId());
+        result.put("status", friendship.getStatus().name());
+        result.put("createdAt", friendship.getCreatedAt());
+        result.put("acceptedAt", friendship.getAcceptedAt()); // Can be null for pending requests
+        result.put("user", mapUserToSearchResult(otherUser));
+        result.put("isRequester", friendship.isRequester(currentUser));
+        return result;
     }
 }

@@ -83,6 +83,25 @@ export function formatDateForBackend(date: Date): string {
 }
 
 /**
+ * Formats a date as relative time ago in short format (e.g., "3h ago", "2d ago").
+ * This is the standard format for displaying "time ago" across the app.
+ *
+ * @param dateString - ISO format date string or Date object
+ * @returns Formatted string like "3h ago", "2d ago", "5m ago"
+ */
+export function formatTimeAgo(dateString: string | Date): string {
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  return `${Math.floor(diffInSeconds / 604800)}w ago`;
+}
+
+/**
  * Calculates time remaining from now until a future date.
  *
  * @param dateString - ISO format date string from backend

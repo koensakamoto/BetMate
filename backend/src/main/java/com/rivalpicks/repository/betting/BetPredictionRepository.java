@@ -5,6 +5,7 @@ import com.rivalpicks.entity.betting.BetParticipation;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -20,6 +21,14 @@ public interface BetPredictionRepository extends JpaRepository<BetPrediction, Lo
      * @return optional prediction
      */
     Optional<BetPrediction> findByParticipation(BetParticipation participation);
+
+    /**
+     * Finds all predictions for a list of participations.
+     *
+     * @param participations the list of bet participations
+     * @return list of predictions
+     */
+    List<BetPrediction> findByParticipationIn(List<BetParticipation> participations);
 
     /**
      * Checks if a prediction exists for a participation.

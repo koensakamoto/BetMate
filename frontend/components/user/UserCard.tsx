@@ -40,7 +40,7 @@ function UserCard({
   const handleUserPress = useCallback(() => {
     haptic.light(); // Light haptic on card press
     // Navigate to user profile page
-    router.push(`/profile/${id}`);
+    router.push(`/(app)/profile/${id}`);
   }, [id]);
 
   const handleFriendPress = useCallback(() => {

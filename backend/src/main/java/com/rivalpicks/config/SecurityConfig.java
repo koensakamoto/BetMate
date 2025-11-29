@@ -51,7 +51,9 @@ public class SecurityConfig {
     private static final String[] PUBLIC_USER_ENDPOINTS = {
         "/api/users/register",
         "/api/users/availability/**",
-        "/api/users/availability/validate"
+        "/api/users/availability/validate",
+        "/api/users/profile/email/confirm",   // Email change confirmation (token is auth)
+        "/api/users/profile/email/validate"   // Email change token validation
     };
     
     private static final String[] PUBLIC_HEALTH_ENDPOINTS = {

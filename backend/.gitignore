@@ -36,6 +36,9 @@ build/
 logs/
 *.log
 application-local.yml
+.env
+.env.*
+!.env.example
 
 ### Firebase ###
 firebase-service-account.json

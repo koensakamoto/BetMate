@@ -24,7 +24,10 @@ import com.rivalpicks.service.bet.BetResolutionService;
 import com.rivalpicks.service.bet.BetFulfillmentService;
 import com.rivalpicks.service.bet.InsuranceService;
 import com.rivalpicks.entity.betting.BetParticipation;
+import com.rivalpicks.entity.betting.BetPrediction;
 import com.rivalpicks.entity.betting.BetResolver;
+import com.rivalpicks.entity.betting.BetResolutionVote;
+import com.rivalpicks.repository.betting.BetPredictionRepository;
 import com.rivalpicks.repository.betting.BetResolverRepository;
 import com.rivalpicks.service.group.GroupService;
 import com.rivalpicks.service.group.GroupMembershipService;
@@ -32,6 +35,7 @@ import com.rivalpicks.service.user.UserService;
 import com.rivalpicks.service.FileStorageService;
 import com.rivalpicks.repository.betting.LoserFulfillmentClaimRepository;
 import com.rivalpicks.repository.betting.BetResolutionVoteRepository;
+import com.rivalpicks.repository.betting.BetResolutionVoteWinnerRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -47,6 +51,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -72,6 +77,8 @@ public class BetController {
     private final LoserFulfillmentClaimRepository loserFulfillmentClaimRepository;
     private final BetResolutionVoteRepository betResolutionVoteRepository;
     private final BetResolverRepository betResolverRepository;
+    private final BetPredictionRepository betPredictionRepository;
+    private final BetResolutionVoteWinnerRepository betResolutionVoteWinnerRepository;
 
     @Autowired
     public BetController(BetService betService,
@@ -86,7 +93,9 @@ public class BetController {
                         FileStorageService fileStorageService,
                         LoserFulfillmentClaimRepository loserFulfillmentClaimRepository,
                         BetResolutionVoteRepository betResolutionVoteRepository,
-                        BetResolverRepository betResolverRepository) {
+                        BetResolverRepository betResolverRepository,
+                        BetPredictionRepository betPredictionRepository,
+                        BetResolutionVoteWinnerRepository betResolutionVoteWinnerRepository) {
         this.betService = betService;
         this.betCreationService = betCreationService;
         this.betParticipationService = betParticipationService;
@@ -100,6 +109,8 @@ public class BetController {
         this.loserFulfillmentClaimRepository = loserFulfillmentClaimRepository;
         this.betResolutionVoteRepository = betResolutionVoteRepository;
         this.betResolverRepository = betResolverRepository;
+        this.betPredictionRepository = betPredictionRepository;
+        this.betResolutionVoteWinnerRepository = betResolutionVoteWinnerRepository;
     }
 
     /**
@@ -430,6 +441,10 @@ public class BetController {
 
     /**
      * Vote on bet resolution (for consensus voting).
+     *
+     * Supports two vote types:
+     * 1. Outcome-based (BINARY/MULTIPLE_CHOICE): Pass 'outcome' field
+     * 2. Winner-based (PREDICTION): Pass 'winnerUserIds' field
      */
     @PostMapping("/{betId}/vote")
     public ResponseEntity<BetResponseDto> voteOnResolution(
@@ -441,19 +456,36 @@ public class BetController {
             User currentUser = userService.getUserByUsername(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-            System.out.println("DEBUG: Voting on resolution - User: " + currentUser.getUsername() +
-                             ", BetId: " + betId + ", Vote: " + request.getOutcome());
+            // Validate request has either outcome or winnerUserIds
+            if (!request.isValid()) {
+                throw new RuntimeException("Either outcome or winnerUserIds must be provided");
+            }
 
-            // Convert string outcome to BetOutcome enum
-            Bet.BetOutcome outcome = convertStringToOutcome(request.getOutcome());
+            if (request.isWinnerBasedVote()) {
+                // Winner-based voting for PREDICTION bets
+                System.out.println("DEBUG: Voting on prediction resolution - User: " + currentUser.getUsername() +
+                                 ", BetId: " + betId + ", Winners: " + request.getWinnerUserIds());
 
-            // Submit vote
-            betResolutionService.voteOnBetResolution(
-                betId,
-                currentUser,
-                outcome,
-                request.getReasoning()
-            );
+                betResolutionService.voteOnPredictionResolution(
+                    betId,
+                    currentUser,
+                    request.getWinnerUserIds(),
+                    request.getReasoning()
+                );
+            } else {
+                // Outcome-based voting for BINARY/MULTIPLE_CHOICE bets
+                System.out.println("DEBUG: Voting on resolution - User: " + currentUser.getUsername() +
+                                 ", BetId: " + betId + ", Vote: " + request.getOutcome());
+
+                Bet.BetOutcome outcome = convertStringToOutcome(request.getOutcome());
+
+                betResolutionService.voteOnBetResolution(
+                    betId,
+                    currentUser,
+                    outcome,
+                    request.getReasoning()
+                );
+            }
 
             // Get updated bet details
             Bet bet = betService.getBetById(betId);
@@ -540,12 +572,58 @@ public class BetController {
             // Get all participations for this bet
             List<BetParticipation> participations = betParticipationService.getBetParticipations(betId);
 
-            // Convert to DTOs
-            List<BetParticipationResponseDto> response = participations.stream()
+            // Filter participations (include DRAW status for three-state resolution)
+            List<BetParticipation> filteredParticipations = participations.stream()
                 .filter(p -> p.getStatus() == BetParticipation.ParticipationStatus.ACTIVE ||
                            p.getStatus() == BetParticipation.ParticipationStatus.WON ||
-                           p.getStatus() == BetParticipation.ParticipationStatus.LOST)
-                .map(p -> BetParticipationResponseDto.fromParticipation(p, bet))
+                           p.getStatus() == BetParticipation.ParticipationStatus.LOST ||
+                           p.getStatus() == BetParticipation.ParticipationStatus.DRAW)
+                .toList();
+
+            // For prediction bets, fetch all predictions and create a lookup map
+            Map<Long, String> predictionMap = Map.of();
+            if (bet.getBetType() == Bet.BetType.PREDICTION && !filteredParticipations.isEmpty()) {
+                List<BetPrediction> predictions = betPredictionRepository.findByParticipationIn(filteredParticipations);
+                predictionMap = predictions.stream()
+                    .collect(Collectors.toMap(
+                        p -> p.getParticipation().getId(),
+                        BetPrediction::getPredictedValue
+                    ));
+            }
+
+            // For resolved PREDICTION bets, get vote counts for transparency
+            Map<Long, Long> voteCountMap = Map.of();
+            int totalVoters = 0;
+            if (bet.getBetType() == Bet.BetType.PREDICTION && bet.getStatus() == Bet.BetStatus.RESOLVED) {
+                List<Object[]> voteDistribution = betResolutionVoteWinnerRepository.getWinnerVoteDistributionForBet(bet);
+                voteCountMap = voteDistribution.stream()
+                    .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> ((Number) row[1]).longValue()
+                    ));
+                Long totalVotersLong = betResolutionVoteWinnerRepository.countVotesWithWinnerSelectionsForBet(bet);
+                totalVoters = totalVotersLong != null ? totalVotersLong.intValue() : 0;
+            }
+
+            // Convert to DTOs with predictions and vote counts
+            final Map<Long, String> finalPredictionMap = predictionMap;
+            final Map<Long, Long> finalVoteCountMap = voteCountMap;
+            final int finalTotalVoters = totalVoters;
+            List<BetParticipationResponseDto> response = filteredParticipations.stream()
+                .map(p -> {
+                    BetParticipationResponseDto dto = BetParticipationResponseDto.fromParticipation(
+                        p,
+                        bet,
+                        finalPredictionMap.get(p.getId())
+                    );
+                    // Add vote counts for resolved PREDICTION bets
+                    if (bet.getBetType() == Bet.BetType.PREDICTION && bet.getStatus() == Bet.BetStatus.RESOLVED) {
+                        Long votesReceived = finalVoteCountMap.getOrDefault(p.getUser().getId(), 0L);
+                        dto.setVotesReceived(votesReceived.intValue());
+                        dto.setTotalVoters(finalTotalVoters);
+                    }
+                    return dto;
+                })
                 .toList();
 
             return ResponseEntity.ok(response);
@@ -665,7 +743,8 @@ public class BetController {
                 });
         }
 
-        response.setCanUserResolve(bet.getCreator().getId().equals(currentUser.getId()));
+        // Check if user can resolve/vote using the resolution service
+        response.setCanUserResolve(betResolutionService.canUserResolveBet(bet.getId(), currentUser));
 
         // Check if user has already voted on resolution (for PARTICIPANT_VOTE bets)
         boolean hasVoted = betResolutionVoteRepository.existsByBetAndVoterAndIsActiveTrue(bet, currentUser);
@@ -692,6 +771,12 @@ public class BetController {
         // Populate resolvers list based on method
         List<ResolverInfoDto> resolvers = new ArrayList<>();
 
+        // Pre-fetch all votes for this bet in ONE query to avoid N+1
+        Map<Long, BetResolutionVote> votesByVoterId = bet.getStatus() != Bet.BetStatus.OPEN
+            ? betResolutionVoteRepository.findByBetAndIsActiveTrue(bet).stream()
+                .collect(Collectors.toMap(v -> v.getVoter().getId(), v -> v, (a, b) -> a))
+            : Map.of();
+
         switch (bet.getResolutionMethod()) {
             case SELF -> {
                 // Creator is the sole resolver
@@ -702,41 +787,31 @@ public class BetController {
                 List<BetResolver> activeResolvers = betResolverRepository.findByBetAndIsActiveTrue(bet);
                 for (BetResolver resolver : activeResolvers) {
                     ResolverInfoDto dto = ResolverInfoDto.fromBetResolver(resolver);
-                    // Add vote status for CLOSED/RESOLVED bets
+                    // Add vote status and details for CLOSED/RESOLVED bets
                     if (bet.getStatus() != Bet.BetStatus.OPEN) {
-                        boolean hasVoted = betResolutionVoteRepository
-                            .existsByBetAndVoterAndIsActiveTrue(bet, resolver.getResolver());
-                        dto.setHasVoted(hasVoted);
+                        BetResolutionVote vote = votesByVoterId.get(resolver.getResolver().getId());
+                        dto.setHasVoted(vote != null);
+                        if (vote != null) {
+                            // For MCQ bets: get the option text they voted for
+                            if (bet.getBetType() == Bet.BetType.MULTIPLE_CHOICE && vote.getVotedOutcome() != null) {
+                                String optionText = switch (vote.getVotedOutcome()) {
+                                    case OPTION_1 -> bet.getOption1();
+                                    case OPTION_2 -> bet.getOption2();
+                                    case OPTION_3 -> bet.getOption3();
+                                    case OPTION_4 -> bet.getOption4();
+                                    default -> null;
+                                };
+                                dto.setVotedOutcome(optionText);
+                            }
+                            // For Prediction bets: get the winner user IDs they voted for
+                            if (bet.getBetType() == Bet.BetType.PREDICTION && vote.hasWinnerVotes()) {
+                                dto.setVotedWinnerUserIds(vote.getWinnerUserIds());
+                            }
+                        }
                     }
                     resolvers.add(dto);
                 }
 
-                // Set voting progress for CLOSED/RESOLVED bets
-                if (bet.getStatus() != Bet.BetStatus.OPEN) {
-                    VotingProgressDto votingProgress = new VotingProgressDto();
-                    long totalResolvers = betResolverRepository.countActiveResolversByBet(bet);
-                    long votesSubmitted = betResolutionVoteRepository.countActiveVotesByBet(bet);
-                    votingProgress.setTotalResolvers((int) totalResolvers);
-                    votingProgress.setVotesSubmitted((int) votesSubmitted);
-
-                    // Show vote distribution after resolution
-                    if (bet.getStatus() == Bet.BetStatus.RESOLVED) {
-                        try {
-                            var voteCounts = betResolutionService.getVoteCounts(bet.getId());
-                            votingProgress.setVoteDistribution(
-                                voteCounts.entrySet().stream()
-                                    .collect(java.util.stream.Collectors.toMap(
-                                        e -> e.getKey().name(),
-                                        java.util.Map.Entry::getValue
-                                    ))
-                            );
-                        } catch (Exception e) {
-                            // Ignore if vote counts can't be retrieved
-                        }
-                    }
-
-                    response.setVotingProgress(votingProgress);
-                }
             }
             case PARTICIPANT_VOTE -> {
                 // For OPEN bets, resolvers list is empty (participants become resolvers when joining)
@@ -745,42 +820,61 @@ public class BetController {
                     List<BetResolver> activeResolvers = betResolverRepository.findByBetAndIsActiveTrue(bet);
                     for (BetResolver resolver : activeResolvers) {
                         ResolverInfoDto dto = ResolverInfoDto.fromBetResolver(resolver);
-                        boolean voterHasVoted = betResolutionVoteRepository
-                            .existsByBetAndVoterAndIsActiveTrue(bet, resolver.getResolver());
-                        dto.setHasVoted(voterHasVoted);
+                        BetResolutionVote vote = votesByVoterId.get(resolver.getResolver().getId());
+                        dto.setHasVoted(vote != null);
+                        if (vote != null) {
+                            // For MCQ bets: get the option text they voted for
+                            if (bet.getBetType() == Bet.BetType.MULTIPLE_CHOICE && vote.getVotedOutcome() != null) {
+                                String optionText = switch (vote.getVotedOutcome()) {
+                                    case OPTION_1 -> bet.getOption1();
+                                    case OPTION_2 -> bet.getOption2();
+                                    case OPTION_3 -> bet.getOption3();
+                                    case OPTION_4 -> bet.getOption4();
+                                    default -> null;
+                                };
+                                dto.setVotedOutcome(optionText);
+                            }
+                            // For Prediction bets: get the winner user IDs they voted for
+                            if (bet.getBetType() == Bet.BetType.PREDICTION && vote.hasWinnerVotes()) {
+                                dto.setVotedWinnerUserIds(vote.getWinnerUserIds());
+                            }
+                        }
                         resolvers.add(dto);
                     }
                 }
-
-                // Set voting progress for PARTICIPANT_VOTE bets
-                VotingProgressDto votingProgress = new VotingProgressDto();
-                long totalResolvers = betResolverRepository.countActiveResolversByBet(bet);
-                long votesSubmitted = betResolutionVoteRepository.countActiveVotesByBet(bet);
-                votingProgress.setTotalResolvers((int) totalResolvers);
-                votingProgress.setVotesSubmitted((int) votesSubmitted);
-
-                // Only show vote distribution after resolution
-                if (bet.getStatus() == Bet.BetStatus.RESOLVED) {
-                    // Get vote distribution from the resolution service
-                    try {
-                        var voteCounts = betResolutionService.getVoteCounts(bet.getId());
-                        votingProgress.setVoteDistribution(
-                            voteCounts.entrySet().stream()
-                                .collect(java.util.stream.Collectors.toMap(
-                                    e -> e.getKey().name(),
-                                    java.util.Map.Entry::getValue
-                                ))
-                        );
-                    } catch (Exception e) {
-                        // Ignore if vote counts can't be retrieved (e.g., bet not in voting mode)
-                    }
-                }
-
-                response.setVotingProgress(votingProgress);
             }
         }
 
         response.setResolvers(resolvers);
+
+        // Always set voting progress for CLOSED/RESOLVED bets - frontend decides based on totalResolvers > 1
+        if (bet.getStatus() != Bet.BetStatus.OPEN) {
+            VotingProgressDto votingProgress = new VotingProgressDto();
+            long totalResolvers = betResolverRepository.countActiveResolversByBet(bet);
+            long votesSubmitted = betResolutionVoteRepository.countActiveVotesByBet(bet);
+            votingProgress.setTotalResolvers((int) totalResolvers);
+            votingProgress.setVotesSubmitted((int) votesSubmitted);
+
+            // Always try to get vote distribution
+            try {
+                var voteCounts = betResolutionService.getVoteCounts(bet.getId());
+                System.out.println("DEBUG: Vote counts for bet " + bet.getId() + ": " + voteCounts);
+                if (voteCounts != null && !voteCounts.isEmpty()) {
+                    votingProgress.setVoteDistribution(
+                        voteCounts.entrySet().stream()
+                            .collect(java.util.stream.Collectors.toMap(
+                                e -> e.getKey().name(),
+                                java.util.Map.Entry::getValue
+                            ))
+                    );
+                }
+            } catch (Exception e) {
+                System.err.println("ERROR getting vote counts for bet " + bet.getId() + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+
+            response.setVotingProgress(votingProgress);
+        }
     }
 
     private BetSummaryResponseDto convertToSummaryResponse(Bet bet, User currentUser) {
@@ -828,6 +922,7 @@ public class BetController {
                     };
                     response.setUserChoice(userChoice);
                     response.setUserAmount(participation.getBetAmount());
+                    response.setUserParticipationStatus(participation.getStatus());
 
                     // Set insurance information if user has insurance on this bet
                     if (participation.hasInsurance()) {

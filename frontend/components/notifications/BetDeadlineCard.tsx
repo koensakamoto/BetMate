@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { formatDistanceToNow } from 'date-fns';
-import { parseBackendDate } from '../../utils/dateUtils';
+import { parseBackendDate, formatTimeAgo } from '../../utils/dateUtils';
 
 interface BetDeadlineCardProps {
   notification: {
@@ -90,7 +89,7 @@ export const BetDeadlineCard: React.FC<BetDeadlineCardProps> = ({ notification, 
 
   const betTitle = extractBetTitle(notification.message);
   const timeInfo = extractTimeInfo(notification.message, notification.title);
-  const timeAgo = formatDistanceToNow(parseBackendDate(notification.createdAt), { addSuffix: true });
+  const timeAgo = formatTimeAgo(parseBackendDate(notification.createdAt));
   const isResolution = isResolutionDeadline(notification.title, notification.message);
 
   return (
@@ -106,7 +105,7 @@ export const BetDeadlineCard: React.FC<BetDeadlineCardProps> = ({ notification, 
       <MaterialIcons
         name={isResolution ? "gavel" : "schedule"}
         size={16}
-        color={timeInfo.isUrgent ? '#FF4444' : '#FFB800'}
+        color="rgba(255, 255, 255, 0.6)"
         style={{ marginRight: 10 }}
       />
 
@@ -118,12 +117,7 @@ export const BetDeadlineCard: React.FC<BetDeadlineCardProps> = ({ notification, 
             {timeInfo.displayTitle}
           </Text>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={styles.timestamp}>{timeAgo}</Text>
-            {!notification.isRead && (
-              <View style={styles.unreadDot} />
-            )}
-          </View>
+          <Text style={styles.timestamp}>{timeAgo}</Text>
         </View>
 
         {/* Bet Title with Message */}
@@ -170,12 +164,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(255, 255, 255, 0.4)',
     fontWeight: '500',
-  },
-  unreadDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#00D4AA',
   },
   displayTitle: {
     fontSize: 14,

@@ -31,7 +31,7 @@ export const useAuthGuard = (redirectPath: string = '/auth/login') => {
  * Hook to redirect authenticated users away from auth pages
  * Useful for login/signup pages
  */
-export const useGuestGuard = (redirectPath: string = '/(tabs)') => {
+export const useGuestGuard = (redirectPath: string = '/(app)/(tabs)/group') => {
   const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {

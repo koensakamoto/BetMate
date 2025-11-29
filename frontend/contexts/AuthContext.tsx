@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { authService, UserProfileResponse } from '../services/auth/authService';
 import { ApiError } from '../services/api/baseClient';
 import { errorLog, debugLog } from '../config/env';
+import { getErrorMessage, hasResponse } from '../utils/errorUtils';
 
 // Updated User interface to match backend response
 export interface User {
@@ -131,33 +132,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuthStatus();
   }, []);
 
-  const clearError = () => {
+  const clearError = useCallback(() => {
     setError(null);
-  };
+  }, []);
 
-  const handleAuthError = (error: any): AuthError => {
+  const handleAuthError = useCallback((error: unknown): AuthError => {
     debugLog('Auth error:', error);
-    
+
     if (error instanceof ApiError) {
       return {
         message: error.message,
         statusCode: error.statusCode,
       };
     }
-    
-    if (error?.response?.data?.message) {
+
+    if (hasResponse(error) && error.response?.data?.message) {
       return {
         message: error.response.data.message,
         statusCode: error.response?.status,
       };
     }
-    
-    return {
-      message: error?.message || 'An unexpected error occurred',
-    };
-  };
 
-  const checkAuthStatus = async () => {
+    return {
+      message: getErrorMessage(error),
+    };
+  }, []);
+
+  const checkAuthStatus = useCallback(async () => {
     try {
       console.log(`🔍 [AuthContext] Starting auth status check...`);
       setIsLoading(true);
@@ -200,9 +201,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log(`🏁 [AuthContext] Auth check completed. Setting isLoading to false.`);
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const login = async (data: LoginData) => {
+  const login = useCallback(async (data: LoginData) => {
     console.log('🔐 [AuthContext] Login function called', { email: data.email });
     try {
       setIsLoading(true);
@@ -240,9 +241,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [handleAuthError]);
 
-  const signup = async (data: SignupData) => {
+  const signup = useCallback(async (data: SignupData) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -268,9 +269,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [handleAuthError]);
 
-  const loginWithGoogle = async (data: GoogleLoginData) => {
+  const loginWithGoogle = useCallback(async (data: GoogleLoginData) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -296,9 +297,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [handleAuthError]);
 
-  const loginWithApple = async (data: AppleLoginData) => {
+  const loginWithApple = useCallback(async (data: AppleLoginData) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -324,9 +325,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [handleAuthError]);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       setIsLoading(true);
       await authService.logout();
@@ -341,9 +342,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const forgotPassword = async (email: string) => {
+  const forgotPassword = useCallback(async (email: string) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -358,9 +359,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [handleAuthError]);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const userProfile = await authService.getCurrentUser();
       const transformedUser = transformUser(userProfile);
@@ -377,9 +378,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(null);
       }
     }
-  };
+  }, [handleAuthError]);
 
-  const changePassword = async (currentPassword: string, newPassword: string) => {
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -398,9 +399,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [handleAuthError]);
 
-  const value: AuthContextType = {
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  const value = useMemo<AuthContextType>(() => ({
     user,
     isLoading,
     error,
@@ -414,7 +416,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     clearError,
     refreshUser,
     changePassword,
-  };
+  }), [
+    user,
+    isLoading,
+    error,
+    isAuthenticated,
+    login,
+    loginWithGoogle,
+    loginWithApple,
+    signup,
+    logout,
+    forgotPassword,
+    clearError,
+    refreshUser,
+    changePassword,
+  ]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -54,6 +54,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Note: /api/auth/me and /api/auth/change-password require authentication and are NOT in this list
         "/api/users/register",
         "/api/users/availability/**",
+        "/api/users/profile/email/confirm",   // Email change confirmation (token is auth)
+        "/api/users/profile/email/validate",  // Email change token validation
         "/api/files/**",
         "/actuator/health",
         "/actuator/info",

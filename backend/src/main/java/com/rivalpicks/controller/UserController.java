@@ -289,7 +289,7 @@ public class UserController {
                 visibility = ProfileVisibility.valueOf(visibilityStr.toUpperCase());
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(java.util.Map.of(
-                    "error", "Invalid visibility. Must be one of: PUBLIC, FRIENDS, PRIVATE"));
+                    "error", "Invalid visibility. Must be one of: PUBLIC, PRIVATE"));
             }
 
             ProfileVisibility updated = userService.updateProfileVisibility(userPrincipal.getUserId(), visibility);
@@ -472,17 +472,14 @@ public class UserController {
                 case PUBLIC:
                     return ResponseEntity.ok(UserProfileResponseDto.fromUser(user));
 
-                case FRIENDS:
+                case PRIVATE:
+                default:
+                    // PRIVATE means friends-only: friends can see full profile
                     if (viewerId != null && friendshipService.areFriends(viewerId, id)) {
                         return ResponseEntity.ok(UserProfileResponseDto.fromUser(user));
                     }
                     return ResponseEntity.ok(LimitedUserProfileResponseDto.fromUser(user,
-                        "This profile is only visible to friends"));
-
-                case PRIVATE:
-                default:
-                    return ResponseEntity.ok(LimitedUserProfileResponseDto.fromUser(user,
-                        "This profile is private"));
+                        "Add as friend to view full profile"));
             }
         } catch (com.rivalpicks.exception.user.UserNotFoundException e) {
             return ResponseEntity.notFound().build();

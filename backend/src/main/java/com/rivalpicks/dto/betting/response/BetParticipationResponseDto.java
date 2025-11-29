@@ -30,6 +30,10 @@ public class BetParticipationResponseDto {
     private BetParticipation.ParticipationStatus status;
     private LocalDateTime createdAt;
 
+    // Vote counts for PREDICTION bets (for transparency on resolution)
+    private Integer votesReceived;
+    private Integer totalVoters;
+
     // Constructors
     public BetParticipationResponseDto() {}
 
@@ -130,29 +134,55 @@ public class BetParticipationResponseDto {
         this.createdAt = createdAt;
     }
 
+    public Integer getVotesReceived() {
+        return votesReceived;
+    }
+
+    public void setVotesReceived(Integer votesReceived) {
+        this.votesReceived = votesReceived;
+    }
+
+    public Integer getTotalVoters() {
+        return totalVoters;
+    }
+
+    public void setTotalVoters(Integer totalVoters) {
+        this.totalVoters = totalVoters;
+    }
+
     // Helper method to convert from entity
     public static BetParticipationResponseDto fromParticipation(BetParticipation participation, Bet bet) {
+        return fromParticipation(participation, bet, null);
+    }
+
+    // Helper method to convert from entity with predicted value
+    public static BetParticipationResponseDto fromParticipation(BetParticipation participation, Bet bet, String predictedValue) {
         BetParticipationResponseDto dto = new BetParticipationResponseDto();
 
         dto.setParticipationId(participation.getId());
         dto.setUserId(participation.getUser().getId());
         dto.setUsername(participation.getUser().getUsername());
         dto.setDisplayName(participation.getUser().getDisplayName());
-        // User entity doesn't have profileImageUrl yet
-        dto.setProfileImageUrl(null);
+        dto.setProfileImageUrl(participation.getUser().getProfileImageUrl());
 
         dto.setChosenOption(participation.getChosenOption());
 
-        // Map chosen option number to actual option text
-        if (participation.getChosenOption() != null && bet != null) {
-            String optionText = switch (participation.getChosenOption()) {
-                case 1 -> bet.getOption1();
-                case 2 -> bet.getOption2();
-                case 3 -> bet.getOption3();
-                case 4 -> bet.getOption4();
-                default -> null;
-            };
-            dto.setChosenOptionText(optionText);
+        // For prediction bets, don't set chosenOptionText - use predictedValue instead
+        if (bet != null && bet.getBetType() == Bet.BetType.PREDICTION) {
+            dto.setPredictedValue(predictedValue);
+            // Don't set chosenOptionText for prediction bets
+        } else {
+            // Map chosen option number to actual option text for non-prediction bets
+            if (participation.getChosenOption() != null && bet != null) {
+                String optionText = switch (participation.getChosenOption()) {
+                    case 1 -> bet.getOption1();
+                    case 2 -> bet.getOption2();
+                    case 3 -> bet.getOption3();
+                    case 4 -> bet.getOption4();
+                    default -> null;
+                };
+                dto.setChosenOptionText(optionText);
+            }
         }
 
         dto.setBetAmount(participation.getBetAmount());

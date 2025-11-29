@@ -1,60 +1,28 @@
 import React from 'react';
-import { View, ActivityIndicator, Text, Image } from 'react-native';
+import { View, Image } from 'react-native';
 
-const icon = require("../../assets/images/icon.png");
+const logo = require("../../assets/images/adaptive-icon.png");
 
 interface AuthLoadingScreenProps {
   message?: string;
 }
 
 export default function AuthLoadingScreen({ message = "Loading..." }: AuthLoadingScreenProps) {
+  // This screen matches the splash screen exactly for a seamless transition
   return (
     <View style={{
       flex: 1,
       backgroundColor: '#0a0a0f',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 20,
     }}>
-      {/* App Logo */}
-      <View style={{
-        marginBottom: 40,
-        alignItems: 'center',
-      }}>
-        <Image
-          source={icon}
-          style={{
-            width: 80,
-            height: 80,
-            borderRadius: 20,
-            marginBottom: 16,
-          }}
-        />
-        <Text style={{
-          fontSize: 24,
-          fontWeight: 'bold',
-          color: '#FFFFFF',
-          textAlign: 'center',
-        }}>
-          RivalPicks
-        </Text>
-      </View>
-
-      {/* Loading Indicator */}
-      <ActivityIndicator
-        size="large"
-        color="#00D4AA"
-        style={{ marginBottom: 16 }}
+      <Image
+        source={logo}
+        style={{
+          width: 200,
+          height: 200,
+        }}
       />
-      
-      {/* Loading Message */}
-      <Text style={{
-        fontSize: 16,
-        color: 'rgba(255, 255, 255, 0.7)',
-        textAlign: 'center',
-      }}>
-        {message}
-      </Text>
     </View>
   );
 }

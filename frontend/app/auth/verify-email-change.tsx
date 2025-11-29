@@ -60,7 +60,7 @@ export default function VerifyEmailChange() {
       } else {
         setError(result.message);
       }
-    } catch (err: any) {
+    } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to confirm email change');
     } finally {
       setIsConfirming(false);
@@ -129,13 +129,13 @@ export default function VerifyEmailChange() {
           <View style={{ width: '100%', gap: 16 }}>
             <AuthButton
               title="Go to Profile"
-              onPress={() => router.replace('/(tabs)/profile')}
+              onPress={() => router.replace('/(app)/(tabs)/profile')}
               variant="primary"
             />
 
             <AuthButton
               title="Go to Home"
-              onPress={() => router.replace('/(tabs)')}
+              onPress={() => router.replace('/(app)/(tabs)/group')}
               variant="outline"
             />
           </View>
@@ -203,7 +203,7 @@ export default function VerifyEmailChange() {
           <View style={{ width: '100%' }}>
             <AuthButton
               title="Go to Profile"
-              onPress={() => router.replace('/(tabs)/profile')}
+              onPress={() => router.replace('/(app)/(tabs)/profile')}
               variant="primary"
             />
           </View>
@@ -298,7 +298,7 @@ export default function VerifyEmailChange() {
 
           <AuthButton
             title="Cancel"
-            onPress={() => router.replace('/(tabs)/profile')}
+            onPress={() => router.replace('/(app)/(tabs)/profile')}
             variant="outline"
             disabled={isConfirming}
           />

@@ -9,14 +9,19 @@ import AuthButton from '../../components/auth/AuthButton';
 import SocialAuthButton from '../../components/auth/SocialAuthButton';
 import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 import { useAppleAuth } from '../../hooks/useAppleAuth';
+import { useGuestGuard } from '../../hooks/useAuthGuard';
+import { getErrorMessage, hasErrorCode } from '../../utils/errorUtils';
 
-const icon = require("../../assets/images/icon.png");
+const logo = require("../../assets/images/adaptive-icon.png");
 
 export default function Login() {
   const insets = useSafeAreaInsets();
   const { login, loginWithGoogle, loginWithApple, isLoading, error, clearError } = useAuth();
   const { signIn: googleSignIn } = useGoogleAuth();
   const { signIn: appleSignIn, isAvailable: isAppleAvailable } = useAppleAuth();
+
+  // Redirect to app if already authenticated
+  useGuestGuard('/(app)/(tabs)/group');
   
   const [formData, setFormData] = useState({
     email: '',
@@ -103,17 +108,17 @@ export default function Login() {
         console.log('✅ [LOGIN] Apple login complete!');
         // Navigation will be handled by auth state change
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ [LOGIN] Social auth failed:', error);
 
-      if (error.code === 'CANCELLED') {
+      if (hasErrorCode(error) && error.code === 'CANCELLED') {
         // User cancelled, don't show error
         return;
       }
 
       Alert.alert(
         'Sign-In Failed',
-        error.message || 'An error occurred during sign-in. Please try again.',
+        getErrorMessage(error),
         [{ text: 'OK' }]
       );
     } finally {
@@ -149,7 +154,7 @@ export default function Login() {
           style={{ flex: 1 }}
           contentContainerStyle={{
             flexGrow: 1,
-            paddingTop: insets.top + 20,
+            paddingTop: insets.top + 8,
             paddingBottom: insets.bottom + 16,
             paddingHorizontal: 24,
             justifyContent: 'space-between'
@@ -165,26 +170,14 @@ export default function Login() {
               marginBottom: 32
             }}>
               {/* Logo */}
-              <View style={{
-                width: 60,
-                height: 60,
-                borderRadius: 15,
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.12)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16
-              }}>
-                <Image
-                  source={icon}
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 10
-                  }}
-                />
-              </View>
+              <Image
+                source={logo}
+                style={{
+                  width: 110,
+                  height: 110,
+                  marginBottom: 4
+                }}
+              />
               
               {/* Welcome Text */}
               <Text style={{

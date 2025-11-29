@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, ViewStyle } from 'react-native';
+import { colors } from '../../constants/theme';
 
 interface SkeletonCardProps {
   width?: number | string;
@@ -54,7 +55,7 @@ export function SkeletonCard({
           width,
           height,
           borderRadius,
-          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          backgroundColor: colors.border,
           opacity,
         },
         style,
@@ -70,12 +71,12 @@ export function SkeletonBetCard() {
   return (
     <View
       style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: colors.surfaceLight,
         borderRadius: 16,
         padding: 16,
         marginBottom: 16,
         borderWidth: 0.5,
-        borderColor: 'rgba(255, 255, 255, 0.08)',
+        borderColor: colors.surfaceStrong,
       }}
     >
       {/* Header */}
@@ -108,12 +109,12 @@ export function SkeletonGroupCard() {
     <View
       style={{
         width: '48%',
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: colors.surfaceLight,
         borderRadius: 16,
         padding: 16,
         marginBottom: 16,
         borderWidth: 0.5,
-        borderColor: 'rgba(255, 255, 255, 0.08)',
+        borderColor: colors.surfaceStrong,
       }}
     >
       {/* Icon */}
@@ -139,12 +140,12 @@ export function SkeletonStoreItem() {
     <View
       style={{
         width: '48%',
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: colors.surfaceLight,
         borderRadius: 16,
         padding: 14,
         marginBottom: 16,
         borderWidth: 0.5,
-        borderColor: 'rgba(255, 255, 255, 0.08)',
+        borderColor: colors.surfaceStrong,
         height: 240
       }}
     >
@@ -177,12 +178,12 @@ export function SkeletonProfile() {
     <View>
       {/* Profile Header */}
       <View style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: colors.surfaceLight,
         borderRadius: 16,
         padding: 20,
         marginBottom: 20,
         borderWidth: 0.5,
-        borderColor: 'rgba(255, 255, 255, 0.08)',
+        borderColor: colors.surfaceStrong,
       }}>
         {/* Avatar and Name */}
         <View style={{ alignItems: 'center', marginBottom: 20 }}>
@@ -231,12 +232,12 @@ export function SkeletonUserCard() {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        backgroundColor: colors.surfaceLight,
         borderRadius: 12,
         padding: 12,
         marginBottom: 12,
         borderWidth: 0.5,
-        borderColor: 'rgba(255, 255, 255, 0.08)',
+        borderColor: colors.surfaceStrong,
       }}
     >
       {/* Left side: Avatar and user info */}
@@ -253,6 +254,200 @@ export function SkeletonUserCard() {
 
       {/* Right side: Button */}
       <SkeletonCard width={90} height={36} borderRadius={18} />
+    </View>
+  );
+}
+
+/**
+ * Skeleton for Bet Details Page
+ * Matches the structure of bet-details/[id].tsx
+ */
+export function SkeletonBetDetails() {
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* Scrollable Content */}
+      <View style={{ flex: 1, paddingTop: 60 }}>
+        {/* Header Section */}
+        <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
+          {/* Back button + Status */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+            <SkeletonCard width={40} height={40} borderRadius={20} style={{ marginRight: 16 }} />
+            <View style={{ flex: 1 }}>
+              <SkeletonCard width={80} height={14} borderRadius={8} style={{ marginBottom: 6 }} />
+              <SkeletonCard width={60} height={14} borderRadius={8} />
+            </View>
+          </View>
+
+          {/* Title */}
+          <SkeletonCard width="85%" height={28} borderRadius={10} style={{ marginBottom: 12 }} />
+
+          {/* Description */}
+          <SkeletonCard width="100%" height={16} borderRadius={8} style={{ marginBottom: 6 }} />
+          <SkeletonCard width="70%" height={16} borderRadius={8} />
+        </View>
+
+        {/* Essential Details Card */}
+        <View style={{
+          backgroundColor: colors.surfaceLight,
+          borderRadius: 18,
+          marginHorizontal: 20,
+          marginBottom: 24,
+          padding: 24,
+          borderWidth: 1,
+          borderColor: colors.borderLight
+        }}>
+          <SkeletonCard width={130} height={18} borderRadius={8} style={{ marginBottom: 20 }} />
+
+          {/* Detail rows */}
+          {[1, 2, 3, 4].map((i) => (
+            <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
+              <SkeletonCard width={90} height={14} borderRadius={8} />
+              <SkeletonCard width={110} height={14} borderRadius={8} />
+            </View>
+          ))}
+        </View>
+
+        {/* Bet Options Card */}
+        <View style={{
+          backgroundColor: colors.surfaceLight,
+          borderRadius: 18,
+          marginHorizontal: 20,
+          marginBottom: 24,
+          padding: 24,
+          borderWidth: 1,
+          borderColor: colors.borderLight
+        }}>
+          <SkeletonCard width={100} height={18} borderRadius={8} style={{ marginBottom: 16 }} />
+
+          {/* Two option buttons side by side */}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <SkeletonCard width="100%" height={52} borderRadius={14} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <SkeletonCard width="100%" height={52} borderRadius={14} />
+            </View>
+          </View>
+        </View>
+
+        {/* Participants Card */}
+        <View style={{
+          backgroundColor: colors.surfaceLight,
+          borderRadius: 18,
+          marginHorizontal: 20,
+          marginBottom: 24,
+          padding: 20,
+          borderWidth: 1,
+          borderColor: colors.borderLight
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {/* Stacked avatars */}
+            <View style={{ flexDirection: 'row', marginRight: 14 }}>
+              {[1, 2, 3].map((i) => (
+                <View key={i} style={{ marginLeft: i > 1 ? -12 : 0, zIndex: 4 - i }}>
+                  <SkeletonCard width={36} height={36} borderRadius={18} />
+                </View>
+              ))}
+            </View>
+
+            {/* Text */}
+            <View style={{ flex: 1 }}>
+              <SkeletonCard width={110} height={16} borderRadius={8} style={{ marginBottom: 6 }} />
+              <SkeletonCard width={80} height={12} borderRadius={8} />
+            </View>
+
+            {/* Chevron */}
+            <SkeletonCard width={24} height={24} borderRadius={12} />
+          </View>
+        </View>
+
+        {/* Bet Amount Card */}
+        <View style={{
+          backgroundColor: colors.surfaceLight,
+          borderRadius: 18,
+          marginHorizontal: 20,
+          marginBottom: 24,
+          padding: 24,
+          borderWidth: 1,
+          borderColor: colors.borderLight
+        }}>
+          <SkeletonCard width={90} height={18} borderRadius={8} style={{ marginBottom: 14 }} />
+          <SkeletonCard width="100%" height={52} borderRadius={14} />
+        </View>
+
+        {/* Action Button */}
+        <View style={{ marginHorizontal: 20, marginTop: 8 }}>
+          <SkeletonCard width="100%" height={56} borderRadius={16} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Skeleton for Group Detail View
+ * Shows loading state for group header and tabs
+ */
+export function SkeletonGroupDetail() {
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* Header */}
+      <View style={{ paddingHorizontal: 20, paddingTop: 8, marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {/* Back Button */}
+          <SkeletonCard width={36} height={36} borderRadius={18} />
+
+          {/* Centered Group Info */}
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+            <SkeletonCard width={36} height={36} borderRadius={10} style={{ marginRight: 12 }} />
+            <SkeletonCard width={120} height={20} borderRadius={8} />
+          </View>
+
+          {/* Settings Button */}
+          <SkeletonCard width={36} height={36} borderRadius={18} />
+        </View>
+      </View>
+
+      {/* Tab Navigation */}
+      <View style={{ flexDirection: 'row', marginBottom: 8, paddingHorizontal: 4 }}>
+        <View style={{ flex: 1, alignItems: 'center', paddingBottom: 8 }}>
+          <SkeletonCard width={50} height={16} borderRadius={8} />
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', paddingBottom: 8 }}>
+          <SkeletonCard width={40} height={16} borderRadius={8} />
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', paddingBottom: 8 }}>
+          <SkeletonCard width={50} height={16} borderRadius={8} />
+        </View>
+      </View>
+
+      {/* Content Area */}
+      <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
+        {/* Chat Messages Skeleton */}
+        <View style={{ marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
+            <SkeletonCard width={32} height={32} borderRadius={16} style={{ marginRight: 8 }} />
+            <View style={{ flex: 1 }}>
+              <SkeletonCard width={80} height={12} borderRadius={6} style={{ marginBottom: 6 }} />
+              <SkeletonCard width="70%" height={40} borderRadius={12} />
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
+            <SkeletonCard width={32} height={32} borderRadius={16} style={{ marginRight: 8 }} />
+            <View style={{ flex: 1 }}>
+              <SkeletonCard width={100} height={12} borderRadius={6} style={{ marginBottom: 6 }} />
+              <SkeletonCard width="85%" height={60} borderRadius={12} />
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
+            <SkeletonCard width={32} height={32} borderRadius={16} style={{ marginRight: 8 }} />
+            <View style={{ flex: 1 }}>
+              <SkeletonCard width={70} height={12} borderRadius={6} style={{ marginBottom: 6 }} />
+              <SkeletonCard width="50%" height={36} borderRadius={12} />
+            </View>
+          </View>
+        </View>
+      </View>
     </View>
   );
 }

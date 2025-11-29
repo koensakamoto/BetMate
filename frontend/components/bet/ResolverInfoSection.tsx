@@ -1,72 +1,31 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { BetResponse, ResolverInfo } from '../../services/bet/betService';
-import { ENV } from '../../config/env';
+import { Avatar } from '../common/Avatar';
 
 interface ResolverInfoSectionProps {
   bet: BetResponse;
   currentUserId: number | null;
 }
 
-export const ResolverInfoSection: React.FC<ResolverInfoSectionProps> = ({
+export const ResolverInfoSection: React.FC<ResolverInfoSectionProps> = React.memo(({
   bet,
   currentUserId,
 }) => {
-  // Get full image URL helper
-  const getFullImageUrl = (imageUrl: string | null | undefined): string | null => {
-    if (!imageUrl) return null;
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
-    }
-    return `${ENV.API_BASE_URL}${imageUrl}`;
-  };
-
-  // Get user initials from display name
-  const getUserInitials = (displayName: string) => {
-    const nameParts = displayName.trim().split(/\s+/);
-    if (nameParts.length >= 2) {
-      return nameParts[0].charAt(0).toUpperCase() + nameParts[1].charAt(0).toUpperCase();
-    }
-    return displayName.charAt(0).toUpperCase();
-  };
-
-  // Render avatar for a resolver
+  // Render avatar for a resolver using the Avatar component
   const renderAvatar = (resolver: ResolverInfo, size: number = 24) => {
-    const imageUrl = getFullImageUrl(resolver.profileImageUrl);
-
-    if (imageUrl) {
-      return (
-        <Image
-          source={{ uri: imageUrl }}
-          style={{
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-          }}
-        />
-      );
-    }
-
+    const nameParts = (resolver.displayName || resolver.username).trim().split(/\s+/);
     return (
-      <View style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: 'rgba(0, 212, 170, 0.2)',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <Text style={{
-          color: '#00D4AA',
-          fontSize: size * 0.45,
-          fontWeight: '600',
-        }}>
-          {getUserInitials(resolver.displayName || resolver.username)}
-        </Text>
-      </View>
+      <Avatar
+        imageUrl={resolver.profileImageUrl}
+        firstName={nameParts[0]}
+        lastName={nameParts[1] || ''}
+        username={resolver.username}
+        userId={resolver.id}
+        customSize={size}
+      />
     );
   };
 
@@ -105,7 +64,7 @@ export const ResolverInfoSection: React.FC<ResolverInfoSectionProps> = ({
             Resolvers
           </Text>
           <TouchableOpacity
-            onPress={() => router.push(`/bet-resolvers/${bet.id}`)}
+            onPress={() => router.push(`/(app)/bet-resolvers/${bet.id}`)}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
           >
             <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '500' }}>
@@ -130,7 +89,7 @@ export const ResolverInfoSection: React.FC<ResolverInfoSectionProps> = ({
               Resolution Progress
             </Text>
             <TouchableOpacity
-              onPress={() => router.push(`/bet-resolvers/${bet.id}`)}
+              onPress={() => router.push(`/(app)/bet-resolvers/${bet.id}`)}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
             >
               <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '600' }}>
@@ -158,73 +117,22 @@ export const ResolverInfoSection: React.FC<ResolverInfoSectionProps> = ({
       );
     }
 
-    // RESOLVED - show vote results + link
-    if (isResolved && votingProgress) {
-      const voteDistribution = votingProgress.voteDistribution || {};
-      const hasVotes = Object.keys(voteDistribution).length > 0;
-
+    // RESOLVED - just show resolver count + link (vote results shown in ResultsCard)
+    if (isResolved) {
       return (
-        <View style={{ gap: 8 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
-              Resolution
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
+            Resolution
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push(`/(app)/bet-resolvers/${bet.id}`)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+          >
+            <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '500' }}>
+              {resolvers.length} resolvers
             </Text>
-            <TouchableOpacity
-              onPress={() => router.push(`/bet-resolvers/${bet.id}`)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-            >
-              <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '500' }}>
-                {resolvers.length} resolvers
-              </Text>
-              <MaterialIcons name="chevron-right" size={16} color="#00D4AA" />
-            </TouchableOpacity>
-          </View>
-
-          {hasVotes && (
-            <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: 8,
-              padding: 10,
-              gap: 6,
-            }}>
-              <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 11, marginBottom: 2 }}>
-                Vote Results
-              </Text>
-              {Object.entries(voteDistribution).map(([option, count]) => {
-                const optionIndex = parseInt(option.replace('OPTION_', '')) - 1;
-                const optionText = bet.options?.[optionIndex] || option;
-                const isWinningOption = bet.outcome === option;
-
-                return (
-                  <View key={option} style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      {isWinningOption && (
-                        <MaterialIcons name="check-circle" size={14} color="#00D4AA" />
-                      )}
-                      <Text style={{
-                        color: isWinningOption ? '#00D4AA' : 'rgba(255, 255, 255, 0.7)',
-                        fontSize: 12,
-                        fontWeight: isWinningOption ? '600' : '400',
-                      }}>
-                        {optionText}
-                      </Text>
-                    </View>
-                    <Text style={{
-                      color: isWinningOption ? '#00D4AA' : 'rgba(255, 255, 255, 0.5)',
-                      fontSize: 12,
-                      fontWeight: '500',
-                    }}>
-                      {count} vote{count !== 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          )}
+            <MaterialIcons name="chevron-right" size={16} color="#00D4AA" />
+          </TouchableOpacity>
         </View>
       );
     }
@@ -236,7 +144,7 @@ export const ResolverInfoSection: React.FC<ResolverInfoSectionProps> = ({
           Resolvers
         </Text>
         <TouchableOpacity
-          onPress={() => router.push(`/bet-resolvers/${bet.id}`)}
+          onPress={() => router.push(`/(app)/bet-resolvers/${bet.id}`)}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
         >
           <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '500' }}>
@@ -298,7 +206,7 @@ export const ResolverInfoSection: React.FC<ResolverInfoSectionProps> = ({
               Voting Progress
             </Text>
             <TouchableOpacity
-              onPress={() => router.push(`/bet-resolvers/${bet.id}`)}
+              onPress={() => router.push(`/(app)/bet-resolvers/${bet.id}`)}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
             >
               <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '600' }}>
@@ -326,73 +234,22 @@ export const ResolverInfoSection: React.FC<ResolverInfoSectionProps> = ({
       );
     }
 
-    // For RESOLVED bets - show vote breakdown
-    if (isResolved && votingProgress) {
-      const voteDistribution = votingProgress.voteDistribution || {};
-      const hasVotes = Object.keys(voteDistribution).length > 0;
-
+    // For RESOLVED bets - just show voter count + link (vote results shown in ResultsCard)
+    if (isResolved) {
       return (
-        <View style={{ gap: 8 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
-              Resolution
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
+            Resolution
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push(`/(app)/bet-resolvers/${bet.id}`)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+          >
+            <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '500' }}>
+              {resolvers.length} voters
             </Text>
-            <TouchableOpacity
-              onPress={() => router.push(`/bet-resolvers/${bet.id}`)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-            >
-              <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '500' }}>
-                {resolvers.length} voters
-              </Text>
-              <MaterialIcons name="chevron-right" size={16} color="#00D4AA" />
-            </TouchableOpacity>
-          </View>
-
-          {hasVotes && (
-            <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: 8,
-              padding: 10,
-              gap: 6,
-            }}>
-              <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 11, marginBottom: 2 }}>
-                Vote Results
-              </Text>
-              {Object.entries(voteDistribution).map(([option, count]) => {
-                const optionIndex = parseInt(option.replace('OPTION_', '')) - 1;
-                const optionText = bet.options?.[optionIndex] || option;
-                const isWinningOption = bet.outcome === option;
-
-                return (
-                  <View key={option} style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      {isWinningOption && (
-                        <MaterialIcons name="check-circle" size={14} color="#00D4AA" />
-                      )}
-                      <Text style={{
-                        color: isWinningOption ? '#00D4AA' : 'rgba(255, 255, 255, 0.7)',
-                        fontSize: 12,
-                        fontWeight: isWinningOption ? '600' : '400',
-                      }}>
-                        {optionText}
-                      </Text>
-                    </View>
-                    <Text style={{
-                      color: isWinningOption ? '#00D4AA' : 'rgba(255, 255, 255, 0.5)',
-                      fontSize: 12,
-                      fontWeight: '500',
-                    }}>
-                      {count} vote{count !== 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          )}
+            <MaterialIcons name="chevron-right" size={16} color="#00D4AA" />
+          </TouchableOpacity>
         </View>
       );
     }
@@ -421,4 +278,4 @@ export const ResolverInfoSection: React.FC<ResolverInfoSectionProps> = ({
       </Text>
     </View>
   );
-};
+});

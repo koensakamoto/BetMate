@@ -59,4 +59,16 @@ public interface EmailChangeTokenRepository extends JpaRepository<EmailChangeTok
      */
     @Query("SELECT COUNT(t) FROM EmailChangeToken t WHERE t.user = :user AND t.used = false AND t.expiresAt > :now")
     long countActiveTokensForUser(@Param("user") User user, @Param("now") LocalDateTime now);
+
+    /**
+     * Find the most recent token for a user (for rate limiting).
+     */
+    @Query("SELECT t FROM EmailChangeToken t WHERE t.user = :user ORDER BY t.createdAt DESC LIMIT 1")
+    Optional<EmailChangeToken> findMostRecentTokenForUser(@Param("user") User user);
+
+    /**
+     * Find pending token for a specific email (to check which user owns it).
+     */
+    @Query("SELECT t FROM EmailChangeToken t WHERE t.newEmail = :email AND t.used = false AND t.expiresAt > :now")
+    Optional<EmailChangeToken> findPendingTokenForEmail(@Param("email") String email, @Param("now") LocalDateTime now);
 }

@@ -10,12 +10,17 @@ import SocialAuthButton from '../../components/auth/SocialAuthButton';
 import CompleteProfileModal from '../../components/auth/CompleteProfileModal';
 import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 import { useAppleAuth } from '../../hooks/useAppleAuth';
+import { useGuestGuard } from '../../hooks/useAuthGuard';
+import { getErrorMessage, hasErrorCode } from '../../utils/errorUtils';
 
 export default function Signup() {
   const insets = useSafeAreaInsets();
   const { signup, loginWithGoogle, loginWithApple, isLoading, error, clearError, refreshUser } = useAuth();
   const { signIn: googleSignIn } = useGoogleAuth();
   const { signIn: appleSignIn, isAvailable: isAppleAvailable } = useAppleAuth();
+
+  // Redirect to app if already authenticated
+  useGuestGuard('/(app)/(tabs)/group');
 
   const [formData, setFormData] = useState({
     username: '',
@@ -113,17 +118,17 @@ export default function Signup() {
         console.log('✅ [SIGNUP] Apple login complete!');
         // Navigation will be handled by auth state change
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ [SIGNUP] Social auth failed:', error);
 
-      if (error.code === 'CANCELLED') {
+      if (hasErrorCode(error) && error.code === 'CANCELLED') {
         // User cancelled, don't show error
         return;
       }
 
       Alert.alert(
         'Sign-In Failed',
-        error.message || 'An error occurred during sign-in. Please try again.',
+        getErrorMessage(error),
         [{ text: 'OK' }]
       );
     } finally {
@@ -157,29 +162,12 @@ export default function Signup() {
       console.log('✅ [SIGNUP] Signup successful!');
       // Show profile completion modal
       setShowProfileModal(true);
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ [SIGNUP] Signup failed with error:', error);
-      console.error('❌ [SIGNUP] Error name:', error?.name);
-      console.error('❌ [SIGNUP] Error message:', error?.message);
-      console.error('❌ [SIGNUP] Error status:', error?.status);
-      console.error('❌ [SIGNUP] Error data:', error?.data);
-      console.error('❌ [SIGNUP] Full error object:', JSON.stringify(error, null, 2));
-
-      let errorMessage = 'Something went wrong. Please try again.';
-
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      } else if (error?.data?.message) {
-        errorMessage = error.data.message;
-      }
-
-      console.error('❌ [SIGNUP] Displaying error to user:', errorMessage);
 
       Alert.alert(
         'Signup Failed',
-        errorMessage,
+        getErrorMessage(error),
         [{ text: 'OK' }]
       );
     }
@@ -431,14 +419,14 @@ export default function Signup() {
               By signing up, you agree to our{' '}
               <Text
                 style={{ color: '#00D4AA', textDecorationLine: 'underline' }}
-                onPress={() => router.push('/terms-of-service')}
+                onPress={() => router.push('/(app)/settings/terms-of-service')}
               >
                 Terms of Service
               </Text>
               {' '}and{' '}
               <Text
                 style={{ color: '#00D4AA', textDecorationLine: 'underline' }}
-                onPress={() => router.push('/privacy-policy')}
+                onPress={() => router.push('/(app)/settings/privacy-policy')}
               >
                 Privacy Policy
               </Text>

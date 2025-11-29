@@ -74,10 +74,17 @@ Thumbs.db
 
 # Environment variables
 .env
+.env.*
+!.env.example
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Firebase credentials
+**/firebase-service-account.json
+**/firebase*.json
+!**/firebase.json
 
 # Node.js (for frontend)
 npm-debug.log*

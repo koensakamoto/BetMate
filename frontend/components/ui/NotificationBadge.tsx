@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, ViewStyle, StyleProp } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useNotificationContext } from '../../contexts/NotificationContext';
@@ -27,7 +27,7 @@ export function NotificationBadge({
     if (onPress) {
       onPress();
     } else {
-      router.push('/notifications');
+      router.push('/(app)/notifications');
     }
   };
 
@@ -82,8 +82,8 @@ export function NotificationBadge({
 }
 
 interface NotificationIconButtonProps extends NotificationBadgeProps {
-  style?: any;
-  buttonStyle?: any;
+  style?: StyleProp<ViewStyle>;
+  buttonStyle?: StyleProp<ViewStyle>;
 }
 
 export function NotificationIconButton({
@@ -101,7 +101,7 @@ export function NotificationIconButton({
     if (onPress) {
       onPress();
     } else {
-      router.push('/notifications');
+      router.push('/(app)/notifications');
     }
   };
 

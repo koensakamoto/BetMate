@@ -10,7 +10,7 @@ interface MessageBubbleProps {
   onReply?: (message: MessageResponse) => void;
   onEdit?: (message: MessageResponse) => void;
   onDelete?: (message: MessageResponse) => void;
-  isLastInSequence?: boolean;
+  isFirstInSequence?: boolean;
 }
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -19,7 +19,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   onReply,
   onEdit,
   onDelete,
-  isLastInSequence = true
+  isFirstInSequence = true
 }) => {
   // Improved message ownership logic with defensive checks - memoized for performance
   const isOwnMessage = useMemo(() => {
@@ -113,7 +113,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   }, [message, onDelete]);
 
   const formatTime = (timestamp: string): string => {
-    return messagingService.formatMessageTime(timestamp);
+    return messagingService.formatMessageTimeActual(timestamp);
   };
 
   const getMessageTypeIcon = (): string => {
@@ -174,6 +174,52 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       paddingVertical: 2,
       alignItems: isOwnMessage ? 'flex-end' : 'flex-start'
     }}>
+      {/* Sender name and timestamp ABOVE first bubble in sequence */}
+      {isFirstInSequence && !isOwnMessage && (
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginBottom: 4,
+          marginLeft: 4
+        }}>
+          <Text style={{
+            color: '#6b7280',
+            fontSize: 12,
+            fontWeight: '500'
+          }}>
+            {message.senderDisplayName}
+          </Text>
+          <Text style={{
+            color: '#6b7280',
+            fontSize: 12,
+            marginHorizontal: 6
+          }}>
+            •
+          </Text>
+          <Text style={{
+            color: '#6b7280',
+            fontSize: 11
+          }}>
+            {formatTime(message.createdAt)}
+          </Text>
+        </View>
+      )}
+
+      {/* Timestamp for own messages (no username needed) */}
+      {isFirstInSequence && isOwnMessage && (
+        <View style={{
+          marginBottom: 4,
+          marginRight: 4
+        }}>
+          <Text style={{
+            color: '#6b7280',
+            fontSize: 11
+          }}>
+            {formatTime(message.createdAt)}
+          </Text>
+        </View>
+      )}
+
       {/* Reply indicator */}
       {message.parentMessageId && (
         <View style={{
@@ -298,42 +344,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           </View>
         )}
       </TouchableOpacity>
-
-      {/* Timestamp and sender name below bubble */}
-      {isLastInSequence && (
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginTop: 4,
-          marginLeft: isOwnMessage ? 0 : 14,
-          marginRight: isOwnMessage ? 14 : 0
-        }}>
-          {!isOwnMessage && (
-            <>
-              <Text style={{
-                color: '#6b7280',
-                fontSize: 11,
-                fontWeight: '500'
-              }}>
-                {message.senderDisplayName}
-              </Text>
-              <Text style={{
-                color: '#6b7280',
-                fontSize: 11,
-                marginHorizontal: 6
-              }}>
-                •
-              </Text>
-            </>
-          )}
-          <Text style={{
-            color: '#6b7280',
-            fontSize: 11
-          }}>
-            {formatTime(message.createdAt)}
-          </Text>
-        </View>
-      )}
     </View>
   );
 };

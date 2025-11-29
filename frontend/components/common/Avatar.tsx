@@ -1,22 +1,11 @@
 import React from 'react';
 import { View, Image, Text, StyleSheet } from 'react-native';
-import { ENV } from '../../config/env';
-
-// Predefined colors for avatar backgrounds - consistent, visually appealing palette
-const AVATAR_COLORS = [
-  '#FF6B6B', // Red
-  '#4ECDC4', // Teal
-  '#45B7D1', // Blue
-  '#96CEB4', // Green
-  '#FFEAA7', // Yellow
-  '#DDA0DD', // Plum
-  '#98D8C8', // Mint
-  '#F7DC6F', // Gold
-  '#BB8FCE', // Purple
-  '#85C1E9', // Light Blue
-  '#F8B500', // Amber
-  '#00D4AA', // App primary color
-];
+import {
+  getAvatarColor,
+  getInitials as getInitialsUtil,
+  getFullImageUrl as getFullImageUrlUtil,
+} from '../../utils/avatarUtils';
+import { colors } from '../../constants/theme';
 
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
@@ -59,6 +48,8 @@ interface AvatarProps {
   borderColor?: string;
   /** Show border */
   showBorder?: boolean;
+  /** Cache-busting timestamp to force image refresh */
+  cacheBuster?: number | string;
 }
 
 /**
@@ -67,8 +58,11 @@ interface AvatarProps {
  * - If imageUrl is provided, displays the image
  * - Otherwise, displays initials on a colored background
  * - Color is deterministic based on userId for consistency
+ *
+ * Performance: Wrapped with React.memo to prevent unnecessary re-renders.
+ * Pass cacheBuster prop only when you need to force image refresh.
  */
-export function Avatar({
+export const Avatar = React.memo(function Avatar({
   imageUrl,
   firstName,
   lastName,
@@ -80,49 +74,15 @@ export function Avatar({
   isOnline = false,
   borderColor,
   showBorder = false,
+  cacheBuster,
 }: AvatarProps) {
   const avatarSize = customSize || SIZE_MAP[size];
   const fontSize = customSize ? customSize * 0.38 : FONT_SIZE_MAP[size];
   const borderRadius = avatarSize / 2;
 
-  // Get initials from name or username
-  const getInitials = (): string => {
-    if (firstName && lastName) {
-      return `${firstName[0]}${lastName[0]}`.toUpperCase();
-    }
-    if (firstName) {
-      return firstName.substring(0, 2).toUpperCase();
-    }
-    if (lastName) {
-      return lastName.substring(0, 2).toUpperCase();
-    }
-    if (username) {
-      return username.substring(0, 2).toUpperCase();
-    }
-    return '?';
-  };
-
-  // Get consistent color based on userId
-  const getBackgroundColor = (): string => {
-    if (!userId) {
-      return AVATAR_COLORS[0];
-    }
-    const numericId = typeof userId === 'string' ? parseInt(userId, 10) || 0 : userId;
-    return AVATAR_COLORS[numericId % AVATAR_COLORS.length];
-  };
-
-  // Resolve image URL (handle relative paths)
-  const getFullImageUrl = (): string | null => {
-    if (!imageUrl) return null;
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
-    }
-    return `${ENV.API_BASE_URL}${imageUrl}`;
-  };
-
-  const fullImageUrl = getFullImageUrl();
-  const initials = getInitials();
-  const backgroundColor = getBackgroundColor();
+  const fullImageUrl = getFullImageUrlUtil(imageUrl, cacheBuster);
+  const initials = getInitialsUtil(firstName, lastName, username);
+  const backgroundColor = getAvatarColor(userId);
 
   const containerStyle = [
     styles.container,
@@ -133,7 +93,7 @@ export function Avatar({
     },
     showBorder && {
       borderWidth: 2,
-      borderColor: borderColor || 'rgba(255, 255, 255, 0.1)',
+      borderColor: borderColor || colors.border,
     },
   ];
 
@@ -143,7 +103,7 @@ export function Avatar({
     <View style={containerStyle}>
       {fullImageUrl ? (
         <Image
-          source={{ uri: fullImageUrl }}
+          source={{ uri: fullImageUrl, cache: 'default' }}
           style={[
             styles.image,
             {
@@ -191,7 +151,7 @@ export function Avatar({
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -206,15 +166,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   initialsText: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontWeight: '700',
   },
   onlineIndicator: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#00D4AA',
-    borderColor: '#0a0a0f',
+    backgroundColor: colors.primary,
+    borderColor: colors.background,
   },
 });
 

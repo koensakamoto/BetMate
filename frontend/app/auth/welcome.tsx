@@ -5,12 +5,16 @@ import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import AuthButton from '../../components/auth/AuthButton';
 import SocialAuthButton from '../../components/auth/SocialAuthButton';
+import { useGuestGuard } from '../../hooks/useAuthGuard';
 
 const icon = require("../../assets/images/icon.png");
 
 export default function Welcome() {
   const insets = useSafeAreaInsets();
   const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
+
+  // Redirect to app if already authenticated
+  useGuestGuard('/(app)/(tabs)/group');
 
   const handleSocialAuth = async (provider: 'google' | 'apple') => {
     try {

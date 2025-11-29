@@ -64,18 +64,13 @@ const getTransactionPrefix = (type: Transaction['type']) => {
 const formatDate = (timestamp: string) => {
   const date = new Date(timestamp);
   const now = new Date();
-  const diffTime = Math.abs(now.getTime() - date.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-  if (diffDays === 1) {
-    return 'Today';
-  } else if (diffDays === 2) {
-    return 'Yesterday';
-  } else if (diffDays <= 7) {
-    return `${diffDays - 1} days ago`;
-  } else {
-    return date.toLocaleDateString();
-  }
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+  return date.toLocaleDateString();
 };
 
 export default function TransactionHistoryModal({ visible, onClose, transactions }: TransactionHistoryModalProps) {

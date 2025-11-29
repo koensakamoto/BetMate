@@ -72,7 +72,7 @@ public class MessageWebSocketController {
             request.setGroupId(groupId);
 
             // Create the message through the service
-            MessageService.MessageCreateRequest createRequest = new MessageService.MessageCreateRequest(
+        MessageService.MessageCreateRequest createRequest = new MessageService.MessageCreateRequest(
                 request.getGroupId(),
                 request.getContent(),
                 request.getMessageType(),

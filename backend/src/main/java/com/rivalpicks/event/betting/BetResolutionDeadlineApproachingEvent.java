@@ -14,12 +14,12 @@ public class BetResolutionDeadlineApproachingEvent extends DomainEvent {
     private final String resolutionMethod; // SELF, ASSIGNED_RESOLVERS, PARTICIPANT_VOTE
     private final Long creatorId;
     private final List<Long> assignedResolverIds;
-    private final int hoursUntilDeadline; // 24 or 1
+    private final long minutesUntilDeadline;
 
     public BetResolutionDeadlineApproachingEvent(Long betId, String betTitle, Long groupId, String groupName,
                                                  LocalDateTime resolveDate, String resolutionMethod,
                                                  Long creatorId, List<Long> assignedResolverIds,
-                                                 int hoursUntilDeadline) {
+                                                 long minutesUntilDeadline) {
         super("BET_RESOLUTION_DEADLINE_APPROACHING");
         this.betId = betId;
         this.betTitle = betTitle;
@@ -29,7 +29,7 @@ public class BetResolutionDeadlineApproachingEvent extends DomainEvent {
         this.resolutionMethod = resolutionMethod;
         this.creatorId = creatorId;
         this.assignedResolverIds = assignedResolverIds;
-        this.hoursUntilDeadline = hoursUntilDeadline;
+        this.minutesUntilDeadline = minutesUntilDeadline;
     }
 
     public Long getBetId() {
@@ -64,7 +64,16 @@ public class BetResolutionDeadlineApproachingEvent extends DomainEvent {
         return assignedResolverIds;
     }
 
+    public long getMinutesUntilDeadline() {
+        return minutesUntilDeadline;
+    }
+
+    // Backward compatibility - returns hours (rounded down)
     public int getHoursUntilDeadline() {
-        return hoursUntilDeadline;
+        return (int) (minutesUntilDeadline / 60);
+    }
+
+    public boolean isUrgent() {
+        return minutesUntilDeadline <= 60;
     }
 }

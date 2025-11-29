@@ -5,11 +5,47 @@ import { Platform, NativeModules } from 'react-native';
 const WEB_CLIENT_ID = '46395801472-bl69o6cbgtnek5e8uljom7bm02biqpt3.apps.googleusercontent.com';
 const IOS_CLIENT_ID = '46395801472-6u4laj3io3ls67jephok6ls6r47v6c84.apps.googleusercontent.com';
 
+// Type definitions for dynamically imported Google Sign-In
+// These are approximations since we can't import the actual types without the native module
+interface GoogleSignInUser {
+  email: string;
+  name: string | null;
+  givenName: string | null;
+  familyName: string | null;
+  photo: string | null;
+}
+
+interface GoogleSignInResponse {
+  data: {
+    idToken: string | null;
+    user: GoogleSignInUser;
+  };
+}
+
+interface GoogleSignInModule {
+  configure: (options: {
+    webClientId: string;
+    iosClientId: string;
+    offlineAccess: boolean;
+    scopes: string[];
+  }) => void;
+  hasPlayServices: (options: { showPlayServicesUpdateDialog: boolean }) => Promise<boolean>;
+  signIn: () => Promise<GoogleSignInResponse>;
+  signOut: () => Promise<void>;
+  getCurrentUser: () => Promise<GoogleSignInUser | null>;
+}
+
+interface StatusCodes {
+  SIGN_IN_CANCELLED: string;
+  IN_PROGRESS: string;
+  PLAY_SERVICES_NOT_AVAILABLE: string;
+}
+
 // Dynamically import Google Sign-In to avoid crash in Expo Go
-let GoogleSignin: any = null;
-let statusCodes: any = null;
-let isSuccessResponse: any = null;
-let isErrorWithCode: any = null;
+let GoogleSignin: GoogleSignInModule | null = null;
+let statusCodes: StatusCodes | null = null;
+let isSuccessResponse: ((response: unknown) => response is GoogleSignInResponse) | null = null;
+let isErrorWithCode: ((error: unknown) => error is { code: string }) | null = null;
 let isGoogleSignInAvailable = false;
 
 // Check if the native module is actually available (not just the JS package)
@@ -134,19 +170,12 @@ export function useGoogleAuth() {
       } else {
         throw new Error('Sign-in was cancelled');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ [GoogleAuth] Sign-in failed:', error);
-      console.error('❌ [GoogleAuth] Error details:', {
-        message: error?.message,
-        code: error?.code,
-        name: error?.name,
-        stack: error?.stack,
-        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
-      });
 
       if (isErrorWithCode && isErrorWithCode(error)) {
         console.log('❌ [GoogleAuth] Error has code:', error.code);
-        switch ((error as any).code) {
+        switch (error.code) {
           case statusCodes?.SIGN_IN_CANCELLED:
             throw { code: 'CANCELLED', message: 'Sign-in was cancelled' };
           case statusCodes?.IN_PROGRESS:
@@ -154,11 +183,11 @@ export function useGoogleAuth() {
           case statusCodes?.PLAY_SERVICES_NOT_AVAILABLE:
             throw { code: 'PLAY_SERVICES', message: 'Google Play Services not available' };
           default:
-            throw { code: 'UNKNOWN', message: (error as any).message || 'An unknown error occurred' };
+            throw { code: 'UNKNOWN', message: error instanceof Error ? error.message : 'An unknown error occurred' };
         }
       }
 
-      throw { code: 'UNKNOWN', message: error?.message || 'An unexpected error occurred' };
+      throw { code: 'UNKNOWN', message: error instanceof Error ? error.message : 'An unexpected error occurred' };
     }
   };
 

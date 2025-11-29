@@ -10,17 +10,17 @@ public class BetDeadlineApproachingEvent extends DomainEvent {
     private final Long groupId;
     private final String groupName;
     private final LocalDateTime bettingDeadline;
-    private final int hoursRemaining;
+    private final long minutesRemaining;
 
     public BetDeadlineApproachingEvent(Long betId, String betTitle, Long groupId, String groupName,
-                                      LocalDateTime bettingDeadline, int hoursRemaining) {
+                                      LocalDateTime bettingDeadline, long minutesRemaining) {
         super("BET_DEADLINE_APPROACHING");
         this.betId = betId;
         this.betTitle = betTitle;
         this.groupId = groupId;
         this.groupName = groupName;
         this.bettingDeadline = bettingDeadline;
-        this.hoursRemaining = hoursRemaining;
+        this.minutesRemaining = minutesRemaining;
     }
 
     public Long getBetId() {
@@ -43,11 +43,16 @@ public class BetDeadlineApproachingEvent extends DomainEvent {
         return bettingDeadline;
     }
 
+    public long getMinutesRemaining() {
+        return minutesRemaining;
+    }
+
+    // Backward compatibility - returns hours (rounded down)
     public int getHoursRemaining() {
-        return hoursRemaining;
+        return (int) (minutesRemaining / 60);
     }
 
     public boolean isUrgent() {
-        return hoursRemaining <= 1;
+        return minutesRemaining <= 60;
     }
 }

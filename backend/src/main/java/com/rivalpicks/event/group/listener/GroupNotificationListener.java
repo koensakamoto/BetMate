@@ -11,6 +11,7 @@ import com.rivalpicks.event.group.GroupInvitationEvent;
 import com.rivalpicks.event.group.GroupJoinRequestEvent;
 import com.rivalpicks.event.group.GroupMemberJoinedEvent;
 import com.rivalpicks.event.group.GroupMemberLeftEvent;
+import com.rivalpicks.event.group.GroupOwnershipTransferredEvent;
 import com.rivalpicks.event.group.GroupRoleChangedEvent;
 import com.rivalpicks.repository.group.GroupMembershipRepository;
 import com.rivalpicks.repository.user.UserRepository;
@@ -63,13 +64,12 @@ public class GroupNotificationListener {
 
     /**
      * Handles GroupJoinRequestEvent by creating notifications for all group admins and officers.
-     * Runs asynchronously to avoid blocking join request processing.
+     * Uses TransactionalEventListener with AFTER_COMMIT to ensure the join request was successfully created.
      *
      * @param event The GroupJoinRequestEvent containing join request information
      */
-    @EventListener
-    @Transactional
-    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void handleGroupJoinRequestEvent(GroupJoinRequestEvent event) {
         try {
             logger.info("Processing GROUP_JOIN_REQUEST event for group: {} by user: {}",
@@ -156,12 +156,11 @@ public class GroupNotificationListener {
     /**
      * Handles GroupInvitationEvent by creating a notification for the invited user.
      * Uses TransactionalEventListener with AFTER_COMMIT to ensure the membership was successfully created.
-     * Runs asynchronously to avoid blocking the invitation process.
      *
      * @param event The GroupInvitationEvent containing invitation information
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Async
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void handleGroupInvitationEvent(GroupInvitationEvent event) {
         try {
             logger.info("Processing GROUP_INVITE event for group: {} by inviter: {} to user: {}",
@@ -218,12 +217,11 @@ public class GroupNotificationListener {
     /**
      * Handles GroupMemberJoinedEvent by creating notifications for all existing group members.
      * Uses TransactionalEventListener with AFTER_COMMIT to ensure the membership was successfully created.
-     * Runs asynchronously to avoid blocking the join process.
      *
      * @param event The GroupMemberJoinedEvent containing information about the new member
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Async
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void handleGroupMemberJoinedEvent(GroupMemberJoinedEvent event) {
         try {
             logger.info("Processing GROUP_JOINED event for group: {} with new member: {}",
@@ -252,9 +250,7 @@ public class GroupNotificationListener {
                 try {
                     // Create notification title and message
                     String title = "New Member in " + event.getGroupName();
-                    String actionVerb = event.wasInvited() ? "joined" : "joined";
-                    String message = event.getNewMemberName() + " (@" + event.getNewMemberUsername() +
-                                   ") " + actionVerb + " " + event.getGroupName();
+                    String message = event.getNewMemberUsername() + " joined " + event.getGroupName();
                     String actionUrl = "/groups/" + event.getGroupId();
 
                     // Ensure title and message don't exceed maximum lengths
@@ -296,6 +292,59 @@ public class GroupNotificationListener {
             logger.info("Successfully created {} GROUP_JOINED notifications for group {}",
                        notificationsCreated, event.getGroupId());
 
+            // 4. Notify the new member that they've joined the group
+            logger.info("Step 4: Attempting to notify new member with ID: {}", event.getNewMemberId());
+            try {
+                User newMember = userRepository.findById(event.getNewMemberId()).orElse(null);
+                logger.info("Step 4: Found new member: {}", newMember != null ? newMember.getUsername() : "NULL");
+                if (newMember != null) {
+                    String welcomeTitle = "Welcome to " + event.getGroupName();
+                    String welcomeMessage;
+
+                    if (event.wasInvited()) {
+                        // User accepted an invitation
+                        welcomeMessage = "You've joined " + event.getGroupName();
+                    } else {
+                        // User's join request was approved (private group) or direct join (public)
+                        boolean isPrivateGroup = group.getPrivacy() != Group.Privacy.PUBLIC;
+                        welcomeMessage = isPrivateGroup
+                            ? "Your request to join " + event.getGroupName() + " was approved"
+                            : "You've joined " + event.getGroupName();
+                    }
+                    String welcomeActionUrl = "/groups/" + event.getGroupId();
+
+                    // Ensure title and message don't exceed maximum lengths
+                    if (welcomeTitle.length() > 100) {
+                        welcomeTitle = welcomeTitle.substring(0, 97) + "...";
+                    }
+                    if (welcomeMessage.length() > 500) {
+                        welcomeMessage = welcomeMessage.substring(0, 497) + "...";
+                    }
+
+                    Notification welcomeNotification = notificationService.createNotification(
+                        newMember,
+                        welcomeTitle,
+                        welcomeMessage,
+                        NotificationType.GROUP_JOINED,
+                        NotificationPriority.NORMAL,
+                        welcomeActionUrl,
+                        event.getGroupId(),
+                        "GROUP"
+                    );
+
+                    // Send real-time notification via WebSocket
+                    messageNotificationService.sendNotificationToUser(newMember.getId(), welcomeNotification);
+
+                    // Send push notification
+                    pushNotificationService.sendPushNotification(newMember, welcomeNotification);
+
+                    logger.info("Created welcome notification for new member: {}", newMember.getUsername());
+                }
+            } catch (Exception e) {
+                logger.error("Failed to create welcome notification for new member {}: {}",
+                           event.getNewMemberId(), e.getMessage(), e);
+            }
+
         } catch (Exception e) {
             // Log error but don't throw - we don't want notification failures to break joins
             logger.error("Failed to process GROUP_JOINED event for group {}: {}",
@@ -306,12 +355,11 @@ public class GroupNotificationListener {
     /**
      * Handles GroupMemberLeftEvent by creating notifications for all remaining group members.
      * Uses TransactionalEventListener with AFTER_COMMIT to ensure the membership was successfully removed.
-     * Runs asynchronously to avoid blocking the leave/removal process.
      *
      * @param event The GroupMemberLeftEvent containing information about the member who left
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Async
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void handleGroupMemberLeftEvent(GroupMemberLeftEvent event) {
         try {
             logger.info("Processing GROUP_LEFT event for group: {} with member: {} (wasKicked: {})",
@@ -457,12 +505,11 @@ public class GroupNotificationListener {
     /**
      * Handles GroupRoleChangedEvent by creating a notification for the user whose role was changed.
      * Uses TransactionalEventListener with AFTER_COMMIT to ensure the role was successfully changed.
-     * Runs asynchronously to avoid blocking the role change process.
      *
      * @param event The GroupRoleChangedEvent containing role change information
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Async
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void handleGroupRoleChangedEvent(GroupRoleChangedEvent event) {
         try {
             logger.info("Processing GROUP_ROLE_CHANGED event for group: {} user: {} (old: {}, new: {})",
@@ -528,12 +575,11 @@ public class GroupNotificationListener {
     /**
      * Handles GroupDeletedEvent by creating notifications for all group members.
      * Uses TransactionalEventListener with AFTER_COMMIT to ensure the deletion was successful.
-     * Runs asynchronously to avoid blocking the deletion process.
      *
      * @param event The GroupDeletedEvent containing group and member information
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Async
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void handleGroupDeletedEvent(GroupDeletedEvent event) {
         try {
             logger.info("Processing GROUP_DELETED event for group: {} deleted by user: {}",
@@ -602,6 +648,167 @@ public class GroupNotificationListener {
         } catch (Exception e) {
             // Log error but don't throw - we don't want notification failures to break group deletion
             logger.error("Failed to process GROUP_DELETED event for group {}: {}",
+                        event.getGroupId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Handles GroupOwnershipTransferredEvent by creating notifications for the new owner,
+     * previous owner, and other admins.
+     * Uses TransactionalEventListener with AFTER_COMMIT to ensure the ownership was successfully transferred.
+     *
+     * @param event The GroupOwnershipTransferredEvent containing ownership transfer information
+     */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void handleGroupOwnershipTransferredEvent(GroupOwnershipTransferredEvent event) {
+        try {
+            logger.info("Processing GROUP_OWNERSHIP_TRANSFERRED event for group: {} (from {} to {})",
+                       event.getGroupName(), event.getPreviousOwnerName(), event.getNewOwnerName());
+
+            // 1. Get the group entity
+            Group group = groupService.getGroupById(event.getGroupId());
+            if (group == null) {
+                logger.warn("Group {} not found for ownership transferred event", event.getGroupId());
+                return;
+            }
+
+            int notificationsCreated = 0;
+
+            // 2. Notify the NEW owner
+            try {
+                User newOwner = userRepository.findById(event.getNewOwnerId()).orElse(null);
+                if (newOwner != null) {
+                    String title = "You're now the owner of " + event.getGroupName();
+                    String message = event.getPreviousOwnerName() + " transferred ownership to you";
+                    String actionUrl = "/groups/" + event.getGroupId();
+
+                    if (title.length() > 100) {
+                        title = title.substring(0, 97) + "...";
+                    }
+                    if (message.length() > 500) {
+                        message = message.substring(0, 497) + "...";
+                    }
+
+                    Notification notification = notificationService.createNotification(
+                        newOwner,
+                        title,
+                        message,
+                        NotificationType.GROUP_ROLE_CHANGED,
+                        NotificationPriority.HIGH,
+                        actionUrl,
+                        event.getGroupId(),
+                        "GROUP"
+                    );
+
+                    messageNotificationService.sendNotificationToUser(newOwner.getId(), notification);
+                    pushNotificationService.sendPushNotification(newOwner, notification);
+                    notificationsCreated++;
+                    logger.debug("Created ownership notification for new owner: {}", newOwner.getUsername());
+                }
+            } catch (Exception e) {
+                logger.error("Failed to create notification for new owner {}: {}",
+                           event.getNewOwnerId(), e.getMessage());
+            }
+
+            // 3. Notify the PREVIOUS owner
+            try {
+                User previousOwner = userRepository.findById(event.getPreviousOwnerId()).orElse(null);
+                if (previousOwner != null) {
+                    String title = "Ownership Transferred";
+                    String message = "You transferred ownership of " + event.getGroupName() + " to " + event.getNewOwnerName();
+                    String actionUrl = "/groups/" + event.getGroupId();
+
+                    if (title.length() > 100) {
+                        title = title.substring(0, 97) + "...";
+                    }
+                    if (message.length() > 500) {
+                        message = message.substring(0, 497) + "...";
+                    }
+
+                    Notification notification = notificationService.createNotification(
+                        previousOwner,
+                        title,
+                        message,
+                        NotificationType.GROUP_ROLE_CHANGED,
+                        NotificationPriority.NORMAL,
+                        actionUrl,
+                        event.getGroupId(),
+                        "GROUP"
+                    );
+
+                    messageNotificationService.sendNotificationToUser(previousOwner.getId(), notification);
+                    pushNotificationService.sendPushNotification(previousOwner, notification);
+                    notificationsCreated++;
+                    logger.debug("Created ownership notification for previous owner: {}", previousOwner.getUsername());
+                }
+            } catch (Exception e) {
+                logger.error("Failed to create notification for previous owner {}: {}",
+                           event.getPreviousOwnerId(), e.getMessage());
+            }
+
+            // 4. Notify OTHER ADMINS (exclude new owner and previous owner)
+            try {
+                List<GroupMembership> adminMemberships = groupMembershipRepository.findGroupAdmins(group);
+
+                for (GroupMembership membership : adminMemberships) {
+                    User admin = membership.getUser();
+
+                    // Skip new owner and previous owner (they already got notifications)
+                    if (admin.getId().equals(event.getNewOwnerId()) ||
+                        admin.getId().equals(event.getPreviousOwnerId())) {
+                        continue;
+                    }
+
+                    // Skip inactive admins
+                    if (!membership.getIsActive()) {
+                        continue;
+                    }
+
+                    try {
+                        String title = "Group Ownership Changed";
+                        String message = event.getNewOwnerName() + " is now the owner of " + event.getGroupName();
+                        String actionUrl = "/groups/" + event.getGroupId();
+
+                        if (title.length() > 100) {
+                            title = title.substring(0, 97) + "...";
+                        }
+                        if (message.length() > 500) {
+                            message = message.substring(0, 497) + "...";
+                        }
+
+                        Notification notification = notificationService.createNotification(
+                            admin,
+                            title,
+                            message,
+                            NotificationType.GROUP_ROLE_CHANGED,
+                            NotificationPriority.LOW,
+                            actionUrl,
+                            event.getGroupId(),
+                            "GROUP"
+                        );
+
+                        messageNotificationService.sendNotificationToUser(admin.getId(), notification);
+                        pushNotificationService.sendPushNotification(admin, notification);
+                        notificationsCreated++;
+                        logger.debug("Created ownership notification for admin: {}", admin.getUsername());
+
+                    } catch (Exception e) {
+                        logger.error("Failed to create notification for admin {}: {}",
+                                   admin.getUsername(), e.getMessage());
+                    }
+                }
+            } catch (Exception e) {
+                logger.error("Failed to notify other admins for group {}: {}",
+                           event.getGroupId(), e.getMessage());
+            }
+
+            logger.info("Successfully created {} GROUP_OWNERSHIP_TRANSFERRED notifications for group {}",
+                       notificationsCreated, event.getGroupId());
+
+        } catch (Exception e) {
+            // Log error but don't throw - we don't want notification failures to break ownership transfer
+            logger.error("Failed to process GROUP_OWNERSHIP_TRANSFERRED event for group {}: {}",
                         event.getGroupId(), e.getMessage(), e);
         }
     }

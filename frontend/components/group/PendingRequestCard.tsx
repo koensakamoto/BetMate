@@ -84,7 +84,7 @@ const PendingRequestCard: React.FC<PendingRequestCardProps> = ({ request, onAppr
       {/* Avatar */}
       <View style={{ marginRight: 12 }}>
         <Avatar
-          imageUrl={request.profilePictureUrl}
+          imageUrl={request.profileImageUrl}
           firstName={request.displayName?.split(' ')[0]}
           lastName={request.displayName?.split(' ').slice(1).join(' ')}
           username={request.username}

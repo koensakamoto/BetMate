@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, ImageSourcePropType } from 'react-native';
 import { GroupMessagingChat } from '../messaging';
 
 interface GroupChatTabProps {
@@ -8,7 +8,7 @@ interface GroupChatTabProps {
     name: string;
     memberCount: number;
     createdDate: string;
-    image: any;
+    image?: ImageSourcePropType;
   };
 }
 

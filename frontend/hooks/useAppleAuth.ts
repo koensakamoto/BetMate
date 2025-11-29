@@ -102,7 +102,7 @@ export function useAppleAuth() {
           } : null,
         },
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('[AppleAuth] Sign-in failed:', error);
 
       if (error.code === 'ERR_REQUEST_CANCELED') {

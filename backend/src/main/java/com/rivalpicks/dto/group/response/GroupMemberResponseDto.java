@@ -13,7 +13,7 @@ public class GroupMemberResponseDto {
     private String username;
     private String displayName;
     private String email;
-    private String profilePictureUrl;
+    private String profileImageUrl;
     private GroupMembership.MemberRole role;
     private Boolean isActive;
     private LocalDateTime joinedAt;
@@ -35,8 +35,8 @@ public class GroupMemberResponseDto {
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
-    public String getProfilePictureUrl() { return profilePictureUrl; }
-    public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }
+    public String getProfileImageUrl() { return profileImageUrl; }
+    public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
 
     public GroupMembership.MemberRole getRole() { return role; }
     public void setRole(GroupMembership.MemberRole role) { this.role = role; }

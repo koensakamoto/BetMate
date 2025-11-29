@@ -1,6 +1,13 @@
 import { BaseApiService } from '../api/baseService';
 import { API_ENDPOINTS } from '../../config/api';
 
+// React Native FormData file type
+interface FormDataFile {
+  uri: string;
+  type: string;
+  name: string;
+}
+
 export interface CreateBetRequest {
   groupId: number;
   title: string;
@@ -26,6 +33,8 @@ export interface ResolverInfo {
   displayName: string;
   profileImageUrl?: string;
   hasVoted?: boolean;
+  votedOutcome?: string;        // For MCQ bets: the option text they voted for
+  votedWinnerUserIds?: number[]; // For prediction bets: user IDs of winners they selected
 }
 
 export interface VotingProgress {
@@ -116,6 +125,7 @@ export interface BetSummaryResponse {
   hasUserParticipated: boolean;
   userChoice?: string; // User's chosen option (e.g., OPTION_1, OPTION_2)
   userAmount?: number;
+  userParticipationStatus?: 'ACTIVE' | 'WON' | 'LOST' | 'DRAW' | 'REFUNDED' | 'CANCELLED'; // User's participation result
   participantPreviews?: {
     id: number;
     username: string;
@@ -148,6 +158,9 @@ export interface BetParticipationResponse {
   potentialWinnings?: number;
   status: string;
   createdAt: string;
+  // Vote counts for resolved PREDICTION bets
+  votesReceived?: number;
+  totalVoters?: number;
 }
 
 export interface ResolveBetRequest {
@@ -157,7 +170,8 @@ export interface ResolveBetRequest {
 }
 
 export interface VoteOnResolutionRequest {
-  outcome: string;
+  outcome?: string;           // For BINARY/MULTIPLE_CHOICE bets
+  winnerUserIds?: number[];   // For PREDICTION bets
   reasoning?: string;
 }
 
@@ -268,8 +282,22 @@ class BetService extends BaseApiService {
   }
 
   // Vote on bet resolution (for consensus voting)
-  async voteOnResolution(betId: number, outcome: string, reasoning: string): Promise<BetResponse> {
-    const request: VoteOnResolutionRequest = { outcome, reasoning };
+  // Supports two modes:
+  // 1. Outcome-based: pass outcome for BINARY/MULTIPLE_CHOICE bets
+  // 2. Winner-based: pass winnerUserIds for PREDICTION bets
+  async voteOnResolution(
+    betId: number,
+    outcome?: string,
+    winnerUserIds?: number[],
+    reasoning?: string
+  ): Promise<BetResponse> {
+    // Only include fields that have values to avoid validation issues
+    const request: VoteOnResolutionRequest = {};
+    if (outcome !== undefined && outcome !== null) request.outcome = outcome;
+    if (winnerUserIds !== undefined && winnerUserIds !== null && winnerUserIds.length > 0) {
+      request.winnerUserIds = winnerUserIds;
+    }
+    if (reasoning !== undefined && reasoning !== null) request.reasoning = reasoning;
     return this.post<BetResponse, VoteOnResolutionRequest>(`/${betId}/vote`, request);
   }
 
@@ -318,12 +346,12 @@ class BetService extends BaseApiService {
     };
 
     const formData = new FormData();
-    const file: any = {
+    const file: FormDataFile = {
       uri: imageUri,
       type: getContentType(fileName),
       name: fileName,
     };
-    formData.append('file', file);
+    formData.append('file', file as unknown as Blob);
 
     return this.post<string, FormData>(`/${betId}/fulfillment/upload-proof`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

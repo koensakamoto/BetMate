@@ -1,6 +1,13 @@
 import { BaseApiService } from '../api/baseService';
 import { API_ENDPOINTS } from '../../config/api';
 
+// React Native FormData file type
+interface FormDataFile {
+  uri: string;
+  type: string;
+  name: string;
+}
+
 // Group DTOs matching backend
 export interface MemberPreview {
   id: number;
@@ -52,7 +59,7 @@ export interface GroupMemberResponse {
   username: string;
   displayName?: string;
   email: string;
-  profilePictureUrl?: string;
+  profileImageUrl?: string;
   role: 'MEMBER' | 'ADMIN';
   isActive: boolean;
   joinedAt: string;
@@ -67,7 +74,7 @@ export interface PendingRequestResponse {
   userId: number;
   username: string;
   displayName?: string;
-  profilePictureUrl?: string;
+  profileImageUrl?: string;
   requestedAt: string;
 }
 
@@ -170,13 +177,13 @@ export class GroupService extends BaseApiService {
     const formData = new FormData();
 
     // Create file object for the image
-    const fileToUpload: any = {
+    const fileToUpload: FormDataFile = {
       uri: imageUri,
       type: 'image/jpeg',
       name: fileName
     };
 
-    formData.append('file', fileToUpload);
+    formData.append('file', fileToUpload as unknown as Blob);
 
     return this.post<GroupDetailResponse>(
       API_ENDPOINTS.GROUP_PICTURE(groupId),

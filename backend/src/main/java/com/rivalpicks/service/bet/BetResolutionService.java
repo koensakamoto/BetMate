@@ -4,6 +4,7 @@ import com.rivalpicks.entity.betting.Bet;
 import com.rivalpicks.entity.betting.BetParticipation;
 import com.rivalpicks.entity.betting.BetResolver;
 import com.rivalpicks.entity.betting.BetResolutionVote;
+import com.rivalpicks.entity.betting.BetResolutionVoteWinner;
 import com.rivalpicks.entity.betting.PredictionResolutionVote;
 import com.rivalpicks.entity.user.User;
 import com.rivalpicks.event.betting.BetResolvedEvent;
@@ -12,7 +13,9 @@ import com.rivalpicks.repository.betting.BetParticipationRepository;
 import com.rivalpicks.repository.betting.BetRepository;
 import com.rivalpicks.repository.betting.BetResolverRepository;
 import com.rivalpicks.repository.betting.BetResolutionVoteRepository;
+import com.rivalpicks.repository.betting.BetResolutionVoteWinnerRepository;
 import com.rivalpicks.repository.betting.PredictionResolutionVoteRepository;
+import com.rivalpicks.repository.user.UserRepository;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
@@ -40,9 +43,11 @@ public class BetResolutionService {
     private final BetRepository betRepository;
     private final BetResolverRepository betResolverRepository;
     private final BetResolutionVoteRepository betResolutionVoteRepository;
+    private final BetResolutionVoteWinnerRepository betResolutionVoteWinnerRepository;
     private final PredictionResolutionVoteRepository predictionResolutionVoteRepository;
     private final BetParticipationRepository betParticipationRepository;
     private final BetParticipationService betParticipationService;
+    private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
@@ -50,16 +55,20 @@ public class BetResolutionService {
             BetRepository betRepository,
             BetResolverRepository betResolverRepository,
             BetResolutionVoteRepository betResolutionVoteRepository,
+            BetResolutionVoteWinnerRepository betResolutionVoteWinnerRepository,
             PredictionResolutionVoteRepository predictionResolutionVoteRepository,
             BetParticipationRepository betParticipationRepository,
             BetParticipationService betParticipationService,
+            UserRepository userRepository,
             ApplicationEventPublisher eventPublisher) {
         this.betRepository = betRepository;
         this.betResolverRepository = betResolverRepository;
         this.betResolutionVoteRepository = betResolutionVoteRepository;
+        this.betResolutionVoteWinnerRepository = betResolutionVoteWinnerRepository;
         this.predictionResolutionVoteRepository = predictionResolutionVoteRepository;
         this.betParticipationRepository = betParticipationRepository;
         this.betParticipationService = betParticipationService;
+        this.userRepository = userRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -208,10 +217,8 @@ public class BetResolutionService {
                                                 @NotNull Bet.BetOutcome outcome, String reasoning) {
         Bet bet = getBetForResolution(betId);
 
-        if (bet.getResolutionMethod() != Bet.BetResolutionMethod.PARTICIPANT_VOTE) {
-            throw new BetResolutionException("Bet does not use participant voting");
-        }
-        
+        // Resolution method determines WHO can vote, not whether voting is allowed
+        // canUserVoteOnBet() validates if this user is authorized to vote
         if (!canUserVoteOnBet(bet, voter)) {
             throw new BetResolutionException("User is not authorized to vote on this bet");
         }
@@ -248,18 +255,16 @@ public class BetResolutionService {
     }
 
     /**
-     * Gets current vote counts for a consensus bet.
+     * Gets current vote counts for a bet (works for both pending and resolved bets).
      */
     @Transactional(readOnly = true)
     public Map<Bet.BetOutcome, Long> getVoteCounts(@NotNull Long betId) {
-        Bet bet = getBetForResolution(betId);
+        Bet bet = betRepository.findById(betId)
+            .filter(b -> !b.isDeleted())
+            .orElseThrow(() -> new BetResolutionException("Bet not found: " + betId));
 
-        if (bet.getResolutionMethod() != Bet.BetResolutionMethod.PARTICIPANT_VOTE) {
-            throw new BetResolutionException("Bet does not use participant voting");
-        }
-        
         List<Object[]> results = betResolutionVoteRepository.getValidVoteDistributionByBet(bet);
-        
+
         return results.stream()
             .collect(Collectors.toMap(
                 row -> (Bet.BetOutcome) row[0],
@@ -518,7 +523,7 @@ public class BetResolutionService {
      */
     private void publishBetResolvedEvent(Bet bet, Long resolvedById) {
         try {
-            // Get all bet participations to determine winners and payouts
+            // Get all bet participations to determine winners, losers, and draws
             List<BetParticipation> participations = betParticipationRepository.findByBetId(bet.getId());
 
             List<Long> winnerIds = participations.stream()
@@ -527,7 +532,12 @@ public class BetResolutionService {
                 .toList();
 
             List<Long> loserIds = participations.stream()
-                .filter(p -> !p.isWinner())
+                .filter(BetParticipation::isLoser)
+                .map(BetParticipation::getUserId)
+                .toList();
+
+            List<Long> drawIds = participations.stream()
+                .filter(BetParticipation::isDraw)
                 .map(BetParticipation::getUserId)
                 .toList();
 
@@ -544,6 +554,11 @@ public class BetResolutionService {
                 .filter(p -> loserIds.contains(p.getUserId()))
                 .forEach(p -> payouts.put(p.getUserId(), p.getBetAmount().negate()));
 
+            // Draws get their stake back (zero net change)
+            participations.stream()
+                .filter(p -> drawIds.contains(p.getUserId()))
+                .forEach(p -> payouts.put(p.getUserId(), BigDecimal.ZERO));
+
             String resolution = bet.getOutcome() != null ? bet.getOutcome().name() : "Unknown";
 
             BetResolvedEvent event = new BetResolvedEvent(
@@ -553,6 +568,7 @@ public class BetResolutionService {
                 bet.getGroup().getName(),
                 winnerIds,
                 loserIds,
+                drawIds,
                 payouts,
                 resolution,
                 resolvedById
@@ -768,7 +784,192 @@ public class BetResolutionService {
     }
 
     // ==========================================
-    // EXCEPTION CLASS
+    // WINNER-BASED PREDICTION VOTING
     // ==========================================
+
+    /**
+     * Submit a vote for PREDICTION bet resolution by selecting winners.
+     * Each resolver selects which participants they believe are winners.
+     * When all resolvers have voted, consensus determines final winners.
+     *
+     * @param betId The bet ID
+     * @param voter The user casting the vote
+     * @param winnerUserIds List of user IDs selected as winners
+     * @param reasoning Optional reasoning for the vote
+     * @return The created or updated vote
+     */
+    public BetResolutionVote voteOnPredictionResolution(@NotNull Long betId, @NotNull User voter,
+                                                        @NotNull List<Long> winnerUserIds, String reasoning) {
+        Bet bet = getBetForResolution(betId);
+
+        // Verify bet is a PREDICTION type
+        if (bet.getBetType() != Bet.BetType.PREDICTION) {
+            throw new BetResolutionException("This method is only for PREDICTION bets");
+        }
+        // Resolution method determines WHO can vote, not whether voting is allowed
+        // canUserVoteOnBet() validates if this user is authorized to vote
+
+        // Verify user can vote on this bet
+        if (!canUserVoteOnBet(bet, voter)) {
+            throw new BetResolutionException("User is not authorized to vote on this bet");
+        }
+
+        // Validate winner IDs are actual participants
+        List<BetParticipation> participations = betParticipationRepository.findByBetId(betId);
+        List<Long> participantUserIds = participations.stream()
+            .map(BetParticipation::getUserId)
+            .toList();
+
+        for (Long winnerId : winnerUserIds) {
+            if (!participantUserIds.contains(winnerId)) {
+                throw new BetResolutionException("User ID " + winnerId + " is not a participant in this bet");
+            }
+        }
+
+        // Check for existing vote
+        BetResolutionVote existingVote = betResolutionVoteRepository
+            .findByBetAndVoterAndIsActiveTrue(bet, voter)
+            .orElse(null);
+
+        BetResolutionVote savedVote;
+
+        if (existingVote != null) {
+            // Update existing vote - clear old winner selections
+            existingVote.clearWinnerVotes();
+            existingVote.setReasoning(reasoning);
+            savedVote = betResolutionVoteRepository.save(existingVote);
+
+            // Delete old winner entries from join table
+            betResolutionVoteWinnerRepository.deleteByVote(existingVote);
+        } else {
+            // Create new vote
+            BetResolutionVote vote = new BetResolutionVote();
+            vote.setBet(bet);
+            vote.setVoter(voter);
+            vote.setVotedOutcome(null);  // No outcome for prediction bets
+            vote.setReasoning(reasoning);
+            savedVote = betResolutionVoteRepository.save(vote);
+        }
+
+        // Add winner selections to join table
+        for (Long winnerId : winnerUserIds) {
+            User winnerUser = userRepository.findById(winnerId)
+                .orElseThrow(() -> new BetResolutionException("Winner user not found: " + winnerId));
+
+            BetResolutionVoteWinner winnerVote = new BetResolutionVoteWinner(savedVote, winnerUser);
+            betResolutionVoteWinnerRepository.save(winnerVote);
+        }
+
+        // Check if consensus reached
+        checkAndResolveIfPredictionWinnerConsensusReached(bet, voter);
+
+        return savedVote;
+    }
+
+    /**
+     * Check if all resolvers have submitted winner votes for a PREDICTION bet.
+     * If all votes are in, resolve the bet using majority consensus.
+     *
+     * @param bet The bet to check
+     * @param triggeringVoter The voter who triggered this check
+     * @return true if bet was resolved
+     */
+    public boolean checkAndResolveIfPredictionWinnerConsensusReached(Bet bet, User triggeringVoter) {
+        // Get total number of resolvers
+        long totalResolvers = getTotalResolverCount(bet);
+
+        // Count how many resolvers have submitted winner votes
+        // A vote counts if it has winner selections in the join table
+        long votesWithWinners = betResolutionVoteWinnerRepository.countVotesWithWinnerSelectionsForBet(bet);
+
+        System.out.println("DEBUG: checkAndResolveIfPredictionWinnerConsensusReached - " +
+                          "betId=" + bet.getId() +
+                          ", totalResolvers=" + totalResolvers +
+                          ", votesWithWinners=" + votesWithWinners);
+
+        // Only resolve if ALL resolvers have voted
+        if (votesWithWinners < totalResolvers) {
+            System.out.println("DEBUG: Not all resolvers have voted yet (" + votesWithWinners + "/" + totalResolvers + "), not resolving");
+            return false;
+        }
+
+        System.out.println("DEBUG: All resolvers voted, proceeding to resolve bet " + bet.getId());
+        // All resolvers voted - resolve using consensus
+        return resolvePredictionBetWithWinnerVotes(bet, triggeringVoter);
+    }
+
+    /**
+     * Resolve a PREDICTION bet based on winner vote consensus.
+     * Used when all resolvers have voted OR deadline is reached.
+     *
+     * Consensus Logic per participant:
+     * - >50% of resolvers voted for them → WINNER
+     * - =50% of resolvers voted for them → DRAW (neither won nor lost)
+     * - <50% of resolvers voted for them → LOSER
+     *
+     * @param bet The bet to resolve
+     * @param triggeringVoter The user who triggered resolution (null for deadline)
+     * @return true if resolved
+     */
+    public boolean resolvePredictionBetWithWinnerVotes(Bet bet, User triggeringVoter) {
+        // Get total number of resolvers who actually voted (with winner selections)
+        long totalVoters = betResolutionVoteWinnerRepository.countVotesWithWinnerSelectionsForBet(bet);
+
+        // Get vote distribution: userId -> number of resolvers who selected them
+        List<Object[]> voteDistribution = betResolutionVoteWinnerRepository.getWinnerVoteDistributionForBet(bet);
+
+        // Convert to map for easy lookup
+        Map<Long, Long> userVoteCounts = voteDistribution.stream()
+            .collect(java.util.stream.Collectors.toMap(
+                row -> (Long) row[0],
+                row -> ((Number) row[1]).longValue()
+            ));
+
+        // Get all participations
+        List<BetParticipation> participations = betParticipationRepository.findByBetId(bet.getId());
+
+        // Calculate half for comparison (for 2 voters, half = 1)
+        // Winner: votes > half (e.g., 2 > 1)
+        // Draw: votes == half (e.g., 1 == 1) - only possible with even number of voters
+        // Loser: votes < half (e.g., 0 < 1)
+        double half = totalVoters / 2.0;
+
+        boolean hasAnyWinner = false;
+
+        for (BetParticipation participation : participations) {
+            long votesForUser = userVoteCounts.getOrDefault(participation.getUserId(), 0L);
+
+            if (votesForUser > half) {
+                // >50% voted for them → WINNER
+                participation.setStatus(BetParticipation.ParticipationStatus.WON);
+                hasAnyWinner = true;
+            } else if (votesForUser == half && totalVoters > 0 && totalVoters % 2 == 0) {
+                // Exactly 50% (only possible with even number of voters) → DRAW
+                participation.setStatus(BetParticipation.ParticipationStatus.DRAW);
+            } else {
+                // <50% → LOSER
+                participation.setStatus(BetParticipation.ParticipationStatus.LOST);
+            }
+            betParticipationRepository.save(participation);
+        }
+
+        // Set bet outcome based on whether any winners exist
+        if (hasAnyWinner) {
+            bet.resolve(Bet.BetOutcome.OPTION_1);  // Placeholder outcome for prediction bets with winners
+        } else {
+            bet.resolve(Bet.BetOutcome.DRAW);  // No majority winners
+        }
+
+        bet = betRepository.save(bet);
+
+        // Settle all participations (calculate winnings, update user stats)
+        betParticipationService.settleParticipationsForResolvedBet(bet);
+
+        // Publish bet resolved event
+        Long triggeringVoterId = triggeringVoter != null ? triggeringVoter.getId() : null;
+        publishBetResolvedEvent(bet, triggeringVoterId);
+
+        return true;
+    }
 
 }

@@ -51,8 +51,14 @@ public class BetResolutionVote {
     // ==========================================
     
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = true)  // Nullable for PREDICTION bets which use winner votes instead
     private Bet.BetOutcome votedOutcome;
+
+    /**
+     * For PREDICTION bets: selected winners stored via join table.
+     */
+    @OneToMany(mappedBy = "vote", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<BetResolutionVoteWinner> winnerVotes = new java.util.ArrayList<>();
 
     @Column(length = 1000)
     @Size(max = 1000, message = "Vote reasoning cannot exceed 1000 characters")
@@ -135,6 +141,13 @@ public class BetResolutionVote {
         this.reasoning = reasoning;
     }
 
+    public java.util.List<BetResolutionVoteWinner> getWinnerVotes() {
+        return winnerVotes;
+    }
+
+    public void setWinnerVotes(java.util.List<BetResolutionVoteWinner> winnerVotes) {
+        this.winnerVotes = winnerVotes;
+    }
 
     public Boolean getIsActive() {
         return isActive;
@@ -167,11 +180,21 @@ public class BetResolutionVote {
     
     /**
      * Checks if this vote is currently active and valid.
-     * 
+     * Supports both outcome-based votes and winner-based votes (for PREDICTION bets).
+     *
      * @return true if vote should be counted
      */
     public boolean isValidVote() {
-        return isActive && revokedAt == null && votedOutcome != null;
+        return isActive && revokedAt == null && (votedOutcome != null || hasWinnerVotes());
+    }
+
+    /**
+     * Checks if this vote has winner selections (for PREDICTION bets).
+     *
+     * @return true if this vote has winner user selections
+     */
+    public boolean hasWinnerVotes() {
+        return winnerVotes != null && !winnerVotes.isEmpty();
     }
 
     /**
@@ -192,13 +215,48 @@ public class BetResolutionVote {
 
     /**
      * Updates the vote with a new outcome and reasoning.
-     * 
+     * Used for BINARY/MULTIPLE_CHOICE bets.
+     *
      * @param newOutcome the new voted outcome
      * @param newReasoning the new reasoning
      */
     public void updateVote(Bet.BetOutcome newOutcome, String newReasoning) {
         this.votedOutcome = newOutcome;
+        this.winnerVotes.clear();  // Clear winner votes when using outcome
         this.reasoning = newReasoning;
+    }
+
+    /**
+     * Clears existing winner votes (for updating PREDICTION bet votes).
+     * Call this before adding new winner votes.
+     */
+    public void clearWinnerVotes() {
+        this.votedOutcome = null;  // Clear outcome when using winner votes
+        this.winnerVotes.clear();
+    }
+
+    /**
+     * Adds a winner vote to this resolution vote.
+     *
+     * @param winnerVote the winner vote to add
+     */
+    public void addWinnerVote(BetResolutionVoteWinner winnerVote) {
+        winnerVotes.add(winnerVote);
+        winnerVote.setVote(this);
+    }
+
+    /**
+     * Gets the winner user IDs as a list.
+     *
+     * @return list of winner user IDs, or empty list if none
+     */
+    public java.util.List<Long> getWinnerUserIds() {
+        if (winnerVotes == null || winnerVotes.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return winnerVotes.stream()
+            .map(wv -> wv.getWinnerUser().getId())
+            .collect(java.util.stream.Collectors.toList());
     }
 
 

@@ -5,8 +5,11 @@ import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { groupService, type GroupMemberResponse, type PendingRequestResponse } from '../../services/group/groupService';
-import { debugLog, errorLog, ENV } from '../../config/env';
+import { debugLog, errorLog } from '../../config/env';
 import { Avatar } from '../common/Avatar';
+import { Badge } from '../common/Badge';
+import { colors } from '../../constants/theme';
+import { isOnline, getDisplayName, formatJoinDate, formatLastActivity } from '../../utils/memberUtils';
 
 interface GroupMembersTabProps {
   groupData: {
@@ -62,7 +65,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
       } else {
         setPendingRequests([]);
       }
-    } catch (error: any) {
+    } catch (error) {
       errorLog('Error fetching pending requests:', error);
       setPendingRequests([]);
     } finally {
@@ -94,7 +97,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
         setMembers([]);
         setError('Invalid data received from server');
       }
-    } catch (error: any) {
+    } catch (error) {
       errorLog('Error fetching group members:', error);
       setMembers([]);
 
@@ -160,77 +163,6 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
     }
   }, [members, activeFilter, groupData.ownerUsername]);
 
-  // Helper function to check if member is online
-  const isOnline = (member: GroupMemberResponse): boolean => {
-    if (!member.lastActivityAt) return false;
-    const lastActivity = new Date(member.lastActivityAt);
-    const now = new Date();
-    const minutesDiff = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
-    return minutesDiff <= 5; // Active within last 5 minutes
-  };
-
-  // Helper function to get display name
-  const getDisplayName = (member: GroupMemberResponse): string => {
-    return member.displayName || member.username;
-  };
-
-  // Helper function to format join date
-  const formatJoinDate = (dateString: string): string => {
-    const joinDate = new Date(dateString);
-    const now = new Date();
-
-    // Check if same day
-    if (joinDate.toDateString() === now.toDateString()) return 'today';
-
-    // Calculate year, month, and day differences
-    let years = now.getFullYear() - joinDate.getFullYear();
-    let months = now.getMonth() - joinDate.getMonth();
-
-    // Adjust for negative months
-    if (months < 0) {
-      years--;
-      months += 12;
-    }
-
-    // Return formatted string based on time difference
-    if (years >= 1) return `${years} year${years > 1 ? 's' : ''} ago`;
-    if (months >= 1) return `${months} month${months > 1 ? 's' : ''} ago`;
-
-    // For days, calculate total days difference
-    const totalDays = Math.floor((now.getTime() - joinDate.getTime()) / (1000 * 60 * 60 * 24));
-    if (totalDays === 1) return 'yesterday';
-    return `${totalDays} day${totalDays > 1 ? 's' : ''} ago`;
-  };
-
-  // Helper function to format last activity
-  const formatLastActivity = (member: GroupMemberResponse): string => {
-    if (isOnline(member)) return 'Online';
-    if (!member.lastActivityAt) return 'Never';
-
-    const lastActivity = new Date(member.lastActivityAt);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - lastActivity.getTime());
-    const diffMinutes = Math.floor(diffTime / (1000 * 60));
-    const diffHours = Math.floor(diffMinutes / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMinutes < 60) return `${diffMinutes} min ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays === 1) return 'Yesterday';
-    return `${diffDays} days ago`;
-  };
-
-  // Helper function to get full image URL
-  const getFullImageUrl = (relativePath: string | null | undefined): string | null => {
-    if (!relativePath) return null;
-    // If it's already a full URL, return as is
-    if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
-      return relativePath;
-    }
-    // Otherwise, prepend the API base URL
-    return `${ENV.API_BASE_URL}${relativePath}`;
-  };
-
   // Helper functions for invite functionality
   const generateInviteLink = () => {
     const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
@@ -287,7 +219,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
       setShowInviteModal(false);
       // Refresh members list to show newly invited user
       fetchMembers();
-    } catch (error: any) {
+    } catch (error) {
       errorLog('Error inviting user:', error);
       const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send invite';
       Alert.alert('Error', errorMessage);
@@ -310,7 +242,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
             <TouchableOpacity
               onPress={() => {
                 const groupId = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
-                router.push(`/group/${groupId}/pending-requests`);
+                router.push(`/(app)/group/${groupId}/pending-requests`);
               }}
               style={{
                 backgroundColor: 'rgba(255, 255, 255, 0.04)',
@@ -509,7 +441,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
           key={member.id}
           onPress={() => {
             const groupId = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
-            router.push(`/group/${groupId}/member/${member.id}`);
+            router.push(`/(app)/group/${groupId}/member/${member.id}`);
           }}
           activeOpacity={0.7}
           style={{
@@ -526,14 +458,14 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
           {/* Avatar */}
           <View style={{ marginRight: 12 }}>
             <Avatar
-              imageUrl={member.profilePictureUrl}
-              firstName={member.firstName}
-              lastName={member.lastName}
+              imageUrl={member.profileImageUrl}
+              firstName={member.displayName?.split(' ')[0]}
+              lastName={member.displayName?.split(' ').slice(1).join(' ')}
               username={member.username}
-              userId={member.userId}
+              userId={member.id}
               size="md"
               showOnlineIndicator={true}
-              isOnline={isOnline(member)}
+              isOnline={isOnline(member.lastActivityAt)}
             />
           </View>
 
@@ -554,35 +486,9 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
               </Text>
 
               {member.username === groupData.ownerUsername ? (
-                <View style={{
-                  backgroundColor: 'rgba(255, 140, 0, 0.2)',
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                  borderRadius: 4
-                }}>
-                  <Text style={{
-                    fontSize: 10,
-                    fontWeight: '600',
-                    color: '#FF8C00'
-                  }}>
-                    OWNER
-                  </Text>
-                </View>
+                <Badge label="OWNER" variant="owner" size="small" />
               ) : member.role === 'ADMIN' && (
-                <View style={{
-                  backgroundColor: 'rgba(255, 215, 0, 0.2)',
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                  borderRadius: 4
-                }}>
-                  <Text style={{
-                    fontSize: 10,
-                    fontWeight: '600',
-                    color: '#FFD700'
-                  }}>
-                    ADMIN
-                  </Text>
-                </View>
+                <Badge label="ADMIN" variant="admin" size="small" />
               )}
             </View>
 

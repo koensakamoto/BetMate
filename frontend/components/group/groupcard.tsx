@@ -1,8 +1,8 @@
 import React, { useCallback } from 'react';
-import { Text, View, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, View, Image, TouchableOpacity, StyleSheet, ImageSourcePropType } from 'react-native';
 import { router } from 'expo-router';
-import { ENV } from '../../config/env';
 import { Avatar } from '../common/Avatar';
+import { getAvatarColor, getAvatarColorWithOpacity } from '../../utils/avatarUtils';
 
 interface MemberPreview {
     id: number;
@@ -15,7 +15,7 @@ interface MemberPreview {
 interface GroupCardProps {
     name: string;
     memberCount: number;
-    img?: any;
+    img?: ImageSourcePropType;
     description?: string;
     memberPreviews?: MemberPreview[];
     isJoined?: boolean;
@@ -36,9 +36,9 @@ const GroupCard: React.FC<GroupCardProps> = ({
     const handlePress = useCallback(() => {
         if (groupId) {
             if (isJoined) {
-                router.push(`/group/${groupId}`);
+                router.push(`/(app)/group/${groupId}`);
             } else {
-                router.push(`/group/${groupId}/preview`);
+                router.push(`/(app)/group/${groupId}/preview`);
             }
         }
     }, [groupId, isJoined]);
@@ -52,16 +52,6 @@ const GroupCard: React.FC<GroupCardProps> = ({
         }
         return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
     }, [name]);
-
-
-    // Get full image URL
-    const getFullImageUrl = useCallback((imageUrl: string | null | undefined): string | null => {
-        if (!imageUrl) return null;
-        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-            return imageUrl;
-        }
-        return `${ENV.API_BASE_URL}${imageUrl}`;
-    }, []);
 
     const renderMemberAvatars = () => {
         // Debug logging
@@ -114,8 +104,14 @@ const GroupCard: React.FC<GroupCardProps> = ({
                 {img ? (
                     <Image source={img} style={styles.profileImage} />
                 ) : (
-                    <View style={styles.initialsContainer}>
-                        <Text style={styles.initialsText}>
+                    <View style={[
+                        styles.initialsContainer,
+                        { backgroundColor: getAvatarColorWithOpacity(groupId, 0.2) }
+                    ]}>
+                        <Text style={[
+                            styles.initialsText,
+                            { color: getAvatarColor(groupId) }
+                        ]}>
                             {getGroupInitials()}
                         </Text>
                     </View>
@@ -144,7 +140,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
             
             {/* Bottom Info */}
             <Text style={styles.memberInfo}>
-                {memberCount} members
+                {memberCount} {memberCount === 1 ? 'member' : 'members'}
             </Text>
         </TouchableOpacity>
     );
@@ -175,14 +171,12 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 12,
-        backgroundColor: 'rgba(0, 212, 170, 0.2)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     initialsText: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#00D4AA',
     },
     title: {
         fontSize: 17,

@@ -1,15 +1,17 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { 
-  Text, 
-  View, 
-  TextInput, 
-  TouchableOpacity, 
+import {
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
   Alert,
   Keyboard,
   Platform,
   Animated,
   LayoutAnimation,
-  Dimensions
+  Dimensions,
+  NativeSyntheticEvent,
+  TextInputContentSizeChangeEventData
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -179,7 +181,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
 
-  const handleContentSizeChange = (event: any) => {
+  const handleContentSizeChange = (event: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => {
     const { height } = event.nativeEvent.contentSize;
     const newHeight = Math.min(Math.max(height, 36), 100);
 

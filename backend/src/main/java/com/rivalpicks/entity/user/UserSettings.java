@@ -373,8 +373,7 @@ public class UserSettings {
      */
     public enum ProfileVisibility {
         PUBLIC,     // Anyone can see profile and stats
-        FRIENDS,    // Only friends can see full profile (if friends feature exists)
-        PRIVATE     // Only user can see their own profile
+        PRIVATE     // Only friends can see full profile
     }
 
     /**

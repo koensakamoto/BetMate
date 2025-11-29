@@ -1,10 +1,12 @@
 import React, { useState, useCallback } from 'react';
-import { Text, View, TouchableOpacity, Alert, TextInput, Image, Linking } from 'react-native';
+import { Text, View, TouchableOpacity, Alert, TextInput, Image, Linking, Modal, ScrollView, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { groupService } from '../../services/group/groupService';
-import { ENV } from '../../config/env';
+import { groupService, GroupMemberResponse, GroupDetailResponse } from '../../services/group/groupService';
+import { Avatar } from '../common/Avatar';
+import { getFullImageUrl, getAvatarColor, getAvatarColorWithOpacity, getGroupInitials } from '../../utils/avatarUtils';
+import { colors, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
 
 const icon = require("../../assets/images/icon.png");
 
@@ -17,7 +19,9 @@ interface GroupSettingsTabProps {
     privacy?: 'PUBLIC' | 'PRIVATE' | 'SECRET';
     groupPictureUrl?: string;
   };
-  onGroupUpdated?: (updatedGroup: any) => void;
+  isOwner?: boolean;
+  currentUsername?: string;
+  onGroupUpdated?: (updatedGroup: GroupDetailResponse) => void;
 }
 
 const SettingSection = React.memo(({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -42,7 +46,7 @@ const SettingSection = React.memo(({ title, children }: { title: string; childre
 ));
 SettingSection.displayName = 'SettingSection';
 
-const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupUpdated }) => {
+const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner = false, currentUsername, onGroupUpdated }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(groupData.name);
 
@@ -56,14 +60,13 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
 
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Get full image URL
-  const getFullImageUrl = (relativePath: string | null | undefined): string | null => {
-    if (!relativePath) return null;
-    if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
-      return relativePath;
-    }
-    return `${ENV.API_BASE_URL}${relativePath}`;
-  };
+  // Transfer ownership state
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [members, setMembers] = useState<GroupMemberResponse[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<GroupMemberResponse | null>(null);
 
   const currentGroupPhotoUrl = selectedPhoto || getFullImageUrl(groupData.groupPictureUrl);
 
@@ -290,7 +293,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
                     }
                   ]
                 );
-              } catch (error: any) {
+              } catch (error) {
                 console.error('Failed to leave group:', error);
                 const errorMessage = error?.response?.data?.error || 'Failed to leave group. Please try again.';
                 Alert.alert('Error', errorMessage);
@@ -352,6 +355,71 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
     );
   };
 
+  const handleOpenTransferModal = async () => {
+    setShowTransferModal(true);
+    setIsLoadingMembers(true);
+    setMemberSearchQuery('');
+
+    try {
+      const membersList = await groupService.getGroupMembers(groupData.id);
+      // Filter out the current owner from the list
+      const eligibleMembers = membersList.filter(m => m.username !== currentUsername);
+      setMembers(eligibleMembers);
+    } catch (error) {
+      console.error('Failed to fetch members:', error);
+      Alert.alert('Error', 'Failed to load members. Please try again.');
+      setShowTransferModal(false);
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  const handleTransferOwnership = (member: GroupMemberResponse) => {
+    setSelectedMember(member);
+    setShowConfirmModal(true);
+  };
+
+  const confirmTransferOwnership = async () => {
+    if (!selectedMember) return;
+
+    setIsUpdating(true);
+    try {
+      await groupService.transferOwnership(groupData.id, selectedMember.id);
+      setShowConfirmModal(false);
+      setShowTransferModal(false);
+      Alert.alert(
+        'Ownership Transferred',
+        `${selectedMember.displayName || selectedMember.username} is now the owner of this group.`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              router.dismissAll();
+              router.navigate({
+                pathname: '/(tabs)/group',
+                params: { refresh: Date.now().toString() }
+              });
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Failed to transfer ownership:', error);
+      Alert.alert('Error', 'Failed to transfer ownership. Please try again.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const filteredMembers = members.filter(member => {
+    if (!memberSearchQuery.trim()) return true;
+    const query = memberSearchQuery.toLowerCase();
+    return (
+      member.username.toLowerCase().includes(query) ||
+      (member.displayName?.toLowerCase().includes(query))
+    );
+  });
+
   return (
     <View>
       {/* Group Photo Section */}
@@ -385,22 +453,18 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
               width: 100,
               height: 100,
               borderRadius: 50,
-              backgroundColor: 'rgba(0, 212, 170, 0.2)',
+              backgroundColor: getAvatarColorWithOpacity(groupData.id, 0.2),
               justifyContent: 'center',
               alignItems: 'center',
               borderWidth: 2,
-              borderColor: 'rgba(0, 212, 170, 0.3)'
+              borderColor: getAvatarColorWithOpacity(groupData.id, 0.3)
             }}>
               <Text style={{
                 fontSize: 36,
                 fontWeight: '700',
-                color: '#00D4AA'
+                color: getAvatarColor(groupData.id)
               }}>
-                {groupData.name
-                  .split(' ')
-                  .slice(0, 2)
-                  .map(word => word.charAt(0).toUpperCase())
-                  .join('')}
+                {getGroupInitials(groupData.name)}
               </Text>
             </View>
           )}
@@ -880,6 +944,50 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
           Group Actions
         </Text>
 
+        {/* Transfer Ownership - Only visible to owner */}
+        {isOwner && (
+          <TouchableOpacity
+            onPress={handleOpenTransferModal}
+            disabled={isUpdating}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 12,
+              borderBottomWidth: 0.5,
+              borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+              opacity: isUpdating ? 0.6 : 1
+            }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{
+                width: 24,
+                height: 24,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: 12
+              }}>
+                <MaterialIcons
+                  name="swap-horiz"
+                  size={18}
+                  color="#FF8C00"
+                />
+              </View>
+              <Text style={{
+                fontSize: 15,
+                fontWeight: '500',
+                color: '#FF8C00'
+              }}>
+                Transfer Ownership
+              </Text>
+            </View>
+            <MaterialIcons
+              name="chevron-right"
+              size={20}
+              color="rgba(255, 140, 0, 0.6)"
+            />
+          </TouchableOpacity>
+        )}
+
         {/* Leave Group */}
         <TouchableOpacity
           onPress={handleLeaveGroup}
@@ -922,48 +1030,461 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, onGroupU
           />
         </TouchableOpacity>
 
-        {/* Delete Group */}
-        <TouchableOpacity
-          onPress={handleDeleteGroup}
-          disabled={isUpdating}
-          style={{
+        {/* Delete Group - Owner only */}
+        {isOwner && (
+          <TouchableOpacity
+            onPress={handleDeleteGroup}
+            disabled={isUpdating}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 12,
+              opacity: isUpdating ? 0.6 : 1
+            }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{
+                width: 24,
+                height: 24,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: 12
+              }}>
+                <MaterialIcons
+                  name="delete-forever"
+                  size={18}
+                  color="#EF4444"
+                />
+              </View>
+              <Text style={{
+                fontSize: 15,
+                fontWeight: '500',
+                color: '#EF4444'
+              }}>
+                Delete Group
+              </Text>
+            </View>
+            <MaterialIcons
+              name="chevron-right"
+              size={20}
+              color="rgba(239, 68, 68, 0.6)"
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Transfer Ownership Modal */}
+      <Modal
+        visible={showTransferModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => {
+          setShowTransferModal(false);
+          setShowConfirmModal(false);
+          setSelectedMember(null);
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          {/* Compact Header */}
+          <View style={{
+            paddingTop: spacing.lg,
+            paddingBottom: spacing.md,
+            paddingHorizontal: spacing.xl,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+            backgroundColor: colors.backgroundCard,
             flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingVertical: 12,
-            opacity: isUpdating ? 0.6 : 1
+            justifyContent: 'space-between'
           }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{
-              width: 24,
-              height: 24,
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginRight: 12
-            }}>
-              <MaterialIcons
-                name="delete-forever"
-                size={18}
-                color="#EF4444"
-              />
+            <View style={{ flex: 1 }}>
+              <Text style={{
+                fontSize: fontSize.lg,
+                fontWeight: fontWeight.bold,
+                color: colors.textPrimary
+              }}>
+                Transfer Ownership
+              </Text>
+              <Text style={{
+                fontSize: fontSize.sm,
+                color: colors.textMuted,
+                marginTop: spacing.xs
+              }}>
+                Select a member to become the new owner
+              </Text>
             </View>
-            <Text style={{
-              fontSize: 15,
-              fontWeight: '500',
-              color: '#EF4444'
-            }}>
-              Delete Group
-            </Text>
+            <TouchableOpacity
+              onPress={() => setShowTransferModal(false)}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: colors.surfaceStrong,
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
+            >
+              <MaterialIcons name="close" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
-          <MaterialIcons
-            name="chevron-right"
-            size={20}
-            color="rgba(239, 68, 68, 0.6)"
-          />
-        </TouchableOpacity>
-      </View>
+
+          {/* Search Input */}
+          <View style={{
+            paddingHorizontal: spacing.xl,
+            paddingVertical: spacing.lg
+          }}>
+            <View style={{
+              backgroundColor: colors.surfaceMedium,
+              borderRadius: borderRadius.lg,
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: spacing.lg,
+              paddingVertical: spacing.md,
+              borderWidth: 1,
+              borderColor: colors.borderLight
+            }}>
+              <MaterialIcons name="search" size={20} color={colors.textMuted} />
+              <TextInput
+                value={memberSearchQuery}
+                onChangeText={setMemberSearchQuery}
+                placeholder="Search members..."
+                placeholderTextColor={colors.textDisabled}
+                style={{
+                  flex: 1,
+                  fontSize: fontSize.md,
+                  color: colors.textPrimary,
+                  marginLeft: spacing.md
+                }}
+              />
+              {memberSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setMemberSearchQuery('')}>
+                  <MaterialIcons name="clear" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Members List */}
+          {isLoadingMembers ? (
+            <View style={{
+              flex: 1,
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={{
+                color: colors.textMuted,
+                marginTop: spacing.md,
+                fontSize: fontSize.sm
+              }}>
+                Loading members...
+              </Text>
+            </View>
+          ) : (
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingHorizontal: spacing.xl }}
+              showsVerticalScrollIndicator={false}
+            >
+              {filteredMembers.length === 0 ? (
+                <View style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  paddingVertical: 80
+                }}>
+                  <View style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 32,
+                    backgroundColor: colors.surfaceMedium,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    marginBottom: spacing.lg
+                  }}>
+                    <MaterialIcons name="people-outline" size={32} color={colors.textDisabled} />
+                  </View>
+                  <Text style={{
+                    fontSize: fontSize.lg,
+                    fontWeight: fontWeight.semibold,
+                    color: colors.textSecondary,
+                    marginBottom: spacing.xs
+                  }}>
+                    {memberSearchQuery.trim() ? 'No members found' : 'No eligible members'}
+                  </Text>
+                  <Text style={{
+                    fontSize: fontSize.sm,
+                    color: colors.textMuted,
+                    textAlign: 'center'
+                  }}>
+                    {memberSearchQuery.trim() ? 'Try a different search term' : 'Add members to your group first'}
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={{
+                    fontSize: fontSize.xs,
+                    fontWeight: fontWeight.semibold,
+                    color: colors.textMuted,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                    marginBottom: spacing.md
+                  }}>
+                    {filteredMembers.length} Member{filteredMembers.length !== 1 ? 's' : ''}
+                  </Text>
+
+                  {filteredMembers.map((member, index) => (
+                    <TouchableOpacity
+                      key={member.id}
+                      onPress={() => handleTransferOwnership(member)}
+                      activeOpacity={0.7}
+                      style={{
+                        backgroundColor: colors.surfaceLight,
+                        borderWidth: 1,
+                        borderColor: colors.borderLight,
+                        borderRadius: borderRadius.xl,
+                        padding: spacing.lg,
+                        marginBottom: spacing.md,
+                        flexDirection: 'row',
+                        alignItems: 'center'
+                      }}
+                    >
+                      {/* Avatar */}
+                      <Avatar
+                        imageUrl={member.profileImageUrl}
+                        username={member.displayName || member.username}
+                        userId={member.id}
+                        size="md"
+                      />
+
+                      {/* Member Info */}
+                      <View style={{ flex: 1, marginLeft: spacing.md }}>
+                        <View style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          marginBottom: 2
+                        }}>
+                          <Text style={{
+                            fontSize: fontSize.md,
+                            fontWeight: fontWeight.semibold,
+                            color: colors.textPrimary
+                          }}>
+                            {member.displayName || member.username}
+                          </Text>
+
+                          {member.role === 'ADMIN' && (
+                            <View style={{
+                              backgroundColor: 'rgba(255, 215, 0, 0.15)',
+                              paddingHorizontal: spacing.sm,
+                              paddingVertical: 2,
+                              borderRadius: borderRadius.sm,
+                              marginLeft: spacing.sm
+                            }}>
+                              <Text style={{
+                                fontSize: fontSize.xs,
+                                fontWeight: fontWeight.semibold,
+                                color: colors.gold
+                              }}>
+                                ADMIN
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+
+                        <Text style={{
+                          fontSize: fontSize.sm,
+                          color: colors.textMuted
+                        }}>
+                          @{member.username}
+                        </Text>
+                      </View>
+
+                      {/* Selection Indicator */}
+                      <View style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        borderWidth: 2,
+                        borderColor: colors.borderMedium,
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                      }}>
+                        <MaterialIcons name="arrow-forward" size={14} color={colors.textMuted} />
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+
+              {/* Bottom spacing */}
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          )}
+        </View>
+
+        {/* Confirmation Bottom Sheet */}
+        {showConfirmModal && selectedMember && (
+          <View style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            justifyContent: 'flex-end',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)'
+          }}>
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              activeOpacity={1}
+              onPress={() => {
+                if (!isUpdating) {
+                  setShowConfirmModal(false);
+                  setSelectedMember(null);
+                }
+              }}
+            />
+            <View style={{
+              backgroundColor: colors.backgroundCard,
+              borderTopLeftRadius: borderRadius.xxl,
+              borderTopRightRadius: borderRadius.xxl,
+              paddingTop: spacing.lg,
+              paddingHorizontal: spacing.xxl,
+              paddingBottom: 40
+            }}>
+              {/* Drag Handle */}
+              <View style={{
+                alignItems: 'center',
+                marginBottom: spacing.xl
+              }}>
+                <View style={{
+                  width: 40,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: colors.borderStrong
+                }} />
+              </View>
+
+              {/* Title */}
+              <Text style={{
+                fontSize: fontSize.lg,
+                fontWeight: fontWeight.bold,
+                color: colors.textPrimary,
+                textAlign: 'center',
+                marginBottom: spacing.sm
+              }}>
+                Transfer to {selectedMember.displayName || selectedMember.username}?
+              </Text>
+
+              {/* Warning */}
+              <View style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                padding: spacing.lg,
+                borderRadius: borderRadius.lg,
+                marginBottom: spacing.xxl,
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                borderWidth: 1,
+                borderColor: 'rgba(239, 68, 68, 0.2)'
+              }}>
+                <View style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: spacing.md
+                }}>
+                  <MaterialIcons name="warning" size={18} color={colors.error} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontSize: fontSize.sm,
+                    fontWeight: fontWeight.semibold,
+                    color: colors.error,
+                    marginBottom: spacing.xs
+                  }}>
+                    This action cannot be undone
+                  </Text>
+                  <Text style={{
+                    fontSize: fontSize.sm,
+                    color: colors.textSecondary,
+                    lineHeight: 20
+                  }}>
+                    You will remain as an admin but will no longer be able to transfer ownership or delete the group.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={{ gap: spacing.md }}>
+                <TouchableOpacity
+                  onPress={confirmTransferOwnership}
+                  disabled={isUpdating}
+                  style={{
+                    backgroundColor: colors.error,
+                    borderRadius: borderRadius.xl,
+                    paddingVertical: spacing.lg,
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    opacity: isUpdating ? 0.7 : 1
+                  }}
+                >
+                  {isUpdating ? (
+                    <>
+                      <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: spacing.sm }} />
+                      <Text style={{
+                        fontSize: fontSize.md,
+                        fontWeight: fontWeight.semibold,
+                        color: '#ffffff'
+                      }}>
+                        Transferring...
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <MaterialIcons name="check" size={20} color="#ffffff" style={{ marginRight: spacing.sm }} />
+                      <Text style={{
+                        fontSize: fontSize.md,
+                        fontWeight: fontWeight.semibold,
+                        color: '#ffffff'
+                      }}>
+                        Transfer Ownership
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowConfirmModal(false);
+                    setSelectedMember(null);
+                  }}
+                  disabled={isUpdating}
+                  style={{
+                    backgroundColor: colors.surfaceMedium,
+                    borderRadius: borderRadius.xl,
+                    paddingVertical: spacing.lg,
+                    alignItems: 'center',
+                    opacity: isUpdating ? 0.5 : 1
+                  }}
+                >
+                  <Text style={{
+                    fontSize: fontSize.md,
+                    fontWeight: fontWeight.medium,
+                    color: colors.textSecondary
+                  }}>
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+      </Modal>
     </View>
   );
 };
 
-export default GroupSettingsTab;
+export default React.memo(GroupSettingsTab);

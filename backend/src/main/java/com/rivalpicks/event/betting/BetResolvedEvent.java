@@ -14,12 +14,13 @@ public class BetResolvedEvent extends DomainEvent {
     private final String groupName;
     private final List<Long> winnerIds;
     private final List<Long> loserIds;
+    private final List<Long> drawIds;
     private final Map<Long, BigDecimal> payouts;
     private final String resolution;
     private final Long resolvedById;
 
     public BetResolvedEvent(Long betId, String betTitle, Long groupId, String groupName,
-                           List<Long> winnerIds, List<Long> loserIds,
+                           List<Long> winnerIds, List<Long> loserIds, List<Long> drawIds,
                            Map<Long, BigDecimal> payouts, String resolution,
                            Long resolvedById) {
         super("BET_RESOLVED");
@@ -29,6 +30,7 @@ public class BetResolvedEvent extends DomainEvent {
         this.groupName = groupName;
         this.winnerIds = winnerIds;
         this.loserIds = loserIds;
+        this.drawIds = drawIds != null ? drawIds : List.of();
         this.payouts = payouts;
         this.resolution = resolution;
         this.resolvedById = resolvedById;
@@ -58,6 +60,10 @@ public class BetResolvedEvent extends DomainEvent {
         return loserIds;
     }
 
+    public List<Long> getDrawIds() {
+        return drawIds;
+    }
+
     public Map<Long, BigDecimal> getPayouts() {
         return payouts;
     }
@@ -67,7 +73,15 @@ public class BetResolvedEvent extends DomainEvent {
     }
 
     public boolean isWinner(Long userId) {
-        return winnerIds.contains(userId);
+        return winnerIds != null && winnerIds.contains(userId);
+    }
+
+    public boolean isLoser(Long userId) {
+        return loserIds != null && loserIds.contains(userId);
+    }
+
+    public boolean isDraw(Long userId) {
+        return drawIds != null && drawIds.contains(userId);
     }
 
     public BigDecimal getPayoutForUser(Long userId) {

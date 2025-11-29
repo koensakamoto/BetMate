@@ -1,8 +1,9 @@
 import React, { useCallback } from 'react';
 import { Text, View, TouchableOpacity } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Avatar } from '../common/Avatar';
+import { Badge } from '../common/Badge';
+import { colors } from '../../constants/theme';
 
 interface ParticipantPreview {
   id: number;
@@ -18,6 +19,8 @@ interface BetCardProps {
   description: string;
   timeRemaining: string;
   resolveTimeRemaining?: string;
+  isUrgent?: boolean; // true if < 24h remaining until betting deadline
+  isResolveUrgent?: boolean; // true if < 24h remaining until resolve deadline
   participantCount: number;
   participantPreviews?: ParticipantPreview[];
   stakeAmount: number;
@@ -42,6 +45,8 @@ function BetCard({
   description,
   timeRemaining,
   resolveTimeRemaining,
+  isUrgent = false,
+  isResolveUrgent = false,
   participantCount,
   participantPreviews,
   stakeAmount,
@@ -60,40 +65,21 @@ function BetCard({
   insuranceRefundPercentage
 }: BetCardProps) {
 
-  // Debug logging for insurance
-  console.log(`[BetCard ${id}] Insurance Debug:`, {
-    hasInsurance,
-    insuranceRefundPercentage,
-    isJoined,
-    shouldShowBadge: hasInsurance && isJoined
-  });
-
   const handlePress = useCallback(() => {
     // Navigate to bet details
-    router.push(`/bet-details/${id}`);
+    router.push(`/(app)/bet-details/${id}`);
   }, [id]);
 
 
-  // Get fulfillment badge colors and text
-  const getFulfillmentBadgeColor = useCallback((status: string) => {
+  // Get fulfillment badge variant and text
+  const getFulfillmentBadgeInfo = useCallback((status: string): { variant: 'success' | 'warning' | 'muted'; label: string } => {
     switch (status) {
       case 'FULFILLED':
-        return { bg: 'rgba(16, 185, 129, 0.15)', text: '#10b981', border: 'rgba(16, 185, 129, 0.3)' };
+        return { variant: 'success', label: 'Fulfilled' };
       case 'PARTIALLY_FULFILLED':
-        return { bg: 'rgba(251, 191, 36, 0.15)', text: '#fbbf24', border: 'rgba(251, 191, 36, 0.3)' };
+        return { variant: 'warning', label: 'Partial' };
       default:
-        return { bg: 'rgba(156, 163, 175, 0.15)', text: '#9ca3af', border: 'rgba(156, 163, 175, 0.3)' };
-    }
-  }, []);
-
-  const getFulfillmentBadgeText = useCallback((status: string) => {
-    switch (status) {
-      case 'FULFILLED':
-        return 'Fulfilled';
-      case 'PARTIALLY_FULFILLED':
-        return 'Partial';
-      default:
-        return 'Pending';
+        return { variant: 'muted', label: 'Pending' };
     }
   }, []);
 
@@ -106,7 +92,7 @@ function BetCard({
         padding: 16,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)'
+        borderColor: colors.borderLight
       }}
       activeOpacity={0.7}
     >
@@ -122,7 +108,7 @@ function BetCard({
           <Text style={{
             fontSize: 16,
             fontWeight: '600',
-            color: '#ffffff',
+            color: colors.textPrimary,
             marginBottom: 4,
             lineHeight: 22
           }} numberOfLines={2}>
@@ -132,7 +118,7 @@ function BetCard({
           {/* Creator */}
           <Text style={{
             fontSize: 13,
-            color: 'rgba(255, 255, 255, 0.6)',
+            color: colors.textSecondary,
             marginBottom: 2
           }}>
             by {creatorName}
@@ -145,7 +131,7 @@ function BetCard({
       <View style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center' }}>
         <Text style={{
           fontSize: 10,
-          color: 'rgba(255, 255, 255, 0.5)',
+          color: colors.textMuted,
           textTransform: 'uppercase',
           letterSpacing: 0.5,
           marginRight: 6
@@ -160,8 +146,7 @@ function BetCard({
             resolveTimeRemaining && resolveTimeRemaining !== 'N/A' && resolveTimeRemaining !== 'Ended' && (
               <Text style={{
                 fontSize: 13,
-                color: resolveTimeRemaining.includes('h') && !resolveTimeRemaining.includes('d') ?
-                  '#FF4757' : 'rgba(255, 255, 255, 0.6)',
+                color: isResolveUrgent ? colors.errorAlt : colors.textSecondary,
                 fontWeight: '600'
               }}>
                 {resolveTimeRemaining}
@@ -170,8 +155,7 @@ function BetCard({
           ) : (
             <Text style={{
               fontSize: 13,
-              color: timeRemaining.includes('h') && !timeRemaining.includes('d') ?
-                '#FF4757' : 'rgba(255, 255, 255, 0.6)',
+              color: isUrgent ? colors.errorAlt : colors.textSecondary,
               fontWeight: '600'
             }}>
               {timeRemaining}
@@ -204,7 +188,7 @@ function BetCard({
                   style={{
                     marginLeft: index > 0 ? -6 : 0,
                     borderWidth: 1.5,
-                    borderColor: '#0a0a0f',
+                    borderColor: colors.background,
                     borderRadius: 10
                   }}
                 >
@@ -224,7 +208,7 @@ function BetCard({
           {/* Participant count */}
           <Text style={{
             fontSize: 12,
-            color: 'rgba(255, 255, 255, 0.5)',
+            color: colors.textMuted,
             fontWeight: '500'
           }}>
             {participantCount} {participantCount === 1 ? 'participant' : 'participants'}
@@ -235,86 +219,31 @@ function BetCard({
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {/* Cancelled Badge */}
           {backendStatus === 'CANCELLED' && (
-            <View style={{
-              backgroundColor: 'rgba(156, 163, 175, 0.15)',
-              paddingHorizontal: 10,
-              paddingVertical: 5,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: 'rgba(156, 163, 175, 0.3)'
-            }}>
-              <Text style={{
-                fontSize: 11,
-                fontWeight: '600',
-                color: '#9ca3af'
-              }}>
-                Cancelled
-              </Text>
-            </View>
+            <Badge label="Cancelled" variant="muted" showBorder />
           )}
 
           {/* Insurance Badge */}
           {hasInsurance && isJoined && (
-            <View style={{
-              backgroundColor: 'rgba(59, 130, 246, 0.15)',
-              paddingHorizontal: 10,
-              paddingVertical: 5,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: 'rgba(59, 130, 246, 0.3)',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 4
-            }}>
-              <MaterialIcons name="shield" size={14} color="#3B82F6" />
-              {insuranceRefundPercentage && (
-                <Text style={{
-                  fontSize: 11,
-                  fontWeight: '600',
-                  color: '#3B82F6'
-                }}>
-                  {insuranceRefundPercentage}%
-                </Text>
-              )}
-            </View>
+            <Badge
+              label={insuranceRefundPercentage ? `${insuranceRefundPercentage}%` : ''}
+              variant="info"
+              icon="shield"
+              showBorder
+            />
           )}
 
           {/* Fulfillment Status Badge - Show for resolved social bets */}
           {status === 'resolved' && stakeType === 'SOCIAL' && fulfillmentStatus && (
-            <View style={{
-              backgroundColor: getFulfillmentBadgeColor(fulfillmentStatus).bg,
-              paddingHorizontal: 10,
-              paddingVertical: 5,
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: getFulfillmentBadgeColor(fulfillmentStatus).border
-            }}>
-              <Text style={{
-                fontSize: 11,
-                fontWeight: '600',
-                color: getFulfillmentBadgeColor(fulfillmentStatus).text
-              }}>
-                {getFulfillmentBadgeText(fulfillmentStatus)}
-              </Text>
-            </View>
+            <Badge
+              label={getFulfillmentBadgeInfo(fulfillmentStatus).label}
+              variant={getFulfillmentBadgeInfo(fulfillmentStatus).variant}
+              showBorder
+            />
           )}
 
           {/* Joined Indicator */}
           {isJoined && showJoinedIndicator && (
-            <View style={{
-              backgroundColor: 'rgba(0, 212, 170, 0.15)',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 16
-            }}>
-              <Text style={{
-                fontSize: 12,
-                fontWeight: '600',
-                color: '#00D4AA'
-              }}>
-                Joined
-              </Text>
-            </View>
+            <Badge label="Joined" variant="primary" />
           )}
         </View>
       </View>

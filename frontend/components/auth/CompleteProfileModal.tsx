@@ -43,7 +43,7 @@ export default function CompleteProfileModal({
         lastName: lastName.trim(),
       });
       onComplete();
-    } catch (err: any) {
+    } catch (err) {
       setError(err?.message || 'Failed to update profile');
     } finally {
       setIsLoading(false);

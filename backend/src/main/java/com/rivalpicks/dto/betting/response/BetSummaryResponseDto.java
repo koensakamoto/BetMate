@@ -2,6 +2,7 @@ package com.rivalpicks.dto.betting.response;
 
 import com.rivalpicks.dto.group.response.MemberPreviewDto;
 import com.rivalpicks.entity.betting.Bet;
+import com.rivalpicks.entity.betting.BetParticipation;
 import com.rivalpicks.entity.betting.BetStakeType;
 import com.rivalpicks.entity.betting.FulfillmentStatus;
 
@@ -43,6 +44,7 @@ public class BetSummaryResponseDto {
     private Boolean hasUserParticipated;
     private Bet.BetOutcome userChoice;
     private BigDecimal userAmount;
+    private BetParticipation.ParticipationStatus userParticipationStatus;
 
     // Participant previews for displaying avatars
     private List<MemberPreviewDto> participantPreviews;
@@ -184,6 +186,14 @@ public class BetSummaryResponseDto {
 
     public void setUserAmount(BigDecimal userAmount) {
         this.userAmount = userAmount;
+    }
+
+    public BetParticipation.ParticipationStatus getUserParticipationStatus() {
+        return userParticipationStatus;
+    }
+
+    public void setUserParticipationStatus(BetParticipation.ParticipationStatus userParticipationStatus) {
+        this.userParticipationStatus = userParticipationStatus;
     }
 
     public List<MemberPreviewDto> getParticipantPreviews() {

@@ -98,24 +98,6 @@ export const BetJoinSuccessModal: React.FC<BetJoinSuccessModalProps> = ({
           {/* Content */}
           <View style={styles.content}>
             <Text style={styles.title}>You're in!</Text>
-
-            <View style={styles.details}>
-              {selectedOption && (
-                <Text style={styles.detailText} numberOfLines={1}>
-                  {selectedOption}
-                </Text>
-              )}
-
-              {selectedOption && (isSocialBet || (amount !== undefined && amount > 0)) && (
-                <View style={styles.dot} />
-              )}
-
-              {isSocialBet ? (
-                <Text style={styles.detailTextMuted}>Social</Text>
-              ) : amount !== undefined && amount > 0 ? (
-                <Text style={styles.amount}>${amount}</Text>
-              ) : null}
-            </View>
           </View>
         </Animated.View>
       </View>

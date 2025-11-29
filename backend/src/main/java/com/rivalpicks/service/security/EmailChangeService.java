@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
@@ -27,6 +28,8 @@ import java.util.Optional;
 @Service
 @Transactional
 public class EmailChangeService {
+
+    private static final int RATE_LIMIT_MINUTES = 2; // Cooldown between email change requests
 
     private final EmailChangeTokenRepository tokenRepository;
     private final UserService userService;
@@ -94,10 +97,27 @@ public class EmailChangeService {
             throw new IllegalArgumentException("This email address is already in use");
         }
 
-        // Check if there's already a pending verification for this email
-        if (tokenRepository.existsPendingTokenForEmail(sanitizedEmail, LocalDateTime.now(ZoneOffset.UTC))) {
-            log.warn("Email change failed: pending verification exists for email: {}", sanitizedEmail);
-            throw new IllegalArgumentException("A verification is already pending for this email address");
+        // Rate limiting: check if user recently requested an email change
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        Optional<EmailChangeToken> recentToken = tokenRepository.findMostRecentTokenForUser(user);
+        if (recentToken.isPresent()) {
+            LocalDateTime createdAt = recentToken.get().getCreatedAt();
+            LocalDateTime cooldownEnd = createdAt.plusMinutes(RATE_LIMIT_MINUTES);
+
+            if (now.isBefore(cooldownEnd)) {
+                long secondsRemaining = Duration.between(now, cooldownEnd).getSeconds();
+                log.warn("Email change rate limited for user: {}. {} seconds remaining", user.getUsername(), secondsRemaining);
+                throw new IllegalArgumentException(
+                    "Please wait " + secondsRemaining + " seconds before requesting another verification email"
+                );
+            }
+        }
+
+        // Check if a DIFFERENT user has a pending verification for this email
+        Optional<EmailChangeToken> pendingToken = tokenRepository.findPendingTokenForEmail(sanitizedEmail, now);
+        if (pendingToken.isPresent() && !pendingToken.get().getUser().getId().equals(userId)) {
+            log.warn("Email change failed: another user has pending verification for email: {}", sanitizedEmail);
+            throw new IllegalArgumentException("This email address has a pending verification from another account");
         }
 
         // Invalidate any existing tokens for this user

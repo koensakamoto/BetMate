@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { InventoryItemResponse } from '../../services/store/storeService';
 import { haptic } from '../../utils/haptics';
+import { getRarityColors } from '../../utils/rarityUtils';
 
 interface InventoryItemDetailSheetProps {
   visible: boolean;
@@ -27,33 +28,7 @@ export default function InventoryItemDetailSheet({
 
   const rarityStyles = useMemo(() => {
     if (!item) return { color: '#9CA3AF', bgColor: 'rgba(156, 163, 175, 0.15)' };
-
-    const getRarityColor = (rarity: string) => {
-      switch (rarity) {
-        case 'COMMON': return '#9CA3AF';
-        case 'UNCOMMON': return '#10B981';
-        case 'RARE': return '#3B82F6';
-        case 'EPIC': return '#8B5CF6';
-        case 'LEGENDARY': return '#F59E0B';
-        default: return '#9CA3AF';
-      }
-    };
-
-    const getRarityBgColor = (rarity: string) => {
-      switch (rarity) {
-        case 'COMMON': return 'rgba(156, 163, 175, 0.15)';
-        case 'UNCOMMON': return 'rgba(16, 185, 129, 0.15)';
-        case 'RARE': return 'rgba(59, 130, 246, 0.15)';
-        case 'EPIC': return 'rgba(139, 92, 246, 0.15)';
-        case 'LEGENDARY': return 'rgba(245, 158, 11, 0.15)';
-        default: return 'rgba(156, 163, 175, 0.15)';
-      }
-    };
-
-    return {
-      color: getRarityColor(item.rarity),
-      bgColor: getRarityBgColor(item.rarity)
-    };
+    return getRarityColors(item.rarity);
   }, [item?.rarity]);
 
   if (!item) return null;
@@ -63,7 +38,7 @@ export default function InventoryItemDetailSheet({
 
     // For insurance items and other bet-applicable items, navigate to bet selection
     if (item.itemType.includes('INSURANCE')) {
-      router.push(`/inventory/${item.id}/apply-to-bet`);
+      router.push(`/(app)/inventory/${item.id}/apply-to-bet`);
       onClose();
       return;
     }

@@ -13,19 +13,19 @@ public class PendingRequestResponseDto {
     private Long userId;
     private String username;
     private String displayName;
-    private String profilePictureUrl;
+    private String profileImageUrl;
     private LocalDateTime requestedAt;
 
     // Constructors
     public PendingRequestResponseDto() {}
 
     public PendingRequestResponseDto(Long requestId, Long userId, String username, String displayName,
-                                    String profilePictureUrl, LocalDateTime requestedAt) {
+                                    String profileImageUrl, LocalDateTime requestedAt) {
         this.requestId = requestId;
         this.userId = userId;
         this.username = username;
         this.displayName = displayName;
-        this.profilePictureUrl = profilePictureUrl;
+        this.profileImageUrl = profileImageUrl;
         this.requestedAt = requestedAt;
     }
 
@@ -40,7 +40,7 @@ public class PendingRequestResponseDto {
         dto.setUserId(membership.getUser().getId());
         dto.setUsername(membership.getUser().getUsername());
         dto.setDisplayName(membership.getUser().getDisplayName());
-        dto.setProfilePictureUrl(membership.getUser().getProfileImageUrl());
+        dto.setProfileImageUrl(membership.getUser().getProfileImageUrl());
         dto.setRequestedAt(membership.getJoinedAt());
 
         return dto;
@@ -59,8 +59,8 @@ public class PendingRequestResponseDto {
     public String getDisplayName() { return displayName; }
     public void setDisplayName(String displayName) { this.displayName = displayName; }
 
-    public String getProfilePictureUrl() { return profilePictureUrl; }
-    public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }
+    public String getProfileImageUrl() { return profileImageUrl; }
+    public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
 
     public LocalDateTime getRequestedAt() { return requestedAt; }
     public void setRequestedAt(LocalDateTime requestedAt) { this.requestedAt = requestedAt; }

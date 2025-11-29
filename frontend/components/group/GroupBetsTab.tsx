@@ -97,6 +97,13 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
     return `${minutes}m`;
   }, []);
 
+  // Check if deadline is urgent (< 24 hours remaining)
+  const isDeadlineUrgent = useCallback((deadline: string | null | undefined): boolean => {
+    if (!deadline) return false;
+    const diff = parseBackendDate(deadline).getTime() - Date.now();
+    return diff > 0 && diff < 24 * 60 * 60 * 1000;
+  }, []);
+
   // Transform backend bet data to frontend format - memoized for performance
   const transformBetData = useCallback((bet: BetSummaryResponse) => {
     const bettingTimeRemaining = calculateTimeRemaining(bet.bettingDeadline);
@@ -118,6 +125,8 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
       description: '',  // Description not in summary, would need full bet details
       timeRemaining: bettingTimeRemaining,
       resolveTimeRemaining: resolveTimeRemaining,
+      isUrgent: isDeadlineUrgent(bet.bettingDeadline),
+      isResolveUrgent: isDeadlineUrgent(bet.resolveDate),
       participantCount: bet.totalParticipants,
       participantPreviews: bet.participantPreviews,
       participantAvatars: [icon, icon, icon],  // Placeholder avatars
@@ -132,7 +141,7 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
       hasInsurance: bet.hasInsurance,
       insuranceRefundPercentage: bet.insuranceRefundPercentage
     };
-  }, [calculateTimeRemaining]);
+  }, [calculateTimeRemaining, isDeadlineUrgent]);
 
   // Filter bets based on selected filter - memoized to avoid recalculating on every render
   const filteredBets = useMemo(() => {
@@ -158,7 +167,7 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
 
   const handleCreateBet = () => {
     const groupIdParam = Array.isArray(groupData.id) ? groupData.id[0] : groupData.id;
-    router.push(`/create-bet?groupId=${groupIdParam}`);
+    router.push(`/(app)/create-bet?groupId=${groupIdParam}`);
   };
 
   return (
