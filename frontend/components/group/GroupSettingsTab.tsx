@@ -479,6 +479,11 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
           <TouchableOpacity
             onPress={pickImage}
             disabled={isUpdating}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Select from photo library"
+            accessibilityHint="Double tap to choose a photo from your library"
+            accessibilityState={{ disabled: isUpdating }}
             style={{
               flex: 1,
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -493,12 +498,12 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
               opacity: isUpdating ? 0.5 : 1
             }}
           >
-            <MaterialIcons name="photo-library" size={20} color="#00D4AA" />
+            <MaterialIcons name="photo-library" size={20} color="#00D4AA" accessible={false} />
             <Text style={{
               fontSize: 14,
               fontWeight: '600',
               color: '#ffffff'
-            }}>
+            }} accessible={false}>
               Photo Library
             </Text>
           </TouchableOpacity>
@@ -507,6 +512,11 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
           <TouchableOpacity
             onPress={takePhoto}
             disabled={isUpdating}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Take a photo"
+            accessibilityHint="Double tap to take a photo with your camera"
+            accessibilityState={{ disabled: isUpdating }}
             style={{
               flex: 1,
               backgroundColor: 'rgba(255, 255, 255, 0.05)',
@@ -521,12 +531,12 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
               opacity: isUpdating ? 0.5 : 1
             }}
           >
-            <MaterialIcons name="camera-alt" size={20} color="#00D4AA" />
+            <MaterialIcons name="camera-alt" size={20} color="#00D4AA" accessible={false} />
             <Text style={{
               fontSize: 14,
               fontWeight: '600',
               color: '#ffffff'
-            }}>
+            }} accessible={false}>
               Camera
             </Text>
           </TouchableOpacity>

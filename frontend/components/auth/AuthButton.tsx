@@ -89,29 +89,41 @@ export default function AuthButton({
     }
   };
 
+  const isDisabled = disabled || loading;
+
   return (
     <TouchableOpacity
       style={getButtonStyle()}
       onPress={onPress}
-      disabled={disabled || loading}
+      disabled={isDisabled}
       activeOpacity={0.8}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={loading ? `${title}, loading` : title}
+      accessibilityState={{
+        disabled: isDisabled,
+        busy: loading,
+      }}
+      accessibilityHint={isDisabled ? undefined : `Double tap to ${title.toLowerCase()}`}
     >
       {loading ? (
-        <ActivityIndicator 
-          size="small" 
-          color={variant === 'primary' ? '#000000' : '#ffffff'} 
+        <ActivityIndicator
+          size="small"
+          color={variant === 'primary' ? '#000000' : '#ffffff'}
+          accessible={false}
         />
       ) : (
         <>
           {icon && (
-            <MaterialIcons 
-              name={icon} 
-              size={size === 'small' ? 16 : 18} 
+            <MaterialIcons
+              name={icon}
+              size={size === 'small' ? 16 : 18}
               color={getTextStyle().color}
               style={{ marginRight: 8 }}
+              accessible={false}
             />
           )}
-          <Text style={getTextStyle()}>
+          <Text style={getTextStyle()} accessible={false}>
             {title}
           </Text>
         </>

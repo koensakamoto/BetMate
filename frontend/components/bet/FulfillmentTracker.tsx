@@ -196,6 +196,11 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = React.memo(
                 onPress={handleLoserCardPress}
                 disabled={!canViewProof}
                 activeOpacity={canViewProof ? 0.7 : 1}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={`${loser.displayName}, ${loser.hasClaimed ? 'fulfilled' : 'pending fulfillment'}`}
+                accessibilityHint={canViewProof ? 'Double tap to view proof' : undefined}
+                accessibilityState={{ disabled: !canViewProof }}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -217,14 +222,14 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = React.memo(
                     userId={loser.userId}
                     customSize={36}
                   />
-                  <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '500' }}>
+                  <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '500' }} accessible={false}>
                     {loser.displayName}
                   </Text>
                 </View>
                 {loser.hasClaimed ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <MaterialIcons name="check-circle" size={18} color={colors.success} />
-                    <MaterialIcons name="chevron-right" size={18} color={colors.textMuted} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} accessible={false}>
+                    <MaterialIcons name="check-circle" size={18} color={colors.success} accessible={false} />
+                    <MaterialIcons name="chevron-right" size={18} color={colors.textMuted} accessible={false} />
                   </View>
                 ) : (
                   <View style={{
@@ -232,8 +237,8 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = React.memo(
                     paddingHorizontal: 8,
                     paddingVertical: 4,
                     borderRadius: 6
-                  }}>
-                    <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '500' }}>Pending</Text>
+                  }} accessible={false}>
+                    <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '500' }} accessible={false}>Pending</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -247,6 +252,10 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = React.memo(
                 haptic.selection();
                 setShowAllLosers(!showAllLosers);
               }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={showAllLosers ? 'Show less' : `Show ${remainingCount} more`}
+              accessibilityHint="Double tap to expand or collapse the list"
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -255,13 +264,14 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = React.memo(
                 gap: 4
               }}
             >
-              <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>
+              <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }} accessible={false}>
                 {showAllLosers ? 'Show less' : `Show ${remainingCount} more`}
               </Text>
               <MaterialIcons
                 name={showAllLosers ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
                 size={20}
                 color={colors.primary}
+                accessible={false}
               />
             </TouchableOpacity>
           )}
@@ -273,6 +283,14 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = React.memo(
         <TouchableOpacity
           onPress={handleLoserClaim}
           disabled={submitting}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={submitting ? 'Submitting claim, please wait' : 'I have fulfilled the stake'}
+          accessibilityState={{
+            disabled: submitting,
+            busy: submitting,
+          }}
+          accessibilityHint={submitting ? undefined : 'Double tap to claim you have fulfilled the stake'}
           style={{
             backgroundColor: submitting ? 'rgba(255, 255, 255, 0.08)' : '#00D4AA',
             borderRadius: 12,
@@ -284,9 +302,9 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = React.memo(
           activeOpacity={0.7}
         >
           {submitting ? (
-            <ActivityIndicator size="small" color="#ffffff" />
+            <ActivityIndicator size="small" color="#ffffff" accessible={false} />
           ) : (
-            <Text style={{ color: '#000000', fontWeight: '700', fontSize: 16, textAlign: 'center' }}>
+            <Text style={{ color: '#000000', fontWeight: '700', fontSize: 16, textAlign: 'center' }} accessible={false}>
               I have fulfilled the stake
             </Text>
           )}

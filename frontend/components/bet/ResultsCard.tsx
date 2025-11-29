@@ -86,15 +86,20 @@ export function ResultsCard({
   // Cancelled state
   if (outcome === 'CANCELLED') {
     return (
-      <View style={styles.container}>
+      <View
+        style={styles.container}
+        accessible={true}
+        accessibilityRole="alert"
+        accessibilityLabel={`Bet cancelled${cancellationReason ? `. Reason: ${cancellationReason}` : ''}`}
+      >
         <View style={styles.cancelledBanner}>
           <View style={styles.cancelledIconContainer}>
-            <MaterialIcons name="block" size={24} color="#9ca3af" />
+            <MaterialIcons name="block" size={24} color="#9ca3af" accessible={false} />
           </View>
           <View style={styles.bannerTextContainer}>
-            <Text style={styles.cancelledTitle}>Bet Cancelled</Text>
+            <Text style={styles.cancelledTitle} accessible={false}>Bet Cancelled</Text>
             {cancellationReason && (
-              <Text style={styles.cancelledReason}>{cancellationReason}</Text>
+              <Text style={styles.cancelledReason} accessible={false}>{cancellationReason}</Text>
             )}
           </View>
         </View>
@@ -105,11 +110,15 @@ export function ResultsCard({
   // Draw state
   if (outcome === 'DRAW') {
     return (
-      <View style={styles.container}>
+      <View
+        style={styles.container}
+        accessible={true}
+        accessibilityLabel={`Bet result: Draw${hasUserParticipated && userChoiceText ? `. Your pick was ${userChoiceText}` : ''}`}
+      >
         {/* Draw Banner - Compact style matching Win/Loss */}
-        <View style={styles.drawBanner}>
-          <MaterialIcons name="balance" size={20} color="#60a5fa" />
-          <Text style={styles.drawBannerText}>It's a draw</Text>
+        <View style={styles.drawBanner} accessible={false}>
+          <MaterialIcons name="balance" size={20} color="#60a5fa" accessible={false} />
+          <Text style={styles.drawBannerText} accessible={false}>It's a draw</Text>
         </View>
 
         {/* All Options */}
@@ -159,8 +168,16 @@ export function ResultsCard({
   // Normal resolved state (Win/Loss)
   const isWin = result === 'WIN';
 
+  const resultsAccessibilityLabel = hasUserParticipated
+    ? `Bet result: ${isWin ? 'You won' : 'You lost'}${winningOptionText ? `. Winning answer: ${winningOptionText}` : ''}${userChoiceText ? `. Your pick: ${userChoiceText}` : ''}`
+    : `Bet resolved${winningOptionText ? `. Winning answer: ${winningOptionText}` : ''}`;
+
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessible={true}
+      accessibilityLabel={resultsAccessibilityLabel}
+    >
       {/* Result Banner - Only show if user participated */}
       {hasUserParticipated && (
         <View style={[styles.resultBanner, isWin ? styles.winBanner : styles.lossBanner]}>

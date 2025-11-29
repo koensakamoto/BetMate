@@ -43,6 +43,11 @@ export default function StoreItemDetailSheet({
         <TouchableOpacity
           onPress={handlePurchase}
           disabled={!canAfford}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={canAfford ? `Buy for ${item.price} credits` : 'Insufficient credits'}
+          accessibilityState={{ disabled: !canAfford }}
+          accessibilityHint={canAfford ? "Double tap to purchase this item" : undefined}
           style={{
             backgroundColor: canAfford ? '#00D4AA' : 'rgba(255, 255, 255, 0.08)',
             borderRadius: 16,
@@ -62,7 +67,7 @@ export default function StoreItemDetailSheet({
             fontSize: 16,
             fontWeight: '700',
             color: canAfford ? '#000000' : 'rgba(255, 255, 255, 0.5)'
-          }}>
+          }} accessible={false}>
             {canAfford ? `Buy for ${item.price} credits` : 'Insufficient credits'}
           </Text>
         </TouchableOpacity>
@@ -71,6 +76,10 @@ export default function StoreItemDetailSheet({
       {/* Close Button */}
       <TouchableOpacity
         onPress={onClose}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel="Close"
+        accessibilityHint="Double tap to close this sheet"
         style={{
           backgroundColor: 'rgba(255, 255, 255, 0.08)',
           borderRadius: 16,
@@ -85,7 +94,7 @@ export default function StoreItemDetailSheet({
           fontSize: 15,
           fontWeight: '600',
           color: '#ffffff'
-        }}>
+        }} accessible={false}>
           Close
         </Text>
       </TouchableOpacity>
@@ -284,24 +293,29 @@ export default function StoreItemDetailSheet({
 
       {/* Status if owned */}
       {item.isOwned && (
-        <View style={{
-          backgroundColor: 'rgba(0, 212, 170, 0.15)',
-          borderRadius: 12,
-          padding: 16,
-          marginBottom: 20,
-          borderWidth: 1,
-          borderColor: 'rgba(0, 212, 170, 0.3)',
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <MaterialIcons name="check-circle" size={20} color="#00D4AA" />
+        <View
+          style={{
+            backgroundColor: 'rgba(0, 212, 170, 0.15)',
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 20,
+            borderWidth: 1,
+            borderColor: 'rgba(0, 212, 170, 0.3)',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          accessible={true}
+          accessibilityRole="text"
+          accessibilityLabel="You own this item"
+        >
+          <MaterialIcons name="check-circle" size={20} color="#00D4AA" accessible={false} />
           <Text style={{
             fontSize: 15,
             fontWeight: '700',
             color: '#00D4AA',
             marginLeft: 8
-          }}>
+          }} accessible={false}>
             You own this item
           </Text>
         </View>

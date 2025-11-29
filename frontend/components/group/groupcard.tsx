@@ -93,8 +93,17 @@ const GroupCard: React.FC<GroupCardProps> = ({
         );
     };
 
+    const accessibilityLabelText = `${name}. ${memberCount} ${memberCount === 1 ? 'member' : 'members'}${description ? `. ${description}` : ''}${isJoined ? '. Joined' : ''}`;
+
     return (
-        <TouchableOpacity style={styles.card} onPress={handlePress}>
+        <TouchableOpacity
+            style={styles.card}
+            onPress={handlePress}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={accessibilityLabelText}
+            accessibilityHint={isJoined ? "Double tap to view group" : "Double tap to preview group"}
+        >
             {/* Profile Image */}
             <View style={styles.imageContainer}>
                 {img ? (
@@ -119,23 +128,25 @@ const GroupCard: React.FC<GroupCardProps> = ({
                 style={styles.title}
                 numberOfLines={2}
                 ellipsizeMode="tail"
+                accessible={false}
             >
                 {name}
             </Text>
-            
-            <Text 
+
+            <Text
                 style={styles.description}
                 numberOfLines={3}
                 ellipsizeMode="tail"
+                accessible={false}
             >
                 {description || ''}
             </Text>
-            
+
             {/* Member Avatars */}
             {renderMemberAvatars()}
-            
+
             {/* Bottom Info */}
-            <Text style={styles.memberInfo}>
+            <Text style={styles.memberInfo} accessible={false}>
                 {memberCount} {memberCount === 1 ? 'member' : 'members'}
             </Text>
         </TouchableOpacity>

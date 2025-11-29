@@ -71,16 +71,20 @@ const PendingRequestCard: React.FC<PendingRequestCardProps> = ({ request, onAppr
   const isProcessing = isApproving || isDenying;
 
   return (
-    <View style={{
-      backgroundColor: 'rgba(255, 255, 255, 0.04)',
-      borderWidth: 1,
-      borderColor: 'rgba(255, 255, 255, 0.08)',
-      borderRadius: 10,
-      padding: 14,
-      marginBottom: 10,
-      flexDirection: 'row',
-      alignItems: 'center'
-    }}>
+    <View
+      style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.08)',
+        borderRadius: 10,
+        padding: 14,
+        marginBottom: 10,
+        flexDirection: 'row',
+        alignItems: 'center'
+      }}
+      accessible={true}
+      accessibilityLabel={`Join request from ${displayName}, @${request.username}`}
+    >
       {/* Avatar */}
       <View style={{ marginRight: 12 }}>
         <Avatar
@@ -100,20 +104,20 @@ const PendingRequestCard: React.FC<PendingRequestCardProps> = ({ request, onAppr
           fontWeight: '600',
           color: 'rgba(255, 255, 255, 0.9)',
           marginBottom: 2
-        }}>
+        }} accessible={false}>
           {displayName}
         </Text>
         <Text style={{
           fontSize: 12,
           color: 'rgba(255, 255, 255, 0.5)',
           marginBottom: 1
-        }}>
+        }} accessible={false}>
           @{request.username}
         </Text>
         <Text style={{
           fontSize: 11,
           color: 'rgba(255, 255, 255, 0.4)'
-        }}>
+        }} accessible={false}>
           Requested {formatRequestTime(request.requestedAt)}
         </Text>
       </View>
@@ -128,6 +132,14 @@ const PendingRequestCard: React.FC<PendingRequestCardProps> = ({ request, onAppr
         <TouchableOpacity
           onPress={handleDeny}
           disabled={isProcessing}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={isDenying ? 'Denying request' : `Deny ${displayName}'s request`}
+          accessibilityState={{
+            disabled: isProcessing,
+            busy: isDenying,
+          }}
+          accessibilityHint={isProcessing ? undefined : 'Double tap to deny this request'}
           style={{
             width: 36,
             height: 36,
@@ -139,9 +151,9 @@ const PendingRequestCard: React.FC<PendingRequestCardProps> = ({ request, onAppr
           }}
         >
           {isDenying ? (
-            <ActivityIndicator size="small" color="rgba(255, 255, 255, 0.5)" />
+            <ActivityIndicator size="small" color="rgba(255, 255, 255, 0.5)" accessible={false} />
           ) : (
-            <MaterialIcons name="close" size={18} color="rgba(255, 70, 70, 0.9)" />
+            <MaterialIcons name="close" size={18} color="rgba(255, 70, 70, 0.9)" accessible={false} />
           )}
         </TouchableOpacity>
 
@@ -149,6 +161,14 @@ const PendingRequestCard: React.FC<PendingRequestCardProps> = ({ request, onAppr
         <TouchableOpacity
           onPress={handleApprove}
           disabled={isProcessing}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={isApproving ? 'Approving request' : `Approve ${displayName}'s request`}
+          accessibilityState={{
+            disabled: isProcessing,
+            busy: isApproving,
+          }}
+          accessibilityHint={isProcessing ? undefined : 'Double tap to approve this request'}
           style={{
             width: 36,
             height: 36,
@@ -160,9 +180,9 @@ const PendingRequestCard: React.FC<PendingRequestCardProps> = ({ request, onAppr
           }}
         >
           {isApproving ? (
-            <ActivityIndicator size="small" color="rgba(0, 212, 170, 0.8)" />
+            <ActivityIndicator size="small" color="rgba(0, 212, 170, 0.8)" accessible={false} />
           ) : (
-            <MaterialIcons name="check" size={18} color="#00D4AA" />
+            <MaterialIcons name="check" size={18} color="#00D4AA" accessible={false} />
           )}
         </TouchableOpacity>
       </View>

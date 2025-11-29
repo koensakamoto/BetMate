@@ -67,6 +67,10 @@ export function PageHeader({
         {showBackButton && (
           <TouchableOpacity
             onPress={handleBack}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            accessibilityHint="Double tap to navigate to previous screen"
             style={{
               width: 36,
               height: 36,
@@ -76,7 +80,7 @@ export function PageHeader({
               alignItems: 'center'
             }}
           >
-            <MaterialIcons name="arrow-back" size={16} color={colors.textPrimary} />
+            <MaterialIcons name="arrow-back" size={16} color={colors.textPrimary} accessible={false} />
           </TouchableOpacity>
         )}
 
@@ -160,15 +164,21 @@ export function PageHeader({
 export function HeaderIconButton({
   icon,
   onPress,
-  showBorder = false
+  showBorder = false,
+  accessibilityLabel
 }: {
   icon: keyof typeof MaterialIcons.glyphMap;
   onPress: () => void;
   showBorder?: boolean;
+  accessibilityLabel?: string;
 }) {
   return (
     <TouchableOpacity
       onPress={onPress}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel || icon}
+      accessibilityHint="Double tap to activate"
       style={{
         width: 36,
         height: 36,
@@ -182,7 +192,7 @@ export function HeaderIconButton({
         })
       }}
     >
-      <MaterialIcons name={icon} size={16} color={colors.textPrimary} />
+      <MaterialIcons name={icon} size={16} color={colors.textPrimary} accessible={false} />
     </TouchableOpacity>
   );
 }

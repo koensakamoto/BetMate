@@ -44,8 +44,12 @@ const GroupPreview: React.FC<GroupPreviewProps> = ({ groupData }) => {
           marginBottom: 32
         }}>
           {/* Back Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => router.push('/(app)/(tabs)/group')}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            accessibilityHint="Double tap to return to groups list"
             style={{
               width: 40,
               height: 40,
@@ -56,7 +60,7 @@ const GroupPreview: React.FC<GroupPreviewProps> = ({ groupData }) => {
               marginBottom: 16
             }}
           >
-            <MaterialIcons name="arrow-back" size={18} color="#ffffff" />
+            <MaterialIcons name="arrow-back" size={18} color="#ffffff" accessible={false} />
           </TouchableOpacity>
 
           {/* Group Preview */}
@@ -126,18 +130,24 @@ const GroupPreview: React.FC<GroupPreviewProps> = ({ groupData }) => {
           </View>
 
           {/* Join Button */}
-          <TouchableOpacity style={{
-            backgroundColor: '#00D4AA',
-            paddingVertical: 16,
-            borderRadius: 12,
-            marginBottom: 24
-          }}>
+          <TouchableOpacity
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Join Group"
+            accessibilityHint={`Double tap to join ${groupData.name}`}
+            style={{
+              backgroundColor: '#00D4AA',
+              paddingVertical: 16,
+              borderRadius: 12,
+              marginBottom: 24
+            }}
+          >
             <Text style={{
               color: '#000000',
               fontSize: 18,
               fontWeight: '700',
               textAlign: 'center'
-            }}>
+            }} accessible={false}>
               Join Group
             </Text>
           </TouchableOpacity>

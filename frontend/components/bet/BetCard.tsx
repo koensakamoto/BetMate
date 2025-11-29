@@ -83,9 +83,19 @@ function BetCard({
     }
   }, []);
 
+  const statusText = status === 'resolved' ? 'resolved' :
+    backendStatus === 'CLOSED' ? 'awaiting resolution' :
+    status === 'active' ? 'active' : 'open';
+
+  const accessibilityLabelText = `${title} by ${creatorName}. ${participantCount} ${participantCount === 1 ? 'participant' : 'participants'}. Status: ${statusText}${isJoined ? ', joined' : ''}`;
+
   return (
     <TouchableOpacity
       onPress={handlePress}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabelText}
+      accessibilityHint="Double tap to view bet details"
       style={{
         backgroundColor: 'rgba(255, 255, 255, 0.02)',
         borderRadius: 12,
@@ -111,7 +121,7 @@ function BetCard({
             color: colors.textPrimary,
             marginBottom: 4,
             lineHeight: 22
-          }} numberOfLines={2}>
+          }} numberOfLines={2} accessible={false}>
             {title}
           </Text>
 
@@ -120,7 +130,7 @@ function BetCard({
             fontSize: 13,
             color: colors.textSecondary,
             marginBottom: 2
-          }}>
+          }} accessible={false}>
             by {creatorName}
           </Text>
         </View>
@@ -210,7 +220,7 @@ function BetCard({
             fontSize: 12,
             color: colors.textMuted,
             fontWeight: '500'
-          }}>
+          }} accessible={false}>
             {participantCount} {participantCount === 1 ? 'participant' : 'participants'}
           </Text>
         </View>

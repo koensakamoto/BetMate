@@ -115,6 +115,14 @@ export function SubmitProofModal({
           submitProof();
         }}
         disabled={submitting}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={submitting ? 'Submitting fulfillment claim, please wait' : 'Submit Fulfillment Claim'}
+        accessibilityState={{
+          disabled: submitting,
+          busy: submitting,
+        }}
+        accessibilityHint={submitting ? undefined : 'Double tap to submit your fulfillment claim'}
         style={{
           backgroundColor: '#00D4AA',
           borderRadius: 12,
@@ -124,9 +132,9 @@ export function SubmitProofModal({
         activeOpacity={0.8}
       >
         {submitting ? (
-          <ActivityIndicator size="small" color="#000000" />
+          <ActivityIndicator size="small" color="#000000" accessible={false} />
         ) : (
-          <Text style={{ color: '#000000', fontWeight: '700', textAlign: 'center', fontSize: 16 }}>
+          <Text style={{ color: '#000000', fontWeight: '700', textAlign: 'center', fontSize: 16 }} accessible={false}>
             Submit Fulfillment Claim
           </Text>
         )}
@@ -158,6 +166,10 @@ export function SubmitProofModal({
                 haptic.selection();
                 setProofPhoto(null);
               }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Remove photo"
+              accessibilityHint="Double tap to remove this photo"
               style={{
                 position: 'absolute',
                 top: 8,
@@ -171,12 +183,16 @@ export function SubmitProofModal({
               }}
               activeOpacity={0.7}
             >
-              <MaterialIcons name="close" size={20} color="#ffffff" />
+              <MaterialIcons name="close" size={20} color="#ffffff" accessible={false} />
             </TouchableOpacity>
           </View>
         ) : (
           <TouchableOpacity
             onPress={pickImage}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Add photo proof"
+            accessibilityHint="Double tap to select a photo from your library"
             style={{
               backgroundColor: 'rgba(0, 212, 170, 0.1)',
               borderWidth: 2,
@@ -196,11 +212,11 @@ export function SubmitProofModal({
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 10,
-            }}>
-              <MaterialIcons name="add-photo-alternate" size={26} color="#00D4AA" />
+            }} accessible={false}>
+              <MaterialIcons name="add-photo-alternate" size={26} color="#00D4AA" accessible={false} />
             </View>
-            <Text style={{ color: '#00D4AA', fontWeight: '600', fontSize: 15, marginBottom: 2 }}>Add Photo</Text>
-            <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 12 }}>Tap to upload proof</Text>
+            <Text style={{ color: '#00D4AA', fontWeight: '600', fontSize: 15, marginBottom: 2 }} accessible={false}>Add Photo</Text>
+            <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 12 }} accessible={false}>Tap to upload proof</Text>
           </TouchableOpacity>
         )}
       </View>

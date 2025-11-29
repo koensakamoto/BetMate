@@ -39,6 +39,14 @@ function StoreItem({ item, userCredits, onPurchase, onPress }: StoreItemProps) {
   // Memoize rarity colors to avoid recalculation on every render
   const rarityStyles = useMemo(() => getRarityColors(item.rarity), [item.rarity]);
 
+  const statusText = item.isOwned
+    ? (item.itemType === ItemType.DAILY_BOOSTER && item.usesRemaining && item.usesRemaining > 0
+        ? `Active, ${item.usesRemaining} ${item.usesRemaining === 1 ? 'day' : 'days'} remaining`
+        : 'Owned')
+    : `${item.price} credits`;
+
+  const accessibilityLabelText = `${item.name}. ${item.rarity} rarity. ${statusText}`;
+
   return (
     <TouchableOpacity
       onPress={() => {
@@ -46,6 +54,10 @@ function StoreItem({ item, userCredits, onPurchase, onPress }: StoreItemProps) {
         onPress?.(item);
       }}
       activeOpacity={0.7}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabelText}
+      accessibilityHint="Double tap to view details"
       style={{
         backgroundColor: 'rgba(255, 255, 255, 0.02)',
         borderRadius: 16,
@@ -124,7 +136,7 @@ function StoreItem({ item, userCredits, onPurchase, onPress }: StoreItemProps) {
           color: '#ffffff',
           textAlign: 'center',
           letterSpacing: 0.2
-        }} numberOfLines={2}>
+        }} numberOfLines={2} accessible={false}>
           {item.name}
         </Text>
       </View>
@@ -215,6 +227,11 @@ function StoreItem({ item, userCredits, onPurchase, onPress }: StoreItemProps) {
               haptic.medium();
               onPurchase(item);
             }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={canAfford ? `Buy ${item.name} for ${item.price} credits` : `Cannot afford ${item.name}, need ${item.price} credits`}
+            accessibilityState={{ disabled: !canAfford }}
+            accessibilityHint={canAfford ? "Double tap to purchase" : undefined}
             style={{
               backgroundColor: canAfford ? '#00D4AA' : 'rgba(255, 255, 255, 0.08)',
               paddingHorizontal: 18,
@@ -232,7 +249,7 @@ function StoreItem({ item, userCredits, onPurchase, onPress }: StoreItemProps) {
               fontSize: 12,
               fontWeight: '700',
               color: canAfford ? '#000000' : 'rgba(255, 255, 255, 0.5)'
-            }}>
+            }} accessible={false}>
               Buy
             </Text>
           </TouchableOpacity>

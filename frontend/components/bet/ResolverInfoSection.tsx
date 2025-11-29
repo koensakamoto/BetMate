@@ -60,17 +60,21 @@ export const ResolverInfoSection: React.FC<ResolverInfoSectionProps> = React.mem
     if (isOpen) {
       return (
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
+          <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }} accessible={false}>
             Resolvers
           </Text>
           <TouchableOpacity
             onPress={() => router.push(`/(app)/bet-resolvers/${bet.id}`)}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={`${resolvers.length} resolvers assigned`}
+            accessibilityHint="Double tap to view resolver details"
           >
-            <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '500' }}>
+            <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '500' }} accessible={false}>
               {resolvers.length} assigned
             </Text>
-            <MaterialIcons name="chevron-right" size={16} color="#00D4AA" />
+            <MaterialIcons name="chevron-right" size={16} color="#00D4AA" accessible={false} />
           </TouchableOpacity>
         </View>
       );
@@ -85,27 +89,41 @@ export const ResolverInfoSection: React.FC<ResolverInfoSectionProps> = React.mem
       return (
         <View style={{ gap: 8 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
+            <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }} accessible={false}>
               Resolution Progress
             </Text>
             <TouchableOpacity
               onPress={() => router.push(`/(app)/bet-resolvers/${bet.id}`)}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`${votingProgress.votesSubmitted} of ${votingProgress.totalResolvers} votes submitted`}
+              accessibilityHint="Double tap to view resolver voting details"
             >
-              <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '600' }}>
+              <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '600' }} accessible={false}>
                 {votingProgress.votesSubmitted}/{votingProgress.totalResolvers} votes
               </Text>
-              <MaterialIcons name="chevron-right" size={16} color="#00D4AA" />
+              <MaterialIcons name="chevron-right" size={16} color="#00D4AA" accessible={false} />
             </TouchableOpacity>
           </View>
 
           {/* Progress bar */}
-          <View style={{
-            height: 6,
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: 3,
-            overflow: 'hidden',
-          }}>
+          <View
+            style={{
+              height: 6,
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: 3,
+              overflow: 'hidden',
+            }}
+            accessible={true}
+            accessibilityRole="progressbar"
+            accessibilityLabel="Resolution progress"
+            accessibilityValue={{
+              min: 0,
+              max: 100,
+              now: Math.round(progress),
+            }}
+          >
             <View style={{
               height: '100%',
               width: `${progress}%`,

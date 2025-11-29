@@ -118,11 +118,16 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   if (isSystemMessage) {
     return (
-      <View style={{
-        alignItems: 'center',
-        marginVertical: 8,
-        paddingHorizontal: 20
-      }}>
+      <View
+        style={{
+          alignItems: 'center',
+          marginVertical: 8,
+          paddingHorizontal: 20
+        }}
+        accessible={true}
+        accessibilityRole="text"
+        accessibilityLabel={`System message: ${message.content}`}
+      >
         <View style={{
           backgroundColor: '#1a1a2e',
           borderRadius: 12,
@@ -131,12 +136,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           flexDirection: 'row',
           alignItems: 'center'
         }}>
-          <MaterialIcons name="info-outline" size={16} color="#8b8b8b" style={{ marginRight: 6 }} />
+          <MaterialIcons name="info-outline" size={16} color="#8b8b8b" style={{ marginRight: 6 }} accessible={false} />
           <Text style={{
             color: '#8b8b8b',
             fontSize: 13,
             fontStyle: 'italic'
-          }}>
+          }} accessible={false}>
             {message.content}
           </Text>
         </View>
@@ -144,7 +149,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           color: '#5a5a5a',
           fontSize: 11,
           marginTop: 4
-        }}>
+        }} accessible={false}>
           {formatTime(message.createdAt)}
         </Text>
       </View>
@@ -224,6 +229,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
       <TouchableOpacity
         onLongPress={handleLongPress}
+        accessible={true}
+        accessibilityRole="text"
+        accessibilityLabel={`${isOwnMessage ? 'You' : message.senderDisplayName}: ${message.content}${message.isEdited ? ', edited' : ''}`}
+        accessibilityHint="Long press for message options"
         style={{
           backgroundColor: isOwnMessage ? '#00D4AA' : '#1f2937',
           borderRadius: 16,

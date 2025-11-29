@@ -77,6 +77,10 @@ function UserCard({
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         activeOpacity={1}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={`${displayName}, @${username}${isActive ? ', online' : ''}`}
+        accessibilityHint="Double tap to view profile"
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -108,13 +112,13 @@ function UserCard({
           fontWeight: '600',
           color: '#ffffff',
           marginBottom: 2
-        }}>
+        }} accessible={false}>
           {displayName}
         </Text>
         <Text style={{
           fontSize: 14,
           color: 'rgba(255, 255, 255, 0.6)'
-        }}>
+        }} accessible={false}>
           @{username}
         </Text>
       </View>
@@ -124,6 +128,26 @@ function UserCard({
         <TouchableOpacity
           onPress={handleFriendPress}
           disabled={isLoading}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={
+            isLoading ? 'Loading' :
+            friendRequestStatus === 'friends' ? `Friends with ${displayName}` :
+            friendRequestStatus === 'pending_sent' ? `Friend request pending to ${displayName}` :
+            friendRequestStatus === 'pending_received' ? `Accept friend request from ${displayName}` :
+            `Add ${displayName} as friend`
+          }
+          accessibilityState={{
+            disabled: isLoading,
+            busy: isLoading,
+          }}
+          accessibilityHint={
+            isLoading ? undefined :
+            friendRequestStatus === 'friends' ? 'Double tap to manage friendship' :
+            friendRequestStatus === 'pending_sent' ? 'Double tap to cancel request' :
+            friendRequestStatus === 'pending_received' ? 'Double tap to accept' :
+            'Double tap to send friend request'
+          }
           style={{
             backgroundColor:
               friendRequestStatus === 'friends' ? 'rgba(255, 255, 255, 0.1)' :
@@ -149,6 +173,7 @@ function UserCard({
             <ActivityIndicator
               size="small"
               color={friendRequestStatus === 'friends' || friendRequestStatus === 'pending_sent' ? '#ffffff' : '#000000'}
+              accessible={false}
             />
           ) : (
             <Text style={{
@@ -157,7 +182,7 @@ function UserCard({
               color:
                 friendRequestStatus === 'friends' || friendRequestStatus === 'pending_sent' ?
                 '#ffffff' : '#000000'
-            }}>
+            }} accessible={false}>
               {friendRequestStatus === 'friends' ? 'Friends' :
                friendRequestStatus === 'pending_sent' ? 'Pending' :
                friendRequestStatus === 'pending_received' ? 'Accept' :

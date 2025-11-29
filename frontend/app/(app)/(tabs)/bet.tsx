@@ -425,33 +425,48 @@ export default function Bet() {
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 selectionColor={colors.textPrimary}
+                accessible={true}
+                accessibilityLabel="Search bets"
+                accessibilityHint="Enter text to filter bets"
               />
 
               {searchQuery.length > 0 && (
                 <TouchableOpacity
                   onPress={() => setSearchQuery('')}
                   style={{ paddingLeft: 8 }}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search"
+                  accessibilityHint="Double tap to clear search text"
                 >
                   <Text style={{
                     fontSize: 16,
                     color: colors.textMuted
-                  }}>×</Text>
+                  }} accessible={false}>×</Text>
                 </TouchableOpacity>
               )}
             </View>
 
             {/* Clean Tab Navigation */}
-            <View style={{
-              flexDirection: 'row',
-              marginBottom: 24,
-              paddingHorizontal: 0
-            }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                marginBottom: 24,
+                paddingHorizontal: 0
+              }}
+              accessibilityRole="tablist"
+            >
               {tabs.map((tab, index) => {
                 const isActive = index === activeTab;
                 return (
                   <TouchableOpacity
                     key={tab}
                     onPress={() => handleTabChange(index)}
+                    accessible={true}
+                    accessibilityRole="tab"
+                    accessibilityLabel={tab}
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityHint={isActive ? 'Currently selected' : `Double tap to view ${tab}`}
                     style={{
                       marginRight: 32,
                       paddingBottom: 8,
@@ -463,7 +478,7 @@ export default function Bet() {
                       fontSize: 16,
                       fontWeight: isActive ? '600' : '400',
                       color: isActive ? colors.textPrimary : colors.textSecondary
-                    }}>
+                    }} accessible={false}>
                       {tab}
                     </Text>
                   </TouchableOpacity>
@@ -484,6 +499,11 @@ export default function Bet() {
                     <TouchableOpacity
                       key={filter.key}
                       onPress={() => handleFilterChange(filter.key)}
+                      accessible={true}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Filter by ${filter.label}`}
+                      accessibilityState={{ selected: isActive }}
+                      accessibilityHint={isActive ? 'Currently selected' : `Double tap to filter by ${filter.label}`}
                       style={{
                         backgroundColor: isActive ? colors.primaryLight : colors.surfaceMedium,
                         borderRadius: 20,
@@ -497,7 +517,7 @@ export default function Bet() {
                         fontSize: 14,
                         fontWeight: isActive ? '600' : '500',
                         color: isActive ? colors.primary : colors.textSecondary
-                      }}>
+                      }} accessible={false}>
                         {filter.label}
                       </Text>
                     </TouchableOpacity>
@@ -584,6 +604,11 @@ export default function Bet() {
                       <TouchableOpacity
                         key={filter.key}
                         onPress={() => handleOwedStakesFilterChange(filter.key)}
+                        accessible={true}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Filter: ${filter.label}`}
+                        accessibilityState={{ selected: isActive }}
+                        accessibilityHint={isActive ? 'Currently selected' : `Double tap to filter by ${filter.label}`}
                         style={{
                           backgroundColor: isActive ? colors.primaryLight : colors.surfaceMedium,
                           borderRadius: 20,
@@ -597,7 +622,7 @@ export default function Bet() {
                           fontSize: 14,
                           fontWeight: '600',
                           color: isActive ? colors.primary : colors.textSecondary
-                        }}>
+                        }} accessible={false}>
                           {filter.label}
                         </Text>
                       </TouchableOpacity>

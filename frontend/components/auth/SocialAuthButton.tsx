@@ -48,13 +48,15 @@ export default function SocialAuthButton({
   const renderIcon = () => {
     switch (provider) {
       case 'google':
-        return <AntDesign name="google" size={18} color={config.textColor} style={{ marginRight: 12 }} />;
+        return <AntDesign name="google" size={18} color={config.textColor} style={{ marginRight: 12 }} accessible={false} />;
       case 'apple':
-        return <Ionicons name="logo-apple" size={20} color={config.textColor} style={{ marginRight: 10 }} />;
+        return <Ionicons name="logo-apple" size={20} color={config.textColor} style={{ marginRight: 10 }} accessible={false} />;
       default:
         return null;
     }
   };
+
+  const isDisabled = disabled || loading;
 
   return (
     <TouchableOpacity
@@ -68,15 +70,23 @@ export default function SocialAuthButton({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: (disabled || loading) ? 0.6 : 1,
+        opacity: isDisabled ? 0.6 : 1,
         width: '100%'
       }}
       onPress={onPress}
-      disabled={disabled || loading}
+      disabled={isDisabled}
       activeOpacity={0.8}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={loading ? `${config.title}, loading` : config.title}
+      accessibilityState={{
+        disabled: isDisabled,
+        busy: loading,
+      }}
+      accessibilityHint={isDisabled ? undefined : `Double tap to sign in with ${provider}`}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={config.textColor} />
+        <ActivityIndicator size="small" color={config.textColor} accessible={false} />
       ) : (
         <>
           {renderIcon()}
@@ -85,7 +95,7 @@ export default function SocialAuthButton({
             fontWeight: '600',
             color: config.textColor,
             letterSpacing: 0.4
-          }}>
+          }} accessible={false}>
             {config.title}
           </Text>
         </>

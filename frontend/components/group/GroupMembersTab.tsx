@@ -291,6 +291,10 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
         <View style={{ flex: 1 }}>
           <TouchableOpacity
             onPress={() => setShowInviteModal(true)}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Invite members"
+            accessibilityHint="Double tap to invite new members to the group"
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
               borderRadius: 10,
@@ -300,13 +304,13 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
               justifyContent: 'center'
             }}
           >
-            <MaterialIcons name="person-add-alt" size={18} color="rgba(255, 255, 255, 0.9)" />
+            <MaterialIcons name="person-add-alt" size={18} color="rgba(255, 255, 255, 0.9)" accessible={false} />
             <Text style={{
               fontSize: 14,
               fontWeight: '500',
               color: 'rgba(255, 255, 255, 0.9)',
               marginLeft: 6
-            }}>
+            }} accessible={false}>
               Invite
             </Text>
           </TouchableOpacity>
@@ -341,6 +345,11 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
                 <TouchableOpacity
                   key={filter}
                   onPress={() => setActiveFilter(filter)}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Filter: ${filter}`}
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityHint={isActive ? 'Currently selected' : `Double tap to filter by ${filter}`}
                   style={{
                     backgroundColor: isActive ? '#00D4AA' : 'rgba(255, 255, 255, 0.08)',
                     paddingHorizontal: 16,
@@ -356,7 +365,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
                     color: isActive ? '#000000' : '#ffffff',
                     fontSize: 13,
                     fontWeight: '600'
-                  }}>
+                  }} accessible={false}>
                     {filter}
                   </Text>
                 </TouchableOpacity>
@@ -444,6 +453,10 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
             router.push(`/(app)/group/${groupId}/member/${member.id}`);
           }}
           activeOpacity={0.7}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`${getDisplayName(member)}, @${member.username}${member.username === groupData.ownerUsername ? ', Owner' : member.role === 'ADMIN' ? ', Admin' : ''}`}
+          accessibilityHint="Double tap to view member details"
           style={{
             backgroundColor: 'rgba(255, 255, 255, 0.02)',
             borderWidth: 0.5,

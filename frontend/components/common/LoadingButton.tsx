@@ -46,6 +46,14 @@ export default function LoadingButton({
       onPress={onPress}
       disabled={isDisabled}
       activeOpacity={activeOpacity}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={loading ? `${title}, loading` : title}
+      accessibilityState={{
+        disabled: isDisabled,
+        busy: loading,
+      }}
+      accessibilityHint={isDisabled ? undefined : `Double tap to ${title.toLowerCase()}`}
       style={[
         {
           backgroundColor: isDisabled ? 'rgba(255, 255, 255, 0.08)' : '#00D4AA',
@@ -65,6 +73,7 @@ export default function LoadingButton({
           size="small"
           color={loadingColor}
           style={{ marginRight: 8 }}
+          accessible={false}
         />
       )}
       <Text
@@ -76,6 +85,7 @@ export default function LoadingButton({
           },
           textStyle
         ]}
+        accessible={false}
       >
         {loading ? 'Loading...' : title}
       </Text>

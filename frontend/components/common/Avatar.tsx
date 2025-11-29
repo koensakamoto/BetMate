@@ -99,8 +99,18 @@ export const Avatar = React.memo(function Avatar({
 
   const onlineIndicatorSize = Math.max(avatarSize * 0.25, 10);
 
+  const displayName = firstName && lastName
+    ? `${firstName} ${lastName}`
+    : firstName || lastName || username || 'User';
+  const accessibleName = `${displayName}'s avatar${showOnlineIndicator && isOnline ? ', online' : ''}`;
+
   return (
-    <View style={containerStyle}>
+    <View
+      style={containerStyle}
+      accessible={true}
+      accessibilityRole="image"
+      accessibilityLabel={accessibleName}
+    >
       {fullImageUrl ? (
         <Image
           source={{ uri: fullImageUrl, cache: 'default' }}
@@ -112,6 +122,7 @@ export const Avatar = React.memo(function Avatar({
               borderRadius,
             },
           ]}
+          accessible={false}
         />
       ) : (
         <View
@@ -124,12 +135,14 @@ export const Avatar = React.memo(function Avatar({
               backgroundColor,
             },
           ]}
+          accessible={false}
         >
           <Text
             style={[
               styles.initialsText,
               { fontSize },
             ]}
+            accessible={false}
           >
             {initials}
           </Text>
@@ -147,6 +160,7 @@ export const Avatar = React.memo(function Avatar({
               borderWidth: Math.max(onlineIndicatorSize * 0.2, 2),
             },
           ]}
+          accessible={false}
         />
       )}
     </View>

@@ -273,13 +273,17 @@ const MessageInput: React.FC<MessageInputProps> = ({
           </View>
           <TouchableOpacity
             onPress={isEditing ? onCancelEdit : onCancelReply}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={isEditing ? "Cancel edit" : "Cancel reply"}
+            accessibilityHint="Double tap to cancel"
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.1)',
               borderRadius: 10,
               padding: 6
             }}
           >
-            <MaterialIcons name="close" size={14} color="rgba(255, 255, 255, 0.8)" />
+            <MaterialIcons name="close" size={14} color="rgba(255, 255, 255, 0.8)" accessible={false} />
           </TouchableOpacity>
         </Animated.View>
       )}
@@ -304,6 +308,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
           onBlur={handleBlur}
           placeholder={placeholder}
           placeholderTextColor="rgba(255, 255, 255, 0.5)"
+          accessible={true}
+          accessibilityLabel={isEditing ? "Edit message" : isReplying ? `Reply to ${replyToMessage?.senderDisplayName}` : "Type a message"}
+          accessibilityHint="Enter your message text"
+          accessibilityState={{
+            disabled: disabled,
+          }}
           style={{
             flex: 1,
             color: '#FFFFFF',
@@ -327,6 +337,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
         <TouchableOpacity
           onPress={handleSend}
           disabled={!canSend}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={isSending ? 'Sending message' : isEditing ? 'Save edit' : 'Send message'}
+          accessibilityState={{
+            disabled: !canSend,
+            busy: isSending,
+          }}
+          accessibilityHint={canSend ? 'Double tap to send' : 'Enter a message first'}
           style={{
             marginRight: 2,
             marginLeft: 2,
@@ -345,12 +363,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
             }}
           >
             {isSending ? (
-              <MaterialIcons name="hourglass-empty" size={16} color="#FFFFFF" />
+              <MaterialIcons name="hourglass-empty" size={16} color="#FFFFFF" accessible={false} />
             ) : (
               <MaterialIcons
                 name={isEditing ? "check" : "send"}
                 size={16}
                 color="#FFFFFF"
+                accessible={false}
               />
             )}
           </Animated.View>

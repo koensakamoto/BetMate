@@ -40,14 +40,23 @@ export default function AuthInput({
   const showSuccess = isValid && value.length > 0 && !hasError;
   const actualSecureTextEntry = secureTextEntry && !isPasswordVisible;
 
+  const accessibilityLabelText = hasError
+    ? `${label}, ${error}`
+    : showSuccess
+      ? `${label}, valid`
+      : label;
+
   return (
     <View style={{ marginBottom: 12 }}>
-      <Text style={{
-        fontSize: 13,
-        fontWeight: '500',
-        color: 'rgba(255, 255, 255, 0.8)',
-        marginBottom: 5
-      }}>
+      <Text
+        style={{
+          fontSize: 13,
+          fontWeight: '500',
+          color: 'rgba(255, 255, 255, 0.8)',
+          marginBottom: 5
+        }}
+        accessible={false}
+      >
         {label}
       </Text>
 
@@ -86,6 +95,12 @@ export default function AuthInput({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           editable={editable}
+          accessible={true}
+          accessibilityLabel={accessibilityLabelText}
+          accessibilityHint={placeholder}
+          accessibilityState={{
+            disabled: !editable,
+          }}
         />
 
         {/* Status Icons */}
@@ -93,31 +108,38 @@ export default function AuthInput({
           <TouchableOpacity
             onPress={() => setIsPasswordVisible(!isPasswordVisible)}
             style={{ marginLeft: 10 }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={isPasswordVisible ? 'Hide password' : 'Show password'}
+            accessibilityHint="Double tap to toggle password visibility"
           >
             <MaterialIcons
               name={isPasswordVisible ? 'visibility-off' : 'visibility'}
               size={18}
               color="rgba(255, 255, 255, 0.6)"
+              accessible={false}
             />
           </TouchableOpacity>
         )}
 
         {!showPasswordToggle && showSuccess && (
-          <View style={{ marginLeft: 10 }}>
+          <View style={{ marginLeft: 10 }} accessible={false}>
             <MaterialIcons
               name="check-circle"
               size={18}
               color="#22C55E"
+              accessible={false}
             />
           </View>
         )}
 
         {!showPasswordToggle && hasError && (
-          <View style={{ marginLeft: 10 }}>
+          <View style={{ marginLeft: 10 }} accessible={false}>
             <MaterialIcons
               name="error"
               size={18}
               color="#EF4444"
+              accessible={false}
             />
           </View>
         )}
@@ -125,12 +147,17 @@ export default function AuthInput({
 
       {/* Error Message */}
       {hasError && (
-        <Text style={{
-          fontSize: 12,
-          color: '#EF4444',
-          marginTop: 4,
-          marginLeft: 4
-        }}>
+        <Text
+          style={{
+            fontSize: 12,
+            color: '#EF4444',
+            marginTop: 4,
+            marginLeft: 4
+          }}
+          accessible={true}
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+        >
           {error}
         </Text>
       )}

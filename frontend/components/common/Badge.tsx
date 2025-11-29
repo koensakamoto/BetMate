@@ -114,11 +114,16 @@ export function Badge({
   };
 
   return (
-    <View style={containerStyle}>
+    <View
+      style={containerStyle}
+      accessible={true}
+      accessibilityRole="text"
+      accessibilityLabel={label}
+    >
       {icon && (
-        <MaterialIcons name={icon} size={sizeStyle.iconSize} color={variantStyle.text} />
+        <MaterialIcons name={icon} size={sizeStyle.iconSize} color={variantStyle.text} accessible={false} />
       )}
-      <Text style={textStyle}>{label}</Text>
+      <Text style={textStyle} accessible={false}>{label}</Text>
     </View>
   );
 }
