@@ -1,0 +1,76 @@
+# Production Profile Configuration
+# Activate with: --spring.profiles.active=prod or SPRING_PROFILES_ACTIVE=prod
+
+server:
+  port: ${PORT:8080}
+  address: 0.0.0.0
+
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/rivalpicks_db?useSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=false}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  # Redis Configuration for Production
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+          max-wait: 2000ms
+
+  cache:
+    redis:
+      time-to-live: 900000  # 15 minutes in production
+
+# Bet Scheduling Configuration - Production intervals
+bet:
+  scheduling:
+    # Close expired bets every 5 minutes (300000 ms)
+    close-expired-interval-ms: ${BET_CLOSE_INTERVAL:300000}
+    # Process resolvable bets every 5 minutes (300000 ms)
+    process-resolvable-interval-ms: ${BET_RESOLVE_INTERVAL:300000}
+    # Notify approaching betting deadlines every 10 minutes (600000 ms)
+    notify-betting-deadline-interval-ms: ${BET_NOTIFY_BETTING_DEADLINE_INTERVAL:600000}
+    # Notify approaching resolution deadlines every 10 minutes (600000 ms)
+    notify-resolution-deadline-interval-ms: ${BET_NOTIFY_RESOLUTION_DEADLINE_INTERVAL:600000}
+
+# Production Logging - INFO level, no SQL logging
+logging:
+  level:
+    root: WARN
+    com.rivalpicks: INFO
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.springframework.validation: WARN
+    org.hibernate.validator: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized  # Only show details to authenticated users
