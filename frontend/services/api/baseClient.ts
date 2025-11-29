@@ -10,6 +10,15 @@ const TOKEN_KEYS = {
   REFRESH_TOKEN: 'refresh_token',
 } as const;
 
+// Token refresh mutex to prevent race conditions
+// When multiple 401 responses occur simultaneously, only one refresh is performed
+let isRefreshing = false;
+let refreshPromise: Promise<string | null> | null = null;
+let failedRequestsQueue: Array<{
+  resolve: (token: string | null) => void;
+  reject: (error: Error) => void;
+}> = [];
+
 // Custom error class for API errors
 export class ApiError extends Error {
   constructor(
@@ -27,8 +36,7 @@ export const tokenStorage = {
   async getAccessToken(): Promise<string | null> {
     try {
       return await SecureStore.getItemAsync(TOKEN_KEYS.ACCESS_TOKEN);
-    } catch (error) {
-      console.error('Error getting access token:', error);
+    } catch {
       return null;
     }
   },
@@ -36,22 +44,16 @@ export const tokenStorage = {
   async getRefreshToken(): Promise<string | null> {
     try {
       return await SecureStore.getItemAsync(TOKEN_KEYS.REFRESH_TOKEN);
-    } catch (error) {
-      console.error('Error getting refresh token:', error);
+    } catch {
       return null;
     }
   },
 
   async setTokens(accessToken: string, refreshToken: string): Promise<void> {
-    try {
-      await Promise.all([
-        SecureStore.setItemAsync(TOKEN_KEYS.ACCESS_TOKEN, accessToken),
-        SecureStore.setItemAsync(TOKEN_KEYS.REFRESH_TOKEN, refreshToken),
-      ]);
-    } catch (error) {
-      console.error('Error storing tokens:', error);
-      throw error;
-    }
+    await Promise.all([
+      SecureStore.setItemAsync(TOKEN_KEYS.ACCESS_TOKEN, accessToken),
+      SecureStore.setItemAsync(TOKEN_KEYS.REFRESH_TOKEN, refreshToken),
+    ]);
   },
 
   async clearTokens(): Promise<void> {
@@ -60,10 +62,87 @@ export const tokenStorage = {
         SecureStore.deleteItemAsync(TOKEN_KEYS.ACCESS_TOKEN),
         SecureStore.deleteItemAsync(TOKEN_KEYS.REFRESH_TOKEN),
       ]);
-    } catch (error) {
-      console.error('Error clearing tokens:', error);
+    } catch {
+      // Silent failure - tokens may already be cleared
     }
   },
+};
+
+/**
+ * Refreshes the access token using the refresh token.
+ * Uses a mutex pattern to prevent race conditions when multiple 401 errors occur simultaneously.
+ *
+ * @returns The new access token, or null if refresh failed
+ */
+const refreshAccessToken = async (): Promise<string | null> => {
+  // If already refreshing, wait for the existing refresh to complete
+  if (isRefreshing && refreshPromise) {
+    debugLog('Token refresh already in progress, waiting...');
+    return refreshPromise;
+  }
+
+  isRefreshing = true;
+
+  refreshPromise = (async () => {
+    try {
+      const refreshToken = await tokenStorage.getRefreshToken();
+
+      if (!refreshToken) {
+        debugLog('No refresh token available');
+        return null;
+      }
+
+      debugLog('Attempting to refresh access token...');
+
+      // Use a fresh axios instance to avoid interceptor loops
+      const refreshResponse = await axios.post(
+        `${apiConfig.baseURL}/auth/refresh`,
+        { refreshToken },
+        { timeout: apiConfig.timeout }
+      );
+
+      const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.data;
+
+      // Store new tokens
+      await tokenStorage.setTokens(accessToken, newRefreshToken);
+
+      debugLog('Token refresh successful');
+
+      // Resolve all queued requests with the new token
+      failedRequestsQueue.forEach(({ resolve }) => resolve(accessToken));
+      failedRequestsQueue = [];
+
+      return accessToken;
+    } catch (error) {
+      errorLog('Token refresh failed:', error);
+
+      // Clear tokens on refresh failure
+      await tokenStorage.clearTokens();
+
+      // Reject all queued requests
+      failedRequestsQueue.forEach(({ reject }) =>
+        reject(new Error('Token refresh failed'))
+      );
+      failedRequestsQueue = [];
+
+      return null;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+};
+
+/**
+ * Queues a failed request to be retried after token refresh completes.
+ * Returns a promise that resolves with the new access token.
+ */
+const queueFailedRequest = (): Promise<string | null> => {
+  return new Promise((resolve, reject) => {
+    failedRequestsQueue.push({ resolve, reject });
+  });
 };
 
 // Create base axios instance
@@ -127,38 +206,35 @@ const createApiClient = (): AxiosInstance => {
         // in the component that catches this error
       }
 
-      // Handle 401 Unauthorized - attempt token refresh
+      // Handle 401 Unauthorized - attempt token refresh with mutex
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
 
         try {
-          const refreshToken = await tokenStorage.getRefreshToken();
+          let newAccessToken: string | null;
 
-          if (refreshToken) {
-            // Attempt to refresh token
-            const refreshResponse = await axios.post(
-              `${apiConfig.baseURL}/auth/refresh`,
-              { refreshToken },
-              { timeout: apiConfig.timeout }
-            );
+          // If a refresh is already in progress, queue this request
+          if (isRefreshing) {
+            debugLog('Refresh in progress, queueing request...');
+            newAccessToken = await queueFailedRequest();
+          } else {
+            // Start a new refresh
+            newAccessToken = await refreshAccessToken();
+          }
 
-            const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.data;
-
-            // Store new tokens
-            await tokenStorage.setTokens(accessToken, newRefreshToken);
-
+          if (newAccessToken) {
             // Retry original request with new token
             if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+              originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
             }
-
             return client(originalRequest);
           }
+
+          // No token available, fall through to error handling
+          errorLog('No access token available after refresh attempt');
         } catch (refreshError) {
-          // Refresh failed, clear tokens and redirect to login
-          await tokenStorage.clearTokens();
-          errorLog('Token refresh failed:', refreshError);
-          // TODO: Trigger logout/redirect to login screen
+          errorLog('Failed to refresh token or retry request:', refreshError);
+          // Fall through to error handling
         }
       }
 

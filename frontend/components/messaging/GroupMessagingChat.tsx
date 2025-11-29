@@ -9,6 +9,7 @@ import {
   Animated,
   Easing
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   MessageResponse, 
@@ -46,7 +47,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   
   // State
   const [messages, setMessages] = useState<MessageResponse[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start true to prevent empty state flash
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
@@ -151,7 +152,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
       await setupWebSocket();
 
     } catch (error) {
-      console.error('Failed to initialize chat:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to load chat. Please try again.');
     }
   };
@@ -196,7 +197,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
       setHasMoreMessages(groupMessages.length === 50); // If we got a full page, there might be more
 
     } catch (error) {
-      console.error('Failed to load messages:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to load messages. Please try again.');
     } finally {
       setLoading(false);
@@ -225,7 +226,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
         setHasMoreMessages(false);
       }
     } catch (error) {
-      console.error('Failed to load more messages:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to load older messages.');
     } finally {
       setLoadingMore(false);
@@ -354,7 +355,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   }, []);
 
   const handleWebSocketError = useCallback((error: WebSocketError) => {
-    console.error('WebSocket error:', error);
+    // Error handled silently
     // Could show a toast or other user feedback here
   }, []);
 
@@ -384,7 +385,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
           handleIncomingMessage(newMessage);
         }
       } catch (httpError) {
-        console.error('Failed to send message via HTTP:', httpError);
+        // Error handled silently
         throw httpError;
       }
     }
@@ -414,7 +415,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
       // The deletion will be handled by WebSocket event or we handle it locally
       handleMessageDelete(message.id);
     } catch (error) {
-      console.error('Failed to delete message:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to delete message. Please try again.');
     }
   };
@@ -551,6 +552,46 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
             loadingMore ? (
               <View style={{ paddingVertical: 16, alignItems: 'center' }}>
                 <Text style={{ color: '#8b8b8b', fontSize: 13 }}>Loading older messages...</Text>
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            !loading ? (
+              <View style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                paddingVertical: 60,
+                transform: [{ scaleY: -1 }]
+              }}>
+                <View style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 40,
+                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginBottom: 16
+                }}>
+                  <MaterialIcons name="chat-bubble-outline" size={40} color="rgba(255, 255, 255, 0.2)" />
+                </View>
+                <Text style={{
+                  fontSize: 18,
+                  color: '#ffffff',
+                  textAlign: 'center',
+                  fontWeight: '600',
+                  marginBottom: 8
+                }}>
+                  No messages yet
+                </Text>
+                <Text style={{
+                  fontSize: 14,
+                  color: 'rgba(255, 255, 255, 0.4)',
+                  textAlign: 'center',
+                  paddingHorizontal: 40
+                }}>
+                  Be the first to start the conversation!
+                </Text>
               </View>
             ) : null
           }

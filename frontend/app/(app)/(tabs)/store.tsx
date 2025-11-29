@@ -68,7 +68,7 @@ export default function Store() {
       // Update cache timestamp
       lastFetchTime.current = Date.now();
     } catch (error) {
-      console.error('Failed to fetch user credits:', error);
+      // Error handled silently
       // Fallback to AuthContext credits if API call fails
       setUserCredits(user?.totalCredits || 0);
     } finally {
@@ -137,7 +137,7 @@ export default function Store() {
 
       setStoreItemsData(categorizedItems);
     } catch (error) {
-      console.error('Failed to fetch store items:', error);
+      // Error handled silently
     } finally {
       setFetchingItems(false);
     }
@@ -172,7 +172,7 @@ export default function Store() {
       const transactionsData = await transactionService.getAllTransactions();
       setTransactions(transactionsData);
     } catch (error) {
-      console.error('Failed to fetch transactions:', error);
+      // Error handled silently
       // Keep existing transactions on error
     } finally {
       setFetchingTransactions(false);
@@ -213,7 +213,7 @@ export default function Store() {
                   Alert.alert('Purchase Successful!', `You now own ${item.name}`);
                 }
               } catch (error) {
-                console.error('Purchase failed:', error);
+                // Error handled silently
                 haptic.error();
 
                 // Show user-friendly error message

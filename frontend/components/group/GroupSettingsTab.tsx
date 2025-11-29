@@ -90,7 +90,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
       setIsEditingName(false);
       Alert.alert('Success', 'Group name updated successfully!');
     } catch (error) {
-      console.error('Failed to update group name:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to update group name. Please try again.');
       setEditedName(groupData.name);
     } finally {
@@ -122,7 +122,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
       setIsEditingDescription(false);
       Alert.alert('Success', 'Group description updated successfully!');
     } catch (error) {
-      console.error('Failed to update group description:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to update group description. Please try again.');
       setEditedDescription(groupData.description);
     } finally {
@@ -206,7 +206,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
 
       Alert.alert('Success', 'Group photo updated successfully!');
     } catch (error) {
-      console.error('Failed to update group photo:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to update group photo. Please try again.');
       setSelectedPhoto(null);
     } finally {
@@ -231,7 +231,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
       setIsEditingPrivacy(false);
       Alert.alert('Success', 'Privacy settings updated successfully!');
     } catch (error) {
-      console.error('Failed to update privacy:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to update privacy settings. Please try again.');
       setTempPrivacy(groupData.privacy || 'PRIVATE');
     } finally {
@@ -294,7 +294,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
                   ]
                 );
               } catch (error) {
-                console.error('Failed to leave group:', error);
+                // Error handled silently
                 const errorMessage = error?.response?.data?.error || 'Failed to leave group. Please try again.';
                 Alert.alert('Error', errorMessage);
               } finally {
@@ -305,7 +305,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
         ]
       );
     } catch (error) {
-      console.error('Failed to fetch group members:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to verify admin status. Please try again.');
       setIsUpdating(false);
     }
@@ -344,7 +344,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
                 ]
               );
             } catch (error) {
-              console.error('Failed to delete group:', error);
+              // Error handled silently
               Alert.alert('Error', 'Failed to delete group. Please try again.');
             } finally {
               setIsUpdating(false);
@@ -366,7 +366,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
       const eligibleMembers = membersList.filter(m => m.username !== currentUsername);
       setMembers(eligibleMembers);
     } catch (error) {
-      console.error('Failed to fetch members:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to load members. Please try again.');
       setShowTransferModal(false);
     } finally {
@@ -404,7 +404,7 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
         ]
       );
     } catch (error) {
-      console.error('Failed to transfer ownership:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to transfer ownership. Please try again.');
     } finally {
       setIsUpdating(false);

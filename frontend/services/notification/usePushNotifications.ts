@@ -5,6 +5,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { apiClient } from '../api/baseClient';
+import { showInfoToast } from '../../utils/toast';
 
 // Check if we're running in Expo Go (no native modules available)
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -103,8 +104,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           token,
           platform,
         });
-      } catch (backendError) {
-        console.error('Failed to register FCM token with backend:', backendError);
+      } catch {
         // Don't fail completely - token is still valid locally
       }
 
@@ -132,7 +132,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       return token;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to register for push notifications';
-      console.error('Push notification registration error:', err);
       setError(errorMessage);
       return null;
     } finally {
@@ -154,8 +153,8 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       }
 
       setFcmToken(null);
-    } catch (err) {
-      console.error('Failed to unregister FCM token:', err);
+    } catch {
+      // Silent failure on unregister
     }
   }, []);
 
@@ -195,18 +194,20 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       };
     }
 
-    // FCM foreground message handler - display as local notification
+    // FCM foreground message handler - show toast for in-app notifications
     const unsubscribeForeground = messaging().onMessage(async (remoteMessage: any) => {
-      // Display as local notification using expo-notifications
+      // Skip toast for group messages (user is already in-app)
+      if (remoteMessage.data?.type === 'GROUP_MESSAGE') {
+        return;
+      }
+
+      // Show toast notification instead of system notification when app is in foreground
       if (remoteMessage.notification) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: remoteMessage.notification.title || '',
-            body: remoteMessage.notification.body || '',
-            data: remoteMessage.data,
-            sound: 'default',
-          },
-          trigger: null, // Show immediately
+        const title = remoteMessage.notification.title || 'Notification';
+        const body = remoteMessage.notification.body || '';
+
+        showInfoToast(title, body, {
+          onPress: () => router.push('/(app)/notifications'),
         });
       }
     });
@@ -254,8 +255,8 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           token: newToken,
           platform,
         });
-      } catch (err) {
-        console.error('Failed to register refreshed FCM token:', err);
+      } catch {
+        // Silent failure - token refresh failed
       }
     });
 

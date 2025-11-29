@@ -198,7 +198,6 @@ export default function BetDetails() {
       invalidateBet(betId);
       await refreshBetDetails();
     } catch (error) {
-      console.error('Error resolving bet:', error);
       haptic.error();
       throw error;
     }
@@ -231,8 +230,7 @@ export default function BetDetails() {
           }
         }
       ]);
-    } catch (error) {
-      console.error('Error cancelling bet:', error);
+    } catch {
       haptic.error();
       setIsCancelling(false);
       Alert.alert('Error', 'Failed to cancel bet. Please try again.');
@@ -359,14 +357,7 @@ export default function BetDetails() {
       // Show success modal
       setShowJoinSuccessModal(true);
 
-    } catch (error) {
-      console.error('=== BET PLACEMENT ERROR ===');
-      console.error('Error placing bet:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', JSON.stringify(error.response.data, null, 2));
-      }
+    } catch (error: any) {
       haptic.error();
       // Show the actual error message from the API if available
       const errorMessage = error?.message || error?.response?.data?.message || 'Failed to place bet. Please try again.';

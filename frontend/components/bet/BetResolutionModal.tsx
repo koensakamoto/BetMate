@@ -1,20 +1,14 @@
-import React, { useState, useCallback, useMemo, forwardRef, useImperativeHandle, useEffect } from 'react';
+import React, { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Keyboard,
-  Platform
+  Keyboard
 } from 'react-native';
 import { showErrorToast } from '../../utils/toast';
-import {
-  BottomSheetModal,
-  BottomSheetScrollView,
-  BottomSheetTextInput,
-  BottomSheetBackdrop
-} from '@gorhom/bottom-sheet';
+import AppBottomSheet, { AppBottomSheetRef, BottomSheetTextInput } from '../common/AppBottomSheet';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BetResponse, BetParticipationResponse } from '../../services/bet/betService';
 
@@ -42,38 +36,12 @@ const BetResolutionModal = forwardRef<BetResolutionModalRef, BetResolutionModalP
   const [selectedWinnerIds, setSelectedWinnerIds] = useState<number[]>([]);
   const [reasoning, setReasoning] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-  const bottomSheetRef = React.useRef<BottomSheetModal>(null);
-
-  // Snap points for the bottom sheet
-  const snapPoints = useMemo(() => ['80%'], []);
-
-  // Listen for keyboard events
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const showSubscription = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-    const hideSubscription = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
+  const bottomSheetRef = React.useRef<AppBottomSheetRef>(null);
 
   // Expose present/dismiss methods to parent
   useImperativeHandle(ref, () => ({
     present: () => {
-      // Reset state when presenting
-      setSelectedOutcome(null);
-      setSelectedWinnerIds([]);
-      setReasoning('');
       bottomSheetRef.current?.present();
     },
     dismiss: () => {
@@ -81,25 +49,17 @@ const BetResolutionModal = forwardRef<BetResolutionModalRef, BetResolutionModalP
     }
   }));
 
-  const handleSheetChanges = useCallback((index: number) => {
-    if (index === -1) {
-      Keyboard.dismiss();
-      onClose();
-    }
+  const handlePresent = useCallback(() => {
+    // Reset state when presenting
+    setSelectedOutcome(null);
+    setSelectedWinnerIds([]);
+    setReasoning('');
+  }, []);
+
+  const handleClose = useCallback(() => {
+    Keyboard.dismiss();
+    onClose();
   }, [onClose]);
-
-
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={0.5}
-      />
-    ),
-    []
-  );
 
   if (!bet) return null;
 
@@ -128,7 +88,7 @@ const BetResolutionModal = forwardRef<BetResolutionModalRef, BetResolutionModalP
               }
               bottomSheetRef.current?.dismiss();
             } catch (error) {
-              console.error('Resolution error:', error);
+              // Error handled silently
               showErrorToast('Error', 'Failed to submit resolution. Please try again.');
             } finally {
               setIsSubmitting(false);
@@ -306,135 +266,121 @@ const BetResolutionModal = forwardRef<BetResolutionModalRef, BetResolutionModalP
     );
   };
 
-  return (
-    <BottomSheetModal
-      ref={bottomSheetRef}
-      snapPoints={snapPoints}
-      onChange={handleSheetChanges}
-      backdropComponent={renderBackdrop}
-      backgroundStyle={{
-        backgroundColor: '#1a1a1f',
+  const bottomAction = (
+    <TouchableOpacity
+      onPress={handleSubmit}
+      disabled={isSubmitting || (!selectedOutcome && selectedWinnerIds.length === 0)}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={isSubmitting ? `${resolutionType === 'resolve' ? 'Resolving' : 'Submitting vote'}, please wait` : resolutionType === 'resolve' ? 'Resolve Bet' : 'Submit Vote'}
+      accessibilityState={{
+        disabled: isSubmitting || (!selectedOutcome && selectedWinnerIds.length === 0),
+        busy: isSubmitting,
       }}
-      handleIndicatorStyle={{
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
-        width: 40,
+      accessibilityHint={(!selectedOutcome && selectedWinnerIds.length === 0) ? 'Select an option first' : 'Double tap to submit'}
+      style={{
+        backgroundColor: (!selectedOutcome && selectedWinnerIds.length === 0) || isSubmitting
+          ? 'rgba(255, 255, 255, 0.1)'
+          : '#00D4AA',
+        paddingVertical: 16,
+        borderRadius: 12,
+        alignItems: 'center',
       }}
-      android_keyboardInputMode="adjustResize"
     >
-      <View style={{ padding: 20, flex: 1 }}>
-        {/* Header */}
-        <View style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 20
+      {isSubmitting ? (
+        <ActivityIndicator color="#ffffff" accessible={false} />
+      ) : (
+        <Text style={{
+          color: (!selectedOutcome && selectedWinnerIds.length === 0) ? 'rgba(255, 255, 255, 0.3)' : '#000000',
+          fontSize: 16,
+          fontWeight: '700'
+        }} accessible={false}>
+          {resolutionType === 'resolve' ? 'Resolve Bet' : 'Submit Vote'}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+
+  return (
+    <AppBottomSheet
+      ref={bottomSheetRef}
+      snapPoints={['85%']}
+      onClose={handleClose}
+      onPresent={handlePresent}
+      bottomAction={bottomAction}
+    >
+      {/* Header */}
+      <View style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20
+      }}>
+        <Text style={{
+          color: '#ffffff',
+          fontSize: 20,
+          fontWeight: '700'
         }}>
-          <Text style={{
-            color: '#ffffff',
-            fontSize: 20,
-            fontWeight: '700'
-          }}>
-            {resolutionType === 'resolve' ? 'Resolve Bet' : 'Vote on Resolution'}
-          </Text>
+          {resolutionType === 'resolve' ? 'Resolve Bet' : 'Vote on Resolution'}
+        </Text>
 
-          <TouchableOpacity
-            onPress={() => bottomSheetRef.current?.dismiss()}
-            disabled={isSubmitting}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel="Close"
-            accessibilityHint="Double tap to close this modal"
-            style={{
-              padding: 4,
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              borderRadius: 20
-            }}
-          >
-            <MaterialIcons name="close" size={24} color="#ffffff" accessible={false} />
-          </TouchableOpacity>
-        </View>
-
-        <BottomSheetScrollView
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <TouchableOpacity
+          onPress={() => bottomSheetRef.current?.dismiss()}
+          disabled={isSubmitting}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+          accessibilityHint="Double tap to close this modal"
+          style={{
+            padding: 4,
+            backgroundColor: 'rgba(255, 255, 255, 0.08)',
+            borderRadius: 20
+          }}
         >
-          {/* Resolution Options */}
-          {bet.betType === 'MULTIPLE_CHOICE' ?
-            renderMultipleChoiceOptions() :
-            renderExactValueOptions()
-          }
-
-          {/* Reasoning Input */}
-          <View style={{ marginBottom: 20 }}>
-            <Text style={{
-              color: '#ffffff',
-              fontSize: 16,
-              fontWeight: '600',
-              marginBottom: 8
-            }}>
-              {resolutionType === 'resolve' ? 'Resolution Notes (Optional):' : 'Reasoning (Optional):'}
-            </Text>
-
-            <BottomSheetTextInput
-              value={reasoning}
-              onChangeText={setReasoning}
-              placeholder={resolutionType === 'resolve'
-                ? "Add any notes about the resolution..."
-                : "Explain your vote decision..."}
-              placeholderTextColor="rgba(255, 255, 255, 0.3)"
-              multiline
-              numberOfLines={4}
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                borderRadius: 12,
-                padding: 12,
-                color: '#ffffff',
-                fontSize: 14,
-                minHeight: 100,
-                textAlignVertical: 'top',
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.08)'
-              }}
-            />
-          </View>
-
-          {/* Submit Button */}
-          <TouchableOpacity
-            onPress={handleSubmit}
-            disabled={isSubmitting || (!selectedOutcome && selectedWinnerIds.length === 0)}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={isSubmitting ? `${resolutionType === 'resolve' ? 'Resolving' : 'Submitting vote'}, please wait` : resolutionType === 'resolve' ? 'Resolve Bet' : 'Submit Vote'}
-            accessibilityState={{
-              disabled: isSubmitting || (!selectedOutcome && selectedWinnerIds.length === 0),
-              busy: isSubmitting,
-            }}
-            accessibilityHint={(!selectedOutcome && selectedWinnerIds.length === 0) ? 'Select an option first' : 'Double tap to submit'}
-            style={{
-              backgroundColor: (!selectedOutcome && selectedWinnerIds.length === 0) || isSubmitting
-                ? 'rgba(255, 255, 255, 0.1)'
-                : '#00D4AA',
-              paddingVertical: 16,
-              borderRadius: 12,
-              alignItems: 'center',
-              marginBottom: keyboardHeight > 0 ? keyboardHeight : 40
-            }}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#ffffff" accessible={false} />
-            ) : (
-              <Text style={{
-                color: (!selectedOutcome && selectedWinnerIds.length === 0) ? 'rgba(255, 255, 255, 0.3)' : '#000000',
-                fontSize: 16,
-                fontWeight: '700'
-              }} accessible={false}>
-                {resolutionType === 'resolve' ? 'Resolve Bet' : 'Submit Vote'}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </BottomSheetScrollView>
+          <MaterialIcons name="close" size={24} color="#ffffff" accessible={false} />
+        </TouchableOpacity>
       </View>
-    </BottomSheetModal>
+
+      {/* Resolution Options */}
+      {bet.betType === 'MULTIPLE_CHOICE' ?
+        renderMultipleChoiceOptions() :
+        renderExactValueOptions()
+      }
+
+      {/* Reasoning Input */}
+      <View style={{ marginBottom: 20 }}>
+        <Text style={{
+          color: '#ffffff',
+          fontSize: 16,
+          fontWeight: '600',
+          marginBottom: 8
+        }}>
+          {resolutionType === 'resolve' ? 'Resolution Notes (Optional):' : 'Reasoning (Optional):'}
+        </Text>
+
+        <BottomSheetTextInput
+          value={reasoning}
+          onChangeText={setReasoning}
+          placeholder={resolutionType === 'resolve'
+            ? "Add any notes about the resolution..."
+            : "Explain your vote decision..."}
+          placeholderTextColor="rgba(255, 255, 255, 0.3)"
+          multiline
+          numberOfLines={4}
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.04)',
+            borderRadius: 12,
+            padding: 12,
+            color: '#ffffff',
+            fontSize: 14,
+            minHeight: 100,
+            textAlignVertical: 'top',
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.08)'
+          }}
+        />
+      </View>
+    </AppBottomSheet>
   );
 });
 

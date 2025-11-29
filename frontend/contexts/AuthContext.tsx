@@ -193,7 +193,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         debugLog('Auth check - no valid session');
       }
     } catch (error) {
-      console.error(`💥 [AuthContext] Auth status check failed:`, error);
       errorLog('Auth status check failed:', error);
       setUser(null);
       // Don't set error for initial auth check - user might just not be logged in

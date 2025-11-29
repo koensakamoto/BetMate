@@ -146,7 +146,6 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
 
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load notifications');
-        console.error('Error loading notifications:', err);
       } finally {
         if (!silent) {
           setLoading(false);
@@ -197,8 +196,7 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
         globalCache.unreadCount = count || 0;
         setUnreadCount(count || 0);
         return count || 0;
-      } catch (err) {
-        console.error('Error loading unread count:', err);
+      } catch {
         return globalCache.unreadCount;
       } finally {
         pendingCountRequest.current = null;
@@ -215,8 +213,8 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
       const statistics = await notificationService.getStats();
       globalCache.stats = statistics || null;
       setStats(statistics || null);
-    } catch (err) {
-      console.error('Error loading notification stats:', err);
+    } catch {
+      // Stats failed to load - continue without them
     }
   }, []);
 

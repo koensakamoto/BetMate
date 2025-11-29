@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { showErrorToast } from '../../utils/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -176,18 +177,12 @@ export default function Signup() {
         // Navigation will be handled by auth state change
       }
     } catch (error) {
-      console.error('Social auth failed:', error);
-
       if (hasErrorCode(error) && error.code === 'CANCELLED') {
         // User cancelled, don't show error
         return;
       }
 
-      Alert.alert(
-        'Sign-In Failed',
-        getErrorMessage(error),
-        [{ text: 'OK' }]
-      );
+      showErrorToast('Sign-In Failed', getErrorMessage(error));
     } finally {
       setSocialLoading(null);
     }
@@ -209,8 +204,6 @@ export default function Signup() {
       // Show profile completion modal
       setShowProfileModal(true);
     } catch (error) {
-      console.error('Signup failed with error:', error);
-
       // Check for field-specific errors
       const errorCode = getErrorCode(error);
       if (errorCode && ERROR_CODE_TO_FIELD[errorCode]) {
@@ -234,40 +227,24 @@ export default function Signup() {
         return;
       }
 
-      // Handle network/server errors with alert
+      // Handle network/server errors with toast
       if (isNetworkError(error)) {
-        Alert.alert(
-          'Connection Error',
-          'Please check your internet connection and try again.',
-          [{ text: 'OK' }]
-        );
+        showErrorToast('Connection Error', 'Please check your internet connection and try again.');
         return;
       }
 
       if (isRateLimitError(error)) {
-        Alert.alert(
-          'Too Many Attempts',
-          getErrorMessage(error),
-          [{ text: 'OK' }]
-        );
+        showErrorToast('Too Many Attempts', getErrorMessage(error));
         return;
       }
 
       if (isServerError(error)) {
-        Alert.alert(
-          'Server Error',
-          'Something went wrong on our end. Please try again later.',
-          [{ text: 'OK' }]
-        );
+        showErrorToast('Server Error', 'Something went wrong on our end. Please try again later.');
         return;
       }
 
       // Generic fallback
-      Alert.alert(
-        'Signup Failed',
-        getErrorMessage(error),
-        [{ text: 'OK' }]
-      );
+      showErrorToast('Signup Failed', getErrorMessage(error));
     }
   };
 

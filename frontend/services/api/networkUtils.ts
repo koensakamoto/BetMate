@@ -66,8 +66,8 @@ class NetworkManager {
     this.listeners.forEach(listener => {
       try {
         listener(state);
-      } catch (error) {
-        console.error('Error in network state listener:', error);
+      } catch {
+        // Listener error - continue with other listeners
       }
     });
   }
@@ -82,8 +82,7 @@ class NetworkManager {
       // Use a lightweight endpoint to test connectivity
       await apiClient.get('/health', { timeout: 5000 });
       return true;
-    } catch (error) {
-      console.warn('API connectivity test failed:', error);
+    } catch {
       return false;
     }
   }

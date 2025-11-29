@@ -18,6 +18,7 @@ public class ResolverInfoDto {
     // Vote details - what the resolver voted for
     private String votedOutcome;           // For MCQ bets: the option text they voted for
     private List<Long> votedWinnerUserIds; // For prediction bets: user IDs of winners they selected
+    private String reasoning;              // Optional reasoning/comment for their vote
 
     public static ResolverInfoDto fromUser(User user) {
         ResolverInfoDto dto = new ResolverInfoDto();
@@ -93,5 +94,13 @@ public class ResolverInfoDto {
 
     public void setVotedWinnerUserIds(List<Long> votedWinnerUserIds) {
         this.votedWinnerUserIds = votedWinnerUserIds;
+    }
+
+    public String getReasoning() {
+        return reasoning;
+    }
+
+    public void setReasoning(String reasoning) {
+        this.reasoning = reasoning;
     }
 }

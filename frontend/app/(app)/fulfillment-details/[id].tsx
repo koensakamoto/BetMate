@@ -23,8 +23,8 @@ export default function FulfillmentDetails() {
       setIsLoading(true);
       const data = await betService.getBetById(Number(id));
       setBetData(data);
-    } catch (error) {
-      console.error('Error loading bet details:', error);
+    } catch {
+      // Error loading bet details
     } finally {
       setIsLoading(false);
     }

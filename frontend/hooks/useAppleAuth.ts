@@ -36,8 +36,7 @@ export function useAppleAuth() {
     try {
       const available = await AppleAuthentication.isAvailableAsync();
       setIsAvailable(available);
-    } catch (error) {
-      console.error('[AppleAuth] Error checking availability:', error);
+    } catch {
       // On iOS 13+, Apple Sign-In should be available even if isAvailableAsync fails
       // Let's set it to true and let the sign-in fail with a better error if needed
       if (Platform.OS === 'ios') {
@@ -92,9 +91,7 @@ export function useAppleAuth() {
           } : null,
         },
       };
-    } catch (error) {
-      console.error('[AppleAuth] Sign-in failed:', error);
-
+    } catch (error: any) {
       if (error.code === 'ERR_REQUEST_CANCELED') {
         throw { code: 'CANCELLED', message: 'Sign-in was cancelled' };
       }

@@ -38,12 +38,20 @@ export const ResolverInfoSection: React.FC<ResolverInfoSectionProps> = React.mem
         <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 14 }}>
           {isResolved ? 'Resolved by' : 'Resolves'}
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <TouchableOpacity
+          onPress={() => router.push(`/(app)/bet-resolvers/${bet.id}`)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={isResolved ? 'Resolved by creator' : 'Resolves by creator'}
+          accessibilityHint="Double tap to view resolver details"
+        >
           {bet.resolvers && bet.resolvers[0] && renderAvatar(bet.resolvers[0], 20)}
-          <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '500' }}>
+          <Text style={{ color: '#00D4AA', fontSize: 14, fontWeight: '500' }}>
             Creator
           </Text>
-        </View>
+          <MaterialIcons name="chevron-right" size={16} color="#00D4AA" />
+        </TouchableOpacity>
       </View>
     );
   }

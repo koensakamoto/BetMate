@@ -45,7 +45,7 @@ export default function ManageMembers() {
       setGroupData(groupResponse);
       setMembers(membersResponse);
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to load group data');
     } finally {
       setIsLoading(false);
@@ -161,7 +161,7 @@ export default function ManageMembers() {
 
               Alert.alert('Success', `${getDisplayName(member)} has been promoted to Admin`);
             } catch (error) {
-              console.error('Error promoting member:', error);
+              // Error handled silently
               Alert.alert('Error', 'Failed to promote member. Please try again.');
             }
           }
@@ -191,7 +191,7 @@ export default function ManageMembers() {
 
               Alert.alert('Success', `${getDisplayName(member)} has been demoted to Member`);
             } catch (error) {
-              console.error('Error demoting member:', error);
+              // Error handled silently
               Alert.alert('Error', 'Failed to demote member. Please try again.');
             }
           }
@@ -226,7 +226,7 @@ export default function ManageMembers() {
 
               Alert.alert('Success', `${getDisplayName(member)} has been removed from the group`);
             } catch (error) {
-              console.error('Error removing member:', error);
+              // Error handled silently
               Alert.alert('Error', 'Failed to remove member. Please try again.');
             }
           }
@@ -257,7 +257,7 @@ export default function ManageMembers() {
                 `${getDisplayName(member)} is now the owner of this group.`
               );
             } catch (error) {
-              console.error('Error transferring ownership:', error);
+              // Error handled silently
               Alert.alert('Error', 'Failed to transfer ownership. Please try again.');
             }
           }
@@ -367,7 +367,7 @@ export default function ManageMembers() {
               setSelectedMembers(new Set());
               Alert.alert('Success', `${membersToPromote.length} members have been promoted to Admin`);
             } catch (error) {
-              console.error('Error bulk promoting members:', error);
+              // Error handled silently
               Alert.alert('Error', 'Failed to promote some members. Please try again.');
             }
           }
@@ -408,7 +408,7 @@ export default function ManageMembers() {
               setSelectedMembers(new Set());
               Alert.alert('Success', `${membersToDemote.length} admins have been demoted to Member`);
             } catch (error) {
-              console.error('Error bulk demoting members:', error);
+              // Error handled silently
               Alert.alert('Error', 'Failed to demote some members. Please try again.');
             }
           }
@@ -444,7 +444,7 @@ export default function ManageMembers() {
 
               Alert.alert('Success', `${membersToRemove.length} members have been removed from the group`);
             } catch (error) {
-              console.error('Error bulk removing members:', error);
+              // Error handled silently
               Alert.alert('Error', 'Failed to remove some members. Please try again.');
             }
           }

@@ -4,6 +4,14 @@ export default {
   expo: {
     name: "RivalPicks",
     slug: "rivalpicks",
+    owner: "koensakamoto",
+    extra: {
+      googleWebClientId: process.env.GOOGLE_WEB_CLIENT_ID,
+      googleIosClientId: process.env.GOOGLE_IOS_CLIENT_ID,
+      eas: {
+        projectId: "2e896721-1c72-4ff8-934b-fd6c808994e3"
+      }
+    },
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",

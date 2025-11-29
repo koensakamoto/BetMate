@@ -67,7 +67,7 @@ export default function GroupDetails() {
           setIsLoading(false);
         }
       } catch (err) {
-        console.error(`Failed to fetch group info for ${currentGroupId}:`, err);
+        // Error handled silently
         if (!isCancelled) {
           setIsLoading(false);
         }

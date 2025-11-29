@@ -86,7 +86,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
       const count = await groupService.getPendingRequestCount(groupId);
       setPendingRequestCount(count);
     } catch (error) {
-      console.error('Error fetching pending request count:', error);
+      // Error handled silently
       setPendingRequestCount(0);
     }
   }, [groupData.id, isAdmin]);
@@ -144,7 +144,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                 ]
               );
             } catch (error) {
-              console.error('Failed to leave group:', error);
+              // Error handled silently
               const errorMessage = error?.response?.data?.error || 'Failed to leave group. Please try again.';
               Alert.alert('Error', errorMessage);
             }

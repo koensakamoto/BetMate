@@ -109,7 +109,7 @@ export default function UserProfilePage() {
         setFriendshipStatus('none');
       }
     } catch (err) {
-      console.error('Error checking friendship status:', err);
+      // Error handled silently
     }
   };
 
@@ -123,7 +123,7 @@ export default function UserProfilePage() {
       Alert.alert('Success', 'Friend request sent!');
     } catch (err) {
       Alert.alert('Error', 'Failed to send friend request');
-      console.error('Error sending friend request:', err);
+      // Error handled silently
     } finally {
       setIsProcessing(false);
     }
@@ -148,7 +148,7 @@ export default function UserProfilePage() {
               Alert.alert('Success', 'Friend removed');
             } catch (err) {
               Alert.alert('Error', 'Failed to remove friend');
-              console.error('Error removing friend:', err);
+              // Error handled silently
             } finally {
               setIsProcessing(false);
             }

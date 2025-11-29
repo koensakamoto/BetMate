@@ -85,7 +85,7 @@ public class BetResolutionService {
 
         switch (bet.getResolutionMethod()) {
             case SELF -> {
-                return resolveByCreator(bet, resolver, outcome);
+                return resolveByCreator(bet, resolver, outcome, reasoning);
             }
             case ASSIGNED_RESOLVERS -> {
                 return resolveByAssignedResolver(bet, resolver, outcome, reasoning);
@@ -139,6 +139,20 @@ public class BetResolutionService {
             betParticipationRepository.save(participation);
         }
 
+        // Create a vote record for the resolver to store their resolution (for reasoning display)
+        BetResolutionVote vote = new BetResolutionVote();
+        vote.setBet(bet);
+        vote.setVoter(resolver);
+        vote.setReasoning(reasoning);
+        betResolutionVoteRepository.save(vote);
+        // Add winner votes
+        for (Long winnerId : winnerUserIds) {
+            User winnerUser = userRepository.findById(winnerId)
+                .orElseThrow(() -> new BetResolutionException("Winner user not found: " + winnerId));
+            BetResolutionVoteWinner winnerVote = new BetResolutionVoteWinner(vote, winnerUser);
+            betResolutionVoteWinnerRepository.save(winnerVote);
+        }
+
         // Mark bet as resolved (use OPTION_1 as placeholder since there's no specific option)
         bet.resolve(Bet.BetOutcome.OPTION_1);
         bet = betRepository.save(bet);
@@ -155,10 +169,18 @@ public class BetResolutionService {
     /**
      * Creator-Only Resolution: Only the bet creator can resolve.
      */
-    private Bet resolveByCreator(Bet bet, User resolver, Bet.BetOutcome outcome) {
+    private Bet resolveByCreator(Bet bet, User resolver, Bet.BetOutcome outcome, String reasoning) {
         if (!bet.isCreator(resolver)) {
             throw new BetResolutionException("Only the bet creator can resolve this bet");
         }
+
+        // Create a vote record for the creator to store their resolution (for reasoning display)
+        BetResolutionVote vote = new BetResolutionVote();
+        vote.setBet(bet);
+        vote.setVoter(resolver);
+        vote.setVotedOutcome(outcome);
+        vote.setReasoning(reasoning);
+        betResolutionVoteRepository.save(vote);
 
         bet.resolve(outcome);
         bet = betRepository.save(bet);

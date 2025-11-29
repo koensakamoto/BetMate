@@ -19,7 +19,7 @@ export default function PendingRequestsPage() {
       const requests = await groupService.getPendingRequests(numericGroupId);
       setPendingRequests(requests);
     } catch (error) {
-      console.error('Error fetching pending requests:', error);
+      // Error handled silently
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -41,7 +41,7 @@ export default function PendingRequestsPage() {
       await groupService.approvePendingRequest(numericGroupId, requestId);
       setPendingRequests(prev => prev.filter(r => r.requestId !== requestId));
     } catch (error) {
-      console.error('Error approving request:', error);
+      // Error handled silently
     }
   }, [groupId]);
 
@@ -51,7 +51,7 @@ export default function PendingRequestsPage() {
       await groupService.denyPendingRequest(numericGroupId, requestId);
       setPendingRequests(prev => prev.filter(r => r.requestId !== requestId));
     } catch (error) {
-      console.error('Error denying request:', error);
+      // Error handled silently
     }
   }, [groupId]);
 

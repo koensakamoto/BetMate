@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import BetCard from '../bet/BetCard';
@@ -64,7 +65,7 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
       // Update cache timestamp
       lastFetchTime.current = Date.now();
     } catch (error) {
-      console.error('Failed to load group bets:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to load group bets. Please try again.');
     } finally {
       setLoading(false);
@@ -258,6 +259,46 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
             textAlign: 'center'
           }}>
             Loading bets...
+          </Text>
+        </View>
+      ) : transformedBets.length === 0 ? (
+        <View style={{
+          alignItems: 'center',
+          paddingVertical: 60
+        }}>
+          <View style={{
+            width: 80,
+            height: 80,
+            borderRadius: 40,
+            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 16
+          }}>
+            <MaterialIcons
+              name={activeBetFilter === 'All' ? "casino" : "filter-list"}
+              size={40}
+              color="rgba(255, 255, 255, 0.2)"
+            />
+          </View>
+          <Text style={{
+            fontSize: 18,
+            color: '#ffffff',
+            textAlign: 'center',
+            fontWeight: '600',
+            marginBottom: 8
+          }}>
+            {activeBetFilter === 'All' ? 'No bets yet' : `No ${activeBetFilter.toLowerCase()} bets`}
+          </Text>
+          <Text style={{
+            fontSize: 14,
+            color: 'rgba(255, 255, 255, 0.4)',
+            textAlign: 'center',
+            paddingHorizontal: 40
+          }}>
+            {activeBetFilter === 'All'
+              ? 'Create the first bet for this group!'
+              : 'Try a different filter or create a new bet'}
           </Text>
         </View>
       ) : transformedBets.map((bet) => (

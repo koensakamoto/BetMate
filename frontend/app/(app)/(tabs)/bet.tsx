@@ -17,7 +17,7 @@ export default function Bet() {
   const { refresh } = useLocalSearchParams();
   const { user: authUser, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
-  const tabs = ['My Bets', 'Owed Stakes'];
+  const tabs = ['My Bets', 'You Owe', 'Owed to You'];
   const [searchQuery, setSearchQuery] = useState('');
   const [myBets, setMyBets] = useState<BetSummaryResponse[]>([]);
   // const [discoverBets, setDiscoverBets] = useState<BetSummaryResponse[]>([]); // Commented out - TODO: Implement guest/public betting
@@ -28,11 +28,21 @@ export default function Bet() {
   // Owed Stakes state
   const [unfulfilledBets, setUnfulfilledBets] = useState<BetSummaryResponse[]>([]);
   const [loadingUnfulfilledBets, setLoadingUnfulfilledBets] = useState(false);
-  const [owedStakesFilter, setOwedStakesFilter] = useState<'all' | 'owed_to_you' | 'you_owe'>('all');
-  const owedStakesFilters = [
+
+  // Filters for "You Owe" tab
+  const [youOweFilter, setYouOweFilter] = useState<'all' | 'todo' | 'submitted'>('all');
+  const youOweFilters = [
     { key: 'all' as const, label: 'All' },
-    { key: 'owed_to_you' as const, label: 'Owed to You' },
-    { key: 'you_owe' as const, label: 'You Owe' }
+    { key: 'todo' as const, label: 'To-Do' },
+    { key: 'submitted' as const, label: 'Submitted' }
+  ];
+
+  // Filters for "Owed to You" tab
+  const [owedToYouFilter, setOwedToYouFilter] = useState<'all' | 'waiting' | 'completed'>('all');
+  const owedToYouFilters = [
+    { key: 'all' as const, label: 'All' },
+    { key: 'waiting' as const, label: 'Waiting' },
+    { key: 'completed' as const, label: 'Completed' }
   ];
 
   // Filter states for My Bets tab
@@ -98,7 +108,7 @@ export default function Bet() {
       hasFetchedMyBets.current = true;
 
     } catch (error) {
-      console.error('Failed to load bets:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to load bets. Please try again.');
     } finally {
       setLoading(false);
@@ -130,15 +140,15 @@ export default function Bet() {
       setUnfulfilledBets(unfulfilled);
       lastOwedStakesFetchTime.current = Date.now();
     } catch (err) {
-      console.error('Failed to load unfulfilled bets:', err);
+      // Error handled silently
     } finally {
       setLoadingUnfulfilledBets(false);
     }
   }, [isAuthenticated, isOwedStakesCacheValid]);
 
-  // Fetch unfulfilled bets when Owed Stakes tab is active
+  // Fetch unfulfilled bets when either owed stakes tab is active
   useEffect(() => {
-    if (activeTab === 1 && isAuthenticated) {
+    if ((activeTab === 1 || activeTab === 2) && isAuthenticated) {
       fetchUnfulfilledBets();
     }
   }, [activeTab, isAuthenticated, fetchUnfulfilledBets]);
@@ -146,7 +156,7 @@ export default function Bet() {
   // Pull-to-refresh handler
   const onRefresh = useCallback(() => {
     loadBets(true);
-    if (activeTab === 1) {
+    if (activeTab === 1 || activeTab === 2) {
       fetchUnfulfilledBets(true);
     }
   }, [activeTab, fetchUnfulfilledBets]);
@@ -270,10 +280,16 @@ export default function Bet() {
     setMyBetsFilter(filter);
   }, []);
 
-  // Memoize owed stakes filter change handler
-  const handleOwedStakesFilterChange = useCallback((filter: 'all' | 'owed_to_you' | 'you_owe') => {
+  // Handler for "You Owe" tab filters
+  const handleYouOweFilterChange = useCallback((filter: 'all' | 'todo' | 'submitted') => {
     Haptics.selectionAsync();
-    setOwedStakesFilter(filter);
+    setYouOweFilter(filter);
+  }, []);
+
+  // Handler for "Owed to You" tab filters
+  const handleOwedToYouFilterChange = useCallback((filter: 'all' | 'waiting' | 'completed') => {
+    Haptics.selectionAsync();
+    setOwedToYouFilter(filter);
   }, []);
 
   interface BetHistoryItem {
@@ -590,7 +606,7 @@ export default function Bet() {
                 })()}
               </>
             ) : activeTab === 1 ? (
-              /* Owed Stakes Section */
+              /* You Owe Tab */
               <View>
                 {/* Filter Tabs */}
                 <View style={{
@@ -598,12 +614,12 @@ export default function Bet() {
                   marginBottom: 16,
                   gap: 8
                 }}>
-                  {owedStakesFilters.map((filter) => {
-                    const isActive = filter.key === owedStakesFilter;
+                  {youOweFilters.map((filter) => {
+                    const isActive = filter.key === youOweFilter;
                     return (
                       <TouchableOpacity
                         key={filter.key}
-                        onPress={() => handleOwedStakesFilterChange(filter.key)}
+                        onPress={() => handleYouOweFilterChange(filter.key)}
                         accessible={true}
                         accessibilityRole="button"
                         accessibilityLabel={`Filter: ${filter.label}`}
@@ -634,69 +650,36 @@ export default function Bet() {
                   <>
                     <SkeletonOwedStakesCard />
                     <SkeletonOwedStakesCard />
-                    <SkeletonOwedStakesCard />
                   </>
                 ) : (() => {
-                  // Determine if bet is owed to user or user owes based on participation status
-                  const isOwedToUser = (bet: BetSummaryResponse) => {
-                    if (bet.userParticipationStatus === 'WON') {
-                      return true;
-                    }
-                    if (!bet.hasUserParticipated && bet.creatorUsername === authUser?.username) {
-                      return true;
-                    }
-                    return false;
-                  };
+                  // Filter for bets where user owes (lost)
+                  const youOweBets = unfulfilledBets.filter(bet =>
+                    bet.userParticipationStatus === 'LOST'
+                  );
 
-                  const isUserOwes = (bet: BetSummaryResponse) => {
-                    return bet.userParticipationStatus === 'LOST';
-                  };
-
-                  // Filter based on selected filter
-                  const filteredBets = unfulfilledBets.filter(bet => {
-                    if (owedStakesFilter === 'all') return true;
-                    if (owedStakesFilter === 'owed_to_you') return isOwedToUser(bet);
-                    if (owedStakesFilter === 'you_owe') return isUserOwes(bet);
+                  // Apply sub-filter
+                  const filteredBets = youOweBets.filter(bet => {
+                    if (youOweFilter === 'all') return true;
+                    if (youOweFilter === 'todo') return !bet.hasCurrentUserClaimedFulfillment;
+                    if (youOweFilter === 'submitted') return bet.hasCurrentUserClaimedFulfillment;
                     return true;
                   });
 
-                  // Helper function to render a bet card
-                  const renderBetCard = (bet: BetSummaryResponse) => {
-                    const isOwedToYou = isOwedToUser(bet);
-                    const youOwe = isUserOwes(bet);
+                  // Helper function to render a bet card for You Owe tab
+                  const renderYouOweBetCard = (bet: BetSummaryResponse) => {
                     let badgeConfig: { bgColor: string; textColor: string; text: string };
 
-                    if (bet.fulfillmentStatus === 'FULFILLED') {
+                    if (bet.hasCurrentUserClaimedFulfillment) {
                       badgeConfig = {
-                        bgColor: 'rgba(0, 212, 170, 0.1)',
-                        textColor: colors.primary,
-                        text: 'Completed'
+                        bgColor: 'rgba(6, 182, 212, 0.1)',
+                        textColor: '#06B6D4',
+                        text: 'Submitted'
                       };
-                    } else if (isOwedToYou) {
-                      badgeConfig = {
-                        bgColor: 'rgba(156, 163, 175, 0.1)',
-                        textColor: '#9CA3AF',
-                        text: 'Waiting'
-                      };
-                    } else if (youOwe) {
-                      if (bet.hasCurrentUserClaimedFulfillment) {
-                        badgeConfig = {
-                          bgColor: 'rgba(6, 182, 212, 0.1)',
-                          textColor: '#06B6D4',
-                          text: 'Submitted'
-                        };
-                      } else {
-                        badgeConfig = {
-                          bgColor: 'rgba(239, 68, 68, 0.1)',
-                          textColor: colors.errorAlt,
-                          text: 'To-Do'
-                        };
-                      }
                     } else {
                       badgeConfig = {
-                        bgColor: 'rgba(156, 163, 175, 0.1)',
-                        textColor: '#9CA3AF',
-                        text: 'Pending'
+                        bgColor: 'rgba(239, 68, 68, 0.1)',
+                        textColor: colors.errorAlt,
+                        text: 'To-Do'
                       };
                     }
 
@@ -740,7 +723,7 @@ export default function Bet() {
                           </Text>
                         </View>
 
-                        {/* Win/Loss indicator */}
+                        {/* Loss indicator */}
                         <View style={{
                           flexDirection: 'row',
                           alignItems: 'center',
@@ -748,16 +731,16 @@ export default function Bet() {
                           marginBottom: 8
                         }}>
                           <MaterialIcons
-                            name={isOwedToYou ? 'emoji-events' : 'warning'}
+                            name="warning"
                             size={16}
-                            color={isOwedToYou ? colors.primary : colors.errorAlt}
+                            color={colors.errorAlt}
                           />
                           <Text style={{
                             fontSize: 12,
                             fontWeight: '600',
-                            color: isOwedToYou ? colors.primary : colors.errorAlt
+                            color: colors.errorAlt
                           }}>
-                            {isOwedToYou ? 'You Won' : 'You Lost'}
+                            You Lost
                           </Text>
                         </View>
 
@@ -778,7 +761,7 @@ export default function Bet() {
                         {/* Social Stake Description */}
                         <View
                           style={{
-                            backgroundColor: isOwedToYou ? 'rgba(0, 212, 170, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.08)',
                             paddingHorizontal: 12,
                             paddingVertical: 8,
                             borderRadius: 8,
@@ -788,7 +771,7 @@ export default function Bet() {
                           <Text
                             style={{
                               fontSize: 13,
-                              color: isOwedToYou ? colors.primary : colors.errorAlt,
+                              color: colors.errorAlt,
                               fontWeight: '600'
                             }}
                           >
@@ -854,11 +837,11 @@ export default function Bet() {
 
                   // Empty state
                   if (filteredBets.length === 0) {
-                    const emptyMessage = owedStakesFilter === 'owed_to_you'
-                      ? 'No one owes you anything right now'
-                      : owedStakesFilter === 'you_owe'
-                      ? "You don't owe anyone anything"
-                      : 'No stakes to fulfill';
+                    const emptyMessage = youOweFilter === 'todo'
+                      ? 'No pending stakes to fulfill'
+                      : youOweFilter === 'submitted'
+                      ? 'No submitted stakes yet'
+                      : "You don't owe anyone anything";
 
                     return (
                       <View style={{
@@ -889,7 +872,281 @@ export default function Bet() {
 
                   return (
                     <View>
-                      {filteredBets.map(bet => renderBetCard(bet))}
+                      {filteredBets.map(bet => renderYouOweBetCard(bet))}
+                    </View>
+                  );
+                })()}
+              </View>
+            ) : activeTab === 2 ? (
+              /* Owed to You Tab */
+              <View>
+                {/* Filter Tabs */}
+                <View style={{
+                  flexDirection: 'row',
+                  marginBottom: 16,
+                  gap: 8
+                }}>
+                  {owedToYouFilters.map((filter) => {
+                    const isActive = filter.key === owedToYouFilter;
+                    return (
+                      <TouchableOpacity
+                        key={filter.key}
+                        onPress={() => handleOwedToYouFilterChange(filter.key)}
+                        accessible={true}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Filter: ${filter.label}`}
+                        accessibilityState={{ selected: isActive }}
+                        accessibilityHint={isActive ? 'Currently selected' : `Double tap to filter by ${filter.label}`}
+                        style={{
+                          backgroundColor: isActive ? colors.primaryLight : colors.surfaceMedium,
+                          borderRadius: 20,
+                          paddingHorizontal: 16,
+                          paddingVertical: 8,
+                          borderWidth: 1,
+                          borderColor: isActive ? 'rgba(0, 212, 170, 0.3)' : 'transparent'
+                        }}
+                      >
+                        <Text style={{
+                          fontSize: 14,
+                          fontWeight: '600',
+                          color: isActive ? colors.primary : colors.textSecondary
+                        }} accessible={false}>
+                          {filter.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {loadingUnfulfilledBets ? (
+                  <>
+                    <SkeletonOwedStakesCard />
+                    <SkeletonOwedStakesCard />
+                  </>
+                ) : (() => {
+                  // Filter for bets where user is owed (won or creator)
+                  const owedToYouBets = unfulfilledBets.filter(bet => {
+                    if (bet.userParticipationStatus === 'WON') return true;
+                    if (!bet.hasUserParticipated && bet.creatorUsername === authUser?.username) return true;
+                    return false;
+                  });
+
+                  // Apply sub-filter
+                  const filteredBets = owedToYouBets.filter(bet => {
+                    if (owedToYouFilter === 'all') return true;
+                    if (owedToYouFilter === 'waiting') return bet.fulfillmentStatus !== 'FULFILLED';
+                    if (owedToYouFilter === 'completed') return bet.fulfillmentStatus === 'FULFILLED';
+                    return true;
+                  });
+
+                  // Helper function to render a bet card for Owed to You tab
+                  const renderOwedToYouBetCard = (bet: BetSummaryResponse) => {
+                    let badgeConfig: { bgColor: string; textColor: string; text: string };
+
+                    if (bet.fulfillmentStatus === 'FULFILLED') {
+                      badgeConfig = {
+                        bgColor: 'rgba(0, 212, 170, 0.1)',
+                        textColor: colors.primary,
+                        text: 'Completed'
+                      };
+                    } else {
+                      badgeConfig = {
+                        bgColor: 'rgba(156, 163, 175, 0.1)',
+                        textColor: '#9CA3AF',
+                        text: 'Waiting'
+                      };
+                    }
+
+                    return (
+                      <TouchableOpacity
+                        key={bet.id}
+                        onPress={() => {
+                          router.push(`/(app)/fulfillment-details/${bet.id}`);
+                        }}
+                        activeOpacity={0.7}
+                        style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                          borderWidth: 1,
+                          borderColor: colors.border,
+                          borderRadius: 12,
+                          padding: 16,
+                          marginBottom: 12,
+                          position: 'relative'
+                        }}
+                      >
+                        {/* Status Badge */}
+                        <View
+                          style={{
+                            position: 'absolute',
+                            top: 12,
+                            right: 12,
+                            backgroundColor: badgeConfig.bgColor,
+                            paddingHorizontal: 10,
+                            paddingVertical: 5,
+                            borderRadius: 6
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              fontWeight: '700',
+                              color: badgeConfig.textColor
+                            }}
+                          >
+                            {badgeConfig.text}
+                          </Text>
+                        </View>
+
+                        {/* Win indicator */}
+                        <View style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                          marginBottom: 8
+                        }}>
+                          <MaterialIcons
+                            name="emoji-events"
+                            size={16}
+                            color={colors.primary}
+                          />
+                          <Text style={{
+                            fontSize: 12,
+                            fontWeight: '600',
+                            color: colors.primary
+                          }}>
+                            You Won
+                          </Text>
+                        </View>
+
+                        {/* Bet Title */}
+                        <Text
+                          style={{
+                            fontSize: 16,
+                            fontWeight: '700',
+                            color: colors.textPrimary,
+                            marginBottom: 8,
+                            paddingRight: 80
+                          }}
+                          numberOfLines={2}
+                        >
+                          {bet.title}
+                        </Text>
+
+                        {/* Social Stake Description */}
+                        <View
+                          style={{
+                            backgroundColor: 'rgba(0, 212, 170, 0.08)',
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderRadius: 8,
+                            marginBottom: 12
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              color: colors.primary,
+                              fontWeight: '600'
+                            }}
+                          >
+                            {bet.socialStakeDescription || 'Social bet'}
+                          </Text>
+                        </View>
+
+                        {/* Group Name */}
+                        <View
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                        >
+                          <MaterialIcons
+                            name="groups"
+                            size={14}
+                            color={colors.textMuted}
+                          />
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              color: colors.textSecondary
+                            }}
+                            numberOfLines={1}
+                          >
+                            {bet.groupName}
+                          </Text>
+                        </View>
+
+                        {/* Tap to view indicator */}
+                        <View
+                          style={{
+                            marginTop: 12,
+                            paddingTop: 12,
+                            borderTopWidth: 0.5,
+                            borderTopColor: colors.border,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 11,
+                              color: colors.textMuted,
+                              fontWeight: '600',
+                              marginRight: 4
+                            }}
+                          >
+                            Tap to view details
+                          </Text>
+                          <MaterialIcons
+                            name="arrow-forward"
+                            size={12}
+                            color={colors.textMuted}
+                          />
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  };
+
+                  // Empty state
+                  if (filteredBets.length === 0) {
+                    const emptyMessage = owedToYouFilter === 'waiting'
+                      ? 'No pending stakes from others'
+                      : owedToYouFilter === 'completed'
+                      ? 'No stakes have been fulfilled yet'
+                      : 'No one owes you anything right now';
+
+                    return (
+                      <View style={{
+                        alignItems: 'center',
+                        paddingVertical: 60
+                      }}>
+                        <MaterialIcons name="check-circle-outline" size={48} color={colors.textDisabled} />
+                        <Text style={{
+                          fontSize: 16,
+                          color: colors.textSecondary,
+                          textAlign: 'center',
+                          marginTop: 16,
+                          fontWeight: '500'
+                        }}>
+                          All caught up!
+                        </Text>
+                        <Text style={{
+                          fontSize: 14,
+                          color: colors.textMuted,
+                          textAlign: 'center',
+                          marginTop: 8
+                        }}>
+                          {emptyMessage}
+                        </Text>
+                      </View>
+                    );
+                  }
+
+                  return (
+                    <View>
+                      {filteredBets.map(bet => renderOwedToYouBetCard(bet))}
                     </View>
                   );
                 })()}

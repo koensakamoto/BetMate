@@ -219,8 +219,7 @@ export class MessagingService extends BaseApiService {
         minute: '2-digit',
         hour12: true
       });
-    } catch (error) {
-      console.error('Error formatting time:', error);
+    } catch {
       return '';
     }
   }
@@ -246,8 +245,7 @@ export class MessagingService extends BaseApiService {
           year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
         });
       }
-    } catch (error) {
-      console.error('Error formatting date separator:', error);
+    } catch {
       return '';
     }
   }

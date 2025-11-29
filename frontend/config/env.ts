@@ -78,10 +78,28 @@ export const errorLog = (message: string, error?: any) => {
   if (ENV.LOG_LEVEL === 'debug' || ENV.LOG_LEVEL === 'error') {
     console.error(`[${ENVIRONMENT.toUpperCase()}] ${message}`, error);
   }
-  
+
   // In production, you might want to send to crash reporting service
   if (ENV.ENABLE_CRASH_REPORTING && error) {
     // TODO: Integrate with crash reporting service (e.g., Sentry, Bugsnag)
     // crashReporting.recordError(error, { message });
   }
+};
+
+// OAuth configuration validation
+// Call this at app startup to warn about missing OAuth configuration
+export const validateOAuthConfig = (): boolean => {
+  const webClientId = Constants.expoConfig?.extra?.googleWebClientId;
+  const iosClientId = Constants.expoConfig?.extra?.googleIosClientId;
+
+  if (!webClientId || !iosClientId) {
+    errorLog(
+      'Missing OAuth configuration. Google Sign-In will not work. ' +
+      'Set GOOGLE_WEB_CLIENT_ID and GOOGLE_IOS_CLIENT_ID via EAS Secrets or .env.local'
+    );
+    return false;
+  }
+
+  debugLog('OAuth configuration validated successfully');
+  return true;
 };

@@ -44,7 +44,6 @@ export class TransactionService extends BaseApiService {
       // The response is already unwrapped by handleApiResponse
       return response;
     } catch (error) {
-      console.error('Error fetching transactions:', error);
       throw error;
     }
   }
@@ -81,7 +80,6 @@ export class TransactionService extends BaseApiService {
 
       return allTransactions;
     } catch (error) {
-      console.error('Error fetching all transactions:', error);
       throw error;
     }
   }

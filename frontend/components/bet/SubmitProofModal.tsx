@@ -65,7 +65,7 @@ export function SubmitProofModal({
         haptic.light();
       }
     } catch (error) {
-      console.error('Failed to pick image:', error);
+      // Error handled silently
       showErrorToast('Error', 'Failed to select image');
     }
   };
@@ -81,7 +81,7 @@ export function SubmitProofModal({
           const fileName = proofPhoto.split('/').pop() || `proof_${Date.now()}.jpg`;
           uploadedProofUrl = await betService.uploadFulfillmentProof(betId, proofPhoto, fileName);
         } catch (uploadError) {
-          console.error('Photo upload failed:', uploadError);
+          // Error handled silently
           showErrorToast('Upload Error', 'Failed to upload photo. Please try again.');
           return;
         }
@@ -96,11 +96,11 @@ export function SubmitProofModal({
         onClose();
         onSuccess?.();
       } catch (submitError) {
-        console.error('Fulfillment claim submission failed:', submitError);
+        // Error handled silently
         showErrorToast('Submission Error', 'Failed to record fulfillment claim. Please try again.');
       }
     } catch (error) {
-      console.error('Unexpected error in submitProof:', error);
+      // Error handled silently
       showErrorToast('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setSubmitting(false);

@@ -65,8 +65,7 @@ export function formatDisplayDate(dateString: string): string {
     });
 
     return `${dateStr}, ${timeStr}`;
-  } catch (error) {
-    console.error('Error formatting date:', error);
+  } catch {
     return dateString; // Fallback to original string
   }
 }
@@ -148,8 +147,7 @@ export function calculateTimeRemaining(dateString: string): {
     }
 
     return { days, hours, minutes, seconds, total, formatted };
-  } catch (error) {
-    console.error('Error calculating time remaining:', error);
+  } catch {
     return {
       days: 0,
       hours: 0,

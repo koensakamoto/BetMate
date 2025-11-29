@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Platform, NativeModules } from 'react-native';
+import Constants from 'expo-constants';
 
-// OAuth Client IDs from Firebase Console
-const WEB_CLIENT_ID = '46395801472-bl69o6cbgtnek5e8uljom7bm02biqpt3.apps.googleusercontent.com';
-const IOS_CLIENT_ID = '46395801472-6u4laj3io3ls67jephok6ls6r47v6c84.apps.googleusercontent.com';
+// OAuth Client IDs - loaded from environment configuration via app.config.js
+// Set via EAS Secrets for builds, or .env.local for local development
+const WEB_CLIENT_ID = Constants.expoConfig?.extra?.googleWebClientId || '';
+const IOS_CLIENT_ID = Constants.expoConfig?.extra?.googleIosClientId || '';
 
 // Type definitions for dynamically imported Google Sign-In
 // These are approximations since we can't import the actual types without the native module
@@ -107,8 +109,8 @@ export function useGoogleAuth() {
         scopes: ['profile', 'email'],
       });
       setIsConfigured(true);
-    } catch (error) {
-      console.error('❌ [GoogleAuth] Configuration failed:', error);
+    } catch {
+      // Configuration failed - isConfigured remains false
     }
   };
 
@@ -149,8 +151,6 @@ export function useGoogleAuth() {
         throw new Error('Sign-in was cancelled');
       }
     } catch (error) {
-      console.error('❌ [GoogleAuth] Sign-in failed:', error);
-
       if (isErrorWithCode && isErrorWithCode(error)) {
         switch (error.code) {
           case statusCodes?.SIGN_IN_CANCELLED:
@@ -175,8 +175,8 @@ export function useGoogleAuth() {
 
     try {
       await GoogleSignin.signOut();
-    } catch (error) {
-      console.error('❌ [GoogleAuth] Sign-out failed:', error);
+    } catch {
+      // Sign-out failed silently
     }
   };
 

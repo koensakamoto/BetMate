@@ -82,7 +82,6 @@ export function useBetDetailsCache(betId: number | null): UseBetDetailsCacheResu
       forceUpdate({});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load bet details');
-      console.error('Error loading bet details:', err);
     } finally {
       betCache.clearPending(key);
       setIsLoading(false);

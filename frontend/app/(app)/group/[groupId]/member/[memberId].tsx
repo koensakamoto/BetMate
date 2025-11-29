@@ -55,7 +55,7 @@ export default function MemberProfile() {
       setUserProfile(userProfileResponse);
       setUserStats(userStatsResponse);
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to load member data');
       router.back();
     } finally {
@@ -135,7 +135,7 @@ export default function MemberProfile() {
               setMember(prev => prev ? { ...prev, role: 'ADMIN' as const } : null);
               Alert.alert('Success', `${getDisplayName(member)} has been promoted to Admin`);
             } catch (error) {
-              console.error('Error promoting member:', error);
+              // Error handled silently
               Alert.alert('Error', 'Failed to promote member. Please try again.');
             } finally {
               setIsUpdating(false);
@@ -165,7 +165,7 @@ export default function MemberProfile() {
               setMember(prev => prev ? { ...prev, role: 'MEMBER' as const } : null);
               Alert.alert('Success', `${getDisplayName(member)} has been demoted to Member`);
             } catch (error) {
-              console.error('Error demoting member:', error);
+              // Error handled silently
               Alert.alert('Error', 'Failed to demote member. Please try again.');
             } finally {
               setIsUpdating(false);
@@ -196,7 +196,7 @@ export default function MemberProfile() {
                 { text: 'OK', onPress: () => router.back() }
               ]);
             } catch (error) {
-              console.error('Error removing member:', error);
+              // Error handled silently
               Alert.alert('Error', 'Failed to remove member. Please try again.');
               setIsUpdating(false);
             }

@@ -50,7 +50,7 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = React.memo(
       const details = await betService.getFulfillmentDetails(betId);
       setFulfillmentDetails(details);
     } catch (error) {
-      console.error('Failed to load fulfillment details:', error);
+      // Error handled silently
     } finally {
       setLoading(false);
     }

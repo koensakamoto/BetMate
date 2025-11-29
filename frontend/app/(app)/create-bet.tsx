@@ -74,7 +74,7 @@ export default function CreateBet() {
         const members = await groupService.getGroupMembers(parseInt(groupId as string));
         setGroupMembers(members);
       } catch (error) {
-        console.error('[CreateBet] Failed to fetch group members:', error);
+        // Error handled silently
         Alert.alert('Error', 'Failed to load group members');
       } finally {
         setIsLoadingMembers(false);
@@ -181,7 +181,7 @@ export default function CreateBet() {
                 }}
               ]);
             } catch (error) {
-              console.error('Failed to create bet:', error);
+              // Error handled silently
               haptic.error();
               Alert.alert('Error', 'Failed to create bet. Please try again.');
             } finally {
@@ -361,7 +361,7 @@ export default function CreateBet() {
         keyboardShouldPersistTaps="handled"
         extraScrollHeight={20}
         enableOnAndroid={true}
-        resetScrollToCoords={null}
+        enableResetScrollToCoords={false}
       >
           {/* Header with Progress */}
           <View style={{

@@ -26,7 +26,7 @@ export default function GroupConfig() {
         const data = await groupService.getGroupById(numericGroupId);
         setGroupData(data);
       } catch (error) {
-        console.error('Failed to fetch group data:', error);
+        // Error handled silently
       } finally {
         setIsLoading(false);
       }

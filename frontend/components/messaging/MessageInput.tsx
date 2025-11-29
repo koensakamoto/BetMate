@@ -172,7 +172,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       // Users can still dismiss manually via swipe or tapping message list
 
     } catch (error) {
-      console.error('Failed to send message:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to send message. Please try again.');
     } finally {
       setIsSending(false);

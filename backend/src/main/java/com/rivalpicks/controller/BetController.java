@@ -730,7 +730,32 @@ public class BetController {
         switch (bet.getResolutionMethod()) {
             case SELF -> {
                 // Creator is the sole resolver
-                resolvers.add(ResolverInfoDto.fromUser(bet.getCreator()));
+                ResolverInfoDto dto = ResolverInfoDto.fromUser(bet.getCreator());
+                // For CLOSED/RESOLVED bets, include the creator's vote details
+                if (bet.getStatus() != Bet.BetStatus.OPEN) {
+                    BetResolutionVote vote = votesByVoterId.get(bet.getCreator().getId());
+                    dto.setHasVoted(vote != null || bet.getStatus() == Bet.BetStatus.RESOLVED);
+                    if (vote != null) {
+                        // For MCQ bets: get the option text they voted for
+                        if (bet.getBetType() == Bet.BetType.MULTIPLE_CHOICE && vote.getVotedOutcome() != null) {
+                            String optionText = switch (vote.getVotedOutcome()) {
+                                case OPTION_1 -> bet.getOption1();
+                                case OPTION_2 -> bet.getOption2();
+                                case OPTION_3 -> bet.getOption3();
+                                case OPTION_4 -> bet.getOption4();
+                                default -> null;
+                            };
+                            dto.setVotedOutcome(optionText);
+                        }
+                        // For Prediction bets: get the winner user IDs they voted for
+                        if (bet.getBetType() == Bet.BetType.PREDICTION && vote.hasWinnerVotes()) {
+                            dto.setVotedWinnerUserIds(vote.getWinnerUserIds());
+                        }
+                        // Include reasoning if present
+                        dto.setReasoning(vote.getReasoning());
+                    }
+                }
+                resolvers.add(dto);
             }
             case ASSIGNED_RESOLVERS -> {
                 // Fetch assigned resolvers
@@ -757,6 +782,8 @@ public class BetController {
                             if (bet.getBetType() == Bet.BetType.PREDICTION && vote.hasWinnerVotes()) {
                                 dto.setVotedWinnerUserIds(vote.getWinnerUserIds());
                             }
+                            // Include reasoning if present
+                            dto.setReasoning(vote.getReasoning());
                         }
                     }
                     resolvers.add(dto);
@@ -788,6 +815,8 @@ public class BetController {
                             if (bet.getBetType() == Bet.BetType.PREDICTION && vote.hasWinnerVotes()) {
                                 dto.setVotedWinnerUserIds(vote.getWinnerUserIds());
                             }
+                            // Include reasoning if present
+                            dto.setReasoning(vote.getReasoning());
                         }
                         resolvers.add(dto);
                     }

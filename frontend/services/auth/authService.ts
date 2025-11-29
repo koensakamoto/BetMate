@@ -96,7 +96,6 @@ export class AuthService extends BaseApiService {
 
       return response;
     } catch (error) {
-      console.error('❌ [AuthService] Login failed:', error);
       // Clear any existing tokens on login failure
       await tokenStorage.clearTokens();
       throw error;
@@ -182,9 +181,8 @@ export class AuthService extends BaseApiService {
     try {
       // Call backend logout endpoint (optional for JWT)
       await this.post<void>(API_ENDPOINTS.LOGOUT);
-    } catch (error) {
+    } catch {
       // Continue with logout even if backend call fails
-      console.warn('Backend logout failed:', error);
     } finally {
       // Always clear local tokens
       await tokenStorage.clearTokens();
@@ -217,7 +215,6 @@ export class AuthService extends BaseApiService {
 
       return response;
     } catch (error) {
-      console.error('❌ [AuthService] Google login failed:', error);
       await tokenStorage.clearTokens();
       throw error;
     }
@@ -241,7 +238,6 @@ export class AuthService extends BaseApiService {
 
       return response;
     } catch (error) {
-      console.error('❌ [AuthService] Apple login failed:', error);
       await tokenStorage.clearTokens();
       throw error;
     }

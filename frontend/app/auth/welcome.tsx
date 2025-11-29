@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Text, View, ScrollView, StatusBar, Image, TouchableOpacity, Alert } from 'react-native';
+import { Text, View, ScrollView, StatusBar, Image, TouchableOpacity } from 'react-native';
+import { showErrorToast } from '../../utils/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -53,11 +54,7 @@ export default function Welcome() {
         return;
       }
 
-      Alert.alert(
-        'Sign-In Failed',
-        getErrorMessage(error),
-        [{ text: 'OK' }]
-      );
+      showErrorToast('Sign-In Failed', getErrorMessage(error));
     } finally {
       setSocialLoading(null);
     }

@@ -110,8 +110,7 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
     try {
       const permission = await Notification.requestPermission();
       return permission === 'granted';
-    } catch (error) {
-      console.error('Error requesting notification permission:', error);
+    } catch {
       return false;
     }
   }, []);

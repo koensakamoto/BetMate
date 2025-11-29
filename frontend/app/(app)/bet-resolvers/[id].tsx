@@ -29,7 +29,7 @@ export default function BetResolvers() {
       setBetData(betResponse);
 
     } catch (error) {
-      console.error('Error loading resolvers:', error);
+      // Error handled silently
     } finally {
       setIsLoading(false);
     }
@@ -40,8 +40,8 @@ export default function BetResolvers() {
   };
 
   const handleResolverPress = (resolver: ResolverInfo) => {
-    // For prediction bets with votes, navigate to vote details page
-    if (betData?.betType === 'PREDICTION' && resolver.hasVoted && resolver.votedWinnerUserIds?.length) {
+    // Navigate to vote details page for any resolver who has voted
+    if (resolver.hasVoted) {
       router.push({
         pathname: '/bet-resolver-vote/[betId]/[resolverId]',
         params: {
@@ -53,8 +53,9 @@ export default function BetResolvers() {
     }
   };
 
-  const isPredictionBetWithVote = (resolver: ResolverInfo) => {
-    return betData?.betType === 'PREDICTION' && resolver.hasVoted && resolver.votedWinnerUserIds?.length;
+  const isResolverTappable = (resolver: ResolverInfo) => {
+    // Make card tappable if resolver has voted (for any bet type)
+    return resolver.hasVoted === true;
   };
 
   if (isLoading) {
@@ -123,14 +124,14 @@ export default function BetResolvers() {
         {resolvers.length > 0 ? (
           <View style={{ gap: 12 }}>
             {resolvers.map((resolver) => {
-              const isTappable = isPredictionBetWithVote(resolver);
+              const isTappable = isResolverTappable(resolver);
               const CardWrapper = isTappable ? TouchableOpacity : View;
 
               return (
                 <CardWrapper
                   key={resolver.id}
                   onPress={isTappable ? () => handleResolverPress(resolver) : undefined}
-                  activeOpacity={isTappable ? 0.7 : 1}
+                  activeOpacity={0.7}
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
@@ -167,51 +168,48 @@ export default function BetResolvers() {
                     </Text>
                   </View>
 
-                  {/* Vote display */}
-                  {resolver.hasVoted && (
+                  {/* Vote status */}
+                  {resolver.hasVoted ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      {/* MCQ bets: show the voted option text */}
+                      {/* MCQ: show voted option */}
                       {betData?.betType === 'MULTIPLE_CHOICE' && resolver.votedOutcome && (
                         <View style={{
                           backgroundColor: 'rgba(0, 212, 170, 0.1)',
                           paddingHorizontal: 10,
                           paddingVertical: 5,
                           borderRadius: 8,
-                          maxWidth: 120
+                          maxWidth: 100
                         }}>
-                          <Text
-                            style={{
-                              fontSize: 12,
-                              fontWeight: '600',
-                              color: '#00D4AA'
-                            }}
-                            numberOfLines={2}
-                          >
-                            Voted: {resolver.votedOutcome}
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: '#00D4AA' }} numberOfLines={1}>
+                            {resolver.votedOutcome}
                           </Text>
                         </View>
                       )}
-
-                      {/* Prediction bets: show "Voted" badge and chevron */}
+                      {/* Prediction: show winner count */}
                       {betData?.betType === 'PREDICTION' && resolver.votedWinnerUserIds?.length && (
-                        <>
-                          <View style={{
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            paddingHorizontal: 10,
-                            paddingVertical: 5,
-                            borderRadius: 8
-                          }}>
-                            <Text style={{
-                              fontSize: 12,
-                              fontWeight: '600',
-                              color: '#10b981'
-                            }}>
-                              Voted
-                            </Text>
-                          </View>
-                          <MaterialIcons name="chevron-right" size={20} color="rgba(255, 255, 255, 0.4)" />
-                        </>
+                        <View style={{
+                          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                          paddingHorizontal: 10,
+                          paddingVertical: 5,
+                          borderRadius: 8
+                        }}>
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: '#10b981' }}>
+                            {resolver.votedWinnerUserIds.length} winner{resolver.votedWinnerUserIds.length !== 1 ? 's' : ''}
+                          </Text>
+                        </View>
                       )}
+                      <MaterialIcons name="chevron-right" size={20} color="rgba(255, 255, 255, 0.4)" />
+                    </View>
+                  ) : (
+                    <View style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      borderRadius: 8
+                    }}>
+                      <Text style={{ fontSize: 11, fontWeight: '500', color: 'rgba(255, 255, 255, 0.4)' }}>
+                        Pending
+                      </Text>
                     </View>
                   )}
                 </CardWrapper>

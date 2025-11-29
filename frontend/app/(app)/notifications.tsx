@@ -166,7 +166,7 @@ export default function Notifications() {
         await markAsRead(notification.id);
       } catch (error) {
         // Log but don't block navigation
-        console.error('Failed to mark notification as read:', error);
+        // Error handled silently
       }
     }
 
@@ -227,7 +227,7 @@ export default function Notifications() {
       // No success alert - the notification disappearing is enough feedback
     } catch (error) {
       Alert.alert('Error', 'Failed to accept friend request');
-      console.error('Error accepting friend request:', error);
+      // Error handled silently
     } finally {
       setProcessingRequests(prev => {
         const newSet = new Set(prev);
@@ -255,7 +255,7 @@ export default function Notifications() {
       // No success alert - the notification disappearing is enough feedback
     } catch (error) {
       Alert.alert('Error', 'Failed to decline friend request');
-      console.error('Error rejecting friend request:', error);
+      // Error handled silently
     } finally {
       setProcessingRequests(prev => {
         const newSet = new Set(prev);
@@ -281,7 +281,7 @@ export default function Notifications() {
       // No success alert - the notification disappearing is enough feedback
     } catch (error) {
       Alert.alert('Error', 'Failed to accept group invitation');
-      console.error('Error accepting group invitation:', error);
+      // Error handled silently
     } finally {
       setProcessingRequests(prev => {
         const newSet = new Set(prev);
@@ -307,7 +307,7 @@ export default function Notifications() {
       // No success alert - the notification disappearing is enough feedback
     } catch (error) {
       Alert.alert('Error', 'Failed to decline group invitation');
-      console.error('Error rejecting group invitation:', error);
+      // Error handled silently
     } finally {
       setProcessingRequests(prev => {
         const newSet = new Set(prev);
@@ -335,7 +335,7 @@ export default function Notifications() {
       // No success alert - the notification disappearing is enough feedback
     } catch (error) {
       Alert.alert('Error', 'Failed to approve join request');
-      console.error('Error approving join request:', error);
+      // Error handled silently
     } finally {
       setProcessingRequests(prev => {
         const newSet = new Set(prev);
@@ -363,7 +363,7 @@ export default function Notifications() {
       // No success alert - the notification disappearing is enough feedback
     } catch (error) {
       Alert.alert('Error', 'Failed to deny join request');
-      console.error('Error denying join request:', error);
+      // Error handled silently
     } finally {
       setProcessingRequests(prev => {
         const newSet = new Set(prev);

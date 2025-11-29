@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { showErrorToast } from '../../utils/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -75,51 +76,32 @@ export default function Login() {
     } catch (error) {
       // Handle specific error types
       if (isNetworkError(error)) {
-        Alert.alert(
-          'Connection Error',
-          'Please check your internet connection and try again.',
-          [{ text: 'OK' }]
-        );
+        showErrorToast('Connection Error', 'Please check your internet connection and try again.');
         return;
       }
 
       if (isRateLimitError(error)) {
-        Alert.alert(
-          'Too Many Attempts',
-          getErrorMessage(error),
-          [{ text: 'OK' }]
-        );
+        showErrorToast('Too Many Attempts', getErrorMessage(error));
         return;
       }
 
       if (isServerError(error)) {
-        Alert.alert(
-          'Server Error',
-          'Something went wrong on our end. Please try again later.',
-          [{ text: 'OK' }]
-        );
+        showErrorToast('Server Error', 'Something went wrong on our end. Please try again later.');
         return;
       }
 
       // Check for specific auth error codes
       const errorCode = getErrorCode(error);
       if (errorCode && AUTH_ERROR_MESSAGES[errorCode]) {
-        Alert.alert(
-          errorCode === AuthErrorCode.ACCOUNT_LOCKED ? 'Account Locked' :
+        const title = errorCode === AuthErrorCode.ACCOUNT_LOCKED ? 'Account Locked' :
           errorCode === AuthErrorCode.ACCOUNT_DISABLED ? 'Account Suspended' :
           errorCode === AuthErrorCode.ACCOUNT_INACTIVE ? 'Account Inactive' :
-          'Login Failed',
-          AUTH_ERROR_MESSAGES[errorCode],
-          [{ text: 'OK' }]
-        );
+          'Login Failed';
+        showErrorToast(title, AUTH_ERROR_MESSAGES[errorCode]);
         return;
       }
 
-      Alert.alert(
-        'Login Failed',
-        getErrorMessage(error),
-        [{ text: 'OK' }]
-      );
+      showErrorToast('Login Failed', getErrorMessage(error));
     }
   };
 
@@ -154,18 +136,12 @@ export default function Login() {
         // Navigation will be handled by auth state change
       }
     } catch (error) {
-      console.error('Social auth failed:', error);
-
       if (hasErrorCode(error) && error.code === 'CANCELLED') {
         // User cancelled, don't show error
         return;
       }
 
-      Alert.alert(
-        'Sign-In Failed',
-        getErrorMessage(error),
-        [{ text: 'OK' }]
-      );
+      showErrorToast('Sign-In Failed', getErrorMessage(error));
     } finally {
       setSocialLoading(null);
     }

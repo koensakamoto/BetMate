@@ -32,7 +32,7 @@ export default function GroupPreview() {
         const isPending = data.userMembershipStatus === 'PENDING';
         setHasPendingRequest(isPending);
       } catch (error) {
-        console.error('Failed to fetch group data:', error);
+        // Error handled silently
         Alert.alert('Error', 'Failed to load group information.');
         router.back();
       } finally {
@@ -75,7 +75,7 @@ export default function GroupPreview() {
         );
       }
     } catch (error) {
-      console.error('Failed to join group:', error);
+      // Error handled silently
       Alert.alert('Error', 'Failed to join group. Please try again.');
     } finally {
       setIsJoining(false);

@@ -35,6 +35,7 @@ export interface ResolverInfo {
   hasVoted?: boolean;
   votedOutcome?: string;        // For MCQ bets: the option text they voted for
   votedWinnerUserIds?: number[]; // For prediction bets: user IDs of winners they selected
+  reasoning?: string;           // Optional reasoning/comment for their vote
 }
 
 export interface VotingProgress {
