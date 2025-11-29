@@ -7,6 +7,21 @@ import AuthHeader from '../../components/auth/AuthHeader';
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
 import { authService } from '../../services/auth/authService';
+import {
+  isNetworkError,
+  isRateLimitError,
+  isServerError,
+  getErrorMessage,
+} from '../../utils/errorUtils';
+
+// Common weak passwords to check against
+const COMMON_PASSWORDS = [
+  'password', '123456', 'password123', 'admin', 'qwerty',
+  'letmein', 'welcome', 'monkey', 'dragon', 'master',
+  '12345678', 'abc123', 'iloveyou', 'trustno1', 'sunshine'
+];
+
+const MAX_PASSWORD_LENGTH = 128;
 
 export default function ResetPassword() {
   const insets = useSafeAreaInsets();
@@ -19,6 +34,47 @@ export default function ResetPassword() {
   const [isValidating, setIsValidating] = useState(true);
   const [isTokenValid, setIsTokenValid] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState(0);
+
+  const isCommonPassword = (password: string): boolean => {
+    const lower = password.toLowerCase();
+    return COMMON_PASSWORDS.some(weak => lower.includes(weak));
+  };
+
+  const hasSequentialPattern = (password: string): boolean => {
+    const lower = password.toLowerCase();
+    return /123|abc|qwe|asd/.test(lower);
+  };
+
+  const hasRepeatedChars = (password: string): boolean => {
+    return /(.)\1{2,}/.test(password);
+  };
+
+  const checkPasswordStrength = (password: string): number => {
+    let strength = 0;
+    if (password.length >= 8) strength += 25;
+    if (/[a-z]/.test(password)) strength += 25;
+    if (/[A-Z]/.test(password)) strength += 25;
+    if (/[0-9]/.test(password)) strength += 25;
+    return strength;
+  };
+
+  const getPasswordStrengthColor = () => {
+    if (passwordStrength < 50) return '#EF4444';
+    if (passwordStrength < 75) return '#F59E0B';
+    return '#22C55E';
+  };
+
+  const getPasswordStrengthText = () => {
+    if (passwordStrength < 50) return 'Weak';
+    if (passwordStrength < 75) return 'Fair';
+    return 'Strong';
+  };
+
+  // Update password strength when password changes
+  useEffect(() => {
+    setPasswordStrength(checkPasswordStrength(newPassword));
+  }, [newPassword]);
 
   // Validate token on mount
   useEffect(() => {
@@ -46,6 +102,9 @@ export default function ResetPassword() {
     if (password.length < 8) {
       return 'Password must be at least 8 characters';
     }
+    if (password.length > MAX_PASSWORD_LENGTH) {
+      return `Password cannot exceed ${MAX_PASSWORD_LENGTH} characters`;
+    }
     if (!/[a-z]/.test(password)) {
       return 'Password must contain a lowercase letter';
     }
@@ -54,6 +113,12 @@ export default function ResetPassword() {
     }
     if (!/\d/.test(password)) {
       return 'Password must contain a number';
+    }
+    if (isCommonPassword(password)) {
+      return 'This password is too common. Please choose a more secure password.';
+    }
+    if (hasSequentialPattern(password) || hasRepeatedChars(password)) {
+      return 'Password contains predictable patterns. Please choose a stronger password.';
     }
     return null;
   };
@@ -82,9 +147,44 @@ export default function ResetPassword() {
       await authService.resetPassword(token, newPassword);
       setIsSuccess(true);
     } catch (error) {
+      // Handle specific error types
+      if (isNetworkError(error)) {
+        Alert.alert(
+          'Connection Error',
+          'Please check your internet connection and try again.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      if (isRateLimitError(error)) {
+        Alert.alert(
+          'Too Many Attempts',
+          getErrorMessage(error),
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      if (isServerError(error)) {
+        Alert.alert(
+          'Server Error',
+          'Something went wrong on our end. Please try again later.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Check for "same as old password" error
+      const errorMessage = getErrorMessage(error);
+      if (errorMessage.toLowerCase().includes('same as') || errorMessage.toLowerCase().includes('current password')) {
+        setError('New password cannot be the same as your current password');
+        return;
+      }
+
       Alert.alert(
         'Reset Failed',
-        error instanceof Error ? error.message : 'Something went wrong. Please try again.',
+        errorMessage,
         [{ text: 'OK' }]
       );
     } finally {
@@ -260,8 +360,49 @@ export default function ResetPassword() {
             placeholder="Enter new password"
             secureTextEntry
             autoCapitalize="none"
-            error={error && error.includes('Password') ? error : ''}
+            showPasswordToggle={true}
+            maxLength={MAX_PASSWORD_LENGTH}
+            error={error && !error.includes('match') ? error : ''}
+            editable={!isLoading}
           />
+
+          {/* Password Strength Indicator */}
+          {newPassword.length > 0 && (
+            <View style={{ marginBottom: 14, marginTop: -10 }}>
+              <View style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 4
+              }}>
+                <Text style={{
+                  fontSize: 11,
+                  color: 'rgba(255, 255, 255, 0.6)'
+                }}>
+                  Password strength
+                </Text>
+                <Text style={{
+                  fontSize: 11,
+                  color: getPasswordStrengthColor(),
+                  fontWeight: '600'
+                }}>
+                  {getPasswordStrengthText()}
+                </Text>
+              </View>
+              <View style={{
+                height: 3,
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: 1.5
+              }}>
+                <View style={{
+                  height: 3,
+                  width: `${passwordStrength}%`,
+                  backgroundColor: getPasswordStrengthColor(),
+                  borderRadius: 1.5
+                }} />
+              </View>
+            </View>
+          )}
 
           <AuthInput
             label="Confirm Password"
@@ -273,7 +414,10 @@ export default function ResetPassword() {
             placeholder="Confirm new password"
             secureTextEntry
             autoCapitalize="none"
+            showPasswordToggle={true}
+            maxLength={MAX_PASSWORD_LENGTH}
             error={error === 'Passwords do not match' ? error : ''}
+            editable={!isLoading}
           />
 
           <Text style={{

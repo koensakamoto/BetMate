@@ -7,6 +7,12 @@ import AuthInput from '../../../components/auth/AuthInput';
 import AuthButton from '../../../components/auth/AuthButton';
 import { authService } from '../../../services/auth/authService';
 import { ApiError } from '../../../services/api/baseClient';
+import {
+  isNetworkError,
+  isRateLimitError,
+  isServerError,
+  getErrorMessage,
+} from '../../../utils/errorUtils';
 
 export default function ChangePassword() {
   const insets = useSafeAreaInsets();
@@ -131,12 +137,40 @@ export default function ChangePassword() {
     } catch (error) {
       console.log('Password change error caught:', error);
 
+      // Handle specific error types
+      if (isNetworkError(error)) {
+        Alert.alert(
+          'Connection Error',
+          'Please check your internet connection and try again.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      if (isRateLimitError(error)) {
+        Alert.alert(
+          'Too Many Attempts',
+          getErrorMessage(error),
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      if (isServerError(error)) {
+        Alert.alert(
+          'Server Error',
+          'Something went wrong on our end. Please try again later.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
       let errorMessage = 'Failed to change password. Please try again.';
 
       // Extract error message from ApiError or general error
       if (error instanceof ApiError) {
         errorMessage = error.message;
-      } else if (error.message) {
+      } else if (error instanceof Error) {
         errorMessage = error.message;
       }
 
@@ -150,9 +184,9 @@ export default function ChangePassword() {
         // Password complexity error
         console.log('Setting new password complexity error');
         setErrors({ newPassword: errorMessage });
-      } else if (errorMessage.toLowerCase().includes('same as current')) {
+      } else if (errorMessage.toLowerCase().includes('same as') || errorMessage.toLowerCase().includes('cannot be the same')) {
         console.log('Setting same password error');
-        setErrors({ newPassword: errorMessage });
+        setErrors({ newPassword: 'New password cannot be the same as your current password' });
       } else {
         // Generic error - show inline on current password field
         console.log('Setting generic error on current password field');
@@ -294,6 +328,7 @@ export default function ChangePassword() {
             showPasswordToggle={true}
             error={errors.currentPassword}
             autoCapitalize="none"
+            editable={!isLoading}
           />
 
           {/* New Password */}
@@ -306,6 +341,7 @@ export default function ChangePassword() {
             showPasswordToggle={true}
             error={errors.newPassword}
             autoCapitalize="none"
+            editable={!isLoading}
           />
 
           {/* Password Strength Indicator */}
@@ -358,6 +394,7 @@ export default function ChangePassword() {
             error={errors.confirmPassword}
             isValid={formData.confirmPassword.length > 0 && formData.confirmPassword === formData.newPassword}
             autoCapitalize="none"
+            editable={!isLoading}
           />
 
           {/* Change Password Button */}

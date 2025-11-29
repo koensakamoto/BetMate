@@ -141,15 +141,21 @@ public class AuthenticationService {
      */
     public void resetPassword(@NotNull Long userId, @NotBlank String newPassword) {
         User user = userService.getUserById(userId);
-        
+
         // Validate new password strength even for admin resets
         InputValidator.PasswordValidationResult passwordValidation = inputValidator.validatePassword(newPassword);
         if (!passwordValidation.isValid()) {
-            log.warn("Password reset failed: Password validation failed for user: {} - {}", 
+            log.warn("Password reset failed: Password validation failed for user: {} - {}",
                 user.getUsername(), passwordValidation.getErrorMessage());
             throw new AuthenticationException.InvalidCredentialsException(passwordValidation.getErrorMessage());
         }
-        
+
+        // Check if new password is the same as current password
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            log.warn("Password reset failed: New password same as current for user: {}", user.getUsername());
+            throw new AuthenticationException.InvalidCredentialsException("New password cannot be the same as your current password");
+        }
+
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setFailedLoginAttempts(0);
         user.setAccountLockedUntil(null);

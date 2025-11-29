@@ -11,7 +11,17 @@ import CompleteProfileModal from '../../components/auth/CompleteProfileModal';
 import { useGoogleAuth } from '../../hooks/useGoogleAuth';
 import { useAppleAuth } from '../../hooks/useAppleAuth';
 import { useGuestGuard } from '../../hooks/useAuthGuard';
-import { getErrorMessage, hasErrorCode } from '../../utils/errorUtils';
+import {
+  getErrorMessage,
+  hasErrorCode,
+  getErrorCode,
+  ERROR_CODE_TO_FIELD,
+  REGISTRATION_ERROR_MESSAGES,
+  RegistrationErrorCode,
+  isNetworkError,
+  isRateLimitError,
+  isServerError,
+} from '../../utils/errorUtils';
 
 export default function Signup() {
   const insets = useSafeAreaInsets();
@@ -40,6 +50,51 @@ export default function Signup() {
   const validateUsername = (username: string): boolean => {
     const usernameRegex = /^[a-z0-9_]{3,20}$/;
     return usernameRegex.test(username);
+  };
+
+  // Common weak passwords to check against
+  const COMMON_PASSWORDS = [
+    'password', '123456', 'password123', 'admin', 'qwerty',
+    'letmein', 'welcome', 'monkey', 'dragon', 'master',
+    '12345678', 'abc123', 'iloveyou', 'trustno1', 'sunshine'
+  ];
+
+  const MAX_PASSWORD_LENGTH = 128;
+
+  const isCommonPassword = (password: string): boolean => {
+    const lower = password.toLowerCase();
+    return COMMON_PASSWORDS.some(weak => lower.includes(weak));
+  };
+
+  const hasSequentialPattern = (password: string): boolean => {
+    const lower = password.toLowerCase();
+    return /123|abc|qwe|asd/.test(lower);
+  };
+
+  const hasRepeatedChars = (password: string): boolean => {
+    return /(.)\1{2,}/.test(password);
+  };
+
+  const passwordContainsUserInfo = (password: string, username: string, email: string): boolean => {
+    const lowerPassword = password.toLowerCase();
+
+    // Check if password contains username (if username is at least 3 chars)
+    if (username.length >= 3 && lowerPassword.includes(username.toLowerCase())) {
+      return true;
+    }
+
+    // Check if password contains email local part (before @)
+    const emailLocal = email.split('@')[0]?.toLowerCase();
+    if (emailLocal && emailLocal.length >= 3 && lowerPassword.includes(emailLocal)) {
+      return true;
+    }
+
+    // Check if password contains full email
+    if (email.length >= 3 && lowerPassword.includes(email.toLowerCase())) {
+      return true;
+    }
+
+    return false;
   };
 
   const checkPasswordStrength = (password: string): number => {
@@ -74,8 +129,16 @@ export default function Signup() {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
+    } else if (formData.password.length > MAX_PASSWORD_LENGTH) {
+      newErrors.password = `Password cannot exceed ${MAX_PASSWORD_LENGTH} characters`;
     } else if (passwordStrength < 75) {
       newErrors.password = 'Password should include uppercase, lowercase, and numbers';
+    } else if (passwordContainsUserInfo(formData.password, formData.username, formData.email)) {
+      newErrors.password = 'Password cannot contain your username or email';
+    } else if (isCommonPassword(formData.password)) {
+      newErrors.password = 'This password is too common. Please choose a more secure password.';
+    } else if (hasSequentialPattern(formData.password) || hasRepeatedChars(formData.password)) {
+      newErrors.password = 'Password contains predictable patterns. Please choose a stronger password.';
     }
 
     setErrors(newErrors);
@@ -146,7 +209,7 @@ export default function Signup() {
 
     const signupData = {
       username: formData.username.trim(),
-      email: formData.email.trim(),
+      email: formData.email.toLowerCase().trim(),
       password: formData.password
     };
 
@@ -165,6 +228,58 @@ export default function Signup() {
     } catch (error) {
       console.error('❌ [SIGNUP] Signup failed with error:', error);
 
+      // Check for field-specific errors
+      const errorCode = getErrorCode(error);
+      if (errorCode && ERROR_CODE_TO_FIELD[errorCode]) {
+        // Show inline error for the specific field
+        const fieldName = ERROR_CODE_TO_FIELD[errorCode];
+        const errorMessage = REGISTRATION_ERROR_MESSAGES[errorCode] || getErrorMessage(error);
+
+        setErrors(prev => ({ ...prev, [fieldName]: errorMessage }));
+
+        // For email already exists, offer to sign in
+        if (errorCode === RegistrationErrorCode.EMAIL_ALREADY_EXISTS) {
+          Alert.alert(
+            'Account Exists',
+            'An account with this email already exists. Would you like to sign in instead?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Sign In', onPress: () => router.push('/auth/login') }
+            ]
+          );
+        }
+        return;
+      }
+
+      // Handle network/server errors with alert
+      if (isNetworkError(error)) {
+        Alert.alert(
+          'Connection Error',
+          'Please check your internet connection and try again.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      if (isRateLimitError(error)) {
+        Alert.alert(
+          'Too Many Attempts',
+          getErrorMessage(error),
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      if (isServerError(error)) {
+        Alert.alert(
+          'Server Error',
+          'Something went wrong on our end. Please try again later.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Generic fallback
       Alert.alert(
         'Signup Failed',
         getErrorMessage(error),
@@ -220,8 +335,9 @@ export default function Signup() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
-          paddingTop: insets.top + 12,
-          paddingBottom: insets.bottom + 12
+          flexGrow: 1,
+          paddingTop: insets.top + 8,
+          paddingBottom: insets.bottom + 8
         }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -235,11 +351,9 @@ export default function Signup() {
               height: 36,
               borderRadius: 18,
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.15)',
               justifyContent: 'center',
               alignItems: 'center',
-              marginBottom: 20
+              marginBottom: 12
             }}
           >
             <MaterialIcons
@@ -251,7 +365,7 @@ export default function Signup() {
 
           {/* Title */}
           <Text style={{
-            fontSize: 28,
+            fontSize: 26,
             fontWeight: '700',
             color: '#ffffff',
             letterSpacing: -0.5,
@@ -260,7 +374,7 @@ export default function Signup() {
             Create Account
           </Text>
           {/* Signup Form */}
-          <View style={{ marginBottom: 16 }}>
+          <View>
             <AuthInput
               label="Username"
               value={formData.username}
@@ -270,6 +384,7 @@ export default function Signup() {
               error={errors.username}
               isValid={formData.username.length > 0 && validateUsername(formData.username)}
               maxLength={20}
+              editable={!isLoading && !socialLoading}
             />
 
             <AuthInput
@@ -282,6 +397,7 @@ export default function Signup() {
               autoComplete="email"
               error={errors.email}
               isValid={formData.email.length > 0 && validateEmail(formData.email)}
+              editable={!isLoading && !socialLoading}
             />
 
             <AuthInput
@@ -293,36 +409,27 @@ export default function Signup() {
               autoCapitalize="none"
               error={errors.password}
               showPasswordToggle={true}
+              maxLength={MAX_PASSWORD_LENGTH}
+              editable={!isLoading && !socialLoading}
             />
 
             {/* Password Strength Indicator */}
             {formData.password.length > 0 && (
-              <View style={{ marginBottom: 14, marginTop: -10 }}>
+              <View style={{ marginBottom: 12, marginTop: -10 }}>
                 <View style={{
                   flexDirection: 'row',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   marginBottom: 4
                 }}>
-                  <Text style={{
-                    fontSize: 11,
-                    color: 'rgba(255, 255, 255, 0.6)'
-                  }}>
+                  <Text style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.6)' }}>
                     Password strength
                   </Text>
-                  <Text style={{
-                    fontSize: 11,
-                    color: getPasswordStrengthColor(),
-                    fontWeight: '600'
-                  }}>
+                  <Text style={{ fontSize: 11, color: getPasswordStrengthColor(), fontWeight: '600' }}>
                     {getPasswordStrengthText()}
                   </Text>
                 </View>
-                <View style={{
-                  height: 3,
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  borderRadius: 1.5
-                }}>
+                <View style={{ height: 3, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1.5 }}>
                   <View style={{
                     height: 3,
                     width: `${passwordStrength}%`,
@@ -334,104 +441,67 @@ export default function Signup() {
             )}
 
             {/* Create Account Button */}
-            <AuthButton
-              title="Create Account"
-              onPress={handleSignup}
-              loading={isLoading}
-              disabled={isLoading}
-              variant="primary"
-            />
+            <View style={{ marginTop: 8 }}>
+              <AuthButton
+                title="Create Account"
+                onPress={handleSignup}
+                loading={isLoading}
+                disabled={isLoading}
+                variant="primary"
+              />
+            </View>
 
             {/* Divider */}
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              marginVertical: 20
-            }}>
-              <View style={{
-                flex: 1,
-                height: 1,
-                backgroundColor: 'rgba(255, 255, 255, 0.08)'
-              }} />
-              <Text style={{
-                fontSize: 13,
-                color: 'rgba(255, 255, 255, 0.4)',
-                marginHorizontal: 12,
-                fontWeight: '500'
-              }}>
-                or
-              </Text>
-              <View style={{
-                flex: 1,
-                height: 1,
-                backgroundColor: 'rgba(255, 255, 255, 0.08)'
-              }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 20 }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)' }} />
+              <Text style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.4)', marginHorizontal: 12 }}>or</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)' }} />
             </View>
 
-            {/* Social Auth */}
-            <View style={{ gap: 12 }}>
-              <SocialAuthButton
-                provider="apple"
-                onPress={() => handleSocialAuth('apple')}
-                loading={socialLoading === 'apple'}
-                disabled={socialLoading !== null}
-              />
-              <SocialAuthButton
-                provider="google"
-                onPress={() => handleSocialAuth('google')}
-                loading={socialLoading === 'google'}
-                disabled={socialLoading !== null}
-              />
+            {/* Social Auth - Side by Side */}
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <SocialAuthButton
+                  provider="apple"
+                  onPress={() => handleSocialAuth('apple')}
+                  loading={socialLoading === 'apple'}
+                  disabled={socialLoading !== null || isLoading}
+                  compact
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <SocialAuthButton
+                  provider="google"
+                  onPress={() => handleSocialAuth('google')}
+                  loading={socialLoading === 'google'}
+                  disabled={socialLoading !== null || isLoading}
+                  compact
+                />
+              </View>
             </View>
-
-            {/* Already have account */}
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginTop: 24,
-              marginBottom: 16
-            }}>
-              <Text style={{
-                fontSize: 14,
-                color: 'rgba(255, 255, 255, 0.6)'
-              }}>
-                Already have an account?{' '}
-              </Text>
-              <TouchableOpacity onPress={() => router.push('/auth/login')}>
-                <Text style={{
-                  fontSize: 14,
-                  color: '#00D4AA',
-                  fontWeight: '600'
-                }}>
-                  Sign In
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Terms - applies to all signup methods */}
-            <Text style={{
-              fontSize: 12,
-              color: 'rgba(255, 255, 255, 0.5)',
-              textAlign: 'center',
-              lineHeight: 18
-            }}>
-              By signing up, you agree to our{' '}
-              <Text
-                style={{ color: '#00D4AA', textDecorationLine: 'underline' }}
-                onPress={() => router.push('/(app)/settings/terms-of-service')}
-              >
-                Terms of Service
-              </Text>
-              {' '}and{' '}
-              <Text
-                style={{ color: '#00D4AA', textDecorationLine: 'underline' }}
-                onPress={() => router.push('/(app)/settings/privacy-policy')}
-              >
-                Privacy Policy
-              </Text>
-            </Text>
           </View>
+        </View>
+
+        {/* Bottom section - Sign in link and terms */}
+        <View style={{ paddingHorizontal: 20, marginTop: 28 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+            <Text style={{ fontSize: 15, color: 'rgba(255, 255, 255, 0.6)' }}>
+              Already have an account?{' '}
+            </Text>
+            <TouchableOpacity onPress={() => router.push('/auth/login')}>
+              <Text style={{ fontSize: 15, color: '#00D4AA', fontWeight: '600' }}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={{ fontSize: 12, color: 'rgba(255, 255, 255, 0.4)', textAlign: 'center', lineHeight: 18 }}>
+            By signing up, you agree to our{' '}
+            <Text style={{ color: '#00D4AA' }} onPress={() => router.push('/legal/terms-of-service')}>
+              Terms of Service
+            </Text>
+            {' '}and{' '}
+            <Text style={{ color: '#00D4AA' }} onPress={() => router.push('/legal/privacy-policy')}>
+              Privacy Policy
+            </Text>
+          </Text>
         </View>
       </ScrollView>
 

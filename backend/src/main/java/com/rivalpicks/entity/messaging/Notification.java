@@ -451,6 +451,7 @@ public class Notification {
         BET_CANCELLED,      // Bet was cancelled
         BET_UPDATED,
         BET_RESOLUTION_REMINDER, // Reminder to resolve bet before deadline
+        BET_FULFILLMENT_SUBMITTED, // User submitted fulfillment proof for a bet
         
         // Financial
         CREDITS_RECEIVED,   // Credits added to account

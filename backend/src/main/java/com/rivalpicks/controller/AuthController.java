@@ -12,6 +12,9 @@ import com.rivalpicks.dto.auth.response.TokenResponseDto;
 import com.rivalpicks.dto.user.response.UserProfileResponseDto;
 import com.rivalpicks.service.auth.AuthService;
 import com.rivalpicks.service.security.PasswordResetService;
+import com.rivalpicks.service.security.RateLimitingService;
+import com.rivalpicks.service.security.RateLimitingService.RateLimitResult;
+import com.rivalpicks.service.security.RateLimitingService.RateLimitType;
 import com.rivalpicks.dto.common.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,11 +31,14 @@ public class AuthController {
 
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
+    private final RateLimitingService rateLimitingService;
 
     @Autowired
-    public AuthController(AuthService authService, PasswordResetService passwordResetService) {
+    public AuthController(AuthService authService, PasswordResetService passwordResetService,
+                          RateLimitingService rateLimitingService) {
         this.authService = authService;
         this.passwordResetService = passwordResetService;
+        this.rateLimitingService = rateLimitingService;
     }
 
     /**
@@ -109,10 +115,22 @@ public class AuthController {
     /**
      * Request password reset email.
      * Always returns success to prevent email enumeration.
+     * Rate limited by email address (in addition to IP-based rate limiting from filter).
      */
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDto forgotPasswordRequest) {
-        passwordResetService.requestPasswordReset(forgotPasswordRequest.email());
+        // Additional rate limiting by email address to prevent abuse from multiple IPs
+        String email = forgotPasswordRequest.email().toLowerCase().trim();
+        RateLimitResult result = rateLimitingService.tryConsume("email:" + email, RateLimitType.FORGOT_PASSWORD);
+
+        if (!result.allowed()) {
+            // Still return success message to prevent email enumeration,
+            // but don't actually send the email
+            ApiResponse<Void> response = ApiResponse.success("If an account exists with this email, you will receive a password reset link shortly.");
+            return ResponseEntity.ok(response);
+        }
+
+        passwordResetService.requestPasswordReset(email);
         ApiResponse<Void> response = ApiResponse.success("If an account exists with this email, you will receive a password reset link shortly.");
         return ResponseEntity.ok(response);
     }

@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
+import { Alert } from 'react-native';
 import { authService, UserProfileResponse } from '../services/auth/authService';
 import { ApiError } from '../services/api/baseClient';
 import { errorLog, debugLog } from '../config/env';
 import { getErrorMessage, hasResponse } from '../utils/errorUtils';
+import { webSocketService } from '../services/messaging/webSocketService';
 
 // Updated User interface to match backend response
 export interface User {
@@ -178,6 +180,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           email: userProfile.email,
           fullProfile: userProfile
         });
+
+        // Check if account is still active
+        if (!userProfile.isActive) {
+          console.log(`⚠️ [AuthContext] Account is inactive/disabled, forcing logout...`);
+          await authService.logout();
+          await webSocketService.disconnect();
+          setUser(null);
+          Alert.alert(
+            'Account Suspended',
+            'Your account has been suspended. Please contact support.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+
         const transformedUser = transformUser(userProfile);
         console.log(`✅ [AuthContext] Transformed user:`, {
           id: transformedUser.id,
@@ -330,6 +347,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = useCallback(async () => {
     try {
       setIsLoading(true);
+
+      // Disconnect WebSocket before logging out
+      try {
+        await webSocketService.disconnect();
+        debugLog('WebSocket disconnected on logout');
+      } catch (wsError) {
+        errorLog('WebSocket disconnect error (non-critical):', wsError);
+      }
+
       await authService.logout();
       setUser(null);
       setError(null);

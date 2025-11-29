@@ -101,30 +101,48 @@ public class UserRegistrationService {
         // Validate and sanitize username
         InputValidator.InputValidationResult usernameValidation = inputValidator.validateUsername(request.username());
         if (!usernameValidation.isValid()) {
-            throw new UserRegistrationException(usernameValidation.getErrorMessage());
+            throw new UserRegistrationException(
+                usernameValidation.getErrorMessage(),
+                UserRegistrationException.ErrorCode.USERNAME_INVALID_FORMAT
+            );
         }
-        
+
         // Validate and sanitize email
         InputValidator.InputValidationResult emailValidation = inputValidator.validateEmail(request.email());
         if (!emailValidation.isValid()) {
-            throw new UserRegistrationException(emailValidation.getErrorMessage());
+            throw new UserRegistrationException(
+                emailValidation.getErrorMessage(),
+                UserRegistrationException.ErrorCode.EMAIL_INVALID_FORMAT
+            );
         }
-        
+
         // Check availability with sanitized values
         if (!isUsernameAvailable(usernameValidation.getSanitizedValue())) {
-            throw new UserRegistrationException("Username already exists: " + request.username());
+            throw new UserRegistrationException(
+                "This username is already taken",
+                UserRegistrationException.ErrorCode.USERNAME_TAKEN
+            );
         }
-        
+
         if (!isEmailAvailable(emailValidation.getSanitizedValue())) {
-            throw new UserRegistrationException("Email already exists: " + request.email());
+            throw new UserRegistrationException(
+                "An account with this email already exists",
+                UserRegistrationException.ErrorCode.EMAIL_ALREADY_EXISTS
+            );
         }
-        
-        // Validate password strength
-        // TODO: Re-enable password validation later
-        // InputValidator.PasswordValidationResult passwordValidation = inputValidator.validatePassword(request.password());
-        // if (!passwordValidation.isValid()) {
-        //     throw new UserRegistrationException(passwordValidation.getErrorMessage());
-        // }
+
+        // Validate password strength (including check against username/email)
+        InputValidator.PasswordValidationResult passwordValidation = inputValidator.validatePassword(
+            request.password(),
+            request.username(),
+            request.email()
+        );
+        if (!passwordValidation.isValid()) {
+            throw new UserRegistrationException(
+                passwordValidation.getErrorMessage(),
+                UserRegistrationException.ErrorCode.PASSWORD_TOO_WEAK
+            );
+        }
     }
 
     private User createUserFromRequest(RegistrationRequest request) {

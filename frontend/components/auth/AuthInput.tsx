@@ -15,6 +15,7 @@ interface AuthInputProps {
   autoComplete?: string;
   maxLength?: number;
   showPasswordToggle?: boolean;
+  editable?: boolean;
 }
 
 export default function AuthInput({
@@ -29,7 +30,8 @@ export default function AuthInput({
   autoCapitalize = 'sentences',
   autoComplete,
   maxLength,
-  showPasswordToggle = false
+  showPasswordToggle = false,
+  editable = true
 }: AuthInputProps) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -39,12 +41,12 @@ export default function AuthInput({
   const actualSecureTextEntry = secureTextEntry && !isPasswordVisible;
 
   return (
-    <View style={{ marginBottom: 14 }}>
+    <View style={{ marginBottom: 12 }}>
       <Text style={{
         fontSize: 13,
         fontWeight: '500',
         color: 'rgba(255, 255, 255, 0.8)',
-        marginBottom: 6
+        marginBottom: 5
       }}>
         {label}
       </Text>
@@ -69,7 +71,7 @@ export default function AuthInput({
           style={{
             flex: 1,
             fontSize: 15,
-            color: '#ffffff',
+            color: editable ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
             fontWeight: '400'
           }}
           value={value}
@@ -83,6 +85,7 @@ export default function AuthInput({
           maxLength={maxLength}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
+          editable={editable}
         />
 
         {/* Status Icons */}

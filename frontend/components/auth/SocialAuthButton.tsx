@@ -7,26 +7,28 @@ interface SocialAuthButtonProps {
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
+  compact?: boolean;
 }
 
 export default function SocialAuthButton({
   provider,
   onPress,
   loading = false,
-  disabled = false
+  disabled = false,
+  compact = false
 }: SocialAuthButtonProps) {
   const getProviderConfig = () => {
     switch (provider) {
       case 'google':
         return {
-          title: 'Continue with Google',
+          title: compact ? 'Google' : 'Continue with Google',
           backgroundColor: 'rgba(255, 255, 255, 0.08)',
           textColor: '#ffffff',
           borderColor: 'rgba(255, 255, 255, 0.15)'
         };
       case 'apple':
         return {
-          title: 'Continue with Apple',
+          title: compact ? 'Apple' : 'Continue with Apple',
           backgroundColor: '#ffffff',
           textColor: '#000000',
           borderColor: '#ffffff'
@@ -61,8 +63,8 @@ export default function SocialAuthButton({
         borderWidth: 1,
         borderColor: config.borderColor,
         borderRadius: 12,
-        paddingVertical: 16,
-        paddingHorizontal: 20,
+        paddingVertical: compact ? 12 : 16,
+        paddingHorizontal: compact ? 12 : 20,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
@@ -79,7 +81,7 @@ export default function SocialAuthButton({
         <>
           {renderIcon()}
           <Text style={{
-            fontSize: 16,
+            fontSize: compact ? 14 : 16,
             fontWeight: '600',
             color: config.textColor,
             letterSpacing: 0.4

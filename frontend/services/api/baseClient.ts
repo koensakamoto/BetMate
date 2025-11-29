@@ -119,13 +119,21 @@ const createApiClient = (): AxiosInstance => {
         data: error.response?.data,
       });
 
+      // Handle 403 Forbidden - session expired or access revoked
+      if (error.response?.status === 403) {
+        errorLog('403 Forbidden - clearing tokens and forcing logout');
+        await tokenStorage.clearTokens();
+        // The ApiError will be thrown below, which should trigger a redirect to login
+        // in the component that catches this error
+      }
+
       // Handle 401 Unauthorized - attempt token refresh
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
-        
+
         try {
           const refreshToken = await tokenStorage.getRefreshToken();
-          
+
           if (refreshToken) {
             // Attempt to refresh token
             const refreshResponse = await axios.post(
@@ -133,17 +141,17 @@ const createApiClient = (): AxiosInstance => {
               { refreshToken },
               { timeout: apiConfig.timeout }
             );
-            
+
             const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.data;
-            
+
             // Store new tokens
             await tokenStorage.setTokens(accessToken, newRefreshToken);
-            
+
             // Retry original request with new token
             if (originalRequest.headers) {
               originalRequest.headers.Authorization = `Bearer ${accessToken}`;
             }
-            
+
             return client(originalRequest);
           }
         } catch (refreshError) {

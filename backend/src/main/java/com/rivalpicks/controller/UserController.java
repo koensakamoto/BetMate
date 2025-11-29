@@ -109,8 +109,9 @@ public class UserController {
         } catch (com.rivalpicks.exception.user.UserRegistrationException e) {
             System.err.println("=== REGISTRATION EXCEPTION ===");
             System.err.println("Registration exception: " + e.getMessage());
+            System.err.println("Error code: " + e.getErrorCode());
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(new ErrorResponseDto(e.getMessage(), "REGISTRATION_ERROR"));
+            return ResponseEntity.badRequest().body(new ErrorResponseDto(e.getMessage(), e.getErrorCode().name()));
         } catch (Exception e) {
             System.err.println("=== UNEXPECTED EXCEPTION ===");
             System.err.println("Unexpected exception during registration: " + e.getMessage());

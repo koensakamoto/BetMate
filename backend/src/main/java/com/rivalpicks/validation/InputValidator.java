@@ -47,6 +47,14 @@ public class InputValidator {
      * Validates and sanitizes a password for security requirements.
      */
     public PasswordValidationResult validatePassword(String password) {
+        return validatePassword(password, null, null);
+    }
+
+    /**
+     * Validates and sanitizes a password for security requirements.
+     * Also checks if password contains username or email.
+     */
+    public PasswordValidationResult validatePassword(String password, String username, String email) {
         if (password == null) {
             return PasswordValidationResult.invalid("Password cannot be null");
         }
@@ -93,7 +101,54 @@ public class InputValidator {
             );
         }
 
+        // Check if password contains username or email
+        if (containsUserInfo(password, username, email)) {
+            return PasswordValidationResult.invalid(
+                "Password cannot contain your username or email"
+            );
+        }
+
+        // Check for common/weak passwords
+        if (isWeakPassword(password)) {
+            return PasswordValidationResult.invalid(
+                "This password is too common. Please choose a more secure password."
+            );
+        }
+
         return PasswordValidationResult.valid();
+    }
+
+    /**
+     * Checks if password contains the username or email.
+     */
+    private boolean containsUserInfo(String password, String username, String email) {
+        if (password == null) {
+            return false;
+        }
+
+        String lowerPassword = password.toLowerCase();
+
+        // Check if password contains username (if username is at least 3 chars)
+        if (username != null && username.length() >= 3
+                && lowerPassword.contains(username.toLowerCase())) {
+            return true;
+        }
+
+        // Check if password contains email local part (before @)
+        if (email != null && email.contains("@")) {
+            String emailLocal = email.split("@")[0].toLowerCase();
+            if (emailLocal.length() >= 3 && lowerPassword.contains(emailLocal)) {
+                return true;
+            }
+        }
+
+        // Check if password contains full email
+        if (email != null && email.length() >= 3
+                && lowerPassword.contains(email.toLowerCase())) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

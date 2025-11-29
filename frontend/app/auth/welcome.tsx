@@ -1,17 +1,24 @@
 import React, { useState } from 'react';
-import { Text, View, ScrollView, StatusBar, Image, TouchableOpacity } from 'react-native';
+import { Text, View, ScrollView, StatusBar, Image, TouchableOpacity, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import AuthButton from '../../components/auth/AuthButton';
 import SocialAuthButton from '../../components/auth/SocialAuthButton';
 import { useGuestGuard } from '../../hooks/useAuthGuard';
+import { useAuth } from '../../contexts/AuthContext';
+import { useGoogleAuth } from '../../hooks/useGoogleAuth';
+import { useAppleAuth } from '../../hooks/useAppleAuth';
+import { getErrorMessage, hasErrorCode } from '../../utils/errorUtils';
 
 const icon = require("../../assets/images/icon.png");
 
 export default function Welcome() {
   const insets = useSafeAreaInsets();
   const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
+  const { loginWithGoogle, loginWithApple } = useAuth();
+  const { signIn: googleSignIn } = useGoogleAuth();
+  const { signIn: appleSignIn } = useAppleAuth();
 
   // Redirect to app if already authenticated
   useGuestGuard('/(app)/(tabs)/group');
@@ -19,16 +26,43 @@ export default function Welcome() {
   const handleSocialAuth = async (provider: 'google' | 'apple') => {
     try {
       setSocialLoading(provider);
-      // TODO: Implement actual social authentication
-      console.log(`Authenticating with ${provider}`);
-      // Simulate loading for demo purposes
-      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      if (provider === 'google') {
+        const result = await googleSignIn();
+        await loginWithGoogle({
+          idToken: result.idToken,
+          email: result.user.email,
+          firstName: result.user.givenName || undefined,
+          lastName: result.user.familyName || undefined,
+          profileImageUrl: result.user.photo || undefined,
+        });
+      } else if (provider === 'apple') {
+        const result = await appleSignIn();
+        await loginWithApple({
+          identityToken: result.identityToken,
+          userId: result.user.id,
+          email: result.user.email || undefined,
+          firstName: result.user.fullName?.givenName || undefined,
+          lastName: result.user.fullName?.familyName || undefined,
+        });
+      }
+      // Navigation will be handled by auth state change
     } catch (error) {
-      console.error('Social auth failed:', error);
+      if (hasErrorCode(error) && error.code === 'CANCELLED') {
+        // User cancelled, don't show error
+        return;
+      }
+
+      Alert.alert(
+        'Sign-In Failed',
+        getErrorMessage(error),
+        [{ text: 'OK' }]
+      );
     } finally {
       setSocialLoading(null);
     }
   };
+
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
@@ -226,7 +260,7 @@ export default function Welcome() {
             alignItems: 'center',
             gap: 16
           }}>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/legal/terms-of-service')}>
               <Text style={{
                 fontSize: 13,
                 color: '#00D4AA',
@@ -241,7 +275,7 @@ export default function Welcome() {
             }}>
               •
             </Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/legal/privacy-policy')}>
               <Text style={{
                 fontSize: 13,
                 color: '#00D4AA',

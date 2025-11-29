@@ -37,6 +37,12 @@ function RootLayoutNav() {
       <Stack.Screen name="(app)" />
       <Stack.Screen name="auth" />
       <Stack.Screen name="invite" />
+      <Stack.Screen
+        name="legal"
+        options={{
+          animation: 'none'
+        }}
+      />
     </Stack>
   );
 }

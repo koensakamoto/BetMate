@@ -12,8 +12,10 @@ import com.rivalpicks.repository.betting.BetParticipationRepository;
 import com.rivalpicks.repository.betting.BetRepository;
 import com.rivalpicks.repository.betting.LoserFulfillmentClaimRepository;
 import com.rivalpicks.repository.user.UserRepository;
+import com.rivalpicks.event.betting.BetFulfillmentSubmittedEvent;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -36,18 +38,21 @@ public class BetFulfillmentService {
     private final BetFulfillmentRepository fulfillmentRepository;
     private final LoserFulfillmentClaimRepository loserClaimRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Autowired
     public BetFulfillmentService(BetRepository betRepository,
                                  BetParticipationRepository participationRepository,
                                  BetFulfillmentRepository fulfillmentRepository,
                                  LoserFulfillmentClaimRepository loserClaimRepository,
-                                 UserRepository userRepository) {
+                                 UserRepository userRepository,
+                                 ApplicationEventPublisher eventPublisher) {
         this.betRepository = betRepository;
         this.participationRepository = participationRepository;
         this.fulfillmentRepository = fulfillmentRepository;
         this.loserClaimRepository = loserClaimRepository;
         this.userRepository = userRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -117,6 +122,16 @@ public class BetFulfillmentService {
 
         // Recalculate fulfillment status based on loser claims (auto-complete)
         recalculateFulfillmentStatus(bet);
+
+        // Publish event to notify other participants
+        eventPublisher.publishEvent(new BetFulfillmentSubmittedEvent(
+            bet.getId(),
+            bet.getTitle(),
+            user.getId(),
+            user.getDisplayName(),
+            bet.getGroup().getId(),
+            bet.getGroup().getGroupName()
+        ));
     }
 
     /**
