@@ -285,8 +285,7 @@ public class BetCreationService {
             eventPublisher.publishEvent(event);
         } catch (Exception e) {
             // Don't fail bet creation if event publishing fails
-            // Just log the error and continue
-            System.err.println("Failed to publish bet created event for bet " + bet.getId() + ": " + e.getMessage());
+            // Silent failure - event publishing is not critical
         }
     }
 

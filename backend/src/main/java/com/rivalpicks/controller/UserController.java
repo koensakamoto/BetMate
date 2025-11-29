@@ -85,15 +85,6 @@ public class UserController {
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@Valid @RequestBody UserRegistrationRequestDto request) {
         try {
-            System.out.println("=== REGISTRATION DEBUG START ===");
-            System.out.println("Raw request received: " + request);
-            System.out.println("Username: '" + request.username() + "'");
-            System.out.println("Email: '" + request.email() + "'");
-            System.out.println("Password length: " + (request.password() != null ? request.password().length() : "null"));
-            System.out.println("FirstName: '" + request.firstName() + "'");
-            System.out.println("LastName: '" + request.lastName() + "'");
-            System.out.println("=== VALIDATION PASSED ===");
-
             // Convert DTO to service request
             UserRegistrationService.RegistrationRequest serviceRequest =
                 new UserRegistrationService.RegistrationRequest(
@@ -104,18 +95,10 @@ public class UserController {
                     request.lastName()
                 );
             User user = userRegistrationService.registerUser(serviceRequest);
-            System.out.println("=== USER CREATED SUCCESSFULLY ===");
             return ResponseEntity.status(HttpStatus.CREATED).body(UserProfileResponseDto.fromUser(user));
         } catch (com.rivalpicks.exception.user.UserRegistrationException e) {
-            System.err.println("=== REGISTRATION EXCEPTION ===");
-            System.err.println("Registration exception: " + e.getMessage());
-            System.err.println("Error code: " + e.getErrorCode());
-            e.printStackTrace();
             return ResponseEntity.badRequest().body(new ErrorResponseDto(e.getMessage(), e.getErrorCode().name()));
         } catch (Exception e) {
-            System.err.println("=== UNEXPECTED EXCEPTION ===");
-            System.err.println("Unexpected exception during registration: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponseDto("An unexpected error occurred", "INTERNAL_ERROR"));
         }
@@ -180,24 +163,18 @@ public class UserController {
     @PutMapping("/profile")
     public ResponseEntity<UserProfileResponseDto> updateCurrentUserProfile(@Valid @RequestBody UserProfileUpdateRequestDto request) {
         try {
-            System.out.println("=== PROFILE UPDATE DEBUG ===");
-            System.out.println("firstName: " + request.firstName());
-            System.out.println("lastName: " + request.lastName());
-            System.out.println("bio: " + request.bio());
-            
             UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
             if (userPrincipal == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
-            
+
             User updatedUser = userService.updateProfile(
                 userPrincipal.getUserId(),
                 request.firstName(),
                 request.lastName(),
                 request.bio()
             );
-            
-            System.out.println("Updated user bio: " + updatedUser.getBio());
+
             return ResponseEntity.ok(UserProfileResponseDto.fromUser(updatedUser));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

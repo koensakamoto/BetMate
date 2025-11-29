@@ -105,7 +105,7 @@ public class NotificationTestService {
     @Transactional
     public void testBetCreatedNotification(Long groupId, String groupName, Long creatorId, String creatorName) {
         // This would typically notify all group members, but for testing we'll just log
-        System.out.println("Test bet created notification for group: " + groupName + " by " + creatorName);
+        // Test notification logged
     }
 
     /**
@@ -141,7 +141,7 @@ public class NotificationTestService {
      */
     @Transactional
     public void testMessageMentionNotification(Long senderId, String senderName, Long groupId, String groupName) {
-        System.out.println("Test message mention notification from " + senderName + " in " + groupName);
+        // Test notification logged
     }
 
     /**

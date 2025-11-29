@@ -151,7 +151,6 @@ export abstract class BaseApiService {
       await apiClient.get(`${this.baseEndpoint}/health`);
       return true;
     } catch (error) {
-      console.warn(`Health check failed for ${this.baseEndpoint}:`, error);
       return false;
     }
   }

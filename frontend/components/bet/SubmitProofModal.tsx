@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Text, View, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator, Linking } from 'react-native';
+import { Text, View, TouchableOpacity, Alert, Image, ActivityIndicator, Linking } from 'react-native';
+import { showErrorToast } from '../../utils/toast';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { betService } from '../../services/bet/betService';
 import { haptic } from '../../utils/haptics';
-import { BottomSheetModal } from '../common/BottomSheetModal';
+import AppBottomSheet, { BottomSheetTextInput } from '../common/AppBottomSheet';
 
 interface SubmitProofModalProps {
   visible: boolean;
@@ -65,7 +66,7 @@ export function SubmitProofModal({
       }
     } catch (error) {
       console.error('Failed to pick image:', error);
-      Alert.alert('Error', 'Failed to select image');
+      showErrorToast('Error', 'Failed to select image');
     }
   };
 
@@ -81,7 +82,7 @@ export function SubmitProofModal({
           uploadedProofUrl = await betService.uploadFulfillmentProof(betId, proofPhoto, fileName);
         } catch (uploadError) {
           console.error('Photo upload failed:', uploadError);
-          Alert.alert('Upload Error', 'Failed to upload photo. Please try again.');
+          showErrorToast('Upload Error', 'Failed to upload photo. Please try again.');
           return;
         }
       }
@@ -96,11 +97,11 @@ export function SubmitProofModal({
         onSuccess?.();
       } catch (submitError) {
         console.error('Fulfillment claim submission failed:', submitError);
-        Alert.alert('Submission Error', 'Failed to record fulfillment claim. Please try again.');
+        showErrorToast('Submission Error', 'Failed to record fulfillment claim. Please try again.');
       }
     } catch (error) {
       console.error('Unexpected error in submitProof:', error);
-      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      showErrorToast('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -134,10 +135,10 @@ export function SubmitProofModal({
   );
 
   return (
-    <BottomSheetModal
+    <AppBottomSheet
       visible={visible}
       onClose={handleClose}
-      maxHeightRatio={0.9}
+      snapPoints={['90%']}
       bottomAction={bottomAction}
     >
       {/* Photo Upload */}
@@ -209,7 +210,7 @@ export function SubmitProofModal({
         <Text style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: 14, fontWeight: '600', marginBottom: 10 }}>
           Description (Optional)
         </Text>
-        <TextInput
+        <BottomSheetTextInput
           value={proofDescription}
           onChangeText={setProofDescription}
           placeholder="Describe how you fulfilled the stake..."
@@ -230,7 +231,7 @@ export function SubmitProofModal({
           }}
         />
       </View>
-    </BottomSheetModal>
+    </AppBottomSheet>
   );
 }
 

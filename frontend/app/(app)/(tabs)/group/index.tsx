@@ -71,12 +71,6 @@ export default function Group() {
 
       debugLog('Groups refreshed - My groups:', myGroupsData, 'Public groups:', publicGroupsData);
 
-      // Debug memberPreviews
-      console.log('🔍 [GroupIndex] My groups member previews check:');
-      myGroupsData.forEach(g => {
-        console.log(`  - ${g.groupName}: memberPreviews =`, g.memberPreviews, `(${g.memberPreviews?.length || 0} members)`);
-      });
-
       // Update cache timestamp
       lastFetchTime.current = Date.now();
     } catch (error) {
@@ -159,11 +153,9 @@ export default function Group() {
   useEffect(() => {
     // Immediately set isSearching to true when there's a query to avoid showing empty state
     if (searchQuery.trim().length > 0) {
-      console.log('🔍 [GroupIndex] Query detected, setting isSearching true');
       setIsSearching(true);
       setHasSearched(true);
     } else {
-      console.log('🔍 [GroupIndex] Clearing search immediately');
       setIsSearching(false);
       setHasSearched(false);
       setSearchResults([]);
@@ -171,15 +163,12 @@ export default function Group() {
 
     const handleSearch = async () => {
       if (searchQuery.trim().length > 0) {
-        console.log('🔍 [GroupIndex] Starting search for:', searchQuery.trim());
         try {
           const results = await groupService.searchGroups(searchQuery.trim());
-          console.log('🔍 [GroupIndex] Search completed, results:', results.length);
           setSearchResults(results);
           setIsSearching(false);
           debugLog('Search results:', results);
         } catch (error) {
-          console.log('🔍 [GroupIndex] Search error:', error);
           errorLog('Error searching groups:', error);
           setSearchResults([]);
           setIsSearching(false);
@@ -194,11 +183,9 @@ export default function Group() {
   // Get groups to display based on current state - memoized to avoid recalculating on every render
   const groupsToDisplay = useMemo((): GroupSummaryResponse[] => {
     if (searchQuery.trim().length > 0) {
-      console.log('🔍 [GroupIndex] groupsToDisplay: Using search results', searchResults.length);
       return searchResults;
     }
     const result = activeTab === 0 ? myGroups : publicGroups;
-    console.log('🔍 [GroupIndex] groupsToDisplay: Using tab data', { activeTab, count: result.length });
     return result;
   }, [searchQuery, searchResults, activeTab, myGroups, publicGroups]);
 
@@ -377,18 +364,7 @@ export default function Group() {
 
             {/* My Groups Grid - 2 Columns */}
             {(() => {
-              console.log('🎯 [GroupIndex] Render decision - My Groups:', {
-                isSearching,
-                hasInitiallyLoaded,
-                isLoading,
-                myGroupsLength: myGroups.length,
-                groupsToDisplayLength: groupsToDisplay.length,
-                hasSearched,
-                searchQuery: searchQuery.trim()
-              });
-
               if (isSearching) {
-                console.log('✅ [GroupIndex] Showing: SEARCHING skeletons');
                 return (
                   /* Searching - show skeletons */
                   <View style={{
@@ -403,7 +379,6 @@ export default function Group() {
                   </View>
                 );
               } else if (!hasInitiallyLoaded || (isLoading && myGroups.length === 0)) {
-                console.log('✅ [GroupIndex] Showing: INITIAL LOADING skeletons');
                 return (
                   /* First time loading - show skeletons */
                   <View style={{
@@ -418,7 +393,6 @@ export default function Group() {
                   </View>
                 );
               } else if (groupsToDisplay.length > 0) {
-                console.log('✅ [GroupIndex] Showing: GROUPS', groupsToDisplay.length);
                 return (
                   /* Has results - show groups */
                   <View style={{
@@ -442,7 +416,6 @@ export default function Group() {
                   </View>
                 );
               } else if (hasSearched && searchQuery.trim().length > 0) {
-                console.log('✅ [GroupIndex] Showing: NO SEARCH RESULTS');
                 return (
                   /* Search completed with no results */
                   <View style={{
@@ -461,7 +434,6 @@ export default function Group() {
                   </View>
                 );
               } else {
-                console.log('✅ [GroupIndex] Showing: NO GROUPS EMPTY STATE');
                 return (
                   /* No search, no groups */
                   <View style={{

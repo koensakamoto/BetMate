@@ -82,34 +82,17 @@ export class AuthService extends BaseApiService {
    * Login user and store tokens
    */
   async login(credentials: LoginRequest): Promise<LoginResponse> {
-    console.log('🔐 [AuthService] Login attempt starting...', {
-      usernameOrEmail: credentials.usernameOrEmail,
-      endpoint: API_ENDPOINTS.LOGIN
-    });
-
     try {
-      console.log('🔐 [AuthService] Sending login request to backend...');
       const response = await this.post<LoginResponse>(
         API_ENDPOINTS.LOGIN,
         credentials
       );
 
-      console.log('✅ [AuthService] Login successful! Response:', {
-        userId: response.user?.id,
-        username: response.user?.username,
-        hasAccessToken: !!response.accessToken,
-        hasRefreshToken: !!response.refreshToken,
-        expiresIn: response.expiresIn,
-        userCredits: response.user?.totalCredits
-      });
-
       // Store tokens securely
-      console.log('💾 [AuthService] Storing tokens...');
       await tokenStorage.setTokens(
         response.accessToken,
         response.refreshToken
       );
-      console.log('✅ [AuthService] Tokens stored successfully');
 
       return response;
     } catch (error) {
@@ -212,13 +195,7 @@ export class AuthService extends BaseApiService {
    * Check if user is authenticated
    */
   async isAuthenticated(): Promise<boolean> {
-    console.log(`🔍 [AuthService] Checking if user is authenticated...`);
     const accessToken = await tokenStorage.getAccessToken();
-    console.log(`🔍 [AuthService] Access token check:`, {
-      hasToken: !!accessToken,
-      tokenLength: accessToken ? accessToken.length : 0,
-      tokenPreview: accessToken ? `${accessToken.substring(0, 20)}...` : 'null'
-    });
     return !!accessToken;
   }
 
@@ -226,20 +203,11 @@ export class AuthService extends BaseApiService {
    * Login with Google OAuth
    */
   async loginWithGoogle(googleData: GoogleAuthRequest): Promise<LoginResponse> {
-    console.log('🔐 [AuthService] Google login attempt starting...', {
-      email: googleData.email,
-    });
-
     try {
       const response = await this.post<LoginResponse>(
         '/auth/google',
         googleData
       );
-
-      console.log('✅ [AuthService] Google login successful!', {
-        userId: response.user?.id,
-        username: response.user?.username,
-      });
 
       // Store tokens securely
       await tokenStorage.setTokens(
@@ -259,21 +227,11 @@ export class AuthService extends BaseApiService {
    * Login with Apple OAuth
    */
   async loginWithApple(appleData: AppleAuthRequest): Promise<LoginResponse> {
-    console.log('🔐 [AuthService] Apple login attempt starting...', {
-      userId: appleData.userId,
-      email: appleData.email,
-    });
-
     try {
       const response = await this.post<LoginResponse>(
         '/auth/apple',
         appleData
       );
-
-      console.log('✅ [AuthService] Apple login successful!', {
-        userId: response.user?.id,
-        username: response.user?.username,
-      });
 
       // Store tokens securely
       await tokenStorage.setTokens(

@@ -258,25 +258,16 @@ public class BetParticipation {
      */
     public boolean isWinner() {
         if (bet == null || bet.getOutcome() == null) {
-            System.out.println("DEBUG isWinner: bet or outcome is null - returning false");
             return false;
         }
 
-        System.out.println("DEBUG isWinner: User " + (user != null ? user.getUsername() : "null") +
-                          " - chosenOption=" + chosenOption +
-                          ", betOutcome=" + bet.getOutcome() +
-                          ", betId=" + bet.getId());
-
-        boolean result = switch (bet.getOutcome()) {
+        return switch (bet.getOutcome()) {
             case OPTION_1 -> chosenOption == 1;
             case OPTION_2 -> chosenOption == 2;
             case OPTION_3 -> chosenOption == 3;
             case OPTION_4 -> chosenOption == 4;
             default -> false;
         };
-
-        System.out.println("DEBUG isWinner: Result = " + result);
-        return result;
     }
 
     /**

@@ -48,7 +48,6 @@ export default function UserProfilePage() {
       setLoading(true);
       const response = await userService.getUserById(Number(userId));
       setUser(response);
-      console.log('🔒 User profile loaded - private:', response.private, 'message:', response.message);
     } catch (err) {
       errorLog('Failed to load user profile:', err);
       setError('Failed to load user profile');

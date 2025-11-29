@@ -193,8 +193,7 @@ export default function Notifications() {
       } else if (url === '/friends') {
         router.push('/(app)/friends' as any);
       } else {
-        // Default navigation
-        console.log('Navigate to:', url);
+        // Default navigation - unhandled URL type
       }
     }
   };
@@ -402,22 +401,6 @@ export default function Notifications() {
         />
       );
     }
-
-    // Debug logging
-    console.log('Notification:', {
-      id: notification.id,
-      type: notification.type,
-      notificationType: notification.notificationType,
-      isFriendRequest,
-      isGroupInvite,
-      isGroupJoinRequest,
-      showFriendRequestActions,
-      showGroupInviteActions,
-      showGroupJoinRequestActions,
-      isRead: notification.isRead,
-      message: notification.message,
-      relatedEntityId: notification.relatedEntityId
-    });
 
     // Extract username from message for friend requests
     const extractUsername = (message: string) => {

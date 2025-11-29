@@ -63,13 +63,12 @@ export default function Store() {
       }
 
       const userProfile = await userService.getCurrentUserProfile();
-      console.log('Store - Fetched user profile:', userProfile);
       setUserCredits(userProfile.totalCredits || 0);
 
       // Update cache timestamp
       lastFetchTime.current = Date.now();
     } catch (error) {
-      console.error('Store - Failed to fetch user credits:', error);
+      console.error('Failed to fetch user credits:', error);
       // Fallback to AuthContext credits if API call fails
       setUserCredits(user?.totalCredits || 0);
     } finally {

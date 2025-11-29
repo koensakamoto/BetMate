@@ -228,14 +228,6 @@ public class StoreController {
         response.setRarity(inventoryItem.getStoreItem().getRarity().name());
         response.setIconUrl(inventoryItem.getStoreItem().getIconUrl());
 
-        // Debug logging
-        System.out.println("=== INVENTORY ITEM DEBUG ===");
-        System.out.println("Item ID: " + inventoryItem.getStoreItem().getId());
-        System.out.println("Item Name: " + inventoryItem.getStoreItem().getName());
-        System.out.println("Short Description: " + inventoryItem.getStoreItem().getShortDescription());
-        System.out.println("Description: " + inventoryItem.getStoreItem().getDescription());
-        System.out.println("===========================");
-
         response.setShortDescription(inventoryItem.getStoreItem().getShortDescription());
         response.setDescription(inventoryItem.getStoreItem().getDescription());
         response.setPurchasePrice(inventoryItem.getPurchasePrice());

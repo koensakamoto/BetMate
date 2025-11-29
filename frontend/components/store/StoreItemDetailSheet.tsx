@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, Animated, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StoreItemData } from './StoreItem';
 import { haptic } from '../../utils/haptics';
 import { getRarityColors } from '../../utils/rarityUtils';
+import AppBottomSheet from '../common/AppBottomSheet';
 
 interface StoreItemDetailSheetProps {
   visible: boolean;
@@ -14,8 +14,6 @@ interface StoreItemDetailSheetProps {
   onPurchase: (item: StoreItemData) => void;
 }
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
 export default function StoreItemDetailSheet({
   visible,
   item,
@@ -23,8 +21,6 @@ export default function StoreItemDetailSheet({
   onClose,
   onPurchase
 }: StoreItemDetailSheetProps) {
-  const insets = useSafeAreaInsets();
-
   const rarityStyles = useMemo(() => {
     if (!item) return { color: '#9CA3AF', bgColor: 'rgba(156, 163, 175, 0.15)' };
     return getRarityColors(item.rarity);
@@ -40,325 +36,276 @@ export default function StoreItemDetailSheet({
     onClose();
   };
 
-  return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={{
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        justifyContent: 'flex-end'
-      }}>
-        {/* Backdrop - tap to close */}
+  const bottomAction = (
+    <View style={{ gap: 12 }}>
+      {/* Purchase Button */}
+      {!item.isOwned && (
         <TouchableOpacity
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-          activeOpacity={1}
-          onPress={onClose}
-        />
-
-        {/* Bottom Sheet */}
-        <View style={{
-          backgroundColor: '#1a1a1f',
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          maxHeight: SCREEN_HEIGHT * 0.85
-        }}>
-          {/* Drag Handle */}
-          <View style={{
+          onPress={handlePurchase}
+          disabled={!canAfford}
+          style={{
+            backgroundColor: canAfford ? '#00D4AA' : 'rgba(255, 255, 255, 0.08)',
+            borderRadius: 16,
+            paddingVertical: 16,
             alignItems: 'center',
-            paddingTop: 12,
-            paddingBottom: 8
+            shadowColor: canAfford ? '#00D4AA' : 'transparent',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 8,
+            borderWidth: canAfford ? 0 : 1,
+            borderColor: 'rgba(255, 255, 255, 0.15)'
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={{
+            fontSize: 16,
+            fontWeight: '700',
+            color: canAfford ? '#000000' : 'rgba(255, 255, 255, 0.5)'
           }}>
-            <View style={{
-              width: 40,
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: 'rgba(255, 255, 255, 0.3)'
-            }} />
-          </View>
+            {canAfford ? `Buy for ${item.price} credits` : 'Insufficient credits'}
+          </Text>
+        </TouchableOpacity>
+      )}
 
-          <ScrollView
-            style={{ maxHeight: SCREEN_HEIGHT * 0.85 - 180 }}
-            contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16 }}
-            showsVerticalScrollIndicator={false}
-            bounces={true}
-          >
-            {/* Header with Icon */}
-            <View style={{
-              alignItems: 'center',
-              marginBottom: 24
-            }}>
-              {/* Large Icon */}
-              <View style={{
-                width: 100,
-                height: 100,
-                backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                borderRadius: 24,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-                borderWidth: 2,
-                borderColor: rarityStyles.color,
-                position: 'relative',
-                shadowColor: rarityStyles.color,
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.3,
-                shadowRadius: 16,
-                elevation: 8
-              }}>
-                <MaterialIcons name={item.icon as any} size={56} color={rarityStyles.color} />
-                {/* Glow effect */}
-                <View style={{
-                  position: 'absolute',
-                  bottom: -1,
-                  left: -1,
-                  right: -1,
-                  height: 4,
-                  backgroundColor: rarityStyles.color,
-                  borderBottomLeftRadius: 24,
-                  borderBottomRightRadius: 24,
-                  opacity: 0.8
-                }} />
-              </View>
+      {/* Close Button */}
+      <TouchableOpacity
+        onPress={onClose}
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.08)',
+          borderRadius: 16,
+          paddingVertical: 14,
+          alignItems: 'center',
+          borderWidth: 1,
+          borderColor: 'rgba(255, 255, 255, 0.15)'
+        }}
+        activeOpacity={0.8}
+      >
+        <Text style={{
+          fontSize: 15,
+          fontWeight: '600',
+          color: '#ffffff'
+        }}>
+          Close
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
 
-              {/* Item Name */}
-              <Text style={{
-                fontSize: 22,
-                fontWeight: '700',
-                color: '#ffffff',
-                textAlign: 'center',
-                marginBottom: 8,
-                letterSpacing: 0.3
-              }}>
-                {item.name}
-              </Text>
-
-              {/* Rarity Badge */}
-              <View style={{
-                backgroundColor: rarityStyles.bgColor,
-                paddingHorizontal: 12,
-                paddingVertical: 5,
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: rarityStyles.color
-              }}>
-                <Text style={{
-                  fontSize: 11,
-                  fontWeight: '700',
-                  color: rarityStyles.color,
-                  textTransform: 'uppercase',
-                  letterSpacing: 1
-                }}>
-                  {item.rarity}
-                </Text>
-              </View>
-            </View>
-
-            {/* Description Section */}
-            <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              borderRadius: 16,
-              padding: 16,
-              marginBottom: 20,
-              borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.08)'
-            }}>
-              <Text style={{
-                fontSize: 15,
-                fontWeight: '600',
-                color: '#ffffff',
-                marginBottom: 8
-              }}>
-                Description
-              </Text>
-              <Text style={{
-                fontSize: 14,
-                color: 'rgba(255, 255, 255, 0.8)',
-                lineHeight: 22
-              }}>
-                {item.description}
-              </Text>
-            </View>
-
-            {/* Details Grid */}
-            <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              borderRadius: 16,
-              padding: 16,
-              marginBottom: 20,
-              borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.08)'
-            }}>
-              <Text style={{
-                fontSize: 15,
-                fontWeight: '600',
-                color: '#ffffff',
-                marginBottom: 12
-              }}>
-                Item Details
-              </Text>
-
-              {/* Type */}
-              <View style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                marginBottom: 10
-              }}>
-                <Text style={{
-                  fontSize: 13,
-                  color: 'rgba(255, 255, 255, 0.6)'
-                }}>
-                  Type
-                </Text>
-                <Text style={{
-                  fontSize: 13,
-                  color: '#ffffff',
-                  fontWeight: '600'
-                }}>
-                  {item.itemType}
-                </Text>
-              </View>
-
-              {/* Category */}
-              <View style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                marginBottom: 10
-              }}>
-                <Text style={{
-                  fontSize: 13,
-                  color: 'rgba(255, 255, 255, 0.6)'
-                }}>
-                  Category
-                </Text>
-                <Text style={{
-                  fontSize: 13,
-                  color: '#ffffff',
-                  fontWeight: '600'
-                }}>
-                  {item.category}
-                </Text>
-              </View>
-
-              {/* Price */}
-              <View style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <Text style={{
-                  fontSize: 13,
-                  color: 'rgba(255, 255, 255, 0.6)'
-                }}>
-                  Price
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <MaterialIcons name="monetization-on" size={16} color="#FFD700" />
-                  <Text style={{
-                    fontSize: 16,
-                    fontWeight: '700',
-                    color: '#FFD700',
-                    marginLeft: 4
-                  }}>
-                    {item.price}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Status if owned */}
-            {item.isOwned && (
-              <View style={{
-                backgroundColor: 'rgba(0, 212, 170, 0.15)',
-                borderRadius: 12,
-                padding: 16,
-                marginBottom: 20,
-                borderWidth: 1,
-                borderColor: 'rgba(0, 212, 170, 0.3)',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <MaterialIcons name="check-circle" size={20} color="#00D4AA" />
-                <Text style={{
-                  fontSize: 15,
-                  fontWeight: '700',
-                  color: '#00D4AA',
-                  marginLeft: 8
-                }}>
-                  You own this item
-                </Text>
-              </View>
-            )}
-          </ScrollView>
-
-          {/* Bottom Action Bar */}
+  return (
+    <AppBottomSheet
+      visible={visible}
+      onClose={onClose}
+      snapPoints={['85%']}
+      bottomAction={bottomAction}
+    >
+      {/* Header with Icon */}
+      <View style={{
+        alignItems: 'center',
+        marginBottom: 24
+      }}>
+        {/* Large Icon */}
+        <View style={{
+          width: 100,
+          height: 100,
+          backgroundColor: 'rgba(255, 255, 255, 0.06)',
+          borderRadius: 24,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 16,
+          borderWidth: 2,
+          borderColor: rarityStyles.color,
+          position: 'relative',
+          shadowColor: rarityStyles.color,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.3,
+          shadowRadius: 16,
+          elevation: 8
+        }}>
+          <MaterialIcons name={item.icon as any} size={56} color={rarityStyles.color} />
+          {/* Glow effect */}
           <View style={{
-            paddingHorizontal: 24,
-            paddingTop: 16,
-            paddingBottom: Math.max(insets.bottom, 16),
-            borderTopWidth: 1,
-            borderTopColor: 'rgba(255, 255, 255, 0.1)',
-            gap: 12,
-            backgroundColor: '#1a1a1f'
-          }}>
-            {/* Purchase Button */}
-            {!item.isOwned && (
-              <TouchableOpacity
-                onPress={handlePurchase}
-                disabled={!canAfford}
-                style={{
-                  backgroundColor: canAfford ? '#00D4AA' : 'rgba(255, 255, 255, 0.08)',
-                  borderRadius: 16,
-                  paddingVertical: 16,
-                  alignItems: 'center',
-                  shadowColor: canAfford ? '#00D4AA' : 'transparent',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 8,
-                  borderWidth: canAfford ? 0 : 1,
-                  borderColor: 'rgba(255, 255, 255, 0.15)'
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={{
-                  fontSize: 16,
-                  fontWeight: '700',
-                  color: canAfford ? '#000000' : 'rgba(255, 255, 255, 0.5)'
-                }}>
-                  {canAfford ? `Buy for ${item.price} credits` : 'Insufficient credits'}
-                </Text>
-              </TouchableOpacity>
-            )}
+            position: 'absolute',
+            bottom: -1,
+            left: -1,
+            right: -1,
+            height: 4,
+            backgroundColor: rarityStyles.color,
+            borderBottomLeftRadius: 24,
+            borderBottomRightRadius: 24,
+            opacity: 0.8
+          }} />
+        </View>
 
-            {/* Close Button */}
-            <TouchableOpacity
-              onPress={onClose}
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                borderRadius: 16,
-                paddingVertical: 14,
-                alignItems: 'center',
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.15)'
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={{
-                fontSize: 15,
-                fontWeight: '600',
-                color: '#ffffff'
-              }}>
-                Close
-              </Text>
-            </TouchableOpacity>
+        {/* Item Name */}
+        <Text style={{
+          fontSize: 22,
+          fontWeight: '700',
+          color: '#ffffff',
+          textAlign: 'center',
+          marginBottom: 8,
+          letterSpacing: 0.3
+        }}>
+          {item.name}
+        </Text>
+
+        {/* Rarity Badge */}
+        <View style={{
+          backgroundColor: rarityStyles.bgColor,
+          paddingHorizontal: 12,
+          paddingVertical: 5,
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: rarityStyles.color
+        }}>
+          <Text style={{
+            fontSize: 11,
+            fontWeight: '700',
+            color: rarityStyles.color,
+            textTransform: 'uppercase',
+            letterSpacing: 1
+          }}>
+            {item.rarity}
+          </Text>
+        </View>
+      </View>
+
+      {/* Description Section */}
+      <View style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.08)'
+      }}>
+        <Text style={{
+          fontSize: 15,
+          fontWeight: '600',
+          color: '#ffffff',
+          marginBottom: 8
+        }}>
+          Description
+        </Text>
+        <Text style={{
+          fontSize: 14,
+          color: 'rgba(255, 255, 255, 0.8)',
+          lineHeight: 22
+        }}>
+          {item.description}
+        </Text>
+      </View>
+
+      {/* Details Grid */}
+      <View style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.08)'
+      }}>
+        <Text style={{
+          fontSize: 15,
+          fontWeight: '600',
+          color: '#ffffff',
+          marginBottom: 12
+        }}>
+          Item Details
+        </Text>
+
+        {/* Type */}
+        <View style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          marginBottom: 10
+        }}>
+          <Text style={{
+            fontSize: 13,
+            color: 'rgba(255, 255, 255, 0.6)'
+          }}>
+            Type
+          </Text>
+          <Text style={{
+            fontSize: 13,
+            color: '#ffffff',
+            fontWeight: '600'
+          }}>
+            {item.itemType}
+          </Text>
+        </View>
+
+        {/* Category */}
+        <View style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          marginBottom: 10
+        }}>
+          <Text style={{
+            fontSize: 13,
+            color: 'rgba(255, 255, 255, 0.6)'
+          }}>
+            Category
+          </Text>
+          <Text style={{
+            fontSize: 13,
+            color: '#ffffff',
+            fontWeight: '600'
+          }}>
+            {item.category}
+          </Text>
+        </View>
+
+        {/* Price */}
+        <View style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Text style={{
+            fontSize: 13,
+            color: 'rgba(255, 255, 255, 0.6)'
+          }}>
+            Price
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <MaterialIcons name="monetization-on" size={16} color="#FFD700" />
+            <Text style={{
+              fontSize: 16,
+              fontWeight: '700',
+              color: '#FFD700',
+              marginLeft: 4
+            }}>
+              {item.price}
+            </Text>
           </View>
         </View>
       </View>
-    </Modal>
+
+      {/* Status if owned */}
+      {item.isOwned && (
+        <View style={{
+          backgroundColor: 'rgba(0, 212, 170, 0.15)',
+          borderRadius: 12,
+          padding: 16,
+          marginBottom: 20,
+          borderWidth: 1,
+          borderColor: 'rgba(0, 212, 170, 0.3)',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <MaterialIcons name="check-circle" size={20} color="#00D4AA" />
+          <Text style={{
+            fontSize: 15,
+            fontWeight: '700',
+            color: '#00D4AA',
+            marginLeft: 8
+          }}>
+            You own this item
+          </Text>
+        </View>
+      )}
+    </AppBottomSheet>
   );
 }

@@ -691,27 +691,16 @@ public class GroupMembershipService {
     @Transactional
     public GroupMembership updateMemberRole(@NotNull Group group, @NotNull User targetUser,
                                            @NotNull GroupMembership.MemberRole newRole, @NotNull User requestingUser) {
-        System.out.println("🔄 [SERVICE DEBUG] updateMemberRole called");
-        System.out.println("🔄 [SERVICE DEBUG] Group: " + group.getGroupName() + " (ID: " + group.getId() + ")");
-        System.out.println("🔄 [SERVICE DEBUG] Target user: " + targetUser.getUsername() + " (ID: " + targetUser.getId() + ")");
-        System.out.println("🔄 [SERVICE DEBUG] New role: " + newRole);
-        System.out.println("🔄 [SERVICE DEBUG] Requesting user: " + requestingUser.getUsername() + " (ID: " + requestingUser.getId() + ")");
-
         // Check if requesting user is admin
         boolean isAdminUser = isAdmin(requestingUser, group);
-        System.out.println("🔄 [SERVICE DEBUG] Is requesting user admin? " + isAdminUser);
 
         if (!isAdminUser) {
-            System.out.println("❌ [SERVICE DEBUG] Permission denied - user is not admin");
             throw new GroupMembershipException("Only admins can update member roles");
         }
 
         // Get the target user's membership
-        System.out.println("🔄 [SERVICE DEBUG] Looking for target user's membership...");
         GroupMembership membership = membershipRepository.findByUserAndGroupAndIsActiveTrue(targetUser, group)
             .orElseThrow(() -> new GroupMembershipException("Target user is not a member of this group"));
-
-        System.out.println("🔄 [SERVICE DEBUG] Found membership - Current role: " + membership.getRole());
 
         // Capture old role BEFORE updating (needed for event)
         GroupMembership.MemberRole oldRole = membership.getRole();
@@ -720,17 +709,13 @@ public class GroupMembershipService {
         if (group.isOwner(targetUser) &&
             oldRole == GroupMembership.MemberRole.ADMIN &&
             newRole != GroupMembership.MemberRole.ADMIN) {
-            System.out.println("❌ [SERVICE DEBUG] Cannot demote group owner from admin");
             throw new GroupMembershipException("Cannot demote the group owner from admin role");
         }
 
         // Update the role
-        System.out.println("🔄 [SERVICE DEBUG] Updating role from " + membership.getRole() + " to " + newRole);
         membership.setRole(newRole);
 
-        System.out.println("🔄 [SERVICE DEBUG] Saving membership to database...");
         GroupMembership savedMembership = membershipRepository.save(membership);
-        System.out.println("🔄 [SERVICE DEBUG] Saved membership - Role is now: " + savedMembership.getRole());
 
         // Publish GROUP_ROLE_CHANGED event
         publishRoleChangedEvent(group, targetUser, oldRole, newRole, requestingUser);

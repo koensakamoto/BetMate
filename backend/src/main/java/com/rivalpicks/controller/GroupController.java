@@ -177,22 +177,14 @@ public class GroupController {
             @Valid @RequestBody UpdateMemberRoleRequestDto request,
             Authentication authentication) {
 
-        System.out.println("🔄 [DEBUG] Role update endpoint called - GroupId: " + groupId + ", MemberId: " + memberId + ", NewRole: " + request.getRole());
-
         User currentUser = userService.getUserByUsername(authentication.getName())
             .orElseThrow(() -> new RuntimeException("User not found"));
         Group group = groupService.getGroupById(groupId);
         User targetUser = userService.getUserById(memberId);
 
-        System.out.println("🔄 [DEBUG] Current user: " + currentUser.getUsername() + " (ID: " + currentUser.getId() + ")");
-        System.out.println("🔄 [DEBUG] Target user: " + targetUser.getUsername() + " (ID: " + targetUser.getId() + ")");
-        System.out.println("🔄 [DEBUG] Group: " + group.getGroupName() + " (ID: " + group.getId() + ")");
-
         // Update the member's role
         GroupMembership updatedMembership = groupMembershipService.updateMemberRole(
             group, targetUser, request.getRole(), currentUser);
-
-        System.out.println("🔄 [DEBUG] Role update successful - New role: " + updatedMembership.getRole());
 
         return ResponseEntity.ok(convertToMemberResponse(updatedMembership));
     }
@@ -206,21 +198,13 @@ public class GroupController {
             @PathVariable Long memberId,
             Authentication authentication) {
 
-        System.out.println("🗑️ [DEBUG] Remove member endpoint called - GroupId: " + groupId + ", MemberId: " + memberId);
-
         User currentUser = userService.getUserByUsername(authentication.getName())
             .orElseThrow(() -> new RuntimeException("User not found"));
         Group group = groupService.getGroupById(groupId);
         User memberToRemove = userService.getUserById(memberId);
 
-        System.out.println("🗑️ [DEBUG] Current user: " + currentUser.getUsername() + " (ID: " + currentUser.getId() + ")");
-        System.out.println("🗑️ [DEBUG] Member to remove: " + memberToRemove.getUsername() + " (ID: " + memberToRemove.getId() + ")");
-        System.out.println("🗑️ [DEBUG] Group: " + group.getGroupName() + " (ID: " + group.getId() + ")");
-
         // Remove the member
         groupMembershipService.removeMember(currentUser, memberToRemove, group);
-
-        System.out.println("🗑️ [DEBUG] Member removal successful");
 
         return ResponseEntity.ok().build();
     }
@@ -491,21 +475,11 @@ public class GroupController {
 
         // Fetch first 4 members for preview avatars
         List<GroupMembership> members = groupMembershipService.getGroupMembers(group);
-        System.out.println("🔍 [GroupController] Group: " + group.getGroupName() +
-                          ", Total members fetched: " + members.size());
 
         List<MemberPreviewDto> memberPreviews = members.stream()
             .limit(4)
             .map(this::convertToMemberPreview)
             .collect(Collectors.toList());
-
-        System.out.println("🔍 [GroupController] Member previews created: " + memberPreviews.size());
-        memberPreviews.forEach(mp ->
-            System.out.println("   - Member: " + mp.getUsername() +
-                              ", firstName: " + mp.getFirstName() +
-                              ", lastName: " + mp.getLastName() +
-                              ", profileImageUrl: " + mp.getProfileImageUrl())
-        );
 
         response.setMemberPreviews(memberPreviews);
 
@@ -603,8 +577,6 @@ public class GroupController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            System.err.println("ERROR getting pending requests: " + e.getMessage());
-            e.printStackTrace();
             throw e;
         }
     }
@@ -630,8 +602,6 @@ public class GroupController {
             return ResponseEntity.ok(count);
 
         } catch (Exception e) {
-            System.err.println("ERROR getting pending request count: " + e.getMessage());
-            e.printStackTrace();
             throw e;
         }
     }
@@ -658,8 +628,6 @@ public class GroupController {
             return ResponseEntity.ok().build();
 
         } catch (Exception e) {
-            System.err.println("ERROR approving pending request: " + e.getMessage());
-            e.printStackTrace();
             throw e;
         }
     }
@@ -686,8 +654,6 @@ public class GroupController {
             return ResponseEntity.ok().build();
 
         } catch (Exception e) {
-            System.err.println("ERROR denying pending request: " + e.getMessage());
-            e.printStackTrace();
             throw e;
         }
     }
@@ -715,8 +681,6 @@ public class GroupController {
             return ResponseEntity.ok(convertToMemberResponse(membership));
 
         } catch (Exception e) {
-            System.err.println("ERROR accepting invitation: " + e.getMessage());
-            e.printStackTrace();
             throw e;
         }
     }
@@ -740,8 +704,6 @@ public class GroupController {
             return ResponseEntity.ok().build();
 
         } catch (Exception e) {
-            System.err.println("ERROR rejecting invitation: " + e.getMessage());
-            e.printStackTrace();
             throw e;
         }
     }

@@ -19,9 +19,6 @@ export function PushNotificationInitializer(): null {
     if (!hasRegistered.current) {
       hasRegistered.current = true;
       registerForPushNotifications().then(token => {
-        if (token) {
-          console.log('Push notifications registered successfully');
-        }
       });
     }
   }, [registerForPushNotifications]);
@@ -29,7 +26,6 @@ export function PushNotificationInitializer(): null {
   // Sync badge count with unread notifications
   useEffect(() => {
     setBadgeCount(unreadCount).catch(err => {
-      console.warn('Failed to set badge count:', err);
     });
   }, [unreadCount]);
 

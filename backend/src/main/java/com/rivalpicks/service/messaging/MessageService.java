@@ -337,7 +337,7 @@ public class MessageService {
             eventPublisher.publishEvent(event);
         } catch (Exception e) {
             // Don't fail message creation if event publishing fails
-            System.err.println("Failed to publish message created event for message " + message.getId() + ": " + e.getMessage());
+            // Silent failure - event publishing is not critical
         }
     }
 

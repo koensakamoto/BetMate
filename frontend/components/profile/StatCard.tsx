@@ -11,7 +11,7 @@ interface StatCardProps {
   subtitle?: string;
 }
 
-function StatCard({
+const StatCard: React.FC<StatCardProps> = ({
   title,
   value,
   icon,

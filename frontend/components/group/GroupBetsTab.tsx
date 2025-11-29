@@ -34,17 +34,13 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
   useEffect(() => {
     // Only fetch if cache is invalid, no data, or forced refresh
     if (!isCacheValid() || bets.length === 0 || searchParams.refresh) {
-      console.log(`🔄 [GroupBetsTab] Loading bets for group ${groupData.id}, refresh: ${searchParams.refresh}`);
       loadGroupBets();
-    } else {
-      console.log(`✅ [GroupBetsTab] Using cached bets for group ${groupData.id}`);
     }
   }, [groupData.id, searchParams.refresh, isCacheValid, bets.length]);
 
   // Handle force refresh from parent (pull-to-refresh)
   useEffect(() => {
     if (forceRefresh && forceRefresh > 0) {
-      console.log(`🔄 [GroupBetsTab] Force refresh triggered`);
       loadGroupBets();
     }
   }, [forceRefresh]);
@@ -53,7 +49,6 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
   useFocusEffect(
     useCallback(() => {
       if (!isCacheValid() || bets.length === 0) {
-        console.log(`🔄 [GroupBetsTab] Screen focused, reloading bets`);
         loadGroupBets();
       }
     }, [isCacheValid, bets.length])
@@ -63,9 +58,7 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
     setLoading(true);
     try {
       const groupId = Array.isArray(groupData.id) ? parseInt(groupData.id[0]) : parseInt(groupData.id as string);
-      console.log(`📡 [GroupBetsTab] Fetching bets for group ${groupId}`);
       const groupBets = await betService.getGroupBets(groupId);
-      console.log(`✅ [GroupBetsTab] Loaded ${groupBets.length} bets for group ${groupId}`);
       setBets(groupBets);
 
       // Update cache timestamp

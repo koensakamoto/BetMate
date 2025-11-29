@@ -162,28 +162,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthStatus = useCallback(async () => {
     try {
-      console.log(`🔍 [AuthContext] Starting auth status check...`);
       setIsLoading(true);
       setError(null);
 
       // Check if user is authenticated
       const isAuth = await authService.isAuthenticated();
-      console.log(`🔍 [AuthContext] isAuthenticated result:`, isAuth);
 
       if (isAuth) {
-        console.log(`🔍 [AuthContext] User appears to be authenticated, fetching profile...`);
         // Validate session and get user profile
         const userProfile = await authService.getCurrentUser();
-        console.log(`✅ [AuthContext] User profile fetched:`, {
-          id: userProfile.id,
-          username: userProfile.username,
-          email: userProfile.email,
-          fullProfile: userProfile
-        });
 
         // Check if account is still active
         if (!userProfile.isActive) {
-          console.log(`⚠️ [AuthContext] Account is inactive/disabled, forcing logout...`);
           await authService.logout();
           await webSocketService.disconnect();
           setUser(null);
@@ -196,16 +186,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
 
         const transformedUser = transformUser(userProfile);
-        console.log(`✅ [AuthContext] Transformed user:`, {
-          id: transformedUser.id,
-          username: transformedUser.username,
-          email: transformedUser.email,
-          name: transformedUser.name
-        });
         setUser(transformedUser);
         debugLog('Auth check successful - user logged in');
       } else {
-        console.log(`❌ [AuthContext] User is not authenticated`);
         setUser(null);
         debugLog('Auth check - no valid session');
       }
@@ -215,38 +198,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       // Don't set error for initial auth check - user might just not be logged in
     } finally {
-      console.log(`🏁 [AuthContext] Auth check completed. Setting isLoading to false.`);
       setIsLoading(false);
     }
   }, []);
 
   const login = useCallback(async (data: LoginData) => {
-    console.log('🔐 [AuthContext] Login function called', { email: data.email });
     try {
       setIsLoading(true);
       setError(null);
-      console.log('🔐 [AuthContext] Calling authService.login...');
 
       const response = await authService.login({
         usernameOrEmail: data.email,
         password: data.password,
       });
 
-      console.log('✅ [AuthContext] Login response received:', {
-        userId: response.user.id,
-        username: response.user.username,
-        credits: response.user.totalCredits,
-        fullUser: response.user
-      });
-
       const transformedUser = transformUser(response.user);
-      console.log('✅ [AuthContext] User transformed, setting user state:', {
-        id: transformedUser.id,
-        username: transformedUser.username,
-        credits: transformedUser.credits
-      });
       setUser(transformedUser);
-      console.log('✅ [AuthContext] User state updated successfully');
 
       debugLog('Login successful for user:', transformedUser.username);
     } catch (error) {

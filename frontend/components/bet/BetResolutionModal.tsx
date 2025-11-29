@@ -8,6 +8,7 @@ import {
   Keyboard,
   Platform
 } from 'react-native';
+import { showErrorToast } from '../../utils/toast';
 import {
   BottomSheetModal,
   BottomSheetScrollView,
@@ -104,7 +105,7 @@ const BetResolutionModal = forwardRef<BetResolutionModalRef, BetResolutionModalP
 
   const handleSubmit = async () => {
     if (!selectedOutcome && selectedWinnerIds.length === 0) {
-      Alert.alert('Error', 'Please select an outcome or winners');
+      showErrorToast('Selection Required', 'Please select an outcome or winners');
       return;
     }
 
@@ -128,7 +129,7 @@ const BetResolutionModal = forwardRef<BetResolutionModalRef, BetResolutionModalP
               bottomSheetRef.current?.dismiss();
             } catch (error) {
               console.error('Resolution error:', error);
-              Alert.alert('Error', 'Failed to submit resolution');
+              showErrorToast('Error', 'Failed to submit resolution. Please try again.');
             } finally {
               setIsSubmitting(false);
             }

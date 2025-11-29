@@ -61,13 +61,10 @@ if (nativeModuleAvailable) {
     isSuccessResponse = googleSignIn.isSuccessResponse;
     isErrorWithCode = googleSignIn.isErrorWithCode;
     isGoogleSignInAvailable = true;
-    console.log('✅ [GoogleAuth] Native module available');
   } catch (error) {
-    console.warn('⚠️ [GoogleAuth] Failed to load Google Sign-In module:', error);
     isGoogleSignInAvailable = false;
   }
 } else {
-  console.warn('⚠️ [GoogleAuth] Native module not available - Google Sign-In disabled (this is expected in Expo Go)');
   isGoogleSignInAvailable = false;
 }
 
@@ -99,17 +96,10 @@ export function useGoogleAuth() {
 
   const configureGoogleSignIn = () => {
     if (!isGoogleSignInAvailable || !GoogleSignin) {
-      console.warn('⚠️ [GoogleAuth] Google Sign-In not available in this environment');
       return;
     }
 
     try {
-      console.log('🔧 [GoogleAuth] Configuring with:');
-      console.log('  - webClientId:', WEB_CLIENT_ID);
-      console.log('  - iosClientId:', IOS_CLIENT_ID);
-      console.log('  - Expected URL scheme:', `com.googleusercontent.apps.${IOS_CLIENT_ID.split('.')[0]}`);
-      console.log('  - Platform:', Platform.OS);
-
       GoogleSignin.configure({
         webClientId: WEB_CLIENT_ID,
         iosClientId: IOS_CLIENT_ID,
@@ -117,7 +107,6 @@ export function useGoogleAuth() {
         scopes: ['profile', 'email'],
       });
       setIsConfigured(true);
-      console.log('✅ [GoogleAuth] Configured successfully');
     } catch (error) {
       console.error('❌ [GoogleAuth] Configuration failed:', error);
     }
@@ -132,20 +121,11 @@ export function useGoogleAuth() {
     }
 
     try {
-      console.log('🔄 [GoogleAuth] Starting sign-in...');
-      console.log('🔄 [GoogleAuth] isConfigured:', isConfigured);
-      console.log('🔄 [GoogleAuth] Current config - webClientId:', WEB_CLIENT_ID);
-      console.log('🔄 [GoogleAuth] Current config - iosClientId:', IOS_CLIENT_ID);
-
       // Check if play services are available (Android only)
-      console.log('🔄 [GoogleAuth] Checking play services...');
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      console.log('🔄 [GoogleAuth] Play services check passed');
 
       // Sign in
-      console.log('🔄 [GoogleAuth] Calling GoogleSignin.signIn()...');
       const response = await GoogleSignin.signIn();
-      console.log('🔄 [GoogleAuth] signIn response received:', JSON.stringify(response, null, 2));
 
       if (isSuccessResponse && isSuccessResponse(response)) {
         const { data } = response;
@@ -154,8 +134,6 @@ export function useGoogleAuth() {
         if (!idToken) {
           throw new Error('No ID token received from Google');
         }
-
-        console.log('✅ [GoogleAuth] Sign-in successful:', data.user.email);
 
         return {
           idToken,
@@ -174,7 +152,6 @@ export function useGoogleAuth() {
       console.error('❌ [GoogleAuth] Sign-in failed:', error);
 
       if (isErrorWithCode && isErrorWithCode(error)) {
-        console.log('❌ [GoogleAuth] Error has code:', error.code);
         switch (error.code) {
           case statusCodes?.SIGN_IN_CANCELLED:
             throw { code: 'CANCELLED', message: 'Sign-in was cancelled' };
@@ -198,7 +175,6 @@ export function useGoogleAuth() {
 
     try {
       await GoogleSignin.signOut();
-      console.log('✅ [GoogleAuth] Signed out successfully');
     } catch (error) {
       console.error('❌ [GoogleAuth] Sign-out failed:', error);
     }

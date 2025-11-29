@@ -124,7 +124,6 @@ public class NotificationService {
     @Transactional
     public void createFriendRequestNotification(User requester, User accepter, Long friendshipId) {
         try {
-            System.out.println("DEBUG: Creating friend request notification from " + requester.getId() + " to " + accepter.getId() + " with friendshipId: " + friendshipId);
             Notification notification = createNotification(
                 accepter,
                 "👋 New Friend Request",
@@ -135,13 +134,10 @@ public class NotificationService {
                 friendshipId,
                 "FRIENDSHIP"
             );
-            System.out.println("DEBUG: Successfully created notification with ID: " + notification.getId() + ", relatedEntityId: " + notification.getRelatedEntityId() + ", relatedEntityType: " + notification.getRelatedEntityType());
 
             // Send push notification
             pushNotificationService.sendPushNotification(accepter, notification);
         } catch (Exception e) {
-            System.err.println("ERROR: Failed to create friend request notification: " + e.getMessage());
-            e.printStackTrace();
             throw e;
         }
     }
@@ -152,7 +148,6 @@ public class NotificationService {
     @Transactional
     public void createFriendRequestAcceptedNotification(User accepter, User requester) {
         try {
-            System.out.println("DEBUG: Creating friend request accepted notification from " + accepter.getId() + " to " + requester.getId());
             Notification notification = createNotification(
                 requester,
                 "Friend Request Accepted",
@@ -163,13 +158,10 @@ public class NotificationService {
                 accepter.getId(),
                 "USER"
             );
-            System.out.println("DEBUG: Successfully created friend request accepted notification with ID: " + notification.getId());
 
             // Send push notification
             pushNotificationService.sendPushNotification(requester, notification);
         } catch (Exception e) {
-            System.err.println("ERROR: Failed to create friend request accepted notification: " + e.getMessage());
-            e.printStackTrace();
             throw e;
         }
     }
@@ -180,21 +172,14 @@ public class NotificationService {
     @Transactional
     public void deleteFriendRequestNotification(Long friendshipId) {
         try {
-            System.out.println("DEBUG: Attempting to delete friend request notification for friendshipId: " + friendshipId);
             List<Notification> notifications = notificationRepository
                 .findByRelatedEntityIdAndRelatedEntityTypeAndNotificationType(
                     friendshipId, "FRIENDSHIP", NotificationType.FRIEND_REQUEST);
 
             if (!notifications.isEmpty()) {
-                System.out.println("DEBUG: Found " + notifications.size() + " friend request notification(s) to delete");
                 notificationRepository.deleteAll(notifications);
-                System.out.println("DEBUG: Successfully deleted friend request notification(s) for friendshipId: " + friendshipId);
-            } else {
-                System.out.println("DEBUG: No friend request notifications found for friendshipId: " + friendshipId);
             }
         } catch (Exception e) {
-            System.err.println("ERROR: Failed to delete friend request notification for friendshipId " + friendshipId + ": " + e.getMessage());
-            e.printStackTrace();
             throw e;
         }
     }
@@ -207,21 +192,14 @@ public class NotificationService {
     @Transactional
     public void deleteGroupJoinRequestNotification(Long membershipId) {
         try {
-            System.out.println("DEBUG: Attempting to delete group join request notification for membershipId: " + membershipId);
             List<Notification> notifications = notificationRepository
                 .findByRelatedEntityIdAndRelatedEntityTypeAndNotificationType(
                     membershipId, "GROUP_MEMBERSHIP", NotificationType.GROUP_JOIN_REQUEST);
 
             if (!notifications.isEmpty()) {
-                System.out.println("DEBUG: Found " + notifications.size() + " group join request notification(s) to delete");
                 notificationRepository.deleteAll(notifications);
-                System.out.println("DEBUG: Successfully deleted group join request notification(s) for membershipId: " + membershipId);
-            } else {
-                System.out.println("DEBUG: No group join request notifications found for membershipId: " + membershipId);
             }
         } catch (Exception e) {
-            System.err.println("ERROR: Failed to delete group join request notification for membershipId " + membershipId + ": " + e.getMessage());
-            e.printStackTrace();
             throw e;
         }
     }

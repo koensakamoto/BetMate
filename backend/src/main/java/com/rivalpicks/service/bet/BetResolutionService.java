@@ -160,18 +160,8 @@ public class BetResolutionService {
             throw new BetResolutionException("Only the bet creator can resolve this bet");
         }
 
-        System.out.println("DEBUG resolveByCreator: BetId=" + bet.getId() +
-                          ", Resolver=" + resolver.getUsername() +
-                          ", Outcome=" + outcome +
-                          ", Option1=" + bet.getOption1() +
-                          ", Option2=" + bet.getOption2() +
-                          ", Option3=" + bet.getOption3() +
-                          ", Option4=" + bet.getOption4());
-
         bet.resolve(outcome);
         bet = betRepository.save(bet);
-
-        System.out.println("DEBUG resolveByCreator: Bet saved with outcome=" + bet.getOutcome());
 
         // Settle all participations (calculate winnings, update user stats)
         betParticipationService.settleParticipationsForResolvedBet(bet);
@@ -577,7 +567,7 @@ public class BetResolutionService {
             eventPublisher.publishEvent(event);
         } catch (Exception e) {
             // Don't fail bet resolution if event publishing fails
-            System.err.println("Failed to publish bet resolved event for bet " + bet.getId() + ": " + e.getMessage());
+            // Silent failure - event publishing is not critical
         }
     }
 
@@ -882,18 +872,11 @@ public class BetResolutionService {
         // A vote counts if it has winner selections in the join table
         long votesWithWinners = betResolutionVoteWinnerRepository.countVotesWithWinnerSelectionsForBet(bet);
 
-        System.out.println("DEBUG: checkAndResolveIfPredictionWinnerConsensusReached - " +
-                          "betId=" + bet.getId() +
-                          ", totalResolvers=" + totalResolvers +
-                          ", votesWithWinners=" + votesWithWinners);
-
         // Only resolve if ALL resolvers have voted
         if (votesWithWinners < totalResolvers) {
-            System.out.println("DEBUG: Not all resolvers have voted yet (" + votesWithWinners + "/" + totalResolvers + "), not resolving");
             return false;
         }
 
-        System.out.println("DEBUG: All resolvers voted, proceeding to resolve bet " + bet.getId());
         // All resolvers voted - resolve using consensus
         return resolvePredictionBetWithWinnerVotes(bet, triggeringVoter);
     }

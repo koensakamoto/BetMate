@@ -5,8 +5,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import * as SplashScreen from 'expo-splash-screen';
+import Toast from 'react-native-toast-message';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
+import { toastConfig } from '../components/ui/ToastConfig';
 
 // Keep splash screen visible while we fetch auth state
 SplashScreen.preventAutoHideAsync();
@@ -56,6 +58,7 @@ export default function RootLayout() {
             <BottomSheetModalProvider>
               <StatusBar style="light" />
               <RootLayoutNav />
+              <Toast config={toastConfig} position="top" topOffset={0} />
             </BottomSheetModalProvider>
           </NotificationProvider>
         </AuthProvider>

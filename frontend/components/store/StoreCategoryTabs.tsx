@@ -37,6 +37,11 @@ function StoreCategoryTabs({ activeCategory, onCategoryChange }: StoreCategoryTa
               <TouchableOpacity
                 key={category.id}
                 onPress={() => onCategoryChange(category.id)}
+                accessible={true}
+                accessibilityRole="tab"
+                accessibilityLabel={`${category.name} category`}
+                accessibilityState={{ selected: isActive }}
+                accessibilityHint={isActive ? 'Currently selected' : `Double tap to view ${category.name.toLowerCase()} items`}
                 style={{
                   backgroundColor: isActive ? '#00D4AA' : 'rgba(255, 255, 255, 0.08)',
                   paddingHorizontal: 16,
@@ -52,7 +57,7 @@ function StoreCategoryTabs({ activeCategory, onCategoryChange }: StoreCategoryTa
                   color: isActive ? '#000000' : '#ffffff',
                   fontSize: 13,
                   fontWeight: '600'
-                }}>
+                }} accessible={false}>
                   {category.name}
                 </Text>
               </TouchableOpacity>

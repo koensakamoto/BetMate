@@ -138,7 +138,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
         parentMessageId: replyToMessage?.id
       };
 
-      console.log(`[MessageInput] 🔍 SENDING MESSAGE: groupId=${groupId}, content="${trimmedMessage}", request=`, request);
       await onSendMessage(request);
 
       // Clear the input and reset states with smooth spring animation

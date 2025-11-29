@@ -130,7 +130,7 @@ public class FileStorageService {
             Files.deleteIfExists(filePath);
         } catch (IOException ex) {
             // Log but don't throw - deletion failure shouldn't block operations
-            System.err.println("Could not delete file: " + fileName);
+            // Silent failure - deletion is not critical
         }
     }
 

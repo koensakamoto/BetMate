@@ -19,15 +19,6 @@ interface GroupPreviewProps {
 const GroupPreview: React.FC<GroupPreviewProps> = ({ groupData }) => {
   const insets = useSafeAreaInsets();
 
-  // Debug logging
-  console.log('[GroupPreview] Rendering with groupData:', {
-    id: groupData.id,
-    name: groupData.name,
-    image: groupData.image,
-    imageType: typeof groupData.image,
-    hasImage: !!groupData.image
-  });
-
   // Get group initials from name
   const getGroupInitials = (name: string) => {
     if (!name) return 'G';

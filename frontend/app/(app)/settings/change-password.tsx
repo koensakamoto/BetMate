@@ -55,7 +55,6 @@ export default function ChangePassword() {
     if (Platform.OS === 'android') {
       const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
         if (isLoading) {
-          console.log('Back button pressed while loading - prevented');
           return true; // Prevent default back behavior
         }
         return false; // Allow default back behavior
@@ -116,12 +115,10 @@ export default function ChangePassword() {
       setIsLoading(true);
       setErrors({}); // Clear any previous errors
 
-      console.log('Attempting to change password...');
       await authService.changePassword({
         currentPassword: formData.currentPassword,
         newPassword: formData.newPassword,
       });
-      console.log('Password change successful!');
 
       // Success - navigate back with success message
       Alert.alert(
@@ -135,8 +132,6 @@ export default function ChangePassword() {
         ]
       );
     } catch (error) {
-      console.log('Password change error caught:', error);
-
       // Handle specific error types
       if (isNetworkError(error)) {
         Alert.alert(
@@ -174,27 +169,20 @@ export default function ChangePassword() {
         errorMessage = error.message;
       }
 
-      console.log('Error message:', errorMessage);
-
       // Check if it's a current password error
       if (errorMessage.toLowerCase().includes('current password')) {
-        console.log('Setting current password error');
         setErrors({ currentPassword: errorMessage });
       } else if (errorMessage.toLowerCase().includes('password must contain')) {
         // Password complexity error
-        console.log('Setting new password complexity error');
         setErrors({ newPassword: errorMessage });
       } else if (errorMessage.toLowerCase().includes('same as') || errorMessage.toLowerCase().includes('cannot be the same')) {
-        console.log('Setting same password error');
         setErrors({ newPassword: 'New password cannot be the same as your current password' });
       } else {
         // Generic error - show inline on current password field
-        console.log('Setting generic error on current password field');
         setErrors({ currentPassword: errorMessage });
       }
     } finally {
       setIsLoading(false);
-      console.log('Password change attempt complete');
     }
   };
 

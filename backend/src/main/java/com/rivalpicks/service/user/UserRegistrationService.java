@@ -60,15 +60,10 @@ public class UserRegistrationService {
         // Flush to ensure the User ID is generated before creating UserSettings
         entityManager.flush();
 
-        System.out.println("DEBUG: User ID after flush: " + savedUser.getId());
-
         // Create default settings for the new user with PUBLIC profile
         UserSettings settings = UserSettings.createDefaultSettings(savedUser);
-        System.out.println("DEBUG: UserSettings userId after creation (should be null, @MapsId will set it): " + settings.getUserId());
-        System.out.println("DEBUG: UserSettings user ID from relationship: " + (settings.getUser() != null ? settings.getUser().getId() : "null"));
 
         UserSettings savedSettings = userSettingsRepository.save(settings);
-        System.out.println("DEBUG: UserSettings userId after save: " + savedSettings.getUserId());
 
         return savedUser;
     }

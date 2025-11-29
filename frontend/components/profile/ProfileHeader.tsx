@@ -187,6 +187,14 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         <TouchableOpacity
           onPress={onActionPress}
           disabled={isLoading || actionStyle === 'disabled'}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={isLoading ? `${actionText}, loading` : actionText}
+          accessibilityHint={actionStyle === 'disabled' ? undefined : `Double tap to ${actionText.toLowerCase()}`}
+          accessibilityState={{
+            disabled: isLoading || actionStyle === 'disabled',
+            busy: isLoading,
+          }}
           style={{
             backgroundColor: buttonStyle.backgroundColor,
             borderRadius: 12,
@@ -210,12 +218,13 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             size={18}
             color={buttonStyle.textColor}
             style={{ marginRight: 8 }}
+            accessible={false}
           />
           <Text style={{
             fontSize: 16,
             fontWeight: '600',
             color: buttonStyle.textColor
-          }}>
+          }} accessible={false}>
             {actionText}
           </Text>
         </TouchableOpacity>

@@ -122,16 +122,10 @@ public class BetController {
             Authentication authentication) {
         
         try {
-            System.out.println("DEBUG: Received bet creation request: " + request.getTitle());
-            System.out.println("DEBUG: Group ID: " + request.getGroupId());
-            System.out.println("DEBUG: Bet Type: " + request.getBetType());
-            
             User currentUser = userService.getUserByUsername(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-            System.out.println("DEBUG: Current user: " + currentUser.getUsername());
-            
+
             Group group = groupService.getGroupById(request.getGroupId());
-            System.out.println("DEBUG: Group found: " + group.getGroupName());
             
             // Convert DTO to creation request
             BetCreationService.BetCreationRequest creationRequest = new BetCreationService.BetCreationRequest(
@@ -155,16 +149,13 @@ public class BetController {
                 request.getResolverUserIds()
             );
             
-            System.out.println("DEBUG: About to call betCreationService");
             Bet bet = betCreationService.createBet(currentUser, group, creationRequest);
-            System.out.println("DEBUG: Bet created with ID: " + bet.getId());
             
             BetResponseDto response = convertToDetailedResponse(bet, currentUser);
             
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (Exception e) {
-            System.err.println("ERROR creating bet: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error creating bet: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -224,19 +215,13 @@ public class BetController {
         
         // Get user's participations and extract the bets (including ACTIVE, WON, LOST, etc.)
         List<BetParticipation> participations = betParticipationService.getUserParticipations(currentUser);
-        System.out.println("DEBUG: User " + currentUser.getUsername() + " has " + participations.size() + " total participations");
 
         // Include all participation statuses (ACTIVE, WON, LOST) for "My Bets"
         List<Bet> bets = participations.stream()
             .map(BetParticipation::getBet)
             .distinct()
             .toList();
-        System.out.println("DEBUG: Found " + bets.size() + " unique bets from participations");
-        
-        for (Bet bet : bets) {
-            System.out.println("DEBUG: Bet ID=" + bet.getId() + ", Title=" + bet.getTitle() + ", Creator=" + bet.getCreator().getUsername());
-        }
-            
+
         List<BetSummaryResponseDto> response = bets.stream()
             .map(bet -> convertToSummaryResponse(bet, currentUser))
             .toList();
@@ -338,10 +323,6 @@ public class BetController {
                     throw new IllegalArgumentException("Predicted value is required for prediction bets");
                 }
 
-                System.out.println("DEBUG: Placing PREDICTION bet - User: " + currentUser.getUsername() +
-                                 ", BetId: " + betId + ", PredictedValue: " + request.getPredictedValue() +
-                                 ", Amount: " + request.getAmount());
-
                 participation = betParticipationService.placeBetWithPrediction(
                     currentUser,
                     betId,
@@ -355,10 +336,6 @@ public class BetController {
                 if (request.getChosenOption() == null) {
                     throw new IllegalArgumentException("Chosen option is required for non-prediction bets");
                 }
-
-                System.out.println("DEBUG: Placing bet - User: " + currentUser.getUsername() +
-                                 ", BetId: " + betId + ", Option: " + request.getChosenOption() +
-                                 ", Amount: " + request.getAmount());
 
                 participation = betParticipationService.placeBet(
                     currentUser,
@@ -375,8 +352,7 @@ public class BetController {
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            System.err.println("ERROR placing bet: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error placing bet: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -402,9 +378,6 @@ public class BetController {
             // Check which resolution mode to use
             if (request.getWinnerUserIds() != null && !request.getWinnerUserIds().isEmpty()) {
                 // Winner-based resolution (for PREDICTION bets)
-                System.out.println("DEBUG: Resolving bet by winners - User: " + currentUser.getUsername() +
-                                 ", BetId: " + betId + ", Winners: " + request.getWinnerUserIds());
-
                 resolvedBet = betResolutionService.resolveBetByWinners(
                     betId,
                     currentUser,
@@ -413,9 +386,6 @@ public class BetController {
                 );
             } else if (request.getOutcome() != null && !request.getOutcome().trim().isEmpty()) {
                 // Option-based resolution (for BINARY/MULTIPLE_CHOICE bets)
-                System.out.println("DEBUG: Resolving bet by outcome - User: " + currentUser.getUsername() +
-                                 ", BetId: " + betId + ", Outcome: " + request.getOutcome());
-
                 Bet.BetOutcome outcome = convertStringToOutcome(request.getOutcome());
 
                 resolvedBet = betResolutionService.resolveBet(
@@ -433,8 +403,7 @@ public class BetController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            System.err.println("ERROR resolving bet: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error resolving bet: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -463,9 +432,6 @@ public class BetController {
 
             if (request.isWinnerBasedVote()) {
                 // Winner-based voting for PREDICTION bets
-                System.out.println("DEBUG: Voting on prediction resolution - User: " + currentUser.getUsername() +
-                                 ", BetId: " + betId + ", Winners: " + request.getWinnerUserIds());
-
                 betResolutionService.voteOnPredictionResolution(
                     betId,
                     currentUser,
@@ -474,9 +440,6 @@ public class BetController {
                 );
             } else {
                 // Outcome-based voting for BINARY/MULTIPLE_CHOICE bets
-                System.out.println("DEBUG: Voting on resolution - User: " + currentUser.getUsername() +
-                                 ", BetId: " + betId + ", Vote: " + request.getOutcome());
-
                 Bet.BetOutcome outcome = convertStringToOutcome(request.getOutcome());
 
                 betResolutionService.voteOnBetResolution(
@@ -495,8 +458,7 @@ public class BetController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            System.err.println("ERROR voting on resolution: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error voting on resolution: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -629,8 +591,7 @@ public class BetController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            System.err.println("ERROR getting bet participations: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error getting bet participations: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -674,29 +635,18 @@ public class BetController {
 
         // Set bet options
         List<String> options = new ArrayList<>();
-        System.out.println("DEBUG: Building options for bet " + bet.getId());
-        System.out.println("DEBUG: option1 = '" + bet.getOption1() + "'");
-        System.out.println("DEBUG: option2 = '" + bet.getOption2() + "'");
-        System.out.println("DEBUG: option3 = '" + bet.getOption3() + "'");
-        System.out.println("DEBUG: option4 = '" + bet.getOption4() + "'");
-
         if (bet.getOption1() != null && !bet.getOption1().trim().isEmpty()) {
             options.add(bet.getOption1());
-            System.out.println("DEBUG: Added option1: " + bet.getOption1());
         }
         if (bet.getOption2() != null && !bet.getOption2().trim().isEmpty()) {
             options.add(bet.getOption2());
-            System.out.println("DEBUG: Added option2: " + bet.getOption2());
         }
         if (bet.getOption3() != null && !bet.getOption3().trim().isEmpty()) {
             options.add(bet.getOption3());
-            System.out.println("DEBUG: Added option3: " + bet.getOption3());
         }
         if (bet.getOption4() != null && !bet.getOption4().trim().isEmpty()) {
             options.add(bet.getOption4());
-            System.out.println("DEBUG: Added option4: " + bet.getOption4());
         }
-        System.out.println("DEBUG: Final options list: " + options);
         response.setOptions(options.toArray(new String[0]));
 
         // Set user context
@@ -858,7 +808,6 @@ public class BetController {
             // Always try to get vote distribution
             try {
                 var voteCounts = betResolutionService.getVoteCounts(bet.getId());
-                System.out.println("DEBUG: Vote counts for bet " + bet.getId() + ": " + voteCounts);
                 if (voteCounts != null && !voteCounts.isEmpty()) {
                     votingProgress.setVoteDistribution(
                         voteCounts.entrySet().stream()
@@ -869,8 +818,7 @@ public class BetController {
                     );
                 }
             } catch (Exception e) {
-                System.err.println("ERROR getting vote counts for bet " + bet.getId() + ": " + e.getMessage());
-                e.printStackTrace();
+                logger.error("Error getting vote counts for bet {}: {}", bet.getId(), e.getMessage());
             }
 
             response.setVotingProgress(votingProgress);
@@ -936,8 +884,6 @@ public class BetController {
 
         // Fetch first 3 participants for preview avatars
         List<BetParticipation> participations = betParticipationService.getBetParticipations(bet.getId());
-        System.out.println("🔍 [BetController] Bet: " + bet.getTitle() +
-                          ", Total participants fetched: " + participations.size());
 
         List<MemberPreviewDto> participantPreviews = participations.stream()
             .limit(3)
@@ -952,14 +898,6 @@ public class BetController {
                 );
             })
             .collect(Collectors.toList());
-
-        System.out.println("🔍 [BetController] Participant previews created: " + participantPreviews.size());
-        participantPreviews.forEach(pp ->
-            System.out.println("   - Participant: " + pp.getUsername() +
-                              ", firstName: " + pp.getFirstName() +
-                              ", lastName: " + pp.getLastName() +
-                              ", profileImageUrl: " + pp.getProfileImageUrl())
-        );
 
         response.setParticipantPreviews(participantPreviews);
 
@@ -1091,7 +1029,6 @@ public class BetController {
                 // For exact value bets, the outcome might be a JSON string with winners
                 // or a specific prediction value. For now, we'll treat these as OPTION_1
                 // The actual resolution logic will be handled by the service layer
-                System.out.println("DEBUG: Converting non-standard outcome: " + outcomeString + " -> OPTION_1");
                 return Bet.BetOutcome.OPTION_1;
         }
     }

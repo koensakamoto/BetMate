@@ -53,34 +53,6 @@ export default function CreateBet() {
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
-  // DEBUG: Render counter
-  const renderCount = useRef(0);
-  renderCount.current++;
-  console.log('[CreateBet][RENDER] Count:', renderCount.current);
-
-  // DEBUG: Scroll handler
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const y = event.nativeEvent.contentOffset.y;
-    console.log('[CreateBet][SCROLL] Position:', y);
-  };
-
-  // DEBUG: Keyboard event listeners
-  useEffect(() => {
-    const keyboardWillShow = Keyboard.addListener('keyboardWillShow', () => {
-      console.log('[CreateBet][KEYBOARD] Will show');
-    });
-    const keyboardWillHide = Keyboard.addListener('keyboardWillHide', () => {
-      console.log('[CreateBet][KEYBOARD] Will hide');
-    });
-    const keyboardDidHide = Keyboard.addListener('keyboardDidHide', () => {
-      console.log('[CreateBet][KEYBOARD] Did hide');
-    });
-    return () => {
-      keyboardWillShow.remove();
-      keyboardWillHide.remove();
-      keyboardDidHide.remove();
-    };
-  }, []);
 
   const sports = [
     { id: 'sports', name: 'Sports', icon: 'sports-soccer', color: '#4CAF50' },
@@ -101,7 +73,6 @@ export default function CreateBet() {
       try {
         const members = await groupService.getGroupMembers(parseInt(groupId as string));
         setGroupMembers(members);
-        console.log(`[CreateBet] Loaded ${members.length} group members`);
       } catch (error) {
         console.error('[CreateBet] Failed to fetch group members:', error);
         Alert.alert('Error', 'Failed to load group members');
@@ -177,7 +148,6 @@ export default function CreateBet() {
             setIsCreating(true);
             try {
               const betGroupId = groupId ? parseInt(groupId as string) : 1;
-              console.log(`[CreateBet] Creating bet for groupId: ${betGroupId}`);
 
               const createBetRequest: CreateBetRequest = {
                 groupId: betGroupId,
@@ -392,8 +362,6 @@ export default function CreateBet() {
         extraScrollHeight={20}
         enableOnAndroid={true}
         resetScrollToCoords={null}
-        onScroll={handleScroll}
-        scrollEventThrottle={100}
       >
           {/* Header with Progress */}
           <View style={{

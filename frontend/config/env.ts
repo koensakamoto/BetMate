@@ -28,11 +28,10 @@ const getEnvironment = (): Environment => {
 
 const getApiBaseUrl = (): string => {
   const env = getEnvironment();
-  
+
   switch (env) {
     case 'development':
       // Use laptop IP for mobile device testing
-      console.log(`[DEVELOPMENT] 🔧 Using laptop IP for mobile device testing`);
       return 'http://192.168.1.231:8080';
 
     case 'staging':
@@ -53,12 +52,7 @@ const getWebSocketUrl = (apiUrl: string): string => {
 const createEnvConfig = (): EnvConfig => {
   const env = getEnvironment();
   const apiBaseUrl = getApiBaseUrl();
-  
-  // Debug logging for development
-  if (env === 'development') {
-    console.log(`[${env.toUpperCase()}] 🔧 API Base URL: ${apiBaseUrl}`);
-  }
-  
+
   return {
     API_BASE_URL: apiBaseUrl,
     WS_BASE_URL: getWebSocketUrl(apiBaseUrl),

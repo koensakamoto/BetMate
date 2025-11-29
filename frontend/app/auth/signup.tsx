@@ -150,10 +150,8 @@ export default function Signup() {
       setSocialLoading(provider);
 
       if (provider === 'google') {
-        console.log('🔄 [SIGNUP] Starting Google sign-in...');
         const result = await googleSignIn();
 
-        console.log('✅ [SIGNUP] Google sign-in successful, logging in...');
         await loginWithGoogle({
           idToken: result.idToken,
           email: result.user.email,
@@ -162,14 +160,11 @@ export default function Signup() {
           profileImageUrl: result.user.photo || undefined,
         });
 
-        console.log('✅ [SIGNUP] Google login complete!');
         // Navigation will be handled by auth state change
       } else if (provider === 'apple') {
         // Don't check isAppleAvailable - just try the sign-in and let it fail with a better error
-        console.log('🔄 [SIGNUP] Starting Apple sign-in...');
         const result = await appleSignIn();
 
-        console.log('✅ [SIGNUP] Apple sign-in successful, logging in...');
         await loginWithApple({
           identityToken: result.identityToken,
           userId: result.user.id,
@@ -178,11 +173,10 @@ export default function Signup() {
           lastName: result.user.fullName?.familyName || undefined,
         });
 
-        console.log('✅ [SIGNUP] Apple login complete!');
         // Navigation will be handled by auth state change
       }
     } catch (error) {
-      console.error('❌ [SIGNUP] Social auth failed:', error);
+      console.error('Social auth failed:', error);
 
       if (hasErrorCode(error) && error.code === 'CANCELLED') {
         // User cancelled, don't show error
@@ -200,10 +194,7 @@ export default function Signup() {
   };
 
   const handleSignup = async () => {
-    console.log('🚀 [SIGNUP] Starting signup process');
-
     if (!validateForm()) {
-      console.log('❌ [SIGNUP] Form validation failed');
       return;
     }
 
@@ -213,20 +204,12 @@ export default function Signup() {
       password: formData.password
     };
 
-    console.log('📝 [SIGNUP] Form data prepared:', {
-      username: signupData.username,
-      email: signupData.email,
-      passwordLength: signupData.password.length
-    });
-
     try {
-      console.log('🔄 [SIGNUP] Calling signup function...');
       await signup(signupData);
-      console.log('✅ [SIGNUP] Signup successful!');
       // Show profile completion modal
       setShowProfileModal(true);
     } catch (error) {
-      console.error('❌ [SIGNUP] Signup failed with error:', error);
+      console.error('Signup failed with error:', error);
 
       // Check for field-specific errors
       const errorCode = getErrorCode(error);

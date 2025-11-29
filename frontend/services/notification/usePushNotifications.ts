@@ -15,7 +15,6 @@ if (!isExpoGo) {
   try {
     messaging = require('@react-native-firebase/messaging').default;
   } catch (e) {
-    console.log('Firebase messaging not available (likely Expo Go environment)');
   }
 }
 
@@ -63,14 +62,12 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     try {
       // Check if Firebase messaging is available (not in Expo Go)
       if (!messaging) {
-        console.log('Push notifications not available in Expo Go. Use a development build for full functionality.');
         setError('Push notifications not available in Expo Go');
         return null;
       }
 
       // Check if it's a physical device (push notifications don't work on simulators/emulators)
       if (!Device.isDevice) {
-        console.log('Push notifications require a physical device');
         setError('Push notifications require a physical device');
         return null;
       }
@@ -83,7 +80,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
         if (!enabled) {
-          console.log('Push notification permissions not granted');
           setError('Push notification permissions not granted');
           return null;
         }
@@ -97,7 +93,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
       // Get the FCM token
       const token = await messaging().getToken();
-      console.log('FCM Token:', token);
 
       // Determine platform
       const platform = Platform.OS === 'ios' ? 'IOS' : Platform.OS === 'android' ? 'ANDROID' : 'WEB';
@@ -108,7 +103,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           token,
           platform,
         });
-        console.log('FCM token registered with backend');
       } catch (backendError) {
         console.error('Failed to register FCM token with backend:', backendError);
         // Don't fail completely - token is still valid locally
@@ -153,7 +147,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     try {
       // Remove token from backend
       await apiClient.delete('/users/push-token');
-      console.log('FCM token removed from backend');
 
       // Delete the FCM token from the device (only if messaging is available)
       if (messaging) {
@@ -171,7 +164,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
    */
   const handleNotificationResponse = useCallback((response: Notifications.NotificationResponse) => {
     const data = response.notification.request.content.data;
-    console.log('Notification tapped:', data);
 
     // Navigate based on notification type
     if (data?.type === 'GROUP_MESSAGE' && data?.groupId) {
@@ -189,7 +181,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   useEffect(() => {
     // Listener for notifications received while app is in foreground
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Notification received in foreground:', notification);
       setNotification(notification);
     });
 
@@ -198,7 +189,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     // Skip Firebase messaging setup if not available (Expo Go)
     if (!messaging) {
-      console.log('FCM listeners skipped - not available in Expo Go');
       return () => {
         notificationListener.current?.remove();
         responseListener.current?.remove();
@@ -207,8 +197,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     // FCM foreground message handler - display as local notification
     const unsubscribeForeground = messaging().onMessage(async (remoteMessage: any) => {
-      console.log('FCM message received in foreground:', remoteMessage);
-
       // Display as local notification using expo-notifications
       if (remoteMessage.notification) {
         await Notifications.scheduleNotificationAsync({
@@ -225,7 +213,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     // FCM background/quit message handler for navigation
     const unsubscribeBackground = messaging().onNotificationOpenedApp((remoteMessage: any) => {
-      console.log('FCM notification opened app from background:', remoteMessage);
       const data = remoteMessage.data;
 
       if (data?.type === 'GROUP_MESSAGE' && data?.groupId) {
@@ -243,7 +230,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       .getInitialNotification()
       .then((remoteMessage: any) => {
         if (remoteMessage) {
-          console.log('FCM notification opened app from quit state:', remoteMessage);
           const data = remoteMessage.data;
 
           if (data?.type === 'GROUP_MESSAGE' && data?.groupId) {
@@ -259,7 +245,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     // FCM token refresh handler
     const unsubscribeTokenRefresh = messaging().onTokenRefresh(async (newToken: string) => {
-      console.log('FCM token refreshed:', newToken);
       setFcmToken(newToken);
 
       // Send new token to backend
@@ -269,7 +254,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           token: newToken,
           platform,
         });
-        console.log('Refreshed FCM token registered with backend');
       } catch (err) {
         console.error('Failed to register refreshed FCM token:', err);
       }

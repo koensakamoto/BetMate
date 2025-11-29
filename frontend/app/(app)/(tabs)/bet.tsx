@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert, RefreshControl, ActivityIndicator } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import BetCard from '../../../components/bet/BetCard';
 import { betService, BetSummaryResponse } from '../../../services/bet/betService';
-import { SkeletonBetCard } from '../../../components/common/SkeletonCard';
+import { SkeletonBetCard, SkeletonOwedStakesCard } from '../../../components/common/SkeletonCard';
 import * as Haptics from 'expo-haptics';
 import { parseBackendDate } from '../../../utils/dateUtils';
 import { colors, cache } from '../../../constants/theme';
@@ -606,9 +606,11 @@ export default function Bet() {
                 </View>
 
                 {loadingUnfulfilledBets ? (
-                  <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                  </View>
+                  <>
+                    <SkeletonOwedStakesCard />
+                    <SkeletonOwedStakesCard />
+                    <SkeletonOwedStakesCard />
+                  </>
                 ) : (() => {
                   // Determine if bet is owed to user or user owes based on participation status
                   const isOwedToUser = (bet: BetSummaryResponse) => {

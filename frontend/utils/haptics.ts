@@ -30,7 +30,6 @@ const safeHaptic = async (hapticFn: () => Promise<void>) => {
     await hapticFn();
   } catch (error) {
     // Silently fail - haptics are non-critical
-    console.debug('Haptic feedback failed:', error);
   }
 };
 

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { betService, BetResponse } from '../../../services/bet/betService';
 import { FulfillmentTracker } from '../../../components/bet/FulfillmentTracker';
+import { SkeletonFulfillmentDetails } from '../../../components/common/SkeletonCard';
 import { haptic } from '../../../utils/haptics';
 
 export default function FulfillmentDetails() {
@@ -31,9 +32,9 @@ export default function FulfillmentDetails() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f', paddingTop: insets.top }}>
         <StatusBar barStyle="light-content" />
-        <ActivityIndicator size="large" color="#00D4AA" />
+        <SkeletonFulfillmentDetails />
       </View>
     );
   }

@@ -54,12 +54,8 @@ const GroupCard: React.FC<GroupCardProps> = ({
     }, [name]);
 
     const renderMemberAvatars = () => {
-        // Debug logging
-        console.log('[GroupCard]', name, '- memberPreviews:', memberPreviews, 'memberCount:', memberCount);
-
         // If no member data but we know there are members, return null (don't show empty state)
         if (!memberPreviews || memberPreviews.length === 0) {
-            console.log('[GroupCard] No member previews available for:', name);
             // Don't show anything if no preview data
             return null;
         }

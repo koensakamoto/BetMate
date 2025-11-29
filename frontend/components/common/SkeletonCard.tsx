@@ -451,3 +451,142 @@ export function SkeletonGroupDetail() {
     </View>
   );
 }
+
+/**
+ * Skeleton for Owed Stakes Card
+ * Matches the structure of the owed stakes cards in bet.tsx
+ */
+export function SkeletonOwedStakesCard() {
+  return (
+    <View
+      style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.03)',
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        position: 'relative'
+      }}
+    >
+      {/* Status Badge - top right */}
+      <View style={{ position: 'absolute', top: 12, right: 12 }}>
+        <SkeletonCard width={60} height={22} borderRadius={6} />
+      </View>
+
+      {/* Win/Loss indicator */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+        <SkeletonCard width={16} height={16} borderRadius={8} />
+        <SkeletonCard width={60} height={12} borderRadius={6} />
+      </View>
+
+      {/* Bet Title */}
+      <SkeletonCard width="75%" height={18} borderRadius={8} style={{ marginBottom: 8 }} />
+
+      {/* Social Stake Description */}
+      <View style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        marginBottom: 12
+      }}>
+        <SkeletonCard width="90%" height={14} borderRadius={6} style={{ marginBottom: 4 }} />
+        <SkeletonCard width="60%" height={14} borderRadius={6} />
+      </View>
+
+      {/* Footer: Other party + Date */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <SkeletonCard width={24} height={24} borderRadius={12} />
+          <SkeletonCard width={80} height={12} borderRadius={6} />
+        </View>
+        <SkeletonCard width={70} height={12} borderRadius={6} />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Skeleton for Fulfillment Details Page
+ * Matches the structure of fulfillment-details/[id].tsx
+ */
+export function SkeletonFulfillmentDetails() {
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* Header */}
+      <View style={{
+        paddingHorizontal: 20,
+        paddingBottom: 16,
+        paddingTop: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          {/* Back button */}
+          <SkeletonCard width={40} height={40} borderRadius={20} />
+
+          {/* Title area */}
+          <View style={{ flex: 1, alignItems: 'center', marginHorizontal: 16 }}>
+            <SkeletonCard width={140} height={18} borderRadius={8} style={{ marginBottom: 6 }} />
+            <SkeletonCard width={180} height={13} borderRadius={6} />
+          </View>
+
+          {/* Spacer */}
+          <View style={{ width: 40 }} />
+        </View>
+      </View>
+
+      {/* Content */}
+      <View style={{ padding: 20, gap: 16 }}>
+        {/* What's at Stake Card */}
+        <View style={{
+          backgroundColor: colors.surfaceLight,
+          borderRadius: 18,
+          padding: 24,
+          borderWidth: 1,
+          borderColor: colors.borderLight
+        }}>
+          <SkeletonCard width={120} height={16} borderRadius={8} style={{ marginBottom: 12 }} />
+          <SkeletonCard width="100%" height={17} borderRadius={8} style={{ marginBottom: 6 }} />
+          <SkeletonCard width="70%" height={17} borderRadius={8} />
+        </View>
+
+        {/* Fulfillment Tracker Card */}
+        <View style={{
+          backgroundColor: colors.surfaceLight,
+          borderRadius: 18,
+          padding: 20,
+          borderWidth: 1,
+          borderColor: colors.borderLight
+        }}>
+          {/* Header */}
+          <SkeletonCard width={150} height={18} borderRadius={8} style={{ marginBottom: 20 }} />
+
+          {/* Participant rows */}
+          {[1, 2, 3].map((i) => (
+            <View key={i} style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 12,
+              borderBottomWidth: i < 3 ? 1 : 0,
+              borderBottomColor: colors.border
+            }}>
+              {/* Avatar */}
+              <SkeletonCard width={40} height={40} borderRadius={20} style={{ marginRight: 12 }} />
+
+              {/* User info */}
+              <View style={{ flex: 1 }}>
+                <SkeletonCard width={100} height={14} borderRadius={6} style={{ marginBottom: 4 }} />
+                <SkeletonCard width={70} height={12} borderRadius={6} />
+              </View>
+
+              {/* Status */}
+              <SkeletonCard width={80} height={28} borderRadius={14} />
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}

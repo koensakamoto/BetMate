@@ -128,10 +128,8 @@ export default function Login() {
       setSocialLoading(provider);
 
       if (provider === 'google') {
-        console.log('🔄 [LOGIN] Starting Google sign-in...');
         const result = await googleSignIn();
 
-        console.log('✅ [LOGIN] Google sign-in successful, logging in...');
         await loginWithGoogle({
           idToken: result.idToken,
           email: result.user.email,
@@ -140,14 +138,11 @@ export default function Login() {
           profileImageUrl: result.user.photo || undefined,
         });
 
-        console.log('✅ [LOGIN] Google login complete!');
         // Navigation will be handled by auth state change
       } else if (provider === 'apple') {
         // Don't check isAppleAvailable - just try the sign-in and let it fail with a better error
-        console.log('🔄 [LOGIN] Starting Apple sign-in...');
         const result = await appleSignIn();
 
-        console.log('✅ [LOGIN] Apple sign-in successful, logging in...');
         await loginWithApple({
           identityToken: result.identityToken,
           userId: result.user.id,
@@ -156,11 +151,10 @@ export default function Login() {
           lastName: result.user.fullName?.familyName || undefined,
         });
 
-        console.log('✅ [LOGIN] Apple login complete!');
         // Navigation will be handled by auth state change
       }
     } catch (error) {
-      console.error('❌ [LOGIN] Social auth failed:', error);
+      console.error('Social auth failed:', error);
 
       if (hasErrorCode(error) && error.code === 'CANCELLED') {
         // User cancelled, don't show error

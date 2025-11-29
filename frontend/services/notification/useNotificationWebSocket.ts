@@ -57,7 +57,6 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
         if (notification.actionUrl) {
           // Navigate to the action URL
           // This would need to be implemented based on your navigation setup
-          console.log('Navigate to:', notification.actionUrl);
         }
         browserNotification.close();
       };
@@ -77,9 +76,6 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
     if (!enabled) return;
 
     // This would integrate with your existing WebSocket service
-    // For now, we'll just log that we're setting up the connection
-    console.log('Setting up notification WebSocket connection...');
-
     // Example of how this would work with your existing WebSocket service:
     /*
     const unsubscribe = webSocketService.subscribe('/queue/notifications', (message) => {
@@ -94,14 +90,12 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
 
     // Cleanup function
     return () => {
-      console.log('Cleaning up notification WebSocket connection...');
     };
   }, [enabled, handleWebSocketNotification]);
 
   // Request notification permission
   const requestNotificationPermission = useCallback(async (): Promise<boolean> => {
     if (!('Notification' in window)) {
-      console.warn('This browser does not support notifications');
       return false;
     }
 
@@ -110,7 +104,6 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
     }
 
     if (Notification.permission === 'denied') {
-      console.warn('Notification permission denied');
       return false;
     }
 

@@ -27,17 +27,22 @@ function StoreHeader({ credits, onEarnCredits, onTransactionHistory }: StoreHead
           flex: 1
         }}>
           {/* Credits Balance */}
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'baseline',
-            marginBottom: 8
-          }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'baseline',
+              marginBottom: 8
+            }}
+            accessible={true}
+            accessibilityRole="text"
+            accessibilityLabel={`${credits.toLocaleString()} credits available`}
+          >
             <Text style={{
               fontSize: 32,
               fontWeight: '600',
               color: '#ffffff',
               letterSpacing: -0.8
-            }}>
+            }} accessible={false}>
               {credits.toLocaleString()}
             </Text>
             <Text style={{
@@ -45,7 +50,7 @@ function StoreHeader({ credits, onEarnCredits, onTransactionHistory }: StoreHead
               color: 'rgba(255, 255, 255, 0.5)',
               marginLeft: 8,
               fontWeight: '400'
-            }}>
+            }} accessible={false}>
               credits
             </Text>
           </View>
@@ -53,6 +58,10 @@ function StoreHeader({ credits, onEarnCredits, onTransactionHistory }: StoreHead
           {/* Simple Earn Button */}
           <TouchableOpacity
             onPress={onEarnCredits}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel="Earn more credits"
+            accessibilityHint="Double tap to see ways to earn credits"
             style={{
               alignSelf: 'flex-start',
               marginTop: 4
@@ -63,7 +72,7 @@ function StoreHeader({ credits, onEarnCredits, onTransactionHistory }: StoreHead
               color: 'rgba(255, 255, 255, 0.7)',
               fontWeight: '500',
               textDecorationLine: 'underline'
-            }}>
+            }} accessible={false}>
               Earn more
             </Text>
           </TouchableOpacity>
@@ -72,6 +81,10 @@ function StoreHeader({ credits, onEarnCredits, onTransactionHistory }: StoreHead
         {/* Transaction History Button */}
         <TouchableOpacity
           onPress={onTransactionHistory}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Transaction history"
+          accessibilityHint="Double tap to view your credit transaction history"
           style={{
             width: 40,
             height: 40,
@@ -84,7 +97,7 @@ function StoreHeader({ credits, onEarnCredits, onTransactionHistory }: StoreHead
             marginTop: 4
           }}
         >
-          <MaterialIcons name="receipt-long" size={18} color="rgba(255, 255, 255, 0.8)" />
+          <MaterialIcons name="receipt-long" size={18} color="rgba(255, 255, 255, 0.8)" accessible={false} />
         </TouchableOpacity>
       </View>
     </View>

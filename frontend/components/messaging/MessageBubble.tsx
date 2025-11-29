@@ -23,19 +23,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 }) => {
   // Improved message ownership logic with defensive checks - memoized for performance
   const isOwnMessage = useMemo(() => {
-    console.log(`[MessageBubble] DEBUG - Checking message ownership:`, {
-      messageId: message.id,
-      senderUsername: message.senderUsername,
-      currentUsername: currentUsername,
-      messageContent: message.content?.substring(0, 30) + '...'
-    });
-
     // Validate inputs first
     if (!message.senderUsername || !currentUsername) {
-      console.warn('[MessageBubble] Invalid username data:', {
-        senderUsername: message.senderUsername,
-        currentUsername: currentUsername
-      });
       return false; // Default to left alignment when data is invalid
     }
 
@@ -44,12 +33,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     const normalizedCurrent = currentUsername.trim().toLowerCase();
 
     const isOwn = normalizedSender === normalizedCurrent;
-    console.log(`[MessageBubble] DEBUG - Ownership result:`, {
-      normalizedSender,
-      normalizedCurrent,
-      isOwn,
-      messageContent: message.content?.substring(0, 30) + '...'
-    });
 
     return isOwn;
   }, [message.senderUsername, currentUsername, message.id, message.content]);

@@ -26,11 +26,8 @@ public class StoreDataInitializer {
         return args -> {
             // Only populate if store is empty
             if (storeItemRepository.count() > 0) {
-                System.out.println("Store items already exist, skipping initialization");
                 return;
             }
-
-            System.out.println("Initializing store items...");
 
             // Featured Items
             createItem("Diamond Hands", "1.5x payout on ALL bets for 24 hours. Stacks with other bonuses. Active immediately.",
@@ -125,8 +122,6 @@ public class StoreDataInitializer {
             createItem("Referral Multiplier", "Earn 2x credits from friend referrals. Active for 30 days. Stacks with normal referral bonus.",
                     new BigDecimal("300"), "group", StoreItem.ItemType.REFERRAL_BOOSTER,
                     StoreItem.ItemCategory.BOOSTERS, StoreItem.Rarity.EPIC, true, false, 3);
-
-            System.out.println("Store items initialized successfully!");
         };
     }
 
@@ -147,6 +142,5 @@ public class StoreDataInitializer {
         item.setSortOrder(sortOrder);
 
         storeItemRepository.save(item);
-        System.out.println("Created store item: " + name);
     }
 }

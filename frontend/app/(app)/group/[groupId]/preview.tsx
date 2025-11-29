@@ -26,20 +26,10 @@ export default function GroupPreview() {
         const numericGroupId = Array.isArray(groupId) ? parseInt(groupId[0]) : parseInt(groupId as string);
         const data = await groupService.getGroupById(numericGroupId);
 
-        // DEBUG: Log what we're getting from the backend
-        console.log('📊 Group data from backend:', {
-          groupId: data.id,
-          groupName: data.groupName,
-          userMembershipStatus: data.userMembershipStatus,
-          isUserMember: data.isUserMember,
-          userRole: data.userRole
-        });
-
         setGroupData(data);
 
         // Set pending request state based on membership status from backend
         const isPending = data.userMembershipStatus === 'PENDING';
-        console.log('🔔 Setting hasPendingRequest to:', isPending);
         setHasPendingRequest(isPending);
       } catch (error) {
         console.error('Failed to fetch group data:', error);
