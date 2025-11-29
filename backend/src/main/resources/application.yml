@@ -87,6 +87,22 @@ firebase:
   credentials:
     path: firebase-service-account.json
 
+# Rate Limiting Configuration
+rate-limiting:
+  enabled: true
+  login:
+    requests: 5
+    duration-minutes: 15
+  register:
+    requests: 3
+    duration-minutes: 60
+  forgot-password:
+    requests: 3
+    duration-minutes: 60
+  default:
+    requests: 100
+    duration-minutes: 1
+
 # Bet Scheduling Configuration
 bet:
   scheduling:

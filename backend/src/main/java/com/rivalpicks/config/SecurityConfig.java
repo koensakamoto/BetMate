@@ -1,6 +1,7 @@
 package com.rivalpicks.config;
 
 import com.rivalpicks.security.JwtAuthenticationFilter;
+import com.rivalpicks.security.RateLimitingFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -84,11 +85,13 @@ public class SecurityConfig {
     private static final int BCRYPT_STRENGTH = 12;
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final RateLimitingFilter rateLimitingFilter;
 
     @Autowired
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, RateLimitingFilter rateLimitingFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
-        log.info("SecurityConfig initialized with JWT authentication filter");
+        this.rateLimitingFilter = rateLimitingFilter;
+        log.info("SecurityConfig initialized with JWT authentication and rate limiting filters");
         log.info("BCrypt password encoder strength set to: {}", BCRYPT_STRENGTH);
         log.debug("Public endpoints configured: Auth={}, User={}, Health={}, Docs={}, Groups={}, WebSocket={}, Files={}",
                  PUBLIC_AUTH_ENDPOINTS.length, PUBLIC_USER_ENDPOINTS.length,
@@ -178,11 +181,13 @@ public class SecurityConfig {
                 })
             )
             .authenticationProvider(authenticationProvider)
+            .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         SecurityFilterChain filterChain = http.build();
         log.info("SecurityFilterChain successfully configured with {} public endpoint groups", 7);
         log.info("Security headers configured: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy");
+        log.info("Rate limiting filter added before JWT filter");
         log.debug("JWT filter added before UsernamePasswordAuthenticationFilter");
         return filterChain;
     }
