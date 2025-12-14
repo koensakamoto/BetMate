@@ -42,7 +42,7 @@ const getApiBaseUrl = (): string => {
       return 'https://api-staging.betmate.com';
 
     case 'production':
-      return 'https://api.betmate.com';
+      return 'https://rivalpicks-production.up.railway.app';
 
     default:
       return 'http://localhost:8080';

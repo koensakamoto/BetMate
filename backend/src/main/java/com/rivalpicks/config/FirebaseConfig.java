@@ -11,8 +11,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 @Configuration
 @Slf4j
@@ -21,12 +23,26 @@ public class FirebaseConfig {
     @Value("${firebase.credentials.path:firebase-service-account.json}")
     private String firebaseCredentialsPath;
 
+    @Value("${FIREBASE_CREDENTIALS:}")
+    private String firebaseCredentialsJson;
+
     @PostConstruct
     public void initialize() {
         try {
             if (FirebaseApp.getApps().isEmpty()) {
-                ClassPathResource resource = new ClassPathResource(firebaseCredentialsPath);
-                InputStream serviceAccount = resource.getInputStream();
+                InputStream serviceAccount;
+
+                // Try environment variable first (for production)
+                if (firebaseCredentialsJson != null && !firebaseCredentialsJson.isEmpty()) {
+                    log.info("Initializing Firebase from environment variable");
+                    serviceAccount = new ByteArrayInputStream(
+                            firebaseCredentialsJson.getBytes(StandardCharsets.UTF_8));
+                } else {
+                    // Fall back to file (for local development)
+                    log.info("Initializing Firebase from file: {}", firebaseCredentialsPath);
+                    ClassPathResource resource = new ClassPathResource(firebaseCredentialsPath);
+                    serviceAccount = resource.getInputStream();
+                }
 
                 FirebaseOptions options = FirebaseOptions.builder()
                         .setCredentials(GoogleCredentials.fromStream(serviceAccount))
