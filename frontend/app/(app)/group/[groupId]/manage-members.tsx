@@ -117,12 +117,12 @@ export default function ManageMembers() {
       // Admins can promote members to admin and demote admins to member
       if (member.role === 'MEMBER') {
         actions.push({ text: 'Promote to Admin', onPress: () => handlePromoteToAdmin(member) });
-        actions.push({ text: 'Remove Member', onPress: () => handleRemoveMember(member), style: 'destructive' });
+        actions.push({ text: 'Remove Member', onPress: () => handleRemoveMember(member), style: 'destructive' as const });
       } else if (member.role === 'ADMIN') {
         // Only owner can remove other admins
         if (isOwner) {
           actions.push({ text: 'Demote to Member', onPress: () => handleDemoteToMember(member) });
-          actions.push({ text: 'Remove Member', onPress: () => handleRemoveMember(member), style: 'destructive' });
+          actions.push({ text: 'Remove Member', onPress: () => handleRemoveMember(member), style: 'destructive' as const });
         }
       }
     }
@@ -132,7 +132,7 @@ export default function ManageMembers() {
       actions.push({ text: 'Transfer Ownership', onPress: () => handleTransferOwnership(member) });
     }
 
-    actions.push({ text: 'Cancel', style: 'cancel' });
+    actions.push({ text: 'Cancel', style: 'cancel' as const });
 
     Alert.alert(
       'Manage Member',
@@ -328,10 +328,10 @@ export default function ManageMembers() {
     actions.push({
       text: `Remove ${manageableMembers.length} Members`,
       onPress: () => handleBulkRemove(manageableMembers),
-      style: 'destructive'
+      style: 'destructive' as const
     });
 
-    actions.push({ text: 'Cancel', style: 'cancel' });
+    actions.push({ text: 'Cancel', style: 'cancel' as const });
 
     Alert.alert('Bulk Actions', `Actions for ${manageableMembers.length} selected members`, actions);
   };
@@ -591,7 +591,7 @@ export default function ManageMembers() {
           const handleCardPress = () => {
             const numericGroupId = Array.isArray(groupId) ? groupId[0] : groupId;
             const path = `/group/${numericGroupId}/member/${member.id}`;
-            router.push(path);
+            router.push(path as any);
           };
 
           // Check if current user can manage this specific member

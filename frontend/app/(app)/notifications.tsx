@@ -96,7 +96,7 @@ export default function Notifications() {
     }
   };
 
-  const getTypeColor = (): string => {
+  const getTypeColor = (_type?: NotificationType | string, _priority?: NotificationPriority): string => {
     return 'rgba(255, 255, 255, 0.6)';
   };
 
@@ -112,14 +112,14 @@ export default function Notifications() {
 
     if (diffInHours < 1) {
       const diffInMinutes = Math.floor(diffInHours * 60);
-      return diffInMinutes < 1 ? 'Just now' : `${diffInMinutes}m`;
+      return diffInMinutes < 1 ? 'Just now' : `${diffInMinutes}m ago`;
     } else if (diffInHours < 24) {
-      return `${Math.floor(diffInHours)}h`;
+      return `${Math.floor(diffInHours)}h ago`;
     } else {
       const diffInDays = Math.floor(diffInHours / 24);
-      if (diffInDays === 1) return '1d';
-      if (diffInDays < 7) return `${diffInDays}d`;
-      return `${Math.floor(diffInDays / 7)}w`;
+      if (diffInDays === 1) return '1d ago';
+      if (diffInDays < 7) return `${diffInDays}d ago`;
+      return `${Math.floor(diffInDays / 7)}w ago`;
     }
   };
 

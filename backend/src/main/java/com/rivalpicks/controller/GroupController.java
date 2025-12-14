@@ -20,6 +20,7 @@ import com.rivalpicks.service.group.GroupService;
 import com.rivalpicks.service.user.UserService;
 import com.rivalpicks.service.FileStorageService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +37,7 @@ import java.util.stream.Collectors;
  * REST controller for group management operations.
  * Handles group creation, membership, discovery, and administration.
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/groups")
 public class GroupController {
@@ -396,9 +398,9 @@ public class GroupController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to upload group picture", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Failed to upload group picture: " + e.getMessage());
+                .body("Failed to upload group picture");
         }
     }
 

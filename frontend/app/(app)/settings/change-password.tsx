@@ -390,7 +390,7 @@ export default function ChangePassword() {
             title="Change Password"
             onPress={handleChangePassword}
             variant="primary"
-            isLoading={isLoading}
+            loading={isLoading}
             disabled={isLoading}
           />
         </ScrollView>

@@ -14,12 +14,17 @@ export default function InviteRedirect() {
     if (isLoading) return;
 
     const handleRedirect = async () => {
-      const numericGroupId = Array.isArray(groupId) ? groupId[0] : groupId;
+      // Security: Validate and sanitize groupId parameter
+      const rawGroupId = Array.isArray(groupId) ? groupId[0] : groupId;
 
-      if (!numericGroupId) {
-        router.replace('/(tabs)');
+      // Validate that groupId is a positive integer
+      const parsedGroupId = parseInt(rawGroupId as string, 10);
+      if (!rawGroupId || isNaN(parsedGroupId) || parsedGroupId <= 0) {
+        router.replace('/(tabs)' as any);
         return;
       }
+
+      const numericGroupId = String(parsedGroupId);
 
       if (isAuthenticated) {
         // User is logged in - go to group preview

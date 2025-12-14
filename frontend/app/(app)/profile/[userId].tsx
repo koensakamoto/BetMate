@@ -1,19 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { UserProfile } from '../../types/api';
 import { friendshipService } from '../../../services/user/friendshipService';
 import { userService, UserProfileResponse, UserStatistics } from '../../../services/user/userService';
 import { betService, BetSummaryResponse } from '../../../services/bet/betService';
 import { debugLog, errorLog } from '../../../config/env';
 import { SkeletonCard } from '../../../components/common/SkeletonCard';
 import { formatPercentage } from '../../../utils/formatters';
-import { getFullImageUrl } from '../../../utils/avatarUtils';
 import { getErrorMessage } from '../../../utils/errorUtils';
-
-const icon = require("../../../assets/images/icon.png");
+import { Avatar } from '../../../components/common/Avatar';
 
 export default function UserProfilePage() {
   const insets = useSafeAreaInsets();
@@ -356,15 +353,16 @@ export default function UserProfilePage() {
         <View style={{ paddingHorizontal: 24, paddingBottom: 32 }}>
           {/* Avatar */}
           <View style={{ alignItems: 'center', marginBottom: 24 }}>
-            <Image
-              source={getFullImageUrl(user.profileImageUrl) ? { uri: getFullImageUrl(user.profileImageUrl)! } : icon}
-              style={{
-                width: 90,
-                height: 90,
-                borderRadius: 45,
-                marginBottom: 16
-              }}
-            />
+            <View style={{ marginBottom: 16 }}>
+              <Avatar
+                imageUrl={user.profileImageUrl}
+                firstName={user.firstName}
+                lastName={user.lastName}
+                username={user.username}
+                userId={user.id}
+                size="lg"
+              />
+            </View>
 
             <Text style={{
               fontSize: 24,

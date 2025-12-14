@@ -8,7 +8,7 @@ interface GroupChatTabProps {
     name: string;
     memberCount: number;
     createdDate: string;
-    image?: ImageSourcePropType;
+    image?: ImageSourcePropType | string | null;
   };
 }
 

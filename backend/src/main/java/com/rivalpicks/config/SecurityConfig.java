@@ -3,6 +3,7 @@ package com.rivalpicks.config;
 import com.rivalpicks.security.JwtAuthenticationFilter;
 import com.rivalpicks.security.RateLimitingFilter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,6 +24,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 import lombok.extern.slf4j.Slf4j;
@@ -80,12 +82,19 @@ public class SecurityConfig {
         "/api/files/**"
     };
 
-    
+    private static final String[] ADMIN_ENDPOINTS = {
+        "/api/admin/**"
+    };
+
+
     // BCrypt strength - explicitly set to 12 for stronger hashing
     private static final int BCRYPT_STRENGTH = 12;
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final RateLimitingFilter rateLimitingFilter;
+
+    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:8081}")
+    private String corsAllowedOrigins;
 
     @Autowired
     public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, RateLimitingFilter rateLimitingFilter) {
@@ -117,6 +126,9 @@ public class SecurityConfig {
                 .requestMatchers(PUBLIC_GROUP_ENDPOINTS).permitAll()
                 .requestMatchers(PUBLIC_WEBSOCKET_ENDPOINTS).permitAll()
                 .requestMatchers(PUBLIC_FILE_ENDPOINTS).permitAll()
+
+                // Admin endpoints require ADMIN role
+                .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")
 
                 // All other endpoints require authentication
                 .anyRequest().authenticated()
@@ -195,11 +207,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        // Parse allowed origins from environment variable (comma-separated)
+        List<String> origins = Arrays.asList(corsAllowedOrigins.split(","));
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
+        configuration.setExposedHeaders(List.of("Authorization"));
         configuration.setAllowCredentials(true);
-        
+        configuration.setMaxAge(3600L); // Cache preflight for 1 hour
+
+        log.info("CORS configured with allowed origins: {}", origins);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

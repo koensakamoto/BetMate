@@ -318,6 +318,11 @@ export default function BetDetails() {
           const displayedOptions = backendOptions.length > 0 ? backendOptions : ['Option 1', 'Option 2', 'Option 3'];
           const usingFallbackOptions = backendOptions.length === 0;
 
+          if (!selectedOption) {
+            Alert.alert('Error', 'Please select an option');
+            return;
+          }
+
           const optionIndex = usingFallbackOptions
             ? displayedOptions.indexOf(selectedOption)
             : backendOptions.indexOf(selectedOption);
@@ -337,14 +342,6 @@ export default function BetDetails() {
       }
 
       const updatedBet = await betService.placeBet(betId!, placeBetRequest);
-
-      // Check if the response indicates an error
-      if (updatedBet.success === false || updatedBet.error) {
-        const errorMessage = updatedBet.message || updatedBet.error || 'Failed to place bet';
-        haptic.error();
-        Alert.alert('Error', errorMessage);
-        return;
-      }
 
       haptic.success();
 
@@ -517,7 +514,6 @@ export default function BetDetails() {
         extraScrollHeight={100}
         enableOnAndroid={true}
         keyboardShouldPersistTaps="handled"
-        resetScrollToCoords={null}
       >
         {/* Header Section */}
         <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
@@ -543,7 +539,7 @@ export default function BetDetails() {
                 color: 'rgba(255, 255, 255, 0.6)',
                 marginBottom: 4
               }}>
-                {betData.category}
+                {betData.groupName || 'Bet'}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{

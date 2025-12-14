@@ -286,14 +286,14 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
                       onPress: () => {
                         router.dismissAll();
                         router.navigate({
-                          pathname: '/(tabs)/group',
+                          pathname: '/(tabs)/group' as any,
                           params: { refresh: Date.now().toString() }
                         });
                       }
                     }
                   ]
                 );
-              } catch (error) {
+              } catch (error: any) {
                 // Error handled silently
                 const errorMessage = error?.response?.data?.error || 'Failed to leave group. Please try again.';
                 Alert.alert('Error', errorMessage);
@@ -336,14 +336,14 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
                     onPress: () => {
                       router.dismissAll();
                       router.navigate({
-                        pathname: '/(tabs)/group',
+                        pathname: '/(tabs)/group' as any,
                         params: { refresh: Date.now().toString() }
                       });
                     }
                   }
                 ]
               );
-            } catch (error) {
+            } catch (error: any) {
               // Error handled silently
               Alert.alert('Error', 'Failed to delete group. Please try again.');
             } finally {
@@ -396,14 +396,14 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
             onPress: () => {
               router.dismissAll();
               router.navigate({
-                pathname: '/(tabs)/group',
+                pathname: '/(tabs)/group' as any,
                 params: { refresh: Date.now().toString() }
               });
             }
           }
         ]
       );
-    } catch (error) {
+    } catch (error: any) {
       // Error handled silently
       Alert.alert('Error', 'Failed to transfer ownership. Please try again.');
     } finally {

@@ -6,6 +6,7 @@ import com.rivalpicks.service.user.DataExportService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -23,6 +24,7 @@ import java.time.format.DateTimeFormatter;
  * REST controller for user data export operations.
  * Allows users to download all their personal data.
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/users/me")
 public class DataExportController {
@@ -66,7 +68,7 @@ public class DataExportController {
 
             return new ResponseEntity<>(jsonBytes, headers, HttpStatus.OK);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to export user data", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -87,7 +89,7 @@ public class DataExportController {
             DataExportDto exportData = dataExportService.exportUserData(userPrincipal.getUserId());
             return ResponseEntity.ok(exportData);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to preview export data", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

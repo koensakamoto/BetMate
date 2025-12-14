@@ -105,7 +105,7 @@ export default function GroupDetails() {
         : 'Loading...',
       isAdmin: currentGroupData?.userRole === 'ADMIN' || false,
       isMember: currentGroupData?.isUserMember || true, // Assume member to show UI
-      image: getFullImageUrl(currentGroupData?.groupPictureUrl),
+      image: getFullImageUrl(currentGroupData?.groupPictureUrl) ?? null,
       groupPictureUrl: currentGroupData?.groupPictureUrl, // Raw URL for settings tab
       privacy: currentGroupData?.privacy,
       totalBets: currentGroupData?.totalMessages || 0,

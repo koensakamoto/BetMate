@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { contactService } from '../../../services/contact/contactService';
-import { ContactMessageRequest } from '../types/api';
+import { ContactMessageRequest } from '../../../types/api';
 
 // Move components outside to prevent recreation on every render
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -196,7 +196,7 @@ export default function HelpSupport() {
           setContactForm({ category: 'General Support', subject: '', message: '' });
         }}]
       );
-    } catch (error) {
+    } catch (error: any) {
       Alert.alert(
         'Error',
         error?.message || 'Failed to send message. Please try again later.'

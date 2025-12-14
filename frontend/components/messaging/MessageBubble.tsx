@@ -3,6 +3,7 @@ import { Text, View, TouchableOpacity, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { MessageResponse, MessageType } from '../../types/api';
 import { messagingService } from '../../services';
+import { sanitizeMessageContent, sanitizeUsername } from '../../utils/sanitize';
 
 interface MessageBubbleProps {
   message: MessageResponse;
@@ -39,6 +40,25 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const isSystemMessage = messagingService.isSystemMessage(message);
   const hasAttachment = messagingService.hasAttachment(message);
+
+  // Security: Sanitize user-generated content before display
+  const sanitizedContent = useMemo(() => sanitizeMessageContent(message.content), [message.content]);
+  const sanitizedDisplayName = useMemo(() => sanitizeUsername(message.senderDisplayName), [message.senderDisplayName]);
+
+  const handleDelete = useCallback(() => {
+    Alert.alert(
+      'Delete Message',
+      'Are you sure you want to delete this message?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => onDelete?.(message)
+        }
+      ]
+    );
+  }, [message, onDelete]);
 
   const handleLongPress = useCallback(() => {
     if (isSystemMessage) return;
@@ -80,21 +100,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
     );
   }, [isSystemMessage, message, isOwnMessage, onReply, onEdit, handleDelete]);
 
-  const handleDelete = useCallback(() => {
-    Alert.alert(
-      'Delete Message',
-      'Are you sure you want to delete this message?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => onDelete?.(message)
-        }
-      ]
-    );
-  }, [message, onDelete]);
-
   const formatTime = (timestamp: string): string => {
     return messagingService.formatMessageTimeActual(timestamp);
   };
@@ -126,7 +131,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         }}
         accessible={true}
         accessibilityRole="text"
-        accessibilityLabel={`System message: ${message.content}`}
+        accessibilityLabel={`System message: ${sanitizedContent}`}
       >
         <View style={{
           backgroundColor: '#1a1a2e',
@@ -142,7 +147,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             fontSize: 13,
             fontStyle: 'italic'
           }} accessible={false}>
-            {message.content}
+            {sanitizedContent}
           </Text>
         </View>
         <Text style={{
@@ -175,7 +180,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             fontSize: 12,
             fontWeight: '500'
           }}>
-            {message.senderDisplayName}
+            {sanitizedDisplayName}
           </Text>
           <Text style={{
             color: '#6b7280',
@@ -231,7 +236,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         onLongPress={handleLongPress}
         accessible={true}
         accessibilityRole="text"
-        accessibilityLabel={`${isOwnMessage ? 'You' : message.senderDisplayName}: ${message.content}${message.isEdited ? ', edited' : ''}`}
+        accessibilityLabel={`${isOwnMessage ? 'You' : sanitizedDisplayName}: ${sanitizedContent}${message.isEdited ? ', edited' : ''}`}
         accessibilityHint="Long press for message options"
         style={{
           backgroundColor: isOwnMessage ? '#00D4AA' : '#1f2937',
@@ -250,7 +255,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             marginBottom: 4
           }}>
             <MaterialIcons
-              name={getMessageTypeIcon()}
+              name={getMessageTypeIcon() as any}
               size={16}
               color={isOwnMessage ? 'rgba(0, 0, 0, 0.7)' : '#9ca3af'}
             />
@@ -292,7 +297,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           fontSize: 15,
           lineHeight: 20
         }}>
-          {message.content}
+          {sanitizedContent}
         </Text>
 
         {/* Compact metadata - only show edited indicator and reply count */}

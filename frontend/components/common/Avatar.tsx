@@ -76,6 +76,7 @@ export const Avatar = React.memo(function Avatar({
   showBorder = false,
   cacheBuster,
 }: AvatarProps) {
+  const [imageError, setImageError] = React.useState(false);
   const avatarSize = customSize || SIZE_MAP[size];
   const fontSize = customSize ? customSize * 0.38 : FONT_SIZE_MAP[size];
   const borderRadius = avatarSize / 2;
@@ -83,6 +84,11 @@ export const Avatar = React.memo(function Avatar({
   const fullImageUrl = getFullImageUrlUtil(imageUrl, cacheBuster);
   const initials = getInitialsUtil(firstName, lastName, username);
   const backgroundColor = getAvatarColor(userId);
+
+  // Reset error state when imageUrl changes
+  React.useEffect(() => {
+    setImageError(false);
+  }, [imageUrl, cacheBuster]);
 
   const containerStyle = [
     styles.container,
@@ -111,7 +117,7 @@ export const Avatar = React.memo(function Avatar({
       accessibilityRole="image"
       accessibilityLabel={accessibleName}
     >
-      {fullImageUrl ? (
+      {fullImageUrl && !imageError ? (
         <Image
           source={{ uri: fullImageUrl, cache: 'default' }}
           style={[
@@ -123,6 +129,7 @@ export const Avatar = React.memo(function Avatar({
             },
           ]}
           accessible={false}
+          onError={() => setImageError(true)}
         />
       ) : (
         <View

@@ -41,6 +41,7 @@ export default function Store() {
 
   // Store items state
   const [storeItemsData, setStoreItemsData] = useState<Record<StoreCategory, StoreItemData[]>>({
+    'featured': [],
     'risk': [],
     'multipliers': [],
     'tools': [],
@@ -93,6 +94,7 @@ export default function Store() {
 
       // Convert API response to StoreItemData format and categorize
       const categorizedItems: Record<StoreCategory, StoreItemData[]> = {
+        'featured': [],
         'risk': [],
         'multipliers': [],
         'tools': [],
@@ -143,20 +145,6 @@ export default function Store() {
     }
   }, [isAuthenticated]);
 
-  // Fetch latest user credits, store items, and transactions when component mounts
-  useEffect(() => {
-    fetchUserCredits(false);
-    fetchStoreItems();
-    fetchTransactions();
-  }, [isAuthenticated, fetchUserCredits, fetchStoreItems, fetchTransactions]);
-
-  // Pull-to-refresh handler
-  const onRefresh = useCallback(() => {
-    fetchUserCredits(true);
-    fetchStoreItems();
-    fetchTransactions();
-  }, [fetchUserCredits, fetchStoreItems, fetchTransactions]);
-
   // Transaction data - fetched from API
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [fetchingTransactions, setFetchingTransactions] = useState(false);
@@ -171,13 +159,26 @@ export default function Store() {
       setFetchingTransactions(true);
       const transactionsData = await transactionService.getAllTransactions();
       setTransactions(transactionsData);
-    } catch (error) {
-      // Error handled silently
+    } catch {
       // Keep existing transactions on error
     } finally {
       setFetchingTransactions(false);
     }
   }, [isAuthenticated]);
+
+  // Fetch latest user credits, store items, and transactions when component mounts
+  useEffect(() => {
+    fetchUserCredits(false);
+    fetchStoreItems();
+    fetchTransactions();
+  }, [isAuthenticated, fetchUserCredits, fetchStoreItems, fetchTransactions]);
+
+  // Pull-to-refresh handler
+  const onRefresh = useCallback(() => {
+    fetchUserCredits(true);
+    fetchStoreItems();
+    fetchTransactions();
+  }, [fetchUserCredits, fetchStoreItems, fetchTransactions]);
 
   // Memoize purchase handler to provide stable reference to child components
   const handlePurchase = useCallback((item: StoreItemData) => {
@@ -212,8 +213,7 @@ export default function Store() {
                 } else {
                   Alert.alert('Purchase Successful!', `You now own ${item.name}`);
                 }
-              } catch (error) {
-                // Error handled silently
+              } catch (error: any) {
                 haptic.error();
 
                 // Show user-friendly error message

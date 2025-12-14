@@ -346,6 +346,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 14,
   },
+  bannerTextContainer: {
+    flex: 1,
+  },
   cancelledTitle: {
     fontSize: 18,
     fontWeight: '600',

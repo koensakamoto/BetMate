@@ -31,8 +31,12 @@ const getApiBaseUrl = (): string => {
 
   switch (env) {
     case 'development':
-      // Use laptop IP for mobile device testing
-      return 'http://192.168.1.231:8080';
+      // Use environment variable for dev API URL, fallback to localhost
+      // Set EXPO_PUBLIC_DEV_API_URL in .env.local for local network testing
+      const devUrl = process.env.EXPO_PUBLIC_DEV_API_URL || 'http://localhost:8080';
+      console.log('[ENV] EXPO_PUBLIC_DEV_API_URL:', process.env.EXPO_PUBLIC_DEV_API_URL);
+      console.log('[ENV] Using API URL:', devUrl);
+      return devUrl;
 
     case 'staging':
       return 'https://api-staging.betmate.com';

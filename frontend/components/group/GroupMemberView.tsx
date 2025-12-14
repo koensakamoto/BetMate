@@ -19,9 +19,9 @@ interface GroupMemberViewProps {
     description: string;
     memberCount: number;
     createdDate: string;
-    image?: ImageSourcePropType;
+    image?: ImageSourcePropType | string | null;
     totalBets: number;
-    userPosition: number;
+    userPosition: number | null;
     groupAchievements: number;
     isAdmin: boolean;
     userRole?: string;
@@ -136,14 +136,14 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                     onPress: () => {
                       router.dismissAll();
                       router.navigate({
-                        pathname: '/(tabs)/group',
+                        pathname: '/(tabs)/group' as any,
                         params: { refresh: Date.now().toString() }
                       });
                     }
                   }
                 ]
               );
-            } catch (error) {
+            } catch (error: any) {
               // Error handled silently
               const errorMessage = error?.response?.data?.error || 'Failed to leave group. Please try again.';
               Alert.alert('Error', errorMessage);
@@ -189,7 +189,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
               onPress={() => {
                 router.dismissAll();
                 router.navigate({
-                  pathname: '/(tabs)/group',
+                  pathname: '/(tabs)/group' as any,
                   params: { refresh: Date.now().toString() }
                 });
               }}
@@ -212,7 +212,7 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              {typeof groupData.image === 'string' || (groupData.image && groupData.image.uri) ? (
+              {typeof groupData.image === 'string' || (groupData.image && typeof groupData.image === 'object' && 'uri' in groupData.image) ? (
                 <Image
                   source={typeof groupData.image === 'string' ? { uri: groupData.image } : groupData.image}
                   style={{

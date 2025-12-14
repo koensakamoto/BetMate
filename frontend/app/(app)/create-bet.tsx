@@ -25,7 +25,7 @@ export default function CreateBet() {
   const [betTitle, setBetTitle] = useState('');
   const [betDescription, setBetDescription] = useState('');
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
-  const [betType, setBetType] = useState<'MULTIPLE_CHOICE' | 'PREDICTION' | 'OVER_UNDER'>('MULTIPLE_CHOICE');
+  const [betType, setBetType] = useState<'MULTIPLE_CHOICE' | 'PREDICTION'>('MULTIPLE_CHOICE');
   // MVP: Default to SOCIAL, credits disabled for now
   const [stakeType, setStakeType] = useState<'CREDIT' | 'SOCIAL'>('SOCIAL');
   const [stakeAmount, setStakeAmount] = useState('');
@@ -361,7 +361,6 @@ export default function CreateBet() {
         keyboardShouldPersistTaps="handled"
         extraScrollHeight={20}
         enableOnAndroid={true}
-        enableResetScrollToCoords={false}
       >
           {/* Header with Progress */}
           <View style={{
@@ -667,7 +666,7 @@ export default function CreateBet() {
                   }}
                 >
                   <TextInput
-                    ref={(ref) => (optionRefs.current[index] = ref)}
+                    ref={(ref) => { optionRefs.current[index] = ref; }}
                     style={{
                       flex: 1,
                       fontSize: 15,

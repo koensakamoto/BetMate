@@ -30,6 +30,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -46,6 +47,7 @@ import java.util.List;
  * REST controller for user management operations.
  * Handles user registration, profile management, search, and user data retrieval.
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/users")
 @Validated
@@ -222,9 +224,9 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to upload profile picture", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("Failed to upload profile picture: " + e.getMessage());
+                .body("Failed to upload profile picture");
         }
     }
 
@@ -273,7 +275,7 @@ public class UserController {
             ProfileVisibility updated = userService.updateProfileVisibility(userPrincipal.getUserId(), visibility);
             return ResponseEntity.ok(java.util.Map.of("visibility", updated.name()));
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to update profile visibility", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -324,7 +326,7 @@ public class UserController {
                 null
             ));
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to change username", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new UsernameChangeResponseDto(false, "Failed to change username", null));
         }
@@ -360,7 +362,7 @@ public class UserController {
             return ResponseEntity.badRequest()
                 .body(new EmailChangeResponseDto(false, e.getMessage(), null));
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to request email change", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new EmailChangeResponseDto(false, "Failed to request email change", null));
         }
@@ -385,7 +387,7 @@ public class UserController {
             return ResponseEntity.badRequest()
                 .body(new EmailChangeResponseDto(false, e.getMessage(), null));
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to confirm email change", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new EmailChangeResponseDto(false, "Failed to confirm email change", null));
         }
@@ -529,7 +531,7 @@ public class UserController {
 
             return ResponseEntity.ok(transactionDtos);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to get transactions", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -550,7 +552,7 @@ public class UserController {
 
             return ResponseEntity.ok(status);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to get daily reward status", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -591,7 +593,7 @@ public class UserController {
             userService.registerPushToken(userPrincipal.getUserId(), token, platform);
             return ResponseEntity.ok(java.util.Map.of("message", "Push token registered successfully"));
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to register push token", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(java.util.Map.of("error", "Failed to register push token"));
         }
@@ -611,7 +613,7 @@ public class UserController {
             userService.clearPushToken(userPrincipal.getUserId());
             return ResponseEntity.ok(java.util.Map.of("message", "Push token removed successfully"));
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to remove push token", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(java.util.Map.of("error", "Failed to remove push token"));
         }

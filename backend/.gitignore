@@ -48,3 +48,6 @@ src/main/resources/*-firebase-adminsdk-*.json
 
 ### claude ###
 ../claude.md
+
+### User uploads ###
+uploads/

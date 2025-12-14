@@ -30,6 +30,23 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// Security: Whitelist of allowed notification navigation routes
+const ALLOWED_NOTIFICATION_ROUTES = [
+  '/(tabs)',
+  '/(app)/notifications',
+  '/group/',
+  '/bet-details/',
+  '/profile/',
+];
+
+/**
+ * Security: Validates that a route is in the allowed whitelist
+ */
+const isRouteAllowed = (route: string): boolean => {
+  if (!route || typeof route !== 'string') return false;
+  return ALLOWED_NOTIFICATION_ROUTES.some(allowed => route.startsWith(allowed));
+};
+
 interface UsePushNotificationsReturn {
   fcmToken: string | null;
   notification: Notifications.Notification | null;
@@ -160,19 +177,32 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
   /**
    * Handles navigation when a notification is tapped.
+   * Security: Only navigates to whitelisted routes
    */
   const handleNotificationResponse = useCallback((response: Notifications.NotificationResponse) => {
-    const data = response.notification.request.content.data;
+    const data = response.notification.request.content.data as {
+      type?: string;
+      groupId?: string | number;
+      screen?: string;
+      actionUrl?: string;
+    };
 
     // Navigate based on notification type
     if (data?.type === 'GROUP_MESSAGE' && data?.groupId) {
-      router.push(`/group/${data.groupId}/chat`);
-    } else if (data?.screen) {
+      // Validate groupId is a positive integer
+      const groupId = parseInt(String(data.groupId), 10);
+      if (!isNaN(groupId) && groupId > 0) {
+        router.push(`/group/${groupId}/chat`);
+      }
+    } else if (data?.screen && isRouteAllowed(data.screen)) {
+      // Security: Only navigate to whitelisted routes
       router.push(data.screen as any);
-    } else if (data?.actionUrl) {
-      // Convert actionUrl to app route
-      const route = data.actionUrl.replace(/^\//, '');
-      router.push(`/${route}` as any);
+    } else if (data?.actionUrl && typeof data.actionUrl === 'string') {
+      // Convert actionUrl to app route and validate
+      const route = `/${data.actionUrl.replace(/^\//, '')}`;
+      if (isRouteAllowed(route)) {
+        router.push(route as any);
+      }
     }
   }, [router]);
 
@@ -213,20 +243,27 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     });
 
     // FCM background/quit message handler for navigation
+    // Security: Only navigates to whitelisted routes
     const unsubscribeBackground = messaging().onNotificationOpenedApp((remoteMessage: any) => {
       const data = remoteMessage.data;
 
       if (data?.type === 'GROUP_MESSAGE' && data?.groupId) {
-        router.push(`/group/${data.groupId}/chat`);
-      } else if (data?.screen) {
+        const groupId = parseInt(String(data.groupId), 10);
+        if (!isNaN(groupId) && groupId > 0) {
+          router.push(`/group/${groupId}/chat`);
+        }
+      } else if (data?.screen && isRouteAllowed(data.screen)) {
         router.push(data.screen as any);
       } else if (data?.actionUrl && typeof data.actionUrl === 'string') {
-        const route = data.actionUrl.replace(/^\//, '');
-        router.push(`/${route}` as any);
+        const route = `/${data.actionUrl.replace(/^\//, '')}`;
+        if (isRouteAllowed(route)) {
+          router.push(route as any);
+        }
       }
     });
 
     // Check if app was opened from a quit state by a notification
+    // Security: Only navigates to whitelisted routes
     messaging()
       .getInitialNotification()
       .then((remoteMessage: any) => {
@@ -234,12 +271,17 @@ export function usePushNotifications(): UsePushNotificationsReturn {
           const data = remoteMessage.data;
 
           if (data?.type === 'GROUP_MESSAGE' && data?.groupId) {
-            router.push(`/group/${data.groupId}/chat`);
-          } else if (data?.screen) {
+            const groupId = parseInt(String(data.groupId), 10);
+            if (!isNaN(groupId) && groupId > 0) {
+              router.push(`/group/${groupId}/chat`);
+            }
+          } else if (data?.screen && isRouteAllowed(data.screen)) {
             router.push(data.screen as any);
           } else if (data?.actionUrl && typeof data.actionUrl === 'string') {
-            const route = data.actionUrl.replace(/^\//, '');
-            router.push(`/${route}` as any);
+            const route = `/${data.actionUrl.replace(/^\//, '')}`;
+            if (isRouteAllowed(route)) {
+              router.push(route as any);
+            }
           }
         }
       });

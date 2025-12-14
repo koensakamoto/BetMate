@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Text, View, TextInput, TouchableOpacity } from 'react-native';
+import { Text, View, TextInput, TouchableOpacity, TextStyle, ViewStyle } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
-interface AuthInputProps {
-  label: string;
+export interface AuthInputProps {
+  label?: string;
   value: string;
   onChangeText: (text: string) => void;
   placeholder: string;
@@ -12,10 +12,14 @@ interface AuthInputProps {
   secureTextEntry?: boolean;
   keyboardType?: 'default' | 'email-address' | 'phone-pad';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  autoComplete?: string;
+  autoComplete?: 'url' | 'username' | 'name' | 'email' | 'password' | 'off' | 'additional-name' | 'address-line1' | 'address-line2' | 'birthdate-day' | 'birthdate-full' | 'birthdate-month' | 'birthdate-year' | 'cc-csc' | 'cc-exp' | 'cc-exp-day' | 'cc-exp-month' | 'cc-exp-year' | 'cc-number' | 'country' | 'current-password' | 'family-name' | 'given-name' | 'honorific-prefix' | 'honorific-suffix' | 'name-family' | 'name-given' | 'name-middle' | 'name-middle-initial' | 'name-prefix' | 'name-suffix' | 'new-password' | 'nickname' | 'one-time-code' | 'organization' | 'organization-title' | 'postal-address' | 'postal-address-country' | 'postal-address-extended' | 'postal-address-extended-postal-code' | 'postal-address-locality' | 'postal-address-region' | 'postal-code' | 'street-address' | 'sms-otp' | 'tel' | 'tel-country-code' | 'tel-device' | 'tel-national' | 'username-new';
   maxLength?: number;
   showPasswordToggle?: boolean;
   editable?: boolean;
+  style?: ViewStyle;
+  inputStyle?: TextStyle;
+  multiline?: boolean;
+  numberOfLines?: number;
 }
 
 export default function AuthInput({
@@ -31,7 +35,11 @@ export default function AuthInput({
   autoComplete,
   maxLength,
   showPasswordToggle = false,
-  editable = true
+  editable = true,
+  style,
+  inputStyle,
+  multiline = false,
+  numberOfLines = 1,
 }: AuthInputProps) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -41,24 +49,26 @@ export default function AuthInput({
   const actualSecureTextEntry = secureTextEntry && !isPasswordVisible;
 
   const accessibilityLabelText = hasError
-    ? `${label}, ${error}`
+    ? `${label || 'Input'}, ${error}`
     : showSuccess
-      ? `${label}, valid`
-      : label;
+      ? `${label || 'Input'}, valid`
+      : label || 'Input';
 
   return (
-    <View style={{ marginBottom: 12 }}>
-      <Text
-        style={{
-          fontSize: 13,
-          fontWeight: '500',
-          color: 'rgba(255, 255, 255, 0.8)',
-          marginBottom: 5
-        }}
-        accessible={false}
-      >
-        {label}
-      </Text>
+    <View style={[{ marginBottom: 12 }, style]}>
+      {label && (
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: '500',
+            color: 'rgba(255, 255, 255, 0.8)',
+            marginBottom: 5
+          }}
+          accessible={false}
+        >
+          {label}
+        </Text>
+      )}
 
       <View style={{
         backgroundColor: 'rgba(255, 255, 255, 0.06)',
@@ -77,12 +87,12 @@ export default function AuthInput({
         alignItems: 'center'
       }}>
         <TextInput
-          style={{
+          style={[{
             flex: 1,
             fontSize: 15,
             color: editable ? '#ffffff' : 'rgba(255, 255, 255, 0.5)',
             fontWeight: '400'
-          }}
+          }, inputStyle]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -95,6 +105,8 @@ export default function AuthInput({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           editable={editable}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
           accessible={true}
           accessibilityLabel={accessibilityLabelText}
           accessibilityHint={placeholder}

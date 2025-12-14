@@ -1,6 +1,7 @@
 package com.rivalpicks.controller;
 
 import com.rivalpicks.service.FileStorageService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -17,6 +18,7 @@ import java.nio.file.Path;
  * REST controller for serving uploaded files.
  * Handles file retrieval for profile pictures and other uploaded content.
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/files")
 public class FileController {
@@ -36,8 +38,30 @@ public class FileController {
     @GetMapping("/profile-pictures/{fileName:.+}")
     public ResponseEntity<Resource> getProfilePicture(@PathVariable String fileName) {
         try {
-            // Resolve file path
-            Path filePath = fileStorageService.getFileStorageLocation().resolve(fileName).normalize();
+            // Security: Validate filename to prevent path traversal attacks
+            if (fileName == null || fileName.isEmpty()) {
+                log.warn("Empty filename requested");
+                return ResponseEntity.badRequest().build();
+            }
+
+            // Reject filenames with path traversal sequences
+            if (fileName.contains("..") || fileName.contains("/") || fileName.contains("\\")) {
+                log.warn("Path traversal attempt detected in filename: {}", fileName);
+                return ResponseEntity.badRequest().build();
+            }
+
+            // Get the base storage location and normalize it
+            Path baseLocation = fileStorageService.getFileStorageLocation().toAbsolutePath().normalize();
+
+            // Resolve the file path and normalize it
+            Path filePath = baseLocation.resolve(fileName).normalize();
+
+            // Security: Ensure the resolved path is still within the base directory
+            if (!filePath.startsWith(baseLocation)) {
+                log.warn("Path traversal attempt blocked. Requested: {}, Base: {}", filePath, baseLocation);
+                return ResponseEntity.badRequest().build();
+            }
+
             Resource resource = new UrlResource(filePath.toUri());
 
             if (!resource.exists() || !resource.isReadable()) {
@@ -55,11 +79,15 @@ public class FileController {
                 contentType = "application/octet-stream";
             }
 
+            // Security: Sanitize filename in Content-Disposition header
+            String safeFilename = fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
+
             return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + safeFilename + "\"")
                 .body(resource);
         } catch (Exception ex) {
+            log.error("Error serving file: {}", fileName, ex);
             return ResponseEntity.internalServerError().build();
         }
     }

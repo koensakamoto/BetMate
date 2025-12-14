@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { userService } from '../../../services/user/userService';
-import AuthInput from '../../../components/auth/AuthInput';
 import { useAuth } from '../../../contexts/AuthContext';
 import { debugLog, errorLog } from '../../../config/env';
 import { getErrorMessage } from '../../../utils/errorUtils';
@@ -18,6 +17,8 @@ export default function ChangeEmail() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEmailFocused, setIsEmailFocused] = useState(false);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -67,7 +68,7 @@ export default function ChangeEmail() {
       } else {
         setError(response.message);
       }
-    } catch (err) {
+    } catch (err: any) {
       errorLog('Failed to request email change:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to request email change';
       setError(errorMessage);
@@ -163,57 +164,95 @@ export default function ChangeEmail() {
           </View>
 
           {/* New Email Input */}
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 14, color: 'rgba(255, 255, 255, 0.7)', marginBottom: 8 }}>
+          <View style={{ marginBottom: 24 }}>
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '500',
+              color: 'rgba(255, 255, 255, 0.7)',
+              marginBottom: 8
+            }}>
               New Email Address
             </Text>
-            <AuthInput
-              value={newEmail}
-              onChangeText={(text) => {
-                setNewEmail(text);
-                if (error) setError(null);
-              }}
-              placeholder="Enter new email address"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                fontSize: 16,
-                color: '#ffffff'
-              }}
-            />
+            <View style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: isEmailFocused
+                ? 'rgba(255, 255, 255, 0.2)'
+                : 'rgba(255, 255, 255, 0.08)',
+              paddingHorizontal: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              height: 52
+            }}>
+              <TextInput
+                value={newEmail}
+                onChangeText={(text) => {
+                  setNewEmail(text);
+                  if (error) setError(null);
+                }}
+                placeholder="Enter new email address"
+                placeholderTextColor="rgba(255, 255, 255, 0.3)"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                onFocus={() => setIsEmailFocused(true)}
+                onBlur={() => setIsEmailFocused(false)}
+                style={{
+                  flex: 1,
+                  fontSize: 17,
+                  color: '#ffffff',
+                  fontWeight: '500',
+                  paddingVertical: 0
+                }}
+              />
+            </View>
           </View>
 
           {/* Password Input */}
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 14, color: 'rgba(255, 255, 255, 0.7)', marginBottom: 8 }}>
+          <View style={{ marginBottom: 24 }}>
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '500',
+              color: 'rgba(255, 255, 255, 0.7)',
+              marginBottom: 8
+            }}>
               Current Password
             </Text>
-            <AuthInput
-              value={currentPassword}
-              onChangeText={(text) => {
-                setCurrentPassword(text);
-                if (error) setError(null);
-              }}
-              placeholder="Enter your current password"
-              secureTextEntry
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                fontSize: 16,
-                color: '#ffffff'
-              }}
-            />
+            <View style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: isPasswordFocused
+                ? 'rgba(255, 255, 255, 0.2)'
+                : 'rgba(255, 255, 255, 0.08)',
+              paddingHorizontal: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              height: 52
+            }}>
+              <TextInput
+                value={currentPassword}
+                onChangeText={(text) => {
+                  setCurrentPassword(text);
+                  if (error) setError(null);
+                }}
+                placeholder="Enter your current password"
+                placeholderTextColor="rgba(255, 255, 255, 0.3)"
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                onFocus={() => setIsPasswordFocused(true)}
+                onBlur={() => setIsPasswordFocused(false)}
+                style={{
+                  flex: 1,
+                  fontSize: 17,
+                  color: '#ffffff',
+                  fontWeight: '500',
+                  paddingVertical: 0
+                }}
+              />
+            </View>
           </View>
 
           {/* Error */}

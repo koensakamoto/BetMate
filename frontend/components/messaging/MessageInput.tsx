@@ -49,7 +49,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [inputHeight, setInputHeight] = useState(36);
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Smooth animations for professional feel
   const borderOpacity = useRef(new Animated.Value(0.1)).current;
@@ -58,9 +58,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   // Auto-focus when replying or editing
   useEffect(() => {
+    let focusTimeout: ReturnType<typeof setTimeout> | null = null;
     if (replyToMessage || editingMessage) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+      focusTimeout = setTimeout(() => inputRef.current?.focus(), 100);
     }
+    return () => {
+      if (focusTimeout) {
+        clearTimeout(focusTimeout);
+      }
+    };
   }, [replyToMessage, editingMessage]);
 
   // Set message content when editing
@@ -71,6 +77,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
       setMessage('');
     }
   }, [editingMessage]);
+
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
 
 
 

@@ -32,7 +32,7 @@ export default function AuthButton({
       paddingHorizontal: size === 'small' ? 12 : size === 'medium' ? 16 : 20,
       paddingVertical: size === 'small' ? 8 : size === 'medium' ? 12 : 16,
       opacity: (disabled || loading) ? 0.6 : 1,
-      width: fullWidth ? '100%' : undefined,
+      width: fullWidth ? ('100%' as const) : undefined,
       minWidth: fullWidth ? undefined : 100,
     };
 
@@ -66,6 +66,7 @@ export default function AuthButton({
       fontSize: size === 'small' ? 13 : size === 'medium' ? 14 : 16,
       fontWeight: '600' as const,
       letterSpacing: 0.4,
+      color: '#000000',
     };
 
     switch (variant) {

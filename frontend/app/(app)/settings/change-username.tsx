@@ -91,7 +91,7 @@ export default function ChangeUsername() {
       } else {
         setError(response.message);
       }
-    } catch (err) {
+    } catch (err: any) {
       errorLog('Failed to change username:', err);
       setError(err.response?.data?.message || err.message || 'Failed to change username');
     } finally {

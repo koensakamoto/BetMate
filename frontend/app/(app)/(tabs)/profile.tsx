@@ -269,8 +269,8 @@ export default function Profile() {
         <MaterialIcons name="error-outline" size={48} color="#EF4444" />
         <Text style={{ color: '#ffffff', marginTop: 16, fontSize: 18, textAlign: 'center' }}>Failed to load profile</Text>
         <Text style={{ color: 'rgba(255, 255, 255, 0.6)', marginTop: 8, fontSize: 14, textAlign: 'center' }}>{error}</Text>
-        <TouchableOpacity 
-          onPress={loadUserData}
+        <TouchableOpacity
+          onPress={() => loadUserData()}
           style={{
             backgroundColor: '#00D4AA',
             paddingHorizontal: 24,

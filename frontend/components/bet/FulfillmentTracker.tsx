@@ -31,8 +31,11 @@ export const FulfillmentTracker: React.FC<FulfillmentTrackerProps> = React.memo(
 
   useFocusEffect(
     useCallback(() => {
-      loadFulfillmentDetails();
-    }, [betId])
+      // Only fetch if we don't have data yet (prevents re-render on navigation back)
+      if (!fulfillmentDetails) {
+        loadFulfillmentDetails();
+      }
+    }, [betId, fulfillmentDetails])
   );
 
   // Helper to parse display name into first/last name parts

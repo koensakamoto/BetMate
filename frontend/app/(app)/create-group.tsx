@@ -168,17 +168,17 @@ export default function CreateGroup() {
               // Dismiss modal and force refresh with parameter
               router.dismissAll();
               router.navigate({
-                pathname: '/(tabs)/group',
+                pathname: '/(app)/(tabs)/group/index',
                 params: { refresh: Date.now().toString() }
-              });
+              } as any);
             }
           }
         ]
       );
-    } catch (err) {
+    } catch (err: any) {
       Alert.alert(
         'Error',
-        err.message || 'Failed to create group. Please try again.',
+        err?.message || 'Failed to create group. Please try again.',
         [{ text: 'OK' }]
       );
     } finally {

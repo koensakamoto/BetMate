@@ -5,6 +5,7 @@ import { ApiError } from '../services/api/baseClient';
 import { errorLog, debugLog } from '../config/env';
 import { getErrorMessage, hasResponse } from '../utils/errorUtils';
 import { webSocketService } from '../services/messaging/webSocketService';
+import { clearAllBetCaches } from '../hooks/useBetDetailsCache';
 
 // Updated User interface to match backend response
 export interface User {
@@ -161,16 +162,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const checkAuthStatus = useCallback(async () => {
+    const AUTH_CHECK_TIMEOUT = 15000; // 15 second timeout
+
     try {
       setIsLoading(true);
       setError(null);
 
-      // Check if user is authenticated
-      const isAuth = await authService.isAuthenticated();
+      // Create a timeout promise to prevent indefinite hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('AUTH_TIMEOUT'));
+        }, AUTH_CHECK_TIMEOUT);
+      });
+
+      // Check if user is authenticated with timeout
+      const isAuth = await Promise.race([
+        authService.isAuthenticated(),
+        timeoutPromise
+      ]);
 
       if (isAuth) {
-        // Validate session and get user profile
-        const userProfile = await authService.getCurrentUser();
+        // Validate session and get user profile with timeout
+        const userProfile = await Promise.race([
+          authService.getCurrentUser(),
+          timeoutPromise
+        ]);
 
         // Check if account is still active
         if (!userProfile.isActive) {
@@ -192,10 +208,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(null);
         debugLog('Auth check - no valid session');
       }
-    } catch (error) {
+    } catch (error: any) {
       errorLog('Auth status check failed:', error);
       setUser(null);
-      // Don't set error for initial auth check - user might just not be logged in
+
+      // Detect network errors and provide user feedback
+      const isNetworkError =
+        error?.message === 'AUTH_TIMEOUT' ||
+        error?.message === 'Network Error' ||
+        error?.message?.includes('network') ||
+        error?.message?.includes('timeout') ||
+        error?.code === 'ECONNABORTED' ||
+        error?.code === 'ERR_NETWORK' ||
+        !error?.response; // No response typically means network issue
+
+      if (isNetworkError && error?.message !== 'AUTH_TIMEOUT' || error?.message === 'AUTH_TIMEOUT') {
+        // Only show alert for actual network issues, not for expired sessions
+        const hasStoredTokens = await authService.isAuthenticated().catch(() => false);
+        if (hasStoredTokens || error?.message === 'AUTH_TIMEOUT') {
+          Alert.alert(
+            'Connection Error',
+            'Unable to connect to the server. Please check your internet connection and try again.',
+            [
+              { text: 'OK' }
+            ]
+          );
+        }
+      }
+      // Don't set error state for initial auth check - user might just not be logged in
     } finally {
       setIsLoading(false);
     }
@@ -313,6 +353,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = useCallback(async () => {
     try {
       setIsLoading(true);
+
+      // Clear all cached data to prevent data leaking between accounts
+      clearAllBetCaches();
 
       // Disconnect WebSocket before logging out
       try {

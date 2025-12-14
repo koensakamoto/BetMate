@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View, TouchableOpacity, ScrollView } from 'react-native';
 
-export type StoreCategory = 'risk' | 'multipliers' | 'tools' | 'discounts' | 'boosters';
+export type StoreCategory = 'featured' | 'risk' | 'multipliers' | 'tools' | 'discounts' | 'boosters';
 
 interface StoreCategoryTabsProps {
   activeCategory: StoreCategory;

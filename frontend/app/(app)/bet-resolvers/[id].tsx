@@ -1,39 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { betService, BetResponse, ResolverInfo } from '../../../services/bet/betService';
+import { ResolverInfo } from '../../../services/bet/betService';
+import { useBetDetailsCache } from '../../../hooks/useBetDetailsCache';
 import { Avatar } from '../../../components/common/Avatar';
 
 export default function BetResolvers() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const [betData, setBetData] = useState<BetResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadData();
-  }, [id]);
-
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-
-      if (!id) {
-        throw new Error('Bet ID is required');
-      }
-
-      // Load bet details (includes resolvers)
-      const betResponse = await betService.getBetById(parseInt(id));
-      setBetData(betResponse);
-
-    } catch (error) {
-      // Error handled silently
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { bet: betData, isLoading } = useBetDetailsCache(id ? parseInt(id) : null);
 
   const handleBackPress = () => {
     router.back();

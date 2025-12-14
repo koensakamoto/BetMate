@@ -11,8 +11,6 @@ export interface FriendDto {
   profileImageUrl?: string;
   isActive: boolean;
   bio?: string;
-  isOnline?: boolean;
-  lastSeen?: string;
 }
 
 export interface FriendsCountResponse {
@@ -61,9 +59,7 @@ export class FriendshipService extends BaseApiService {
       lastName: user.lastName,
       profileImageUrl: user.profileImageUrl,
       isActive: user.isActive,
-      bio: undefined, // TODO: Add bio field to backend response if needed
-      isOnline: Math.random() > 0.5, // TODO: Replace with actual online status from backend
-      lastSeen: Math.random() > 0.5 ? undefined : '2 hours ago' // TODO: Replace with actual last seen from backend
+      bio: undefined
     }));
   }
 
@@ -82,9 +78,7 @@ export class FriendshipService extends BaseApiService {
       lastName: user.lastName,
       profileImageUrl: user.profileImageUrl,
       isActive: user.isActive,
-      bio: undefined,
-      isOnline: Math.random() > 0.5,
-      lastSeen: Math.random() > 0.5 ? undefined : '2 hours ago'
+      bio: undefined
     }));
   }
 
@@ -166,9 +160,7 @@ export class FriendshipService extends BaseApiService {
       lastName: user.lastName,
       profileImageUrl: user.profileImageUrl,
       isActive: user.isActive,
-      bio: undefined,
-      isOnline: Math.random() > 0.5,
-      lastSeen: Math.random() > 0.5 ? undefined : '2 hours ago'
+      bio: undefined
     }));
   }
 

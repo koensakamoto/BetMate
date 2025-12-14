@@ -438,13 +438,11 @@ export default function EditProfile() {
               error={errors.firstName}
               style={{
                 backgroundColor: 'transparent',
-                borderWidth: 0,
-                paddingHorizontal: 0,
-                paddingVertical: 0,
                 marginVertical: 0,
+              }}
+              inputStyle={{
                 fontSize: 16,
                 color: '#ffffff',
-                height: 24
               }}
             />
           </View>
@@ -470,13 +468,11 @@ export default function EditProfile() {
               error={errors.lastName}
               style={{
                 backgroundColor: 'transparent',
-                borderWidth: 0,
-                paddingHorizontal: 0,
-                paddingVertical: 0,
                 marginVertical: 0,
+              }}
+              inputStyle={{
                 fontSize: 16,
                 color: '#ffffff',
-                height: 24
               }}
             />
           </View>
@@ -515,14 +511,13 @@ export default function EditProfile() {
               numberOfLines={2}
               style={{
                 backgroundColor: 'transparent',
-                borderWidth: 0,
-                paddingHorizontal: 0,
-                paddingVertical: 0,
                 marginVertical: 0,
-                fontSize: 16,
-                color: '#ffffff',
                 minHeight: 40,
                 maxHeight: 60,
+              }}
+              inputStyle={{
+                fontSize: 16,
+                color: '#ffffff',
                 textAlignVertical: 'top'
               }}
               error={errors.bio}

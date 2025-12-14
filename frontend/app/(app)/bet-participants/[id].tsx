@@ -1,52 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { betService, BetResponse, BetParticipationResponse } from '../../../services/bet/betService';
-import { authService } from '../../../services/auth/authService';
+import { useBetDetailsCache } from '../../../hooks/useBetDetailsCache';
+import { useAuth } from '../../../contexts/AuthContext';
 import { Avatar } from '../../../components/common/Avatar';
 
 export default function BetParticipants() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const [betData, setBetData] = useState<BetResponse | null>(null);
-  const [participants, setParticipants] = useState<BetParticipationResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const { user } = useAuth();
+  const { bet: betData, participants, isLoading } = useBetDetailsCache(id ? parseInt(id) : null);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'WON' | 'LOST' | 'DRAW'>('ALL');
-
-  useEffect(() => {
-    loadData();
-  }, [id]);
-
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-
-      if (!id) {
-        throw new Error('Bet ID is required');
-      }
-
-      // Parallelize all API calls for faster loading
-      const [userData, betResponse, participantsData] = await Promise.all([
-        authService.getCurrentUser().catch(() => null),
-        betService.getBetById(parseInt(id)),
-        betService.getBetParticipations(parseInt(id))
-      ]);
-
-      if (userData?.id) {
-        setCurrentUserId(userData.id);
-      }
-      setBetData(betResponse);
-      setParticipants(participantsData);
-
-    } catch (error) {
-      // Error loading participants
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const currentUserId = user?.id ?? null;
 
   const handleBackPress = () => {
     router.back();

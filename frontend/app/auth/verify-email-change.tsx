@@ -60,7 +60,7 @@ export default function VerifyEmailChange() {
       } else {
         setError(result.message);
       }
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to confirm email change');
     } finally {
       setIsConfirming(false);

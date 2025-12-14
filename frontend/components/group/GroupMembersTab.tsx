@@ -14,6 +14,7 @@ import { isOnline, getDisplayName, formatJoinDate, formatLastActivity } from '..
 interface GroupMembersTabProps {
   groupData: {
     id: string | string[];
+    name?: string;
     memberCount: number;
     userRole?: string;
     ownerUsername?: string;
@@ -97,7 +98,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
         setMembers([]);
         setError('Invalid data received from server');
       }
-    } catch (error) {
+    } catch (error: any) {
       errorLog('Error fetching group members:', error);
       setMembers([]);
 
@@ -219,7 +220,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
       setShowInviteModal(false);
       // Refresh members list to show newly invited user
       fetchMembers();
-    } catch (error) {
+    } catch (error: any) {
       errorLog('Error inviting user:', error);
       const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send invite';
       Alert.alert('Error', errorMessage);

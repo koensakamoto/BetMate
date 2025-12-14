@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, ActivityIndicator, Image, Alert, TextInput, RefreshControl } from 'react-native';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, ActivityIndicator, Alert, TextInput, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -8,8 +8,7 @@ import { friendshipService, FriendDto } from '../../services/friendship/friendsh
 import { debugLog, errorLog } from '../../config/env';
 import { getErrorMessage } from '../../utils/errorUtils';
 import { getDisplayName } from '../../utils/memberUtils';
-
-const icon = require("../../assets/images/icon.png");
+import { Avatar } from '../../components/common/Avatar';
 
 export default function FriendsList() {
   const insets = useSafeAreaInsets();
@@ -315,13 +314,13 @@ export default function FriendsList() {
               >
                 {/* Avatar */}
                 <View style={{ marginRight: 12 }}>
-                  <Image
-                    source={icon}
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 26
-                    }}
+                  <Avatar
+                    imageUrl={friend.profileImageUrl}
+                    firstName={friend.firstName}
+                    lastName={friend.lastName}
+                    username={friend.username}
+                    userId={friend.id}
+                    customSize={52}
                   />
                 </View>
 

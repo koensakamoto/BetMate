@@ -28,6 +28,7 @@ export default function Bet() {
   // Owed Stakes state
   const [unfulfilledBets, setUnfulfilledBets] = useState<BetSummaryResponse[]>([]);
   const [loadingUnfulfilledBets, setLoadingUnfulfilledBets] = useState(false);
+  const [unfulfilledBetsError, setUnfulfilledBetsError] = useState<string | null>(null);
 
   // Filters for "You Owe" tab
   const [youOweFilter, setYouOweFilter] = useState<'all' | 'todo' | 'submitted'>('all');
@@ -70,21 +71,8 @@ export default function Bet() {
     return lastOwedStakesFetchTime.current > 0 && (Date.now() - lastOwedStakesFetchTime.current) < OWED_STAKES_CACHE_DURATION;
   }, []);
 
-  // Always refresh on focus to ensure fresh data after bet creation/updates
-  useFocusEffect(
-    useCallback(() => {
-      loadBets(false);
-    }, [])
-  );
-
-  // Trigger refresh when URL refresh parameter changes (from bet creation)
-  useEffect(() => {
-    if (refresh) {
-      loadBets(false);
-    }
-  }, [refresh]);
-
-  const loadBets = async (isRefreshing: boolean = false) => {
+  // Load bets from API
+  const loadBets = useCallback(async (isRefreshing: boolean = false) => {
     if (isRefreshing) {
       setRefreshing(true);
     } else {
@@ -107,14 +95,27 @@ export default function Bet() {
       lastFetchTime.current = Date.now();
       hasFetchedMyBets.current = true;
 
-    } catch (error) {
-      // Error handled silently
+    } catch {
       Alert.alert('Error', 'Failed to load bets. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
+
+  // Always refresh on focus to ensure fresh data after bet creation/updates
+  useFocusEffect(
+    useCallback(() => {
+      loadBets(false);
+    }, [loadBets])
+  );
+
+  // Trigger refresh when URL refresh parameter changes (from bet creation)
+  useEffect(() => {
+    if (refresh) {
+      loadBets(false);
+    }
+  }, [refresh, loadBets]);
 
   // Fetch user unfulfilled bets with caching
   const fetchUnfulfilledBets = useCallback(async (forceRefresh: boolean = false) => {
@@ -129,6 +130,7 @@ export default function Bet() {
 
     try {
       setLoadingUnfulfilledBets(true);
+      setUnfulfilledBetsError(null);
       const allBets = await betService.getMyBets();
       // Filter for unfulfilled social bets only
       // Unfulfilled means: status is RESOLVED and fulfillmentStatus is PENDING or PARTIALLY_FULFILLED
@@ -140,7 +142,8 @@ export default function Bet() {
       setUnfulfilledBets(unfulfilled);
       lastOwedStakesFetchTime.current = Date.now();
     } catch (err) {
-      // Error handled silently
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load stakes';
+      setUnfulfilledBetsError(errorMessage);
     } finally {
       setLoadingUnfulfilledBets(false);
     }
@@ -651,6 +654,35 @@ export default function Bet() {
                     <SkeletonOwedStakesCard />
                     <SkeletonOwedStakesCard />
                   </>
+                ) : unfulfilledBetsError ? (
+                  <View style={{
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(239, 68, 68, 0.2)',
+                    borderRadius: 12,
+                    padding: 20,
+                    alignItems: 'center',
+                    marginBottom: 16
+                  }}>
+                    <MaterialIcons name="error-outline" size={32} color="#EF4444" />
+                    <Text style={{
+                      color: '#EF4444',
+                      fontSize: 14,
+                      fontWeight: '600',
+                      marginTop: 8,
+                      textAlign: 'center'
+                    }}>
+                      Failed to load stakes
+                    </Text>
+                    <Text style={{
+                      color: 'rgba(239, 68, 68, 0.7)',
+                      fontSize: 12,
+                      marginTop: 4,
+                      textAlign: 'center'
+                    }}>
+                      Pull down to retry
+                    </Text>
+                  </View>
                 ) : (() => {
                   // Filter for bets where user owes (lost)
                   const youOweBets = unfulfilledBets.filter(bet =>
@@ -923,6 +955,35 @@ export default function Bet() {
                     <SkeletonOwedStakesCard />
                     <SkeletonOwedStakesCard />
                   </>
+                ) : unfulfilledBetsError ? (
+                  <View style={{
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(239, 68, 68, 0.2)',
+                    borderRadius: 12,
+                    padding: 20,
+                    alignItems: 'center',
+                    marginBottom: 16
+                  }}>
+                    <MaterialIcons name="error-outline" size={32} color="#EF4444" />
+                    <Text style={{
+                      color: '#EF4444',
+                      fontSize: 14,
+                      fontWeight: '600',
+                      marginTop: 8,
+                      textAlign: 'center'
+                    }}>
+                      Failed to load stakes
+                    </Text>
+                    <Text style={{
+                      color: 'rgba(239, 68, 68, 0.7)',
+                      fontSize: 12,
+                      marginTop: 4,
+                      textAlign: 'center'
+                    }}>
+                      Pull down to retry
+                    </Text>
+                  </View>
                 ) : (() => {
                   // Filter for bets where user is owed (won or creator)
                   const owedToYouBets = unfulfilledBets.filter(bet => {

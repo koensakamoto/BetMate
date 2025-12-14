@@ -1,4 +1,5 @@
 import { Client, StompSubscription, IMessage } from '@stomp/stompjs';
+import { z } from 'zod';
 import { ENV, debugLog, errorLog } from '../../config/env';
 import { tokenStorage } from '../api';
 import {
@@ -11,6 +12,53 @@ import {
   WebSocketMessageType,
   SendMessageRequest
 } from '../../types/api';
+
+// ==========================================
+// SECURITY: Zod Schemas for Message Validation
+// ==========================================
+
+/**
+ * Schema for validating incoming message responses from WebSocket
+ * Prevents malformed messages from causing crashes or unexpected behavior
+ */
+const MessageResponseSchema = z.object({
+  id: z.number(),
+  content: z.string(),
+  senderId: z.number(),
+  senderUsername: z.string(),
+  groupId: z.number(),
+  timestamp: z.string(),
+  type: z.enum(['TEXT', 'SYSTEM', 'IMAGE']).optional(),
+  replyToId: z.number().nullable().optional(),
+  isEdited: z.boolean().optional(),
+  senderProfilePicture: z.string().nullable().optional(),
+});
+
+/**
+ * Schema for validating typing indicator messages
+ */
+const TypingIndicatorSchema = z.object({
+  isTyping: z.boolean(),
+  groupId: z.number(),
+  username: z.string().optional(),
+});
+
+/**
+ * Schema for validating user presence updates
+ */
+const UserPresenceSchema = z.object({
+  status: z.enum(['ONLINE', 'AWAY', 'OFFLINE']),
+  lastSeen: z.string(),
+  username: z.string().optional(),
+});
+
+/**
+ * Schema for validating WebSocket error messages
+ */
+const WebSocketErrorSchema = z.object({
+  error: z.string(),
+  timestamp: z.number(),
+});
 
 export interface WebSocketEventHandlers {
   onMessage?: (message: MessageResponse) => void;
@@ -126,6 +174,12 @@ export class WebSocketMessagingService {
     const startTime = Date.now();
     debugLog('[WS-CONNECT] 🎯 Connect method called');
 
+    // Null guard for client
+    if (!this.client) {
+      errorLog('[WS-CONNECT] ❌ WebSocket client is not initialized');
+      throw new Error('WebSocket client is not initialized');
+    }
+
     if (this.client.connected) {
       debugLog('[WS-CONNECT] ✅ WebSocket already connected');
       return;
@@ -212,13 +266,23 @@ export class WebSocketMessagingService {
    */
   async disconnect(): Promise<void> {
     debugLog('Disconnecting WebSocket...');
-    
+
     // Clear all subscriptions
-    this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.subscriptions.forEach(sub => {
+      try {
+        sub.unsubscribe();
+      } catch {
+        // Ignore unsubscribe errors during disconnect
+      }
+    });
     this.subscriptions.clear();
 
-    if (this.client.connected) {
-      await this.client.deactivate();
+    if (this.client?.connected) {
+      try {
+        await this.client.deactivate();
+      } catch (error) {
+        errorLog('Error deactivating WebSocket client:', error);
+      }
     }
 
     this.connectionPromise = null;
@@ -229,7 +293,7 @@ export class WebSocketMessagingService {
    * Check if WebSocket is connected
    */
   isConnected(): boolean {
-    return this.client.connected;
+    return this.client?.connected ?? false;
   }
 
   // ==========================================
@@ -399,14 +463,14 @@ export class WebSocketMessagingService {
         debugLog('[WS-AUTH] ✅ WebSocket auth headers set successfully');
         debugLog('[WS-AUTH] Connect headers keys:', Object.keys(this.client.connectHeaders));
       } else {
-        debugLog('[WS-AUTH] ⚠️  No access token available for WebSocket connection');
-        this.client.connectHeaders = {};
+        // Security: Fail connection if no token available - don't allow unauthenticated connections
+        errorLog('[WS-AUTH] ❌ No access token available - authentication required for WebSocket connection');
+        throw new Error('Authentication required: No access token available for WebSocket connection');
       }
     } catch (error) {
+      // Security: Fail connection on auth errors - don't allow unauthenticated fallback
       errorLog('[WS-AUTH] ❌ Failed to set auth headers:', error);
-      // Don't throw error - WebSocket should work without auth for testing
-      this.client.connectHeaders = {};
-      debugLog('[WS-AUTH] Using empty connect headers due to error');
+      throw error instanceof Error ? error : new Error('Failed to authenticate WebSocket connection');
     }
   }
 
@@ -418,8 +482,17 @@ export class WebSocketMessagingService {
    * Subscribe to messages for a specific group
    */
   async subscribeToGroupMessages(groupId: number): Promise<void> {
+    if (!this.client) {
+      throw new Error('WebSocket client is not initialized');
+    }
+
     if (!this.client.connected) {
       await this.connect();
+    }
+
+    // Verify connection succeeded
+    if (!this.client.connected) {
+      throw new Error('Failed to establish WebSocket connection');
     }
 
     const destination = `/topic/group/${groupId}/messages`;
@@ -435,7 +508,16 @@ export class WebSocketMessagingService {
 
     const subscription = this.client.subscribe(destination, (message: IMessage) => {
       try {
-        const messageData: MessageResponse = JSON.parse(message.body);
+        // SECURITY: Validate message schema before processing
+        const rawData = JSON.parse(message.body);
+        const parseResult = MessageResponseSchema.safeParse(rawData);
+
+        if (!parseResult.success) {
+          errorLog('[WS-MESSAGE] ❌ SECURITY: Invalid message schema - rejecting message:', parseResult.error.issues);
+          return;
+        }
+
+        const messageData = parseResult.data as unknown as MessageResponse;
         debugLog(`[WS-MESSAGE] Received message via subscription for group ${groupId}: ${messageData.content?.substring(0, 50)}... (messageId: ${messageData.id}, actualGroupId: ${messageData.groupId})`);
 
         // SAFETY LAYER 1: Check if subscription transition is in progress
@@ -482,8 +564,17 @@ export class WebSocketMessagingService {
    * Subscribe to typing indicators for a specific group
    */
   async subscribeToGroupTyping(groupId: number): Promise<void> {
+    if (!this.client) {
+      throw new Error('WebSocket client is not initialized');
+    }
+
     if (!this.client.connected) {
       await this.connect();
+    }
+
+    // Verify connection succeeded
+    if (!this.client.connected) {
+      throw new Error('Failed to establish WebSocket connection');
     }
 
     const destination = `/topic/group/${groupId}/typing`;
@@ -499,7 +590,16 @@ export class WebSocketMessagingService {
 
     const subscription = this.client.subscribe(destination, (message: IMessage) => {
       try {
-        const typingData: TypingIndicator = JSON.parse(message.body);
+        // SECURITY: Validate typing indicator schema before processing
+        const rawData = JSON.parse(message.body);
+        const parseResult = TypingIndicatorSchema.safeParse(rawData);
+
+        if (!parseResult.success) {
+          errorLog('[WS-TYPING] ❌ SECURITY: Invalid typing indicator schema - rejecting:', parseResult.error.issues);
+          return;
+        }
+
+        const typingData = parseResult.data as TypingIndicator;
         debugLog(`Typing indicator in group ${groupId}:`, typingData);
         // Only call handler if it's for the current group
         if (typingData.groupId === groupId) {
@@ -519,8 +619,17 @@ export class WebSocketMessagingService {
    * Subscribe to user presence updates
    */
   async subscribeToPresence(): Promise<void> {
+    if (!this.client) {
+      throw new Error('WebSocket client is not initialized');
+    }
+
     if (!this.client.connected) {
       await this.connect();
+    }
+
+    // Verify connection succeeded
+    if (!this.client.connected) {
+      throw new Error('Failed to establish WebSocket connection');
     }
 
     const destination = '/topic/presence';
@@ -532,7 +641,16 @@ export class WebSocketMessagingService {
 
     const subscription = this.client.subscribe(destination, (message: IMessage) => {
       try {
-        const presenceData: UserPresence = JSON.parse(message.body);
+        // SECURITY: Validate presence schema before processing
+        const rawData = JSON.parse(message.body);
+        const parseResult = UserPresenceSchema.safeParse(rawData);
+
+        if (!parseResult.success) {
+          errorLog('[WS-PRESENCE] ❌ SECURITY: Invalid presence schema - rejecting:', parseResult.error.issues);
+          return;
+        }
+
+        const presenceData = parseResult.data as UserPresence;
         debugLog('User presence update:', presenceData);
         this.globalEventHandlers.onUserPresence?.(presenceData);
       } catch (error) {
@@ -548,8 +666,17 @@ export class WebSocketMessagingService {
    * Subscribe to personal error messages
    */
   async subscribeToErrors(): Promise<void> {
+    if (!this.client) {
+      throw new Error('WebSocket client is not initialized');
+    }
+
     if (!this.client.connected) {
       await this.connect();
+    }
+
+    // Verify connection succeeded
+    if (!this.client.connected) {
+      throw new Error('Failed to establish WebSocket connection');
     }
 
     const destination = '/user/queue/errors';
@@ -561,7 +688,16 @@ export class WebSocketMessagingService {
 
     const subscription = this.client.subscribe(destination, (message: IMessage) => {
       try {
-        const errorData: WebSocketError = JSON.parse(message.body);
+        // SECURITY: Validate error schema before processing
+        const rawData = JSON.parse(message.body);
+        const parseResult = WebSocketErrorSchema.safeParse(rawData);
+
+        if (!parseResult.success) {
+          errorLog('[WS-ERROR] ❌ SECURITY: Invalid error schema - rejecting:', parseResult.error.issues);
+          return;
+        }
+
+        const errorData = parseResult.data as WebSocketError;
         debugLog('WebSocket error received:', errorData);
         this.globalEventHandlers.onError?.(errorData);
       } catch (error) {
@@ -581,8 +717,17 @@ export class WebSocketMessagingService {
    * Send a message to a group via WebSocket
    */
   async sendMessage(groupId: number, request: SendMessageRequest): Promise<void> {
+    if (!this.client) {
+      throw new Error('WebSocket client is not initialized');
+    }
+
     if (!this.client.connected) {
       await this.connect();
+    }
+
+    // Verify connection succeeded
+    if (!this.client.connected) {
+      throw new Error('Failed to establish WebSocket connection');
     }
 
     try {

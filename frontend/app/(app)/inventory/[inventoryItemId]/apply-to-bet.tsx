@@ -28,7 +28,7 @@ export default function ApplyToBetScreen() {
       const response = await inventoryService.getEligibleBets(parseInt(inventoryItemId));
       setData(response);
       debugLog('Eligible bets loaded:', response);
-    } catch (err) {
+    } catch (err: any) {
       errorLog('Failed to load eligible bets:', err);
       setError(err.message || 'Failed to load eligible bets');
     } finally {
@@ -43,7 +43,7 @@ export default function ApplyToBetScreen() {
       setApplying(bet.betId);
       await insuranceService.applyInsuranceToBet(bet.betId, parseInt(inventoryItemId));
       router.back();
-    } catch (err) {
+    } catch (err: any) {
       errorLog('Failed to apply insurance:', err);
       setError(err.message || 'Failed to apply insurance');
       setApplying(null);

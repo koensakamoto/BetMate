@@ -16,7 +16,7 @@ export const useAuthGuard = (redirectPath: string = '/auth/login') => {
     
     if (!isAuthenticated) {
       debugLog('Auth guard: User not authenticated, redirecting to login');
-      router.replace(redirectPath);
+      router.replace(redirectPath as any);
     }
   }, [isAuthenticated, isLoading, redirectPath]);
 
@@ -40,7 +40,7 @@ export const useGuestGuard = (redirectPath: string = '/(app)/(tabs)/group') => {
     
     if (isAuthenticated) {
       debugLog('Guest guard: User authenticated, redirecting to main app');
-      router.replace(redirectPath);
+      router.replace(redirectPath as any);
     }
   }, [isAuthenticated, isLoading, redirectPath]);
 

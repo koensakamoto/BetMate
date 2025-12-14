@@ -55,7 +55,7 @@ export default function GroupConfig() {
   const settingsGroupData = groupData ? {
     id: groupData.id,
     name: groupData.groupName,
-    description: groupData.description,
+    description: groupData.description || '',
     memberCount: groupData.memberCount,
     privacy: groupData.privacy || 'PRIVATE' as 'PUBLIC' | 'PRIVATE' | 'SECRET',
     groupPictureUrl: groupData.groupPictureUrl

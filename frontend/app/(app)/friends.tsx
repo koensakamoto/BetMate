@@ -109,7 +109,7 @@ export default function Friends() {
             color: 'rgba(255, 255, 255, 0.6)',
             marginRight: 8
           }}>
-            {user.name}
+            {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username}
           </Text>
         </View>
       </View>

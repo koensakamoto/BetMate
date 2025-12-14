@@ -35,9 +35,11 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
 
-# Spring Boot
+# Spring Boot - Local config files (may contain secrets)
 backend/src/main/resources/application-local.properties
+backend/src/main/resources/application-local.yml
 backend/src/main/resources/application-dev.properties
+backend/src/main/resources/application-dev.yml
 backend/src/main/resources/application-prod.properties
 
 # Logs

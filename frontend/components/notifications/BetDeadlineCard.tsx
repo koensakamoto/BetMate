@@ -7,7 +7,7 @@ interface BetDeadlineCardProps {
   notification: {
     id: number;
     title: string;
-    message: string;
+    message?: string;
     createdAt: string;
     isRead: boolean;
     relatedEntityId?: number;
@@ -87,10 +87,11 @@ export const BetDeadlineCard: React.FC<BetDeadlineCardProps> = ({ notification, 
     };
   };
 
-  const betTitle = extractBetTitle(notification.message);
-  const timeInfo = extractTimeInfo(notification.message, notification.title);
+  const message = notification.message || '';
+  const betTitle = extractBetTitle(message);
+  const timeInfo = extractTimeInfo(message, notification.title);
   const timeAgo = formatTimeAgo(parseBackendDate(notification.createdAt));
-  const isResolution = isResolutionDeadline(notification.title, notification.message);
+  const isResolution = isResolutionDeadline(notification.title, message);
 
   return (
     <TouchableOpacity

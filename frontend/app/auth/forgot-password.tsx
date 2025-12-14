@@ -24,7 +24,7 @@ export default function ForgotPassword() {
   const [error, setError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const cooldownInterval = useRef<NodeJS.Timeout | null>(null);
+  const cooldownInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Cleanup interval on unmount
   useEffect(() => {

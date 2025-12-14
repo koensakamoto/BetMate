@@ -4,6 +4,66 @@ import { apiConfig } from '../../config/api';
 import { debugLog, errorLog } from '../../config/env';
 import { ApiResponse } from '../../types/api';
 
+// ==========================================
+// SECURITY: Sensitive Data Sanitization for Logging
+// ==========================================
+
+/**
+ * List of field names that should be redacted from logs.
+ * Prevents accidental exposure of passwords, tokens, and other sensitive data.
+ */
+const SENSITIVE_FIELDS = [
+  'password',
+  'token',
+  'refreshToken',
+  'accessToken',
+  'authorization',
+  'currentPassword',
+  'newPassword',
+  'confirmPassword',
+  'secret',
+  'apiKey',
+  'apiSecret',
+  'credential',
+];
+
+/**
+ * Recursively sanitizes an object by replacing sensitive field values with '[REDACTED]'.
+ * This prevents sensitive data from appearing in debug logs.
+ *
+ * @param data - The data object to sanitize
+ * @param depth - Current recursion depth (max 5 to prevent infinite loops)
+ * @returns A new object with sensitive fields redacted
+ */
+const sanitizeForLogging = (data: unknown, depth = 0): unknown => {
+  // Prevent infinite recursion and handle non-objects
+  if (depth > 5 || data === null || data === undefined) return data;
+  if (typeof data !== 'object') return data;
+
+  // Handle arrays
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeForLogging(item, depth + 1));
+  }
+
+  // Handle objects
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    // Check if this key matches any sensitive field (case-insensitive)
+    const isSensitive = SENSITIVE_FIELDS.some(field =>
+      key.toLowerCase().includes(field.toLowerCase())
+    );
+
+    if (isSensitive) {
+      sanitized[key] = '[REDACTED]';
+    } else if (typeof value === 'object' && value !== null) {
+      sanitized[key] = sanitizeForLogging(value, depth + 1);
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+};
+
 // Token storage keys
 const TOKEN_KEYS = {
   ACCESS_TOKEN: 'access_token',
@@ -94,11 +154,15 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
       debugLog('Attempting to refresh access token...');
 
+      // SECURITY: Send refresh token in Authorization header instead of body
       // Use a fresh axios instance to avoid interceptor loops
       const refreshResponse = await axios.post(
         `${apiConfig.baseURL}/auth/refresh`,
-        { refreshToken },
-        { timeout: apiConfig.timeout }
+        {},
+        {
+          timeout: apiConfig.timeout,
+          headers: { 'Authorization': `Bearer ${refreshToken}` }
+        }
       );
 
       const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.data;
@@ -162,13 +226,13 @@ const createApiClient = (): AxiosInstance => {
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-      
-      // Log request
+
+      // SECURITY: Sanitize request data before logging to prevent password/token exposure
       debugLog(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`, {
-        data: config.data,
-        params: config.params,
+        data: sanitizeForLogging(config.data),
+        params: sanitizeForLogging(config.params),
       });
-      
+
       return config;
     },
     (error) => {
@@ -180,22 +244,22 @@ const createApiClient = (): AxiosInstance => {
   // Response interceptor for error handling and token refresh
   client.interceptors.response.use(
     (response: AxiosResponse) => {
-      // Log response
+      // SECURITY: Sanitize response data before logging to prevent token/sensitive data exposure
       debugLog(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url}`, {
         status: response.status,
-        data: response.data,
+        data: sanitizeForLogging(response.data),
       });
-      
+
       return response;
     },
     async (error: AxiosError) => {
       const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
-      
-      // Log error
+
+      // SECURITY: Sanitize error data before logging to prevent sensitive data exposure
       errorLog(`❌ API Error: ${originalRequest?.method?.toUpperCase()} ${originalRequest?.url}`, {
         status: error.response?.status,
         message: error.message,
-        data: error.response?.data,
+        data: sanitizeForLogging(error.response?.data),
       });
 
       // Handle 403 Forbidden - session expired or access revoked
@@ -239,9 +303,10 @@ const createApiClient = (): AxiosInstance => {
       }
 
       // Transform axios error to custom ApiError
+      const responseData = error.response?.data as { message?: string } | undefined;
       const apiError = new ApiError(
         error.response?.status || 500,
-        error.response?.data?.message || error.message || 'An unexpected error occurred',
+        responseData?.message || error.message || 'An unexpected error occurred',
         error
       );
       
