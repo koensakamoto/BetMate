@@ -7,29 +7,34 @@ server:
 
 spring:
   datasource:
-    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/rivalpicks_db?useSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=false}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: jdbc:mysql://${MYSQLHOST}:${MYSQLPORT}/${MYSQLDATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${MYSQLUSER}
+    password: ${MYSQLPASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 5
+      maximum-pool-size: 5
+      minimum-idle: 1
       idle-timeout: 300000
       connection-timeout: 20000
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: create
     show-sql: false
     properties:
       hibernate:
         format_sql: false
+        dialect: org.hibernate.dialect.MySQLDialect
 
-  # Redis Configuration for Production
+  flyway:
+    enabled: false
+
+  # Redis Configuration for Production (Railway)
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      host: ${REDISHOST}
+      port: ${REDISPORT:6379}
+      password: ${REDISPASSWORD:}
       timeout: 2000ms
       lettuce:
         pool:
