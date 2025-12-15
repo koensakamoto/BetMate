@@ -88,6 +88,10 @@ public class User {
     @Column(nullable = false)
     private AuthProvider authProvider = AuthProvider.LOCAL;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Role role = Role.USER;
+
     // ==========================================
     // BETTING ANALYTICS & STATISTICS
     // ==========================================
@@ -225,6 +229,9 @@ public class User {
 
     public AuthProvider getAuthProvider() { return authProvider; }
     public void setAuthProvider(AuthProvider authProvider) { this.authProvider = authProvider; }
+
+    public Role getRole() { return role; }
+    public void setRole(Role role) { this.role = role; }
 
     public Integer getWinCount() { return winCount; }
     public void setWinCount(Integer winCount) { this.winCount = winCount; }
@@ -403,6 +410,10 @@ public class User {
 
     public enum DevicePlatform {
         IOS, ANDROID, WEB
+    }
+
+    public enum Role {
+        USER, ADMIN
     }
 
     // Push notification getters and setters
