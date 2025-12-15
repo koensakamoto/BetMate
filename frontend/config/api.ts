@@ -14,7 +14,7 @@ const getApiConfig = (): ApiConfig => {
     baseURL: `${ENV.API_BASE_URL}/api`,
     wsURL: ENV.WS_BASE_URL,
     timeout: ENV.API_TIMEOUT,
-    retryAttempts: ENVIRONMENT === 'production' ? 2 : 3,
+    retryAttempts: 1, // 1 retry = 2 total requests max
     retryDelay: 1000, // 1 second
   };
 };

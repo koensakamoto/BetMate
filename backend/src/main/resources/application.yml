@@ -132,4 +132,5 @@ management:
         include: health,info,metrics
   endpoint:
     health:
-      show-details: always
+      show-details: always  # Local dev: show details to everyone for easier debugging
+      roles: ADMIN  # In prod with when-authorized, only ADMIN role sees details

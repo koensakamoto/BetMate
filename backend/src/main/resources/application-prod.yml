@@ -78,4 +78,5 @@ management:
         include: health,info,metrics
   endpoint:
     health:
-      show-details: when-authorized  # Only show details to authenticated users
+      show-details: when-authorized
+      roles: ADMIN  # Only users with ROLE_ADMIN can see detailed health info

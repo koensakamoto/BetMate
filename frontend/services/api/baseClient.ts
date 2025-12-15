@@ -348,6 +348,9 @@ export const handleApiResponse = <T>(response: AxiosResponse<ApiResponse<T> | T>
   return response.data as T;
 };
 
+// Status codes that are safe to retry (transient gateway errors)
+const RETRYABLE_STATUS_CODES = [502, 503, 504];
+
 // Retry utility for failed requests
 export const retryRequest = async <T>(
   requestFn: () => Promise<T>,
@@ -357,8 +360,13 @@ export const retryRequest = async <T>(
   try {
     return await requestFn();
   } catch (error) {
-    if (attempts > 1 && error instanceof ApiError && error.statusCode >= 500) {
-      // Only retry for server errors (5xx)
+    // Only retry for transient gateway errors (502, 503, 504)
+    // Don't retry on 500 (application error) or 429 (rate limit)
+    const isRetryable = error instanceof ApiError &&
+      RETRYABLE_STATUS_CODES.includes(error.statusCode);
+
+    if (attempts > 1 && isRetryable) {
+      debugLog(`Retrying request after ${delay}ms (${attempts - 1} attempts left)`);
       await new Promise(resolve => setTimeout(resolve, delay));
       return retryRequest(requestFn, attempts - 1, delay * 2); // Exponential backoff
     }

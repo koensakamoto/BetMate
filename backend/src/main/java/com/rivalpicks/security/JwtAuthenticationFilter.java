@@ -57,12 +57,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         "/api/users/profile/email/confirm",   // Email change confirmation (token is auth)
         "/api/users/profile/email/validate",  // Email change token validation
         "/api/files/**",
-        "/actuator/health",
         "/actuator/info",
         "/swagger-ui/**",
         "/v3/api-docs/**",
         "/error",
         "/ws/**"
+    );
+
+    // Endpoints that accept optional authentication
+    // - No token: proceeds without auth (e.g., basic health status)
+    // - Valid token: sets authentication (e.g., detailed health for admins)
+    // - Invalid token: returns 401 error
+    private static final List<String> OPTIONAL_AUTH_ENDPOINTS = Arrays.asList(
+        "/actuator/health"
     );
 
     @Autowired
@@ -80,14 +87,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        log.debug("Processing JWT authentication for protected endpoint: {}", request.getRequestURI());
-        
+        String requestPath = request.getRequestURI();
+        boolean isOptionalAuth = OPTIONAL_AUTH_ENDPOINTS.stream()
+            .anyMatch(pattern -> pathMatcher.match(pattern, requestPath));
+
+        log.debug("Processing JWT authentication for endpoint: {} (optionalAuth={})", requestPath, isOptionalAuth);
+
         try {
             // Extract JWT token from request
             final String jwt = extractJwtFromRequest(request);
             if (jwt == null) {
-                log.warn("No JWT token found in Authorization header for protected endpoint: {}", request.getRequestURI());
-                sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "Access token is required", request.getRequestURI());
+                if (isOptionalAuth) {
+                    // Optional auth endpoint: proceed without authentication
+                    log.debug("No JWT token for optional auth endpoint: {} - proceeding unauthenticated", requestPath);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+                log.warn("No JWT token found in Authorization header for protected endpoint: {}", requestPath);
+                sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "Access token is required", requestPath);
                 return;
             }
 
@@ -135,22 +152,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     /**
      * Determines if this filter should be skipped for the current request.
      * Skips JWT processing for public endpoints to improve performance.
-     * 
+     * Note: Optional auth endpoints are NOT skipped - they need JWT processing
+     * to authenticate users who provide tokens.
+     *
      * @param request HTTP request
      * @return true if filter should be skipped, false otherwise
      */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String requestPath = request.getRequestURI();
-        
+
         boolean isPublicEndpoint = PUBLIC_ENDPOINTS.stream()
             .anyMatch(pattern -> pathMatcher.match(pattern, requestPath));
-            
-        if (isPublicEndpoint) {
+
+        // Optional auth endpoints should NOT be skipped - we need to process JWT if present
+        boolean isOptionalAuth = OPTIONAL_AUTH_ENDPOINTS.stream()
+            .anyMatch(pattern -> pathMatcher.match(pattern, requestPath));
+
+        if (isPublicEndpoint && !isOptionalAuth) {
             log.debug("Skipping JWT authentication for public endpoint: {}", requestPath);
+            return true;
         }
-        
-        return isPublicEndpoint;
+
+        return false;
     }
 
     /**
