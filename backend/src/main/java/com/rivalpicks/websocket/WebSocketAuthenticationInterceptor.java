@@ -79,7 +79,11 @@ public class WebSocketAuthenticationInterceptor implements ChannelInterceptor {
                 accessor.setUser(authentication);
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                log.debug("WebSocket connection authenticated for user: {}", username);
+                // CRITICAL: Set the user-name header so STOMP can route user-specific messages
+                // This header is sent back to the client in the CONNECTED frame
+                accessor.setNativeHeader("user-name", username);
+
+                log.info("WebSocket connection authenticated for user: {} (user-name header set)", username);
 
             } catch (JwtException e) {
                 log.warn("WebSocket connection rejected: JWT validation failed - {}", e.getMessage());

@@ -10,11 +10,36 @@ import { showInfoToast } from '../../utils/toast';
 // Check if we're running in Expo Go (no native modules available)
 const isExpoGo = Constants.appOwnership === 'expo';
 
-// Dynamically import Firebase messaging only when not in Expo Go
-let messaging: any = null;
+// Firebase messaging modular API imports
+let firebaseMessaging: {
+  getMessaging: () => any;
+  requestPermission: (messaging: any) => Promise<number>;
+  getToken: (messaging: any) => Promise<string>;
+  deleteToken: (messaging: any) => Promise<void>;
+  onMessage: (messaging: any, callback: (message: any) => void) => () => void;
+  onNotificationOpenedApp: (messaging: any, callback: (message: any) => void) => () => void;
+  getInitialNotification: (messaging: any) => Promise<any>;
+  onTokenRefresh: (messaging: any, callback: (token: string) => void) => () => void;
+  AuthorizationStatus: { AUTHORIZED: number; PROVISIONAL: number };
+} | null = null;
+
+let messagingInstance: any = null;
+
 if (!isExpoGo) {
   try {
-    messaging = require('@react-native-firebase/messaging').default;
+    const messaging = require('@react-native-firebase/messaging');
+    firebaseMessaging = {
+      getMessaging: messaging.getMessaging,
+      requestPermission: messaging.requestPermission,
+      getToken: messaging.getToken,
+      deleteToken: messaging.deleteToken,
+      onMessage: messaging.onMessage,
+      onNotificationOpenedApp: messaging.onNotificationOpenedApp,
+      getInitialNotification: messaging.getInitialNotification,
+      onTokenRefresh: messaging.onTokenRefresh,
+      AuthorizationStatus: messaging.AuthorizationStatus,
+    };
+    messagingInstance = firebaseMessaging.getMessaging();
   } catch (e) {
   }
 }
@@ -22,7 +47,6 @@ if (!isExpoGo) {
 // Configure how notifications appear when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
     shouldShowBanner: true,
@@ -79,7 +103,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     try {
       // Check if Firebase messaging is available (not in Expo Go)
-      if (!messaging) {
+      if (!firebaseMessaging || !messagingInstance) {
         setError('Push notifications not available in Expo Go');
         return null;
       }
@@ -92,10 +116,10 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
       // Request permission for iOS (Android doesn't need explicit permission for FCM)
       if (Platform.OS === 'ios') {
-        const authStatus = await messaging().requestPermission();
+        const authStatus = await firebaseMessaging.requestPermission(messagingInstance);
         const enabled =
-          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+          authStatus === firebaseMessaging.AuthorizationStatus.AUTHORIZED ||
+          authStatus === firebaseMessaging.AuthorizationStatus.PROVISIONAL;
 
         if (!enabled) {
           setError('Push notification permissions not granted');
@@ -110,7 +134,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       }
 
       // Get the FCM token
-      const token = await messaging().getToken();
+      const token = await firebaseMessaging.getToken(messagingInstance);
 
       // Determine platform
       const platform = Platform.OS === 'ios' ? 'IOS' : Platform.OS === 'android' ? 'ANDROID' : 'WEB';
@@ -165,8 +189,8 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       await apiClient.delete('/users/push-token');
 
       // Delete the FCM token from the device (only if messaging is available)
-      if (messaging) {
-        await messaging().deleteToken();
+      if (firebaseMessaging && messagingInstance) {
+        await firebaseMessaging.deleteToken(messagingInstance);
       }
 
       setFcmToken(null);
@@ -217,7 +241,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     responseListener.current = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
 
     // Skip Firebase messaging setup if not available (Expo Go)
-    if (!messaging) {
+    if (!firebaseMessaging || !messagingInstance) {
       return () => {
         notificationListener.current?.remove();
         responseListener.current?.remove();
@@ -225,7 +249,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     }
 
     // FCM foreground message handler - show toast for in-app notifications
-    const unsubscribeForeground = messaging().onMessage(async (remoteMessage: any) => {
+    const unsubscribeForeground = firebaseMessaging.onMessage(messagingInstance, async (remoteMessage: any) => {
       // Skip toast for group messages (user is already in-app)
       if (remoteMessage.data?.type === 'GROUP_MESSAGE') {
         return;
@@ -244,7 +268,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     // FCM background/quit message handler for navigation
     // Security: Only navigates to whitelisted routes
-    const unsubscribeBackground = messaging().onNotificationOpenedApp((remoteMessage: any) => {
+    const unsubscribeBackground = firebaseMessaging.onNotificationOpenedApp(messagingInstance, (remoteMessage: any) => {
       const data = remoteMessage.data;
 
       if (data?.type === 'GROUP_MESSAGE' && data?.groupId) {
@@ -264,8 +288,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     // Check if app was opened from a quit state by a notification
     // Security: Only navigates to whitelisted routes
-    messaging()
-      .getInitialNotification()
+    firebaseMessaging.getInitialNotification(messagingInstance)
       .then((remoteMessage: any) => {
         if (remoteMessage) {
           const data = remoteMessage.data;
@@ -287,7 +310,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       });
 
     // FCM token refresh handler
-    const unsubscribeTokenRefresh = messaging().onTokenRefresh(async (newToken: string) => {
+    const unsubscribeTokenRefresh = firebaseMessaging.onTokenRefresh(messagingInstance, async (newToken: string) => {
       setFcmToken(newToken);
 
       // Send new token to backend

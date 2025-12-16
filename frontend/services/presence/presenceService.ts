@@ -1,5 +1,5 @@
 import { apiClient } from '../api/baseClient';
-import { debugLog, errorLog } from '../../config/env';
+import { errorLog } from '../../config/env';
 
 /**
  * Presence state representing app foreground/background status.
@@ -45,10 +45,9 @@ export const presenceService = {
       if (chatId) payload.chatId = chatId;
 
       await apiClient.post('/presence/state', payload);
-      debugLog(`Presence state updated: ${state}`, { screen, chatId });
     } catch (error) {
       // Don't throw - presence updates shouldn't break the app
-      errorLog('Failed to update presence state:', error);
+      errorLog('[Presence] Failed to update presence state:', error);
     }
   },
 
@@ -67,10 +66,9 @@ export const presenceService = {
       if (chatId) payload.chatId = chatId;
 
       await apiClient.post('/presence/heartbeat', payload);
-      debugLog('Heartbeat sent', { state, screen, chatId });
     } catch (error) {
       // Don't throw - heartbeats shouldn't break the app
-      errorLog('Failed to send heartbeat:', error);
+      errorLog('[Presence] Failed to send heartbeat:', error);
     }
   },
 

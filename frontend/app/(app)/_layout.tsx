@@ -42,14 +42,14 @@ export default function AppLayout() {
         <Stack.Screen name="create-bet" />
         <Stack.Screen name="create-group" />
         <Stack.Screen name="view-proof" />
-        <Stack.Screen name="group" />
-        <Stack.Screen name="bet-details" />
-        <Stack.Screen name="bet-participants" />
-        <Stack.Screen name="bet-resolvers" />
-        <Stack.Screen name="bet-resolver-vote" />
-        <Stack.Screen name="fulfillment-details" />
-        <Stack.Screen name="profile" />
-        <Stack.Screen name="inventory" />
+        <Stack.Screen name="group/[groupId]/index" />
+        <Stack.Screen name="bet-details/[id]" />
+        <Stack.Screen name="bet-participants/[id]" />
+        <Stack.Screen name="bet-resolvers/[id]" />
+        <Stack.Screen name="bet-resolver-vote/[betId]/[resolverId]" />
+        <Stack.Screen name="fulfillment-details/[id]" />
+        <Stack.Screen name="profile/[userId]" />
+        <Stack.Screen name="inventory/[inventoryItemId]/apply-to-bet" />
       </Stack>
     </PresenceProvider>
   );

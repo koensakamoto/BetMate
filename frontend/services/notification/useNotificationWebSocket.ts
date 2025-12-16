@@ -59,7 +59,6 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
     }
 
     // Show in-app notification toast (works on all platforms)
-    console.log('[useNotificationWebSocket] Showing toast for:', notification.title);
     showNotificationToast(
       notification.title,
       notification.content,
@@ -70,7 +69,6 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
         onPress: () => handleNotificationPress(notification),
       }
     );
-    console.log('[useNotificationWebSocket] Toast shown!');
 
     // Also show browser notification on web if permission granted
     if (Platform.OS === 'web' && 'Notification' in window && Notification.permission === 'granted') {
@@ -105,39 +103,28 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
 
   // Setup WebSocket connection for notifications
   useEffect(() => {
-    console.log('[useNotificationWebSocket] ========== EFFECT RUNNING ==========');
-    console.log('[useNotificationWebSocket] enabled:', enabled);
     if (!enabled) {
-      console.log('[useNotificationWebSocket] Not enabled, skipping subscription');
       return;
     }
 
     let mounted = true;
 
     const setupSubscription = async () => {
-      console.log('[useNotificationWebSocket] Setting up subscription...');
-      console.log('[useNotificationWebSocket] WebSocket connected:', webSocketService.isConnected());
       try {
         const unsubscribe = await webSocketService.subscribeToNotifications((payload) => {
-          console.log('[useNotificationWebSocket] ******** NOTIFICATION RECEIVED ********');
-          console.log('[useNotificationWebSocket] Payload:', JSON.stringify(payload, null, 2));
           if (!mounted) {
-            console.log('[useNotificationWebSocket] Component unmounted, ignoring payload');
             return;
           }
           handleWebSocketNotification(payload as NotificationWebSocketPayload);
         });
 
-        console.log('[useNotificationWebSocket] ******** SUBSCRIPTION SUCCESSFUL ********');
-        console.log('[useNotificationWebSocket] Active subscriptions:', webSocketService.getActiveSubscriptions());
         if (mounted) {
           unsubscribeRef.current = unsubscribe;
         } else {
-          console.log('[useNotificationWebSocket] Component unmounted during setup, cleaning up');
           unsubscribe();
         }
       } catch (error) {
-        console.error('[useNotificationWebSocket] Failed to subscribe to notifications:', error);
+        console.error('[useNotificationWebSocket] Failed to subscribe:', error);
       }
     };
 
@@ -145,7 +132,6 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
 
     // Cleanup function
     return () => {
-      console.log('[useNotificationWebSocket] Cleanup - unmounting');
       mounted = false;
       if (unsubscribeRef.current) {
         unsubscribeRef.current();

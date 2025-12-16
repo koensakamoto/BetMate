@@ -69,8 +69,6 @@ export default function Group() {
       hasFetchedMyGroups.current = true;
       hasFetchedPublicGroups.current = true;
 
-      debugLog('Groups refreshed - My groups:', myGroupsData, 'Public groups:', publicGroupsData);
-
       // Update cache timestamp
       lastFetchTime.current = Date.now();
     } catch (error) {

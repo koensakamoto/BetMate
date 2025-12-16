@@ -38,7 +38,7 @@ function RootLayoutNav() {
       <Stack.Screen name="index" />
       <Stack.Screen name="(app)" />
       <Stack.Screen name="auth" />
-      <Stack.Screen name="invite" />
+      <Stack.Screen name="invite/[groupId]" />
       <Stack.Screen
         name="legal"
         options={{

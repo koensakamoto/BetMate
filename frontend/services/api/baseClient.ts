@@ -226,13 +226,6 @@ const createApiClient = (): AxiosInstance => {
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-
-      // SECURITY: Sanitize request data before logging to prevent password/token exposure
-      debugLog(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`, {
-        data: sanitizeForLogging(config.data),
-        params: sanitizeForLogging(config.params),
-      });
-
       return config;
     },
     (error) => {
@@ -244,12 +237,6 @@ const createApiClient = (): AxiosInstance => {
   // Response interceptor for error handling and token refresh
   client.interceptors.response.use(
     (response: AxiosResponse) => {
-      // SECURITY: Sanitize response data before logging to prevent token/sensitive data exposure
-      debugLog(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url}`, {
-        status: response.status,
-        data: sanitizeForLogging(response.data),
-      });
-
       return response;
     },
     async (error: AxiosError) => {

@@ -6,6 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { groupService, type GroupMemberResponse, type GroupDetailResponse } from '../../../../../services/group/groupService';
 import { userService, type UserProfileResponse, type UserStatistics } from '../../../../../services/user/userService';
 import { useAuth } from '../../../../../contexts/AuthContext';
+import { Avatar } from '../../../../../components/common/Avatar';
 
 export default function MemberProfile() {
   const { groupId, memberId } = useLocalSearchParams();
@@ -283,40 +284,19 @@ export default function MemberProfile() {
             borderBottomColor: 'rgba(255, 255, 255, 0.08)'
           }}>
             {/* Avatar */}
-            <View style={{
-              width: 80,
-              height: 80,
-              borderRadius: 40,
-              backgroundColor: isOnline(member) ? 'rgba(0, 212, 170, 0.15)' : 'rgba(255, 255, 255, 0.08)',
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginBottom: 14,
-              position: 'relative',
-              borderWidth: 2.5,
-              borderColor: isOnline(member) ? 'rgba(0, 212, 170, 0.3)' : 'rgba(255, 255, 255, 0.1)'
-            }}>
-              <Text style={{
-                fontSize: 32,
-                fontWeight: '700',
-                color: isOnline(member) ? '#00D4AA' : '#ffffff'
-              }}>
-                {getDisplayName(member).charAt(0).toUpperCase()}
-              </Text>
-
-              {/* Online Indicator */}
-              {isOnline(member) && (
-                <View style={{
-                  position: 'absolute',
-                  bottom: 3,
-                  right: 3,
-                  width: 18,
-                  height: 18,
-                  borderRadius: 9,
-                  backgroundColor: '#00D4AA',
-                  borderWidth: 3,
-                  borderColor: '#0a0a0f'
-                }} />
-              )}
+            <View style={{ marginBottom: 14 }}>
+              <Avatar
+                imageUrl={member.profileImageUrl}
+                firstName={member.displayName?.split(' ')[0]}
+                lastName={member.displayName?.split(' ').slice(1).join(' ')}
+                username={member.username}
+                userId={member.id}
+                customSize={80}
+                showOnlineIndicator={true}
+                isOnline={isOnline(member)}
+                showBorder={true}
+                borderColor={isOnline(member) ? 'rgba(0, 212, 170, 0.3)' : 'rgba(255, 255, 255, 0.1)'}
+              />
             </View>
 
             {/* Name & Username */}

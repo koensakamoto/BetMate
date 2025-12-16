@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useRef, useCallback, useEffect } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { presenceService, AppState as PresenceAppState } from '../services/presence/presenceService';
-import { debugLog } from '../config/env';
 
 interface ScreenContext {
   screen?: string;
@@ -48,7 +47,6 @@ export function PresenceProvider({ children, intervalMs = 30000, enabled = true 
       return;
     }
     const { screen, chatId } = screenContextRef.current;
-    debugLog('[PresenceContext] Sending heartbeat with context:', { screen, chatId });
     await presenceService.sendHeartbeat('active', screen, chatId);
   }, []);
 
@@ -56,21 +54,18 @@ export function PresenceProvider({ children, intervalMs = 30000, enabled = true 
     if (heartbeatIntervalRef.current) {
       return;
     }
-    debugLog('[PresenceContext] Starting presence heartbeat');
     heartbeatIntervalRef.current = setInterval(sendHeartbeat, intervalMs);
     sendHeartbeat();
   }, [intervalMs, sendHeartbeat]);
 
   const stopHeartbeat = useCallback(() => {
     if (heartbeatIntervalRef.current) {
-      debugLog('[PresenceContext] Stopping presence heartbeat');
       clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
     }
   }, []);
 
   const updateScreenContext = useCallback((context: ScreenContext) => {
-    debugLog('[PresenceContext] Updating screen context:', context);
     screenContextRef.current = context;
 
     if (appStateRef.current === 'active') {
@@ -84,10 +79,7 @@ export function PresenceProvider({ children, intervalMs = 30000, enabled = true 
     }
 
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      const previousState = appStateRef.current;
       appStateRef.current = nextAppState;
-
-      debugLog(`[PresenceContext] App state changed: ${previousState} -> ${nextAppState}`);
       sendPresenceUpdate(nextAppState);
 
       if (nextAppState === 'active') {

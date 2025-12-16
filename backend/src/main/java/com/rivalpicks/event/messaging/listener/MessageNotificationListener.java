@@ -147,7 +147,7 @@ public class MessageNotificationListener {
 
                     // Skip WebSocket if user is offline/background (push notification will handle it)
                     if (presence == null || !presence.isActive()) {
-                        logger.debug("User {} is offline/background, skipping WebSocket notification (push will handle it)",
+                        logger.debug("User {} is offline/background, skipping WebSocket notification",
                                    recipient.getUsername());
                         continue;
                     }
