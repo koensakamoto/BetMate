@@ -1,37 +1,40 @@
 package com.rivalpicks.service.email;
 
+import com.resend.Resend;
+import com.resend.core.exception.ResendException;
+import com.resend.services.emails.model.CreateEmailOptions;
+import com.resend.services.emails.model.CreateEmailResponse;
 import com.rivalpicks.entity.messaging.ContactMessage;
 import com.rivalpicks.entity.user.User;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 /**
- * Service for sending emails.
+ * Service for sending emails using Resend.
  */
 @Service
 public class EmailService {
 
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
 
-    private final JavaMailSender mailSender;
+    private final Resend resend;
 
     @Value("${contact.support-email}")
     private String supportEmail;
 
-    @Value("${spring.mail.username}")
+    @Value("${resend.from-email}")
     private String fromEmail;
 
+    @Value("${resend.reply-to}")
+    private String replyTo;
+
     @Autowired
-    public EmailService(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
+    public EmailService(Resend resend) {
+        this.resend = resend;
     }
 
     /**
@@ -41,25 +44,23 @@ public class EmailService {
     @Async
     public void sendContactMessageNotification(ContactMessage contactMessage) {
         try {
-            MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-
-            // Email details
-            helper.setFrom(fromEmail);
-            helper.setTo(supportEmail);
-            helper.setSubject(String.format("[%s] %s", contactMessage.getCategory(), contactMessage.getSubject()));
-
-            // Build email body
             String emailBody = buildContactMessageEmail(contactMessage);
-            helper.setText(emailBody, true); // true = HTML content
 
-            // Send email
-            mailSender.send(mimeMessage);
-            logger.info("Contact message notification email sent successfully for message ID: {}", contactMessage.getId());
+            CreateEmailOptions params = CreateEmailOptions.builder()
+                    .from(fromEmail)
+                    .to(supportEmail)
+                    .replyTo(replyTo)
+                    .subject(String.format("[%s] %s", contactMessage.getCategory(), contactMessage.getSubject()))
+                    .html(emailBody)
+                    .build();
 
-        } catch (MessagingException e) {
+            CreateEmailResponse response = resend.emails().send(params);
+            logger.info("Contact message notification email sent successfully for message ID: {}, email ID: {}",
+                    contactMessage.getId(), response.getId());
+
+        } catch (ResendException e) {
             logger.error("Failed to send contact message notification email for message ID: {}",
-                        contactMessage.getId(), e);
+                    contactMessage.getId(), e);
             // Don't throw exception - we don't want to fail the request if email fails
             // The message is already saved in the database
         }
@@ -77,21 +78,21 @@ public class EmailService {
     @Async
     public void sendEmailChangeVerificationEmail(User user, String newEmail, String token, String frontendUrl) {
         try {
-            MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-
-            helper.setFrom(fromEmail);
-            helper.setTo(newEmail);
-            helper.setSubject("Verify Your New Email Address - RivalPicks");
-
             String verifyLink = frontendUrl + "/auth/verify-email-change?token=" + token;
             String emailBody = buildEmailChangeVerificationEmail(user, newEmail, verifyLink);
-            helper.setText(emailBody, true);
 
-            mailSender.send(mimeMessage);
-            logger.info("Email change verification sent to: {}", newEmail);
+            CreateEmailOptions params = CreateEmailOptions.builder()
+                    .from(fromEmail)
+                    .to(newEmail)
+                    .replyTo(replyTo)
+                    .subject("Verify Your New Email Address - RivalPicks")
+                    .html(emailBody)
+                    .build();
 
-        } catch (MessagingException e) {
+            CreateEmailResponse response = resend.emails().send(params);
+            logger.info("Email change verification sent to: {}, email ID: {}", newEmail, response.getId());
+
+        } catch (ResendException e) {
             logger.error("Failed to send email change verification to: {}", newEmail, e);
             throw new RuntimeException("Failed to send verification email", e);
         }
@@ -107,20 +108,20 @@ public class EmailService {
     @Async
     public void sendEmailChangeNotificationToOldEmail(User user, String newEmail) {
         try {
-            MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-
-            helper.setFrom(fromEmail);
-            helper.setTo(user.getEmail());
-            helper.setSubject("Email Change Request - RivalPicks");
-
             String emailBody = buildEmailChangeNotificationEmail(user, newEmail);
-            helper.setText(emailBody, true);
 
-            mailSender.send(mimeMessage);
-            logger.info("Email change notification sent to old email: {}", user.getEmail());
+            CreateEmailOptions params = CreateEmailOptions.builder()
+                    .from(fromEmail)
+                    .to(user.getEmail())
+                    .replyTo(replyTo)
+                    .subject("Email Change Request - RivalPicks")
+                    .html(emailBody)
+                    .build();
 
-        } catch (MessagingException e) {
+            CreateEmailResponse response = resend.emails().send(params);
+            logger.info("Email change notification sent to old email: {}, email ID: {}", user.getEmail(), response.getId());
+
+        } catch (ResendException e) {
             logger.error("Failed to send email change notification to old email: {}", user.getEmail(), e);
             // Don't throw - this is just a notification
         }
@@ -137,22 +138,22 @@ public class EmailService {
     @Async
     public void sendPasswordResetEmail(User user, String resetToken, String frontendUrl) {
         try {
-            MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-
-            helper.setFrom(fromEmail);
-            helper.setTo(user.getEmail());
-            helper.setSubject("Reset Your Password - RivalPicks");
-
             // Use deep link for mobile app (rivalpicks://auth/reset-password?token=...)
             String resetLink = frontendUrl + "/auth/reset-password?token=" + resetToken;
             String emailBody = buildPasswordResetEmail(user, resetLink);
-            helper.setText(emailBody, true);
 
-            mailSender.send(mimeMessage);
-            logger.info("Password reset email sent successfully to user: {}", user.getUsername());
+            CreateEmailOptions params = CreateEmailOptions.builder()
+                    .from(fromEmail)
+                    .to(user.getEmail())
+                    .replyTo(replyTo)
+                    .subject("Reset Your Password - RivalPicks")
+                    .html(emailBody)
+                    .build();
 
-        } catch (MessagingException e) {
+            CreateEmailResponse response = resend.emails().send(params);
+            logger.info("Password reset email sent successfully to user: {}, email ID: {}", user.getUsername(), response.getId());
+
+        } catch (ResendException e) {
             logger.error("Failed to send password reset email to user: {}", user.getUsername(), e);
             // Don't throw - the token is still created and user can retry
         }
@@ -268,7 +269,7 @@ public class EmailService {
 
         // Footer
         html.append("<div style='background-color: #333; color: #fff; padding: 15px; border-radius: 0 0 8px 8px; text-align: center; font-size: 12px;'>");
-        html.append("BetMate Support System");
+        html.append("RivalPicks Support System");
         html.append("</div>");
 
         html.append("</div>");
