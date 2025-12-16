@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Redirect } from 'expo-router';
 import AuthLoadingScreen from '../../components/auth/AuthLoadingScreen';
 import { PushNotificationInitializer } from '../../components/notification/PushNotificationInitializer';
+import { PresenceProvider } from '../../contexts/PresenceContext';
 
 export default function AppLayout() {
   const { user, isLoading } = useAuth();
@@ -17,7 +18,7 @@ export default function AppLayout() {
   }
 
   return (
-    <>
+    <PresenceProvider>
       <PushNotificationInitializer />
       <Stack
         screenOptions={{
@@ -50,6 +51,6 @@ export default function AppLayout() {
         <Stack.Screen name="profile" />
         <Stack.Screen name="inventory" />
       </Stack>
-    </>
+    </PresenceProvider>
   );
 }

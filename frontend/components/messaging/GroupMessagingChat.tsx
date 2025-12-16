@@ -11,15 +11,16 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { 
-  MessageResponse, 
-  SendMessageRequest, 
+import {
+  MessageResponse,
+  SendMessageRequest,
   TypingIndicator as TypingIndicatorType,
   UserPresence,
   WebSocketError
 } from '../../types/api';
 import { messagingService, webSocketService } from '../../services';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePresence } from '../../contexts/PresenceContext';
 import MessageBubble from './MessageBubble';
 import MessageInput from './MessageInput';
 import TypingIndicator from './TypingIndicator';
@@ -37,6 +38,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList>(null);
   const { user, isLoading: authLoading } = useAuth();
+  const { updateScreenContext } = usePresence();
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
   // Animated keyboard height for smooth transitions
@@ -54,6 +56,18 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   const [replyToMessage, setReplyToMessage] = useState<MessageResponse | null>(null);
   const [editingMessage, setEditingMessage] = useState<MessageResponse | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('disconnected');
+
+  // Report presence context when viewing this chat
+  // This allows the backend to suppress notifications for this specific chat
+  useEffect(() => {
+    // Report that user is viewing this chat
+    updateScreenContext({ screen: 'chat', chatId: groupId });
+
+    return () => {
+      // When leaving chat, clear the chat context
+      updateScreenContext({ screen: 'home' });
+    };
+  }, [groupId, updateScreenContext]);
 
   // Initialize when user becomes available or group changes
   useEffect(() => {
@@ -339,9 +353,9 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   const handleTypingIndicator = useCallback((indicator: TypingIndicatorType) => {
     if (indicator.groupId === groupId && user && indicator.username !== user.username) {
       setTypingUsers(prevTyping => {
-        if (indicator.isTyping) {
-          return prevTyping.includes(indicator.username) 
-            ? prevTyping 
+        if (indicator.typing) {
+          return prevTyping.includes(indicator.username)
+            ? prevTyping
             : [...prevTyping, indicator.username];
         } else {
           return prevTyping.filter(username => username !== indicator.username);

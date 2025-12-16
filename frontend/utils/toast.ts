@@ -64,5 +64,40 @@ export function hideToast() {
   Toast.hide();
 }
 
+interface NotificationToastOptions {
+  notificationType?: string;
+  priority?: string;
+  actionUrl?: string;
+  onPress?: () => void;
+  duration?: number;
+}
+
+/**
+ * Show a notification toast with type-specific icon and tap-to-navigate
+ */
+export function showNotificationToast(
+  title: string,
+  message?: string,
+  options?: NotificationToastOptions
+) {
+  // Determine duration based on priority
+  let duration = options?.duration ?? 4000;
+  if (options?.priority === 'HIGH' || options?.priority === 'URGENT') {
+    duration = 6000; // Longer for important notifications
+  }
+
+  Toast.show({
+    type: 'notification',
+    text1: title,
+    text2: message,
+    visibilityTime: duration,
+    props: {
+      notificationType: options?.notificationType,
+      priority: options?.priority,
+      onPress: options?.onPress,
+    },
+  });
+}
+
 // Re-export Toast for direct access if needed
 export { Toast };

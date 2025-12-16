@@ -1,12 +1,15 @@
 package com.rivalpicks.service.messaging;
 
 import com.rivalpicks.dto.messaging.response.MessageResponseDto;
+import com.rivalpicks.dto.presence.PresenceInfo;
 import com.rivalpicks.entity.group.Group;
+import com.rivalpicks.entity.group.GroupMembership;
 import com.rivalpicks.entity.messaging.Message;
 import com.rivalpicks.entity.messaging.Notification;
 import com.rivalpicks.entity.user.User;
 import com.rivalpicks.repository.user.UserRepository;
 import com.rivalpicks.service.group.GroupMembershipService;
+import com.rivalpicks.service.presence.PresenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,28 +30,125 @@ public class MessageNotificationService {
 
     private final SimpMessageSendingOperations messagingTemplate;
     private final GroupMembershipService groupMembershipService;
+    private final PresenceService presenceService;
 
     @Autowired
     private UserRepository userRepository;
 
     @Autowired
     public MessageNotificationService(SimpMessageSendingOperations messagingTemplate,
-                                    GroupMembershipService groupMembershipService) {
+                                    GroupMembershipService groupMembershipService,
+                                    PresenceService presenceService) {
         this.messagingTemplate = messagingTemplate;
         this.groupMembershipService = groupMembershipService;
+        this.presenceService = presenceService;
     }
 
     /**
      * Broadcasts a new message to all group members via WebSocket.
+     * Also sends in-app notifications to online members not viewing the chat.
      */
     public void broadcastMessage(Message message, MessageResponseDto messageResponse) {
         Long groupId = message.getGroup().getId();
-        
-        // Send to group topic for all connected group members
+        Group group = message.getGroup();
+        User sender = message.getSender();
+
+        // Send to group topic for all connected group members viewing the chat
         messagingTemplate.convertAndSend("/topic/group/" + groupId + "/messages", messageResponse);
-        
+
+        // Send in-app notifications to online members not viewing this chat
+        notifyOnlineMembersNotInChat(message, group, sender);
+
         // Send push notifications to offline members
         notifyOfflineMembers(message);
+    }
+
+    /**
+     * Sends in-app notifications to group members who are online but not viewing this chat.
+     */
+    private void notifyOnlineMembersNotInChat(Message message, Group group, User sender) {
+        try {
+            List<GroupMembership> memberships = groupMembershipService.getGroupMembers(group);
+            logger.info("Checking {} group members for in-app notifications (group: {})",
+                       memberships.size(), group.getGroupName());
+
+            for (GroupMembership membership : memberships) {
+                User member = membership.getUser();
+
+                // Skip the sender - they don't need a notification for their own message
+                if (member.getId().equals(sender.getId())) {
+                    logger.debug("Skipping sender: {}", member.getUsername());
+                    continue;
+                }
+
+                Long memberId = member.getId();
+                PresenceInfo presence = presenceService.getPresence(memberId);
+
+                logger.info("User {} presence: {}", member.getUsername(),
+                           presence != null ? "state=" + presence.getState() + ", screen=" + presence.getScreen() + ", chatId=" + presence.getChatId() : "null (offline)");
+
+                // Skip if user is offline/background (they'll get push notification)
+                if (presence == null || !presence.isActive()) {
+                    logger.info("User {} is offline/background, skipping WebSocket notification",
+                               member.getUsername());
+                    continue;
+                }
+
+                // Skip if user is viewing this specific chat (they see the message directly)
+                if ("chat".equals(presence.getScreen()) &&
+                    group.getId().equals(presence.getChatId())) {
+                    logger.info("User {} is viewing chat {}, skipping notification",
+                               member.getUsername(), group.getId());
+                    continue;
+                }
+
+                // User is online but not in this chat - send in-app notification
+                logger.info("Sending in-app notification to user {} for group {}",
+                           member.getUsername(), group.getGroupName());
+                sendMessageNotificationToUser(member, message, group);
+            }
+        } catch (Exception e) {
+            logger.error("Error notifying online members for group {}: {}",
+                        group.getId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Sends a message notification to a specific user via WebSocket.
+     */
+    private void sendMessageNotificationToUser(User user, Message message, Group group) {
+        try {
+            String senderName = message.getSender().getDisplayName() != null
+                ? message.getSender().getDisplayName()
+                : message.getSender().getUsername();
+
+            String content = message.getContent();
+            if (content != null && content.length() > 50) {
+                content = content.substring(0, 47) + "...";
+            }
+
+            NotificationWebSocketDto notification = new NotificationWebSocketDto(
+                null, // No persisted notification ID for real-time message notifications
+                "GROUP_MESSAGE",
+                senderName + " in " + group.getGroupName(),
+                content,
+                "/group/" + group.getId() + "/chat",
+                "NORMAL",
+                LocalDateTime.now()
+            );
+
+            messagingTemplate.convertAndSendToUser(
+                user.getUsername(),
+                "/queue/notifications",
+                notification
+            );
+
+            logger.debug("Sent message notification to user {} for group {}",
+                        user.getUsername(), group.getId());
+        } catch (Exception e) {
+            logger.error("Failed to send message notification to user {}: {}",
+                        user.getUsername(), e.getMessage());
+        }
     }
 
     /**
@@ -138,20 +238,22 @@ public class MessageNotificationService {
                     notification.getCreatedAt()
                 );
 
+                logger.info(">>> Sending WebSocket notification to user '{}' (id={}), type={}, destination=/queue/notifications",
+                           user.getUsername(), userId, notification.getType().name());
+
                 messagingTemplate.convertAndSendToUser(
                     user.getUsername(),
                     "/queue/notifications",
                     notificationDto
                 );
 
-                logger.debug("Sent notification {} to user {} via WebSocket",
-                            notification.getId(), user.getUsername());
+                logger.info(">>> WebSocket notification sent successfully to '{}'", user.getUsername());
             } else {
                 logger.warn("User with ID {} not found for notification delivery", userId);
             }
         } catch (Exception e) {
             logger.error("Failed to send notification {} to user {} via WebSocket: {}",
-                        notification.getId(), userId, e.getMessage());
+                        notification.getId(), userId, e.getMessage(), e);
         }
     }
 
@@ -374,7 +476,7 @@ public class MessageNotificationService {
     }
 
     public enum PresenceStatus {
-        ONLINE, AWAY, OFFLINE
+        ONLINE, OFFLINE
     }
 
     public static class NotificationWebSocketDto {

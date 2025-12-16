@@ -9,6 +9,8 @@ import com.rivalpicks.service.group.GroupService;
 import com.rivalpicks.exception.messaging.MessageNotFoundException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -313,11 +315,16 @@ public class MessageService {
         return false;
     }
 
+    private static final Logger logger = LoggerFactory.getLogger(MessageService.class);
+
     /**
      * Publishes a message created event for notification processing.
      */
     private void publishMessageCreatedEvent(Message message) {
         try {
+            logger.info("Publishing MESSAGE_CREATED event for message {} in group {}",
+                       message.getId(), message.getGroup().getId());
+
             // Extract mentions from message content
             List<String> mentionedUsernames = extractMentionsFromMessage(message.getContent());
 
@@ -335,9 +342,10 @@ public class MessageService {
             );
 
             eventPublisher.publishEvent(event);
+            logger.info("MESSAGE_CREATED event published successfully for message {}", message.getId());
         } catch (Exception e) {
-            // Don't fail message creation if event publishing fails
-            // Silent failure - event publishing is not critical
+            logger.error("Failed to publish MESSAGE_CREATED event for message {}: {}",
+                        message.getId(), e.getMessage(), e);
         }
     }
 

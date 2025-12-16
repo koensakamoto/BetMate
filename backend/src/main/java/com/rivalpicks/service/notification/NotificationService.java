@@ -1,11 +1,16 @@
 package com.rivalpicks.service.notification;
 
+import com.rivalpicks.dto.presence.PresenceInfo;
 import com.rivalpicks.entity.messaging.Notification;
 import com.rivalpicks.entity.messaging.Notification.NotificationType;
 import com.rivalpicks.entity.messaging.Notification.NotificationPriority;
 import com.rivalpicks.entity.user.User;
 import com.rivalpicks.repository.messaging.NotificationRepository;
 import com.rivalpicks.repository.user.UserRepository;
+import com.rivalpicks.service.messaging.MessageNotificationService;
+import com.rivalpicks.service.presence.PresenceService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -13,7 +18,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,15 +27,25 @@ import java.util.Optional;
 @Service
 public class NotificationService {
 
+    private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
+
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final PushNotificationService pushNotificationService;
+    private final PresenceService presenceService;
+    private final MessageNotificationService messageNotificationService;
 
     @Autowired
-    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository, @Lazy PushNotificationService pushNotificationService) {
+    public NotificationService(NotificationRepository notificationRepository,
+                               UserRepository userRepository,
+                               @Lazy PushNotificationService pushNotificationService,
+                               PresenceService presenceService,
+                               @Lazy MessageNotificationService messageNotificationService) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
         this.pushNotificationService = pushNotificationService;
+        this.presenceService = presenceService;
+        this.messageNotificationService = messageNotificationService;
     }
 
     /**
@@ -135,8 +149,8 @@ public class NotificationService {
                 "FRIENDSHIP"
             );
 
-            // Send push notification
-            pushNotificationService.sendPushNotification(accepter, notification);
+            // Send via WebSocket if online, otherwise push notification
+            sendNotificationToUser(accepter, notification);
         } catch (Exception e) {
             throw e;
         }
@@ -159,8 +173,8 @@ public class NotificationService {
                 "USER"
             );
 
-            // Send push notification
-            pushNotificationService.sendPushNotification(requester, notification);
+            // Send via WebSocket if online, otherwise push notification
+            sendNotificationToUser(requester, notification);
         } catch (Exception e) {
             throw e;
         }
@@ -202,5 +216,67 @@ public class NotificationService {
         } catch (Exception e) {
             throw e;
         }
+    }
+
+    /**
+     * Sends a notification to a user via the appropriate channel.
+     * Uses Redis-backed presence to determine delivery method:
+     * - User offline/background → Push notification (FCM)
+     * - User active + viewing related chat → Skip (they see it already)
+     * - User active + elsewhere → WebSocket (in-app notification)
+     *
+     * @param user the user to send the notification to
+     * @param notification the notification to send
+     */
+    public void sendNotificationToUser(User user, Notification notification) {
+        Long userId = user.getId();
+        PresenceInfo presence = presenceService.getPresence(userId);
+
+        // User is offline or in background → send push notification
+        if (presence == null || !presence.isActive()) {
+            logger.debug("User {} is offline/background, sending push notification", userId);
+            pushNotificationService.sendPushNotification(user, notification);
+            return;
+        }
+
+        // User is active - check if they're viewing the related screen
+        if (isViewingRelatedScreen(presence, notification)) {
+            logger.debug("User {} is viewing related screen, skipping notification", userId);
+            return;
+        }
+
+        // User is active but not viewing related content → send via WebSocket
+        logger.debug("User {} is active, sending notification via WebSocket", userId);
+        messageNotificationService.sendNotificationToUser(userId, notification);
+    }
+
+    /**
+     * Checks if the user is currently viewing a screen related to the notification.
+     * Currently only suppresses notifications for group chats when viewing that chat.
+     *
+     * @param presence the user's current presence info
+     * @param notification the notification being sent
+     * @return true if notification should be suppressed
+     */
+    private boolean isViewingRelatedScreen(PresenceInfo presence, Notification notification) {
+        // Only suppress for group-related notifications when viewing that specific chat
+        if ("chat".equals(presence.getScreen()) && presence.getChatId() != null) {
+            // Check if notification is for a group message in the chat they're viewing
+            if ("GROUP".equals(notification.getRelatedEntityType()) ||
+                "GROUP_MESSAGE".equals(notification.getRelatedEntityType())) {
+                return presence.getChatId().equals(notification.getRelatedEntityId());
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if a user is currently active (app in foreground).
+     *
+     * @param userId the user's ID
+     * @return true if the user is active
+     */
+    public boolean isUserActive(Long userId) {
+        return presenceService.isActive(userId);
     }
 }

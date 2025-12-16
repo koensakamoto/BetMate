@@ -27,18 +27,27 @@ const MessageResponseSchema = z.object({
   senderId: z.number(),
   senderUsername: z.string(),
   groupId: z.number(),
-  timestamp: z.string(),
-  type: z.enum(['TEXT', 'SYSTEM', 'IMAGE']).optional(),
-  replyToId: z.number().nullable().optional(),
-  isEdited: z.boolean().optional(),
-  senderProfilePicture: z.string().nullable().optional(),
+  createdAt: z.string(),  // Backend uses createdAt, not timestamp
+  messageType: z.enum(['TEXT', 'SYSTEM', 'IMAGE']).optional(),
+  isEdited: z.boolean().nullable().optional(),
+  parentMessageId: z.number().nullable().optional(),
+  senderDisplayName: z.string().nullable().optional(),
+  groupName: z.string().nullable().optional(),
+  attachmentUrl: z.string().nullable().optional(),
+  attachmentType: z.string().nullable().optional(),
+  editedAt: z.string().nullable().optional(),
+  replyCount: z.number().nullable().optional(),
+  updatedAt: z.string().nullable().optional(),
+  canEdit: z.boolean().nullable().optional(),
+  canDelete: z.boolean().nullable().optional(),
+  canReply: z.boolean().nullable().optional(),
 });
 
 /**
  * Schema for validating typing indicator messages
  */
 const TypingIndicatorSchema = z.object({
-  isTyping: z.boolean(),
+  typing: z.boolean(),  // Java serializes `isTyping` as `typing`
   groupId: z.number(),
   username: z.string().optional(),
 });
@@ -660,6 +669,83 @@ export class WebSocketMessagingService {
 
     this.subscriptions.set(subscriptionKey, subscription);
     debugLog('Subscribed to user presence updates');
+  }
+
+  /**
+   * Subscribe to user notifications queue
+   * This receives real-time notifications when the user is online
+   */
+  async subscribeToNotifications(
+    onNotification: (payload: unknown) => void
+  ): Promise<() => void> {
+    if (!this.client) {
+      throw new Error('WebSocket client is not initialized');
+    }
+
+    if (!this.client.connected) {
+      await this.connect();
+    }
+
+    // Verify connection succeeded
+    if (!this.client.connected) {
+      throw new Error('Failed to establish WebSocket connection');
+    }
+
+    const destination = '/user/queue/notifications';
+    const subscriptionKey = 'user-notifications';
+
+    // Unsubscribe from existing subscription if any
+    const existingSub = this.subscriptions.get(subscriptionKey);
+    if (existingSub) {
+      debugLog('[WS-NOTIFICATIONS] Unsubscribing from existing notifications subscription');
+      existingSub.unsubscribe();
+      this.subscriptions.delete(subscriptionKey);
+    }
+
+    debugLog('[WS-NOTIFICATIONS] About to subscribe to:', destination);
+    debugLog('[WS-NOTIFICATIONS] Client connected:', this.client.connected);
+
+    const subscription = this.client.subscribe(destination, (message: IMessage) => {
+      debugLog('[WS-NOTIFICATIONS] *** MESSAGE RECEIVED on /user/queue/notifications ***');
+      debugLog('[WS-NOTIFICATIONS] Headers:', message.headers);
+      try {
+        const payload = JSON.parse(message.body);
+        debugLog('[WS-NOTIFICATIONS] Received notification:', payload);
+        onNotification(payload);
+      } catch (error) {
+        errorLog('[WS-NOTIFICATIONS] Error parsing notification:', error);
+      }
+    });
+
+    this.subscriptions.set(subscriptionKey, subscription);
+    debugLog('[WS-NOTIFICATIONS] Subscribed to user notifications, subscription id:', subscription.id);
+
+    // Test: Log subscription details
+    debugLog('[WS-NOTIFICATIONS] Subscription object:', JSON.stringify({
+      id: subscription.id,
+      // @ts-ignore - access internal state for debugging
+      destination: destination,
+      active: !!subscription
+    }));
+
+    // TEST: Also subscribe to a test topic to verify topic-based delivery works
+    const username = this.client.connectedHeaders?.['user-name'] || 'unknown';
+    const testDestination = `/topic/test-notifications-${username}`;
+    debugLog('[WS-NOTIFICATIONS] Also subscribing to test topic:', testDestination);
+    this.client.subscribe(testDestination, (message: IMessage) => {
+      debugLog('[WS-NOTIFICATIONS] ******** TEST TOPIC MESSAGE RECEIVED ********');
+      debugLog('[WS-NOTIFICATIONS] Test topic payload:', message.body);
+    });
+
+    // Return unsubscribe function
+    return () => {
+      const sub = this.subscriptions.get(subscriptionKey);
+      if (sub) {
+        sub.unsubscribe();
+        this.subscriptions.delete(subscriptionKey);
+        debugLog('[WS-NOTIFICATIONS] Unsubscribed from user notifications');
+      }
+    };
   }
 
   /**

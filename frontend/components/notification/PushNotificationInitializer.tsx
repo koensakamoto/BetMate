@@ -6,10 +6,15 @@ import { useNotificationContext } from '../../contexts/NotificationContext';
 /**
  * Component that initializes push notifications when mounted.
  * Should be rendered inside authenticated app screens.
- * Automatically registers for push notifications and syncs badge count.
+ *
+ * Features:
+ * - Registers for push notifications (FCM)
+ * - Syncs badge count with unread notifications
+ *
+ * Note: Presence heartbeats are now handled by PresenceProvider in the app layout.
  */
 export function PushNotificationInitializer(): null {
-  const { registerForPushNotifications, fcmToken } = usePushNotifications();
+  const { registerForPushNotifications } = usePushNotifications();
   const { unreadCount, refreshUnreadCount } = useNotificationContext();
   const hasRegistered = useRef(false);
   const appState = useRef(AppState.currentState);
@@ -18,14 +23,14 @@ export function PushNotificationInitializer(): null {
   useEffect(() => {
     if (!hasRegistered.current) {
       hasRegistered.current = true;
-      registerForPushNotifications().then(token => {
-      });
+      registerForPushNotifications();
     }
   }, [registerForPushNotifications]);
 
   // Sync badge count with unread notifications
   useEffect(() => {
-    setBadgeCount(unreadCount).catch(err => {
+    setBadgeCount(unreadCount).catch(() => {
+      // Silent failure for badge count
     });
   }, [unreadCount]);
 
@@ -33,7 +38,7 @@ export function PushNotificationInitializer(): null {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        // App has come to the foreground
+        // App has come to the foreground - refresh unread count
         refreshUnreadCount();
       }
       appState.current = nextAppState;

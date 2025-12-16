@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, Linking, Alert } from 'react-native';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, Linking, Alert, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -148,25 +148,15 @@ export default function About() {
           marginBottom: 40,
           paddingVertical: 20
         }}>
-          <View style={{
-            width: 80,
-            height: 80,
-            borderRadius: 40,
-            backgroundColor: 'rgba(0, 212, 170, 0.1)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginBottom: 16,
-            borderWidth: 2,
-            borderColor: 'rgba(0, 212, 170, 0.2)'
-          }}>
-            <Text style={{
-              fontSize: 32,
-              color: '#00D4AA',
-              fontWeight: '700'
-            }}>
-              RP
-            </Text>
-          </View>
+          <Image
+            source={require('../../../assets/images/icon.png')}
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: 16,
+              marginBottom: 16
+            }}
+          />
           <Text style={{
             fontSize: 24,
             fontWeight: '700',

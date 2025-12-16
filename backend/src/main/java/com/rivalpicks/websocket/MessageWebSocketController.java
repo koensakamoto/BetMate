@@ -240,7 +240,7 @@ public class MessageWebSocketController {
         }
 
         public enum PresenceStatus {
-            ONLINE, AWAY, OFFLINE
+            ONLINE, OFFLINE
         }
     }
 

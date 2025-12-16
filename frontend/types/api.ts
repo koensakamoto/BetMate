@@ -222,7 +222,7 @@ export enum MessageType {
 // WebSocket message types
 export interface TypingIndicator {
   username: string;
-  isTyping: boolean;
+  typing: boolean;  // Java serializes `isTyping` as `typing`
   groupId: number;
 }
 

@@ -11,6 +11,8 @@ import com.rivalpicks.service.group.GroupService;
 import com.rivalpicks.service.messaging.MessageNotificationService;
 import com.rivalpicks.service.notification.NotificationService;
 import com.rivalpicks.service.notification.PushNotificationService;
+import com.rivalpicks.service.presence.PresenceService;
+import com.rivalpicks.dto.presence.PresenceInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +38,7 @@ public class MessageNotificationListener {
     private final PushNotificationService pushNotificationService;
     private final GroupMembershipRepository groupMembershipRepository;
     private final GroupService groupService;
+    private final PresenceService presenceService;
 
     @Autowired
     public MessageNotificationListener(
@@ -43,12 +46,14 @@ public class MessageNotificationListener {
             MessageNotificationService messageNotificationService,
             PushNotificationService pushNotificationService,
             GroupMembershipRepository groupMembershipRepository,
-            GroupService groupService) {
+            GroupService groupService,
+            PresenceService presenceService) {
         this.notificationService = notificationService;
         this.messageNotificationService = messageNotificationService;
         this.pushNotificationService = pushNotificationService;
         this.groupMembershipRepository = groupMembershipRepository;
         this.groupService = groupService;
+        this.presenceService = presenceService;
     }
 
     /**
@@ -63,8 +68,8 @@ public class MessageNotificationListener {
     @Async
     public void handleMessageCreatedEvent(MessageCreatedEvent event) {
         try {
-            logger.info("Processing MESSAGE_CREATED event for group: {} by user: {}",
-                       event.getGroupName(), event.getSenderUsername());
+            logger.info(">>> RECEIVED MESSAGE_CREATED event for group: {} (id={}) by user: {} (id={})",
+                       event.getGroupName(), event.getGroupId(), event.getSenderUsername(), event.getSenderId());
 
             // Skip direct messages for now (handle in future if needed)
             if (event.isDirectMessage()) {
@@ -121,6 +126,7 @@ public class MessageNotificationListener {
 
             // 5. Create in-app notifications for all recipients
             int notificationsCreated = 0;
+            int webSocketsSent = 0;
             for (User recipient : recipients) {
                 try {
                     Notification notification = notificationService.createNotification(
@@ -133,21 +139,40 @@ public class MessageNotificationListener {
                         event.getMessageId(),
                         "MESSAGE"
                     );
-
-                    // Send real-time notification via WebSocket
-                    messageNotificationService.sendNotificationToUser(recipient.getId(), notification);
-
                     notificationsCreated++;
-                    logger.debug("Created message notification for user: {}", recipient.getUsername());
+
+                    // Check user presence before sending WebSocket notification
+                    // This ensures we only send to users who are online and not already viewing the chat
+                    PresenceInfo presence = presenceService.getPresence(recipient.getId());
+
+                    // Skip WebSocket if user is offline/background (push notification will handle it)
+                    if (presence == null || !presence.isActive()) {
+                        logger.debug("User {} is offline/background, skipping WebSocket notification (push will handle it)",
+                                   recipient.getUsername());
+                        continue;
+                    }
+
+                    // Skip WebSocket if user is viewing this specific chat (they see messages directly)
+                    if ("chat".equals(presence.getScreen()) &&
+                        event.getGroupId().equals(presence.getChatId())) {
+                        logger.debug("User {} is viewing chat {}, skipping notification",
+                                   recipient.getUsername(), event.getGroupId());
+                        continue;
+                    }
+
+                    // User is online and not viewing this chat - send WebSocket notification
+                    messageNotificationService.sendNotificationToUser(recipient.getId(), notification);
+                    webSocketsSent++;
+                    logger.debug("Sent WebSocket notification to user: {}", recipient.getUsername());
 
                 } catch (Exception e) {
-                    logger.error("Failed to create notification for user {}: {}",
+                    logger.error("Failed to create/send notification for user {}: {}",
                                recipient.getUsername(), e.getMessage());
                 }
             }
 
-            logger.info("Successfully created {} GROUP_MESSAGE notifications for group {}",
-                       notificationsCreated, event.getGroupId());
+            logger.info("Created {} DB notifications, sent {} WebSocket notifications for group {}",
+                       notificationsCreated, webSocketsSent, event.getGroupId());
 
             // 6. Send push notifications to users with tokens
             if (!pushRecipients.isEmpty()) {
