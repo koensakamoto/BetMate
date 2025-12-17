@@ -65,6 +65,7 @@ export const presenceService = {
       if (screen) payload.screen = screen;
       if (chatId) payload.chatId = chatId;
 
+      console.log('[Presence] Sending heartbeat:', payload);
       await apiClient.post('/presence/heartbeat', payload);
     } catch (error) {
       // Don't throw - heartbeats shouldn't break the app

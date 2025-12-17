@@ -21,6 +21,7 @@ export default {
     ios: {
       supportsTablet: true,
       usesAppleSignIn: true,
+      associatedDomains: ["applinks:api.rivalpicksapp.com"],
       infoPlist: {
         NSAppTransportSecurity: IS_PROD
           ? {
@@ -55,6 +56,20 @@ export default {
         "CAMERA",
       ],
       googleServicesFile: "./google-services.json",
+      intentFilters: [
+        {
+          action: "VIEW",
+          autoVerify: true,
+          data: [
+            {
+              scheme: "https",
+              host: "api.rivalpicksapp.com",
+              pathPrefix: "/auth",
+            },
+          ],
+          category: ["BROWSABLE", "DEFAULT"],
+        },
+      ],
     },
     web: {
       bundler: "metro",

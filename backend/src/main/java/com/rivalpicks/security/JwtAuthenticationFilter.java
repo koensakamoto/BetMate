@@ -61,7 +61,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         "/swagger-ui/**",
         "/v3/api-docs/**",
         "/error",
-        "/ws/**"
+        "/ws/**",
+        "/.well-known/**"
     );
 
     // Endpoints that accept optional authentication

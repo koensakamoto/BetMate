@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Linking } from 'react-native';
+import { Text, View, StatusBar, TouchableOpacity, Alert, ActivityIndicator, Linking } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { userService, UserProfileResponse, UserProfileUpdateRequest } from '../../services/user/userService';
-import AuthInput from '../../components/auth/AuthInput';
-import AuthButton from '../../components/auth/AuthButton';
+import SettingsInput from '../../components/settings/SettingsInput';
 import { useAuth } from '../../contexts/AuthContext';
 import { debugLog, errorLog } from '../../config/env';
 import { getErrorMessage } from '../../utils/errorUtils';
 import { Avatar } from '../../components/common/Avatar';
+import { showErrorToast } from '../../utils/toast';
 
 export default function EditProfile() {
   const insets = useSafeAreaInsets();
@@ -93,7 +94,7 @@ export default function EditProfile() {
       }
     } catch (error) {
       errorLog('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      showErrorToast('Error', 'Failed to pick image. Please try again.');
     }
   };
 
@@ -125,7 +126,7 @@ export default function EditProfile() {
       }
     } catch (error) {
       errorLog('Error taking photo:', error);
-      Alert.alert('Error', 'Failed to take photo. Please try again.');
+      showErrorToast('Error', 'Failed to take photo. Please try again.');
     }
   };
 
@@ -143,11 +144,9 @@ export default function EditProfile() {
       setUserProfile(updatedProfile);
       // Update timestamp to bust image cache
       setImageTimestamp(Date.now());
-
-      Alert.alert('Success', 'Profile picture updated successfully');
     } catch (err) {
       errorLog('Failed to upload profile picture:', err);
-      Alert.alert('Error', getErrorMessage(err));
+      showErrorToast('Error', getErrorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -209,21 +208,12 @@ export default function EditProfile() {
       // Update local state with the new profile data
       setUserProfile(updatedProfile);
 
-      Alert.alert(
-        'Success',
-        'Profile updated successfully',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back()
-          }
-        ]
-      );
+      router.back();
     } catch (err) {
       errorLog('Failed to update profile:', err);
       const message = getErrorMessage(err);
       setError(message);
-      Alert.alert('Error', message, [{ text: 'OK' }]);
+      showErrorToast('Error', message);
     } finally {
       setIsSaving(false);
     }
@@ -282,19 +272,21 @@ export default function EditProfile() {
         zIndex: 1
       }} />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <KeyboardAwareScrollView
+        style={{ flex: 1, marginTop: insets.top }}
+        contentContainerStyle={{
+          paddingTop: 20,
+          paddingBottom: insets.bottom + 40,
+          paddingHorizontal: 20
+        }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        extraScrollHeight={20}
+        enableOnAndroid={true}
+        enableAutomaticScroll={true}
+        enableResetScrollToCoords={false}
+        keyboardOpeningTime={0}
       >
-        <ScrollView
-          style={{ flex: 1, marginTop: insets.top }}
-          contentContainerStyle={{
-            paddingTop: 20,
-            paddingBottom: insets.bottom + 20,
-            paddingHorizontal: 20
-          }}
-          showsVerticalScrollIndicator={false}
-        >
           {/* Clean Header - Same as Settings */}
           <View style={{
             flexDirection: 'row',
@@ -418,109 +410,57 @@ export default function EditProfile() {
           </View>
 
           {/* First Name */}
-          <View style={{
-            paddingVertical: 8,
-            borderBottomWidth: 0.5,
-            borderBottomColor: 'rgba(255, 255, 255, 0.1)'
-          }}>
-            <Text style={{
-              fontSize: 14,
-              color: 'rgba(255, 255, 255, 0.6)',
-              marginBottom: 4
-            }}>
-              First Name
-            </Text>
-            <AuthInput
-              value={formData.firstName}
-              onChangeText={(text) => updateField('firstName', text)}
-              placeholder="Enter your first name"
-              autoCapitalize="words"
-              error={errors.firstName}
-              style={{
-                backgroundColor: 'transparent',
-                marginVertical: 0,
-              }}
-              inputStyle={{
-                fontSize: 16,
-                color: '#ffffff',
-              }}
-            />
-          </View>
+          <SettingsInput
+            label="First Name"
+            value={formData.firstName}
+            onChangeText={(text) => updateField('firstName', text)}
+            placeholder="Enter your first name"
+            autoCapitalize="words"
+            error={errors.firstName}
+            style={{ marginBottom: 24 }}
+          />
 
           {/* Last Name */}
-          <View style={{
-            paddingVertical: 8,
-            borderBottomWidth: 0.5,
-            borderBottomColor: 'rgba(255, 255, 255, 0.1)'
-          }}>
-            <Text style={{
-              fontSize: 14,
-              color: 'rgba(255, 255, 255, 0.6)',
-              marginBottom: 4
-            }}>
-              Last Name
-            </Text>
-            <AuthInput
-              value={formData.lastName}
-              onChangeText={(text) => updateField('lastName', text)}
-              placeholder="Enter your last name"
-              autoCapitalize="words"
-              error={errors.lastName}
-              style={{
-                backgroundColor: 'transparent',
-                marginVertical: 0,
-              }}
-              inputStyle={{
-                fontSize: 16,
-                color: '#ffffff',
-              }}
-            />
-          </View>
+          <SettingsInput
+            label="Last Name"
+            value={formData.lastName}
+            onChangeText={(text) => updateField('lastName', text)}
+            placeholder="Enter your last name"
+            autoCapitalize="words"
+            error={errors.lastName}
+            style={{ marginBottom: 24 }}
+          />
 
           {/* Bio */}
-          <View style={{
-            paddingVertical: 8,
-            borderBottomWidth: 0.5,
-            borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-            marginBottom: 20
-          }}>
+          <View style={{ marginBottom: 32 }}>
             <View style={{
               flexDirection: 'row',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: 4
+              marginBottom: 6
             }}>
               <Text style={{
-                fontSize: 14,
-                color: 'rgba(255, 255, 255, 0.6)'
+                fontSize: 13,
+                fontWeight: '500',
+                color: 'rgba(255, 255, 255, 0.5)'
               }}>
                 Bio
               </Text>
               <Text style={{
                 fontSize: 12,
-                color: 'rgba(255, 255, 255, 0.4)'
+                color: 'rgba(255, 255, 255, 0.35)'
               }}>
                 {formData.bio.length}/150
               </Text>
             </View>
-            <AuthInput
+            <SettingsInput
               value={formData.bio}
               onChangeText={(text) => updateField('bio', text)}
-              placeholder="Edit bio"
+              placeholder="Write a short bio..."
               multiline={true}
               numberOfLines={2}
-              style={{
-                backgroundColor: 'transparent',
-                marginVertical: 0,
-                minHeight: 40,
-                maxHeight: 60,
-              }}
-              inputStyle={{
-                fontSize: 16,
-                color: '#ffffff',
-                textAlignVertical: 'top'
-              }}
               error={errors.bio}
+              style={{ marginBottom: 0 }}
             />
           </View>
 
@@ -568,8 +508,7 @@ export default function EditProfile() {
               </Text>
             )}
           </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

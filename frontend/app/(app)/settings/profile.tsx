@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, StatusBar, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator, Linking } from 'react-native';
+import { Text, View, StatusBar, TouchableOpacity, Alert, Image, ActivityIndicator, Linking } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -9,6 +9,8 @@ import { userService, UserProfileResponse, UserProfileUpdateRequest } from '../.
 import { useAuth } from '../../../contexts/AuthContext';
 import { debugLog, errorLog, ENV } from '../../../config/env';
 import { getErrorMessage } from '../../../utils/errorUtils';
+import SettingsInput from '../../../components/settings/SettingsInput';
+import { showErrorToast, showInfoToast } from '../../../utils/toast';
 
 const defaultIcon = require("../../../assets/images/icon.png");
 
@@ -68,7 +70,7 @@ export default function ProfileSettings() {
     } catch (err) {
       errorLog('Failed to load user profile:', err);
       setError(getErrorMessage(err));
-      Alert.alert('Error', 'Failed to load profile. Please try again.');
+      showErrorToast('Error', 'Failed to load profile. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +79,7 @@ export default function ProfileSettings() {
   const handleSave = async () => {
     // Validation
     if (!firstName.trim() || !lastName.trim()) {
-      Alert.alert('Error', 'First name and last name are required');
+      showErrorToast('Error', 'First name and last name are required');
       return;
     }
 
@@ -87,7 +89,7 @@ export default function ProfileSettings() {
 
     // Check if anything actually changed
     if (!profileChanged) {
-      Alert.alert('No Changes', 'No changes were made to your profile.');
+      showInfoToast('No Changes', 'No changes were made to your profile');
       return;
     }
 
@@ -111,16 +113,12 @@ export default function ProfileSettings() {
 
       debugLog('Profile updated successfully:', updatedProfile);
 
-      Alert.alert(
-        'Success',
-        'Profile updated successfully',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      router.back();
     } catch (err) {
       errorLog('Failed to update profile:', err);
       const message = getErrorMessage(err);
       setError(message);
-      Alert.alert('Error', message);
+      showErrorToast('Error', message);
     } finally {
       setIsSaving(false);
     }
@@ -167,7 +165,7 @@ export default function ProfileSettings() {
       }
     } catch (err) {
       errorLog('Error taking photo:', err);
-      Alert.alert('Error', 'Failed to take photo. Please try again.');
+      showErrorToast('Error', 'Failed to take photo. Please try again.');
     }
   };
 
@@ -200,7 +198,7 @@ export default function ProfileSettings() {
       }
     } catch (err) {
       errorLog('Error choosing photo:', err);
-      Alert.alert('Error', 'Failed to choose photo. Please try again.');
+      showErrorToast('Error', 'Failed to choose photo. Please try again.');
     }
   };
 
@@ -217,11 +215,9 @@ export default function ProfileSettings() {
       // Update local state
       setUserProfile(updatedProfile);
       setProfileImage(updatedProfile.profileImageUrl || null);
-
-      Alert.alert('Success', 'Profile picture updated successfully');
     } catch (err) {
       errorLog('Failed to upload profile picture:', err);
-      Alert.alert('Error', getErrorMessage(err));
+      showErrorToast('Error', getErrorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -414,69 +410,29 @@ export default function ProfileSettings() {
         </View>
 
         {/* Form Fields */}
-        <View style={{ gap: 20 }}>
+        <View style={{ gap: 0 }}>
           <View style={{
             flexDirection: 'row',
             gap: 12
           }}>
             <View style={{ flex: 1 }}>
-              <Text style={{
-                fontSize: 14,
-                fontWeight: '500',
-                color: 'rgba(255, 255, 255, 0.7)',
-                marginBottom: 8
-              }}>
-                First Name
-              </Text>
-              <View style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.08)',
-                paddingHorizontal: 16,
-                paddingVertical: 12
-              }}>
-                <TextInput
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  placeholder="First name"
-                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                  style={{
-                    fontSize: 16,
-                    color: '#ffffff'
-                  }}
-                />
-              </View>
+              <SettingsInput
+                label="First Name"
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholder="First name"
+                autoCapitalize="words"
+              />
             </View>
-            
+
             <View style={{ flex: 1 }}>
-              <Text style={{
-                fontSize: 14,
-                fontWeight: '500',
-                color: 'rgba(255, 255, 255, 0.7)',
-                marginBottom: 8
-              }}>
-                Last Name
-              </Text>
-              <View style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.08)',
-                paddingHorizontal: 16,
-                paddingVertical: 12
-              }}>
-                <TextInput
-                  value={lastName}
-                  onChangeText={setLastName}
-                  placeholder="Last name"
-                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                  style={{
-                    fontSize: 16,
-                    color: '#ffffff'
-                  }}
-                />
-              </View>
+              <SettingsInput
+                label="Last Name"
+                value={lastName}
+                onChangeText={setLastName}
+                placeholder="Last name"
+                autoCapitalize="words"
+              />
             </View>
           </View>
 
@@ -484,29 +440,30 @@ export default function ProfileSettings() {
           <TouchableOpacity
             onPress={() => router.push('/(app)/settings/change-username')}
             activeOpacity={0.7}
+            style={{ marginBottom: 20 }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{
-                fontSize: 14,
-                fontWeight: '500',
-                color: 'rgba(255, 255, 255, 0.7)'
-              }}>
-                Username
-              </Text>
-            </View>
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '500',
+              color: 'rgba(255, 255, 255, 0.7)',
+              marginBottom: 8
+            }}>
+              Username
+            </Text>
             <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: 8,
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: 12,
               borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.08)',
+              borderColor: 'rgba(255, 255, 255, 0.1)',
               paddingHorizontal: 16,
-              paddingVertical: 12,
+              height: 52,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
               <Text style={{
                 fontSize: 16,
+                fontWeight: '500',
                 color: '#ffffff'
               }}>
                 @{username}
@@ -523,29 +480,30 @@ export default function ProfileSettings() {
           <TouchableOpacity
             onPress={() => router.push('/(app)/settings/change-email')}
             activeOpacity={0.7}
+            style={{ marginBottom: 20 }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{
-                fontSize: 14,
-                fontWeight: '500',
-                color: 'rgba(255, 255, 255, 0.7)'
-              }}>
-                Email
-              </Text>
-            </View>
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '500',
+              color: 'rgba(255, 255, 255, 0.7)',
+              marginBottom: 8
+            }}>
+              Email
+            </Text>
             <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: 8,
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: 12,
               borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.08)',
+              borderColor: 'rgba(255, 255, 255, 0.1)',
               paddingHorizontal: 16,
-              paddingVertical: 12,
+              height: 52,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
               <Text style={{
                 fontSize: 16,
+                fontWeight: '500',
                 color: '#ffffff'
               }}>
                 {email}

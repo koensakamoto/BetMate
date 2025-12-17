@@ -97,6 +97,8 @@ export class WebSocketMessagingService {
   private connectionPromise: Promise<void> | null = null;
   // Store notification handler to survive React effect re-renders
   private notificationHandler: ((payload: unknown) => void) | null = null;
+  // Callback to re-establish notification subscription after reconnect
+  private notificationReconnectCallback: (() => void) | null = null;
   // Store connected username from STOMP frame (connectedHeaders is unreliable)
   private connectedUsername: string | null = null;
 
@@ -313,6 +315,8 @@ export class WebSocketMessagingService {
     this.client.onWebSocketClose = (event) => {
       if (event.code !== 1000) {
         errorLog('[WS-CLOSE] Abnormal closure, code:', event.code);
+        // Clear all subscriptions - they're now invalid after abnormal WebSocket close
+        this.subscriptions.clear();
       }
       this.handleReconnect();
     };
@@ -327,6 +331,10 @@ export class WebSocketMessagingService {
         try {
           await this.connect();
           this.globalEventHandlers.onReconnect?.();
+          // Re-establish notification subscription after reconnect
+          if (this.notificationReconnectCallback) {
+            this.notificationReconnectCallback();
+          }
         } catch (error) {
           errorLog('Reconnection failed:', error);
         }
@@ -560,6 +568,10 @@ export class WebSocketMessagingService {
     const subscription = this.client.subscribe(destination, (message: IMessage) => {
       try {
         const payload = JSON.parse(message.body);
+        // DEBUG: Log the raw notification payload to diagnose content issues
+        console.log('[WS-NOTIFICATIONS] Raw payload received:', JSON.stringify(payload, null, 2));
+        console.log('[WS-NOTIFICATIONS] Content field:', payload.content);
+        console.log('[WS-NOTIFICATIONS] Message field:', payload.message);
         // Call the STORED handler (not the closure-captured one)
         if (this.notificationHandler) {
           this.notificationHandler(payload);
@@ -578,6 +590,14 @@ export class WebSocketMessagingService {
     return () => {
       // Don't actually unsubscribe - keep subscription alive
     };
+  }
+
+  /**
+   * Set callback to re-establish notification subscription after reconnect
+   * This is needed because notification subscriptions become invalid on WebSocket close
+   */
+  setNotificationReconnectCallback(callback: (() => void) | null): void {
+    this.notificationReconnectCallback = callback;
   }
 
   /**

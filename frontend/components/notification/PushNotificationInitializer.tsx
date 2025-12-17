@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { usePushNotifications, setBadgeCount } from '../../services/notification';
 import { useNotificationContext } from '../../contexts/NotificationContext';
-import { useNotificationWebSocket } from '../../services/notification/useNotificationWebSocket';
 
 /**
  * Component that initializes push notifications when mounted.
@@ -11,22 +10,17 @@ import { useNotificationWebSocket } from '../../services/notification/useNotific
  * Features:
  * - Registers for push notifications (FCM)
  * - Syncs badge count with unread notifications
- * - Subscribes to WebSocket notifications for in-app toasts
  *
+ * Note: WebSocket notifications are handled by NotificationContext globally.
  * Note: Presence heartbeats are now handled by PresenceProvider in the app layout.
  */
 export function PushNotificationInitializer(): null {
   const { registerForPushNotifications } = usePushNotifications();
   const { unreadCount, refreshUnreadCount } = useNotificationContext();
 
-  // Subscribe to WebSocket notifications for in-app toast notifications
-  useNotificationWebSocket({
-    onNotificationReceived: () => {
-      // Refresh unread count when a notification is received
-      refreshUnreadCount();
-    },
-    enabled: true,
-  });
+  // WebSocket notifications are handled by NotificationContext globally
+  // No need for useNotificationWebSocket here - it causes duplicate handlers
+
   const hasRegistered = useRef(false);
   const appState = useRef(AppState.currentState);
 

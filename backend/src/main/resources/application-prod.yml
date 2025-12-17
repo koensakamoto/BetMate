@@ -80,3 +80,7 @@ management:
     health:
       show-details: when-authorized
       roles: ADMIN  # Only users with ROLE_ADMIN can see detailed health info
+
+# App Configuration
+app:
+  frontend-url: https://api.rivalpicksapp.com

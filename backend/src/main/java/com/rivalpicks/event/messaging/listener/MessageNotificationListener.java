@@ -147,20 +147,23 @@ public class MessageNotificationListener {
 
                     // Skip WebSocket if user is offline/background (push notification will handle it)
                     if (presence == null || !presence.isActive()) {
-                        logger.debug("User {} is offline/background, skipping WebSocket notification",
-                                   recipient.getUsername());
+                        logger.info(">>> User {} (id={}) is offline/background (presence={}), skipping WebSocket notification",
+                                   recipient.getUsername(), recipient.getId(), presence);
                         continue;
                     }
 
                     // Skip WebSocket if user is viewing this specific chat (they see messages directly)
                     if ("chat".equals(presence.getScreen()) &&
                         event.getGroupId().equals(presence.getChatId())) {
-                        logger.debug("User {} is viewing chat {}, skipping notification",
-                                   recipient.getUsername(), event.getGroupId());
+                        logger.info(">>> User {} (id={}) is viewing chat {} (screen={}, chatId={}), skipping notification",
+                                   recipient.getUsername(), recipient.getId(), event.getGroupId(),
+                                   presence.getScreen(), presence.getChatId());
                         continue;
                     }
 
                     // User is online and not viewing this chat - send WebSocket notification
+                    logger.info(">>> Sending WebSocket notification to user {} (id={}), presence: screen={}, chatId={}",
+                               recipient.getUsername(), recipient.getId(), presence.getScreen(), presence.getChatId());
                     messageNotificationService.sendNotificationToUser(recipient.getId(), notification);
                     webSocketsSent++;
                     logger.debug("Sent WebSocket notification to user: {}", recipient.getUsername());

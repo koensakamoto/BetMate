@@ -1,8 +1,97 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BaseToast, ErrorToast, ToastConfig as ToastConfigType } from 'react-native-toast-message';
+import Toast from 'react-native-toast-message';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  runOnJS,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
+
+// Swipeable toast wrapper component
+interface SwipeableToastProps {
+  children: React.ReactNode;
+}
+
+const SwipeableToast = ({ children }: SwipeableToastProps) => {
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+
+  const dismissToast = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Toast.hide();
+  };
+
+  const panGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      // Allow horizontal swipe (right) or vertical swipe (up)
+      if (Math.abs(event.translationX) > Math.abs(event.translationY)) {
+        // Horizontal swipe - only allow right swipe
+        translateX.value = Math.max(0, event.translationX);
+      } else {
+        // Vertical swipe - only allow up swipe
+        translateY.value = Math.min(0, event.translationY);
+      }
+    })
+    .onEnd((event) => {
+      const shouldDismissHorizontal = translateX.value > SWIPE_THRESHOLD;
+      const shouldDismissVertical = translateY.value < -SWIPE_THRESHOLD / 2;
+
+      if (shouldDismissHorizontal) {
+        translateX.value = withTiming(SCREEN_WIDTH, { duration: 200 });
+        runOnJS(dismissToast)();
+      } else if (shouldDismissVertical) {
+        translateY.value = withTiming(-200, { duration: 200 });
+        runOnJS(dismissToast)();
+      } else {
+        // Snap back with spring animation
+        translateX.value = withSpring(0, { damping: 20, stiffness: 300 });
+        translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
+      }
+    });
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      Math.max(translateX.value, Math.abs(translateY.value)),
+      [0, SWIPE_THRESHOLD],
+      [1, 0.5],
+      Extrapolation.CLAMP
+    );
+
+    const scale = interpolate(
+      Math.max(translateX.value, Math.abs(translateY.value)),
+      [0, SWIPE_THRESHOLD],
+      [1, 0.95],
+      Extrapolation.CLAMP
+    );
+
+    return {
+      transform: [
+        { translateX: translateX.value },
+        { translateY: translateY.value },
+        { scale },
+      ],
+      opacity,
+    };
+  });
+
+  return (
+    <GestureDetector gesture={panGesture}>
+      <Animated.View style={animatedStyle}>{children}</Animated.View>
+    </GestureDetector>
+  );
+};
 
 interface CustomToastProps {
   text1?: string;
@@ -92,19 +181,6 @@ const SuccessToast = ({ text1, text2 }: CustomToastProps) => {
         elevation: 8,
       }}
     >
-      <View
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          backgroundColor: 'rgba(0, 212, 170, 0.15)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginRight: 12,
-        }}
-      >
-        <MaterialIcons name="check-circle" size={22} color="#00D4AA" />
-      </View>
       <View style={{ flex: 1 }}>
         {text1 && (
           <Text
@@ -156,19 +232,6 @@ const CustomErrorToast = ({ text1, text2 }: CustomToastProps) => {
         elevation: 8,
       }}
     >
-      <View
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          backgroundColor: 'rgba(255, 107, 107, 0.15)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginRight: 12,
-        }}
-      >
-        <MaterialIcons name="error" size={22} color="#FF6B6B" />
-      </View>
       <View style={{ flex: 1 }}>
         {text1 && (
           <Text
@@ -220,19 +283,6 @@ const InfoToast = ({ text1, text2 }: CustomToastProps) => {
         elevation: 8,
       }}
     >
-      <View
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          backgroundColor: 'rgba(74, 158, 255, 0.15)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginRight: 12,
-        }}
-      >
-        <MaterialIcons name="info" size={22} color="#4A9EFF" />
-      </View>
       <View style={{ flex: 1 }}>
         {text1 && (
           <Text
@@ -284,19 +334,6 @@ const WarningToast = ({ text1, text2 }: CustomToastProps) => {
         elevation: 8,
       }}
     >
-      <View
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          backgroundColor: 'rgba(255, 184, 77, 0.15)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginRight: 12,
-        }}
-      >
-        <MaterialIcons name="warning" size={22} color="#FFB84D" />
-      </View>
       <View style={{ flex: 1 }}>
         {text1 && (
           <Text
@@ -406,15 +443,33 @@ const NotificationToast = ({ text1, text2, props }: NotificationToastProps) => {
 };
 
 export const toastConfig: ToastConfigType = {
-  success: (props) => <SuccessToast text1={props.text1} text2={props.text2} />,
-  error: (props) => <CustomErrorToast text1={props.text1} text2={props.text2} />,
-  info: (props) => <InfoToast text1={props.text1} text2={props.text2} />,
-  warning: (props) => <WarningToast text1={props.text1} text2={props.text2} />,
+  success: (props) => (
+    <SwipeableToast>
+      <SuccessToast text1={props.text1} text2={props.text2} />
+    </SwipeableToast>
+  ),
+  error: (props) => (
+    <SwipeableToast>
+      <CustomErrorToast text1={props.text1} text2={props.text2} />
+    </SwipeableToast>
+  ),
+  info: (props) => (
+    <SwipeableToast>
+      <InfoToast text1={props.text1} text2={props.text2} />
+    </SwipeableToast>
+  ),
+  warning: (props) => (
+    <SwipeableToast>
+      <WarningToast text1={props.text1} text2={props.text2} />
+    </SwipeableToast>
+  ),
   notification: (toastProps) => (
-    <NotificationToast
-      text1={toastProps.text1}
-      text2={toastProps.text2}
-      props={toastProps.props}
-    />
+    <SwipeableToast>
+      <NotificationToast
+        text1={toastProps.text1}
+        text2={toastProps.text2}
+        props={toastProps.props}
+      />
+    </SwipeableToast>
   ),
 };

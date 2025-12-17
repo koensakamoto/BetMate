@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { userService } from '../../../services/user/userService';
 import { useAuth } from '../../../contexts/AuthContext';
 import { errorLog } from '../../../config/env';
+import SettingsInput from '../../../components/settings/SettingsInput';
+import { showErrorToast } from '../../../utils/toast';
 
 export default function ChangeUsername() {
   const insets = useSafeAreaInsets();
@@ -17,7 +19,6 @@ export default function ChangeUsername() {
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -82,14 +83,9 @@ export default function ChangeUsername() {
         // Refresh user context with new username
         await refreshUser();
 
-        // Show success alert and navigate back on dismiss
-        Alert.alert(
-          'Username Changed',
-          `Your username has been changed to @${response.newUsername}`,
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
+        router.back();
       } else {
-        setError(response.message);
+        showErrorToast('Error', response.message);
       }
     } catch (err: any) {
       errorLog('Failed to change username:', err);
@@ -175,12 +171,12 @@ export default function ChangeUsername() {
               Current Username
             </Text>
             <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.08)',
+              borderColor: 'rgba(255, 255, 255, 0.1)',
               paddingHorizontal: 16,
-              paddingVertical: 14,
+              height: 52,
               flexDirection: 'row',
               alignItems: 'center'
             }}>
@@ -197,101 +193,45 @@ export default function ChangeUsername() {
                   {currentUsername.charAt(0).toUpperCase()}
                 </Text>
               </View>
-              <Text style={{ fontSize: 17, color: '#ffffff', fontWeight: '500' }}>
+              <Text style={{ fontSize: 16, color: '#ffffff', fontWeight: '500' }}>
                 @{currentUsername}
               </Text>
             </View>
           </View>
 
           {/* New Username Input */}
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{
-              fontSize: 14,
-              fontWeight: '500',
-              color: 'rgba(255, 255, 255, 0.7)',
-              marginBottom: 8
-            }}>
-              New Username
-            </Text>
-            <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: error
-                ? 'rgba(239, 68, 68, 0.5)'
-                : isAvailable
-                  ? 'rgba(0, 212, 170, 0.5)'
-                  : isFocused
-                    ? 'rgba(255, 255, 255, 0.2)'
-                    : 'rgba(255, 255, 255, 0.08)',
-              paddingHorizontal: 16,
-              flexDirection: 'row',
-              alignItems: 'center',
-              height: 52
-            }}>
-              <Text style={{
-                fontSize: 17,
-                color: 'rgba(255, 255, 255, 0.4)',
-                fontWeight: '500'
-              }}>
-                @
-              </Text>
-              <TextInput
-                value={newUsername}
-                onChangeText={(text) => setNewUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                placeholder="username"
-                placeholderTextColor="rgba(255, 255, 255, 0.3)"
-                autoCapitalize="none"
-                autoCorrect={false}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                style={{
-                  flex: 1,
-                  fontSize: 17,
-                  color: '#ffffff',
-                  fontWeight: '500',
-                  marginLeft: 2,
-                  paddingVertical: 0
-                }}
-              />
-              <View style={{ width: 24, height: 24, justifyContent: 'center', alignItems: 'center' }}>
-                {isCheckingAvailability && isAvailable === null && !error && (
-                  <ActivityIndicator size="small" color="#00D4AA" />
-                )}
-                {isAvailable === true && (
-                  <MaterialIcons name="check-circle" size={22} color="#00D4AA" />
-                )}
-                {error && isAvailable !== true && (
-                  <MaterialIcons name="error" size={22} color="#EF4444" />
-                )}
-              </View>
-            </View>
+          <SettingsInput
+            label="New Username"
+            value={newUsername}
+            onChangeText={(text) => setNewUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+            placeholder="username"
+            prefix="@"
+            autoCapitalize="none"
+            error={error || undefined}
+            isValid={isAvailable === true}
+            isLoading={isCheckingAvailability && isAvailable === null && !error}
+            style={{ marginBottom: 8 }}
+          />
 
-            {/* Status Message */}
-            {(error || isAvailable) && (
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                marginTop: 10,
-                paddingHorizontal: 4
-              }}>
-                <Text style={{
-                  fontSize: 13,
-                  color: error ? '#EF4444' : '#00D4AA',
-                  fontWeight: '500'
-                }}>
-                  {error || 'Username is available'}
-                </Text>
-              </View>
-            )}
-          </View>
+          {/* Success Message */}
+          {isAvailable === true && !error && (
+            <Text style={{
+              fontSize: 12,
+              color: '#00D4AA',
+              fontWeight: '400',
+              marginBottom: 16
+            }}>
+              Username is available
+            </Text>
+          )}
 
           {/* Guidelines */}
           <View style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+            marginTop: 16,
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
             borderRadius: 12,
             borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.08)',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
             padding: 16,
             marginBottom: 32
           }}>

@@ -1,5 +1,6 @@
 package com.rivalpicks.dto.user.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.rivalpicks.entity.user.User;
 import java.math.BigDecimal;
 
@@ -53,6 +54,7 @@ public class UserProfileResponseDto {
     public String getProfileImageUrl() { return profileImageUrl; }
     public String getDisplayName() { return displayName; }
     public boolean isEmailVerified() { return emailVerified; }
+    @JsonProperty("isActive")
     public boolean isActive() { return isActive; }
     public String getCreatedAt() { return createdAt; }
     public BigDecimal getTotalCredits() { return totalCredits; }

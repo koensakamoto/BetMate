@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler } from 'react-native';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, KeyboardAvoidingView, Platform, BackHandler, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useNavigation } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import AuthInput from '../../../components/auth/AuthInput';
-import AuthButton from '../../../components/auth/AuthButton';
+import SettingsInput from '../../../components/settings/SettingsInput';
 import { authService } from '../../../services/auth/authService';
 import { ApiError } from '../../../services/api/baseClient';
 import {
@@ -13,6 +12,7 @@ import {
   isServerError,
   getErrorMessage,
 } from '../../../utils/errorUtils';
+import { showErrorToast } from '../../../utils/toast';
 
 export default function ChangePassword() {
   const insets = useSafeAreaInsets();
@@ -120,43 +120,21 @@ export default function ChangePassword() {
         newPassword: formData.newPassword,
       });
 
-      // Success - navigate back with success message
-      Alert.alert(
-        'Success',
-        'Your password has been changed successfully',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back()
-          }
-        ]
-      );
+      router.back();
     } catch (error) {
       // Handle specific error types
       if (isNetworkError(error)) {
-        Alert.alert(
-          'Connection Error',
-          'Please check your internet connection and try again.',
-          [{ text: 'OK' }]
-        );
+        showErrorToast('Connection Error', 'Please check your internet connection');
         return;
       }
 
       if (isRateLimitError(error)) {
-        Alert.alert(
-          'Too Many Attempts',
-          getErrorMessage(error),
-          [{ text: 'OK' }]
-        );
+        showErrorToast('Too Many Attempts', getErrorMessage(error));
         return;
       }
 
       if (isServerError(error)) {
-        Alert.alert(
-          'Server Error',
-          'Something went wrong on our end. Please try again later.',
-          [{ text: 'OK' }]
-        );
+        showErrorToast('Server Error', 'Something went wrong. Please try again later');
         return;
       }
 
@@ -281,11 +259,11 @@ export default function ChangePassword() {
 
           {/* Info Box */}
           <View style={{
-            backgroundColor: 'rgba(0, 212, 170, 0.08)',
+            backgroundColor: 'rgba(0, 212, 170, 0.1)',
             borderRadius: 12,
             padding: 16,
             marginBottom: 32,
-            borderWidth: 0.5,
+            borderWidth: 1,
             borderColor: 'rgba(0, 212, 170, 0.2)',
             flexDirection: 'row',
             alignItems: 'flex-start'
@@ -307,26 +285,26 @@ export default function ChangePassword() {
           </View>
 
           {/* Current Password */}
-          <AuthInput
+          <SettingsInput
             label="Current Password"
             value={formData.currentPassword}
             onChangeText={(text) => updateField('currentPassword', text)}
             placeholder="Enter your current password"
-            secureTextEntry={true}
-            showPasswordToggle={true}
+            secureTextEntry
+            showPasswordToggle
             error={errors.currentPassword}
             autoCapitalize="none"
             editable={!isLoading}
           />
 
           {/* New Password */}
-          <AuthInput
+          <SettingsInput
             label="New Password"
             value={formData.newPassword}
             onChangeText={(text) => updateField('newPassword', text)}
             placeholder="Enter your new password"
-            secureTextEntry={true}
-            showPasswordToggle={true}
+            secureTextEntry
+            showPasswordToggle
             error={errors.newPassword}
             autoCapitalize="none"
             editable={!isLoading}
@@ -372,13 +350,13 @@ export default function ChangePassword() {
           )}
 
           {/* Confirm Password */}
-          <AuthInput
+          <SettingsInput
             label="Confirm New Password"
             value={formData.confirmPassword}
             onChangeText={(text) => updateField('confirmPassword', text)}
             placeholder="Re-enter your new password"
-            secureTextEntry={true}
-            showPasswordToggle={true}
+            secureTextEntry
+            showPasswordToggle
             error={errors.confirmPassword}
             isValid={formData.confirmPassword.length > 0 && formData.confirmPassword === formData.newPassword}
             autoCapitalize="none"
@@ -386,13 +364,27 @@ export default function ChangePassword() {
           />
 
           {/* Change Password Button */}
-          <AuthButton
-            title="Change Password"
+          <TouchableOpacity
             onPress={handleChangePassword}
-            variant="primary"
-            loading={isLoading}
             disabled={isLoading}
-          />
+            style={{
+              backgroundColor: '#00D4AA',
+              borderRadius: 12,
+              paddingVertical: 16,
+              alignItems: 'center',
+              opacity: isLoading ? 0.5 : 1,
+              marginTop: 12
+            }}
+            activeOpacity={0.8}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#000000" />
+            ) : (
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#000000' }}>
+                Change Password
+              </Text>
+            )}
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

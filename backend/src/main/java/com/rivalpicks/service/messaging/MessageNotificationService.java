@@ -238,8 +238,9 @@ public class MessageNotificationService {
                     notification.getCreatedAt()
                 );
 
-                logger.info(">>> Sending WebSocket notification to user '{}' (id={}), type={}, destination=/queue/notifications",
-                           user.getUsername(), userId, notification.getType().name());
+                logger.info(">>> Sending WebSocket notification to user '{}' (id={}), type={}, title='{}', content='{}', destination=/queue/notifications",
+                           user.getUsername(), userId, notification.getType().name(),
+                           notificationDto.getTitle(), notificationDto.getContent());
 
                 messagingTemplate.convertAndSendToUser(
                     user.getUsername(),

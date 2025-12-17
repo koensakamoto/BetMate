@@ -82,6 +82,11 @@ public class SecurityConfig {
         "/api/files/**"
     };
 
+    private static final String[] PUBLIC_APP_LINKS_ENDPOINTS = {
+        "/.well-known/apple-app-site-association",
+        "/.well-known/assetlinks.json"
+    };
+
     private static final String[] ADMIN_ENDPOINTS = {
         "/api/admin/**"
     };
@@ -126,6 +131,7 @@ public class SecurityConfig {
                 .requestMatchers(PUBLIC_GROUP_ENDPOINTS).permitAll()
                 .requestMatchers(PUBLIC_WEBSOCKET_ENDPOINTS).permitAll()
                 .requestMatchers(PUBLIC_FILE_ENDPOINTS).permitAll()
+                .requestMatchers(PUBLIC_APP_LINKS_ENDPOINTS).permitAll()
 
                 // Admin endpoints require ADMIN role
                 .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")

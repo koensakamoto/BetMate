@@ -10,6 +10,7 @@ import { groupService, GroupMemberResponse } from '../../services/group/groupSer
 import { haptic } from '../../utils/haptics';
 import LoadingButton from '../../components/common/LoadingButton';
 import { Avatar } from '../../components/common/Avatar';
+import { showErrorToast } from '../../utils/toast';
 
 // Helper function to round time to nearest minute (for testing - was 15-minute interval)
 const roundToNearestMinute = (date: Date): Date => {
@@ -74,8 +75,7 @@ export default function CreateBet() {
         const members = await groupService.getGroupMembers(parseInt(groupId as string));
         setGroupMembers(members);
       } catch (error) {
-        // Error handled silently
-        Alert.alert('Error', 'Failed to load group members');
+        showErrorToast('Error', 'Failed to load group members');
       } finally {
         setIsLoadingMembers(false);
       }
@@ -113,13 +113,13 @@ export default function CreateBet() {
 
     if (!betTitle.trim() || !selectedSport || !hasValidStake) {
       haptic.error();
-      Alert.alert('Missing Information', 'Please fill in all required fields.');
+      showErrorToast('Missing Information', 'Please fill in all required fields');
       return;
     }
 
     if (betType === 'MULTIPLE_CHOICE' && multipleChoiceOptions.some(opt => !opt.trim())) {
       haptic.error();
-      Alert.alert('Missing Options', 'Please fill in all multiple choice options.');
+      showErrorToast('Missing Options', 'Please fill in all multiple choice options');
       return;
     }
 
@@ -174,16 +174,10 @@ export default function CreateBet() {
 
               const response = await betService.createBet(createBetRequest);
               haptic.success();
-              Alert.alert('Success!', 'Your bet has been created successfully.', [
-                { text: 'OK', onPress: () => {
-                  // Navigate back - GroupBetsTab will auto-refresh via useFocusEffect
-                  router.back();
-                }}
-              ]);
+              router.back();
             } catch (error) {
-              // Error handled silently
               haptic.error();
-              Alert.alert('Error', 'Failed to create bet. Please try again.');
+              showErrorToast('Error', 'Failed to create bet. Please try again.');
             } finally {
               setIsCreating(false);
             }
@@ -361,6 +355,7 @@ export default function CreateBet() {
         keyboardShouldPersistTaps="handled"
         extraScrollHeight={20}
         enableOnAndroid={true}
+        enableResetScrollToCoords={false}
       >
           {/* Header with Progress */}
           <View style={{
@@ -1000,7 +995,10 @@ export default function CreateBet() {
             Last time participants can join this bet
           </Text>
           <TouchableOpacity
-            onPress={() => setShowDatePicker('end')}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowDatePicker('end');
+            }}
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.06)',
               borderRadius: 8,
@@ -1041,7 +1039,10 @@ export default function CreateBet() {
             When the bet outcome will be determined
           </Text>
           <TouchableOpacity
-            onPress={() => setShowDatePicker('resolution')}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowDatePicker('resolution');
+            }}
             style={{
               backgroundColor: 'rgba(255, 255, 255, 0.06)',
               borderRadius: 8,

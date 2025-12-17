@@ -21,12 +21,16 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
 
   // Convert WebSocket payload to NotificationResponse
   const convertWebSocketNotification = useCallback((payload: NotificationWebSocketPayload): NotificationResponse => {
+    // Handle both 'content' (WebSocket) and 'message' (REST API) field names
+    const messageContent = payload.content || (payload as any).message || '';
+
     return {
       id: payload.id,
       userId: 0, // Will be set by the current user context
       type: payload.type as NotificationType,
       title: payload.title,
-      content: payload.content,
+      content: messageContent,
+      message: messageContent, // Also set message field for compatibility
       actionUrl: payload.actionUrl,
       priority: payload.priority as NotificationPriority,
       isRead: false,
@@ -59,9 +63,12 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
     }
 
     // Show in-app notification toast (works on all platforms)
+    // Use content, message, or a fallback
+    const toastMessage = notification.content || notification.message || 'Tap to view';
+
     showNotificationToast(
       notification.title,
-      notification.content,
+      toastMessage,
       {
         notificationType: notification.type,
         priority: notification.priority,
@@ -128,11 +135,20 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
       }
     };
 
+    // Register reconnect callback to re-establish subscription after WebSocket reconnection
+    webSocketService.setNotificationReconnectCallback(() => {
+      if (mounted) {
+        setupSubscription();
+      }
+    });
+
     setupSubscription();
 
     // Cleanup function
     return () => {
       mounted = false;
+      // Clear reconnect callback
+      webSocketService.setNotificationReconnectCallback(null);
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;

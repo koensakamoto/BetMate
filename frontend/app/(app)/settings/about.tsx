@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, Linking, Alert, Image } from 'react-native';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -34,38 +34,6 @@ export default function About() {
     </Text>
   );
 
-  const InfoItem = ({ label, value }: { label: string; value: string }) => (
-    <View style={{
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: 12,
-      borderBottomWidth: 0.5,
-      borderBottomColor: 'rgba(255, 255, 255, 0.1)'
-    }}>
-      <Text style={{
-        fontSize: 15,
-        color: 'rgba(255, 255, 255, 0.7)',
-        letterSpacing: 0.1
-      }}>
-        {label}
-      </Text>
-      <Text style={{
-        fontSize: 15,
-        color: '#ffffff',
-        fontWeight: '500',
-        letterSpacing: 0.1
-      }}>
-        {value}
-      </Text>
-    </View>
-  );
-
-  const openLink = (url: string) => {
-    Linking.openURL(url).catch(() => {
-      Alert.alert('Error', 'Unable to open link. Please try again later.');
-    });
-  };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
@@ -153,27 +121,9 @@ export default function About() {
             style={{
               width: 80,
               height: 80,
-              borderRadius: 16,
-              marginBottom: 16
+              borderRadius: 16
             }}
           />
-          <Text style={{
-            fontSize: 24,
-            fontWeight: '700',
-            color: '#ffffff',
-            marginBottom: 8,
-            letterSpacing: 0.3
-          }}>
-            RivalPicks
-          </Text>
-          <Text style={{
-            fontSize: 16,
-            color: 'rgba(255, 255, 255, 0.7)',
-            textAlign: 'center',
-            letterSpacing: 0.2
-          }}>
-            Where friends compete together
-          </Text>
         </View>
 
         {/* About the App */}
@@ -223,7 +173,7 @@ export default function About() {
                   lineHeight: 20,
                   letterSpacing: 0.1
                 }}>
-                  Create private groups and bet with friends on sports, games, and events
+                  Create groups and bet on sports, crypto, politics, entertainment, and more
                 </Text>
               </View>
             </View>
@@ -304,7 +254,7 @@ export default function About() {
                 alignItems: 'center',
                 marginRight: 16
               }}>
-                <MaterialIcons name="emoji-events" size={20} color="#00D4AA" />
+                <MaterialIcons name="handshake" size={20} color="#00D4AA" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{
@@ -314,7 +264,7 @@ export default function About() {
                   marginBottom: 6,
                   letterSpacing: 0.2
                 }}>
-                  Achievements
+                  Social Stakes
                 </Text>
                 <Text style={{
                   fontSize: 14,
@@ -322,96 +272,9 @@ export default function About() {
                   lineHeight: 20,
                   letterSpacing: 0.1
                 }}>
-                  Unlock achievements and compete with friends for bragging rights
+                  Bet for fun stakes like "loser buys coffee" — no real money involved
                 </Text>
               </View>
-            </View>
-          </View>
-        </Section>
-
-        {/* App Information */}
-        <Section title="App Information">
-          <View style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.02)',
-            borderRadius: 12,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.05)'
-          }}>
-            <InfoItem label="Version" value="1.0.0" />
-            <InfoItem label="Release Date" value="September 2025" />
-            <InfoItem label="Platform" value="iOS & Android" />
-            <InfoItem label="Size" value="~45 MB" />
-            <InfoItem label="Category" value="Social & Entertainment" />
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingVertical: 12
-            }}>
-              <Text style={{
-                fontSize: 15,
-                color: 'rgba(255, 255, 255, 0.7)',
-                letterSpacing: 0.1
-              }}>
-                Age Rating
-              </Text>
-              <Text style={{
-                fontSize: 15,
-                color: '#ffffff',
-                fontWeight: '500',
-                letterSpacing: 0.1
-              }}>
-                18+
-              </Text>
-            </View>
-          </View>
-        </Section>
-
-        {/* Development Team */}
-        <Section title="Development Team">
-          <Paragraph>
-            RivalPicks is developed by a passionate team of developers who love bringing people together through technology and shared experiences.
-          </Paragraph>
-        </Section>
-
-        {/* Technical Information */}
-        <Section title="Technical Information">
-          <Paragraph>
-            RivalPicks is built using modern technologies to ensure a fast, reliable, and secure experience:
-          </Paragraph>
-          <View style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.02)',
-            borderRadius: 12,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.05)'
-          }}>
-            <InfoItem label="Frontend" value="React Native & Expo" />
-            <InfoItem label="Backend" value="Java Spring Boot" />
-            <InfoItem label="Database" value="MySQL" />
-            <InfoItem label="Real-time" value="WebSocket (STOMP)" />
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingVertical: 12
-            }}>
-              <Text style={{
-                fontSize: 15,
-                color: 'rgba(255, 255, 255, 0.7)',
-                letterSpacing: 0.1
-              }}>
-                Security
-              </Text>
-              <Text style={{
-                fontSize: 15,
-                color: '#ffffff',
-                fontWeight: '500',
-                letterSpacing: 0.1
-              }}>
-                End-to-end Encryption
-              </Text>
             </View>
           </View>
         </Section>

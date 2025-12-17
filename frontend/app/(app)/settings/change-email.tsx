@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -7,6 +7,8 @@ import { userService } from '../../../services/user/userService';
 import { useAuth } from '../../../contexts/AuthContext';
 import { debugLog, errorLog } from '../../../config/env';
 import { getErrorMessage } from '../../../utils/errorUtils';
+import SettingsInput from '../../../components/settings/SettingsInput';
+import { showErrorToast } from '../../../utils/toast';
 
 export default function ChangeEmail() {
   const insets = useSafeAreaInsets();
@@ -17,8 +19,6 @@ export default function ChangeEmail() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isEmailFocused, setIsEmailFocused] = useState(false);
-  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -60,13 +60,9 @@ export default function ChangeEmail() {
       const response = await userService.requestEmailChange(newEmail, currentPassword);
 
       if (response.success) {
-        Alert.alert(
-          'Verification Email Sent',
-          `We've sent a verification link to ${newEmail}. Please check your inbox and click the link to confirm your new email address.\n\nThe link will expire in 24 hours.`,
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
+        router.back();
       } else {
-        setError(response.message);
+        showErrorToast('Error', response.message);
       }
     } catch (err: any) {
       errorLog('Failed to request email change:', err);
@@ -147,113 +143,57 @@ export default function ChangeEmail() {
           </View>
 
           {/* Current Email */}
-          <View style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.03)',
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 24,
-            borderWidth: 0.5,
-            borderColor: 'rgba(255, 255, 255, 0.08)'
-          }}>
-            <Text style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.5)', marginBottom: 4 }}>
+          <View style={{ marginBottom: 24 }}>
+            <Text style={{
+              fontSize: 14,
+              fontWeight: '500',
+              color: 'rgba(255, 255, 255, 0.7)',
+              marginBottom: 8
+            }}>
               Current Email
             </Text>
-            <Text style={{ fontSize: 16, color: '#ffffff', fontWeight: '500' }}>
-              {currentEmail}
-            </Text>
+            <View style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              paddingHorizontal: 16,
+              height: 52,
+              justifyContent: 'center'
+            }}>
+              <Text style={{ fontSize: 16, color: '#ffffff', fontWeight: '500' }}>
+                {currentEmail}
+              </Text>
+            </View>
           </View>
 
           {/* New Email Input */}
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{
-              fontSize: 14,
-              fontWeight: '500',
-              color: 'rgba(255, 255, 255, 0.7)',
-              marginBottom: 8
-            }}>
-              New Email Address
-            </Text>
-            <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: isEmailFocused
-                ? 'rgba(255, 255, 255, 0.2)'
-                : 'rgba(255, 255, 255, 0.08)',
-              paddingHorizontal: 16,
-              flexDirection: 'row',
-              alignItems: 'center',
-              height: 52
-            }}>
-              <TextInput
-                value={newEmail}
-                onChangeText={(text) => {
-                  setNewEmail(text);
-                  if (error) setError(null);
-                }}
-                placeholder="Enter new email address"
-                placeholderTextColor="rgba(255, 255, 255, 0.3)"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                onFocus={() => setIsEmailFocused(true)}
-                onBlur={() => setIsEmailFocused(false)}
-                style={{
-                  flex: 1,
-                  fontSize: 17,
-                  color: '#ffffff',
-                  fontWeight: '500',
-                  paddingVertical: 0
-                }}
-              />
-            </View>
-          </View>
+          <SettingsInput
+            label="New Email Address"
+            value={newEmail}
+            onChangeText={(text) => {
+              setNewEmail(text);
+              if (error) setError(null);
+            }}
+            placeholder="Enter new email address"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
 
           {/* Password Input */}
-          <View style={{ marginBottom: 24 }}>
-            <Text style={{
-              fontSize: 14,
-              fontWeight: '500',
-              color: 'rgba(255, 255, 255, 0.7)',
-              marginBottom: 8
-            }}>
-              Current Password
-            </Text>
-            <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: isPasswordFocused
-                ? 'rgba(255, 255, 255, 0.2)'
-                : 'rgba(255, 255, 255, 0.08)',
-              paddingHorizontal: 16,
-              flexDirection: 'row',
-              alignItems: 'center',
-              height: 52
-            }}>
-              <TextInput
-                value={currentPassword}
-                onChangeText={(text) => {
-                  setCurrentPassword(text);
-                  if (error) setError(null);
-                }}
-                placeholder="Enter your current password"
-                placeholderTextColor="rgba(255, 255, 255, 0.3)"
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                onFocus={() => setIsPasswordFocused(true)}
-                onBlur={() => setIsPasswordFocused(false)}
-                style={{
-                  flex: 1,
-                  fontSize: 17,
-                  color: '#ffffff',
-                  fontWeight: '500',
-                  paddingVertical: 0
-                }}
-              />
-            </View>
-          </View>
+          <SettingsInput
+            label="Current Password"
+            value={currentPassword}
+            onChangeText={(text) => {
+              setCurrentPassword(text);
+              if (error) setError(null);
+            }}
+            placeholder="Enter your current password"
+            secureTextEntry
+            showPasswordToggle
+            autoCapitalize="none"
+            style={{ marginBottom: 24 }}
+          />
 
           {/* Error */}
           {error && (
@@ -262,7 +202,7 @@ export default function ChangeEmail() {
               borderRadius: 12,
               padding: 14,
               marginBottom: 16,
-              borderWidth: 0.5,
+              borderWidth: 1,
               borderColor: 'rgba(239, 68, 68, 0.3)'
             }}>
               <Text style={{ fontSize: 14, color: '#EF4444', textAlign: 'center' }}>
@@ -277,7 +217,7 @@ export default function ChangeEmail() {
             borderRadius: 12,
             padding: 16,
             marginBottom: 32,
-            borderWidth: 0.5,
+            borderWidth: 1,
             borderColor: 'rgba(0, 212, 170, 0.2)'
           }}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>

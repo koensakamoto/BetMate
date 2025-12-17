@@ -3,7 +3,7 @@ import { Text, View, TouchableOpacity, ScrollView, StatusBar, RefreshControl, Al
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useNotifications, useNotificationWebSocket } from '../../services/notification';
+import { useNotifications } from '../../services/notification';
 import { NotificationResponse, NotificationType, NotificationPriority } from '../../types/api';
 import { friendshipService } from '../../services/user/friendshipService';
 import { groupService } from '../../services/group/groupService';
@@ -27,18 +27,14 @@ export default function Notifications() {
     refresh,
     markAsRead,
     markAllAsRead,
-    addNotification,
     setUnreadOnly
   } = useNotifications({
     autoRefresh: true,
     pageSize: 20
   });
 
-  // Setup WebSocket for real-time notifications
-  useNotificationWebSocket({
-    onNotificationReceived: addNotification,
-    enabled: true
-  });
+  // WebSocket notifications are handled by NotificationContext globally
+  // No need for useNotificationWebSocket here - it causes duplicate handlers
 
   // Handle filter change
   useEffect(() => {

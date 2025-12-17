@@ -215,19 +215,27 @@ export default function HelpSupport() {
   const faqs = [
     {
       question: "How do I create a bet?",
-      answer: "To create a bet, go to the Bet tab, tap the '+' button, fill in the bet details including title, description, stake amount, and deadline. You can invite friends from your groups to participate."
+      answer: "Go to your group, tap the '+' button, and fill in the bet details: title, category (sports, crypto, politics, etc.), what you're betting on, and the social stake (like 'loser buys coffee'). Set the deadline and choose who can resolve the bet."
     },
     {
-      question: "How do group bets work?",
-      answer: "Group bets allow multiple members to participate in the same betting event. The creator sets the terms, and group members can join by placing their stakes. Winners are determined based on the outcome."
+      question: "What are social stakes?",
+      answer: "Social stakes are fun, real-world consequences for losing a bet — no real money involved. Examples include buying the winner coffee, doing a dare, or any creative stake you agree on with friends."
     },
     {
-      question: "How do I invite friends to a group?",
-      answer: "In your group, go to the Members tab and tap 'Invite Members'. You can search for friends by username or send them an invitation link to join your group."
+      question: "How do I join a bet?",
+      answer: "Open the bet from your group's Bets tab, review the details and social stake, then pick your side. Once the deadline passes and the outcome is determined, the loser fulfills the stake."
     },
     {
-      question: "What happens if I lose a bet?",
-      answer: "If you lose a bet, the stake amount will be deducted from your account balance. The winnings are distributed among the winners according to the bet terms."
+      question: "How do I create or join a group?",
+      answer: "Tap the Group tab to see your groups. To create a new group, tap the '+' button and set up your group name and privacy settings. To join, you'll need an invite from an existing member."
+    },
+    {
+      question: "How does the group chat work?",
+      answer: "Each group has a built-in chat where members can discuss bets, trash talk, and celebrate wins. Go to your group and tap the Chat tab to start messaging."
+    },
+    {
+      question: "How do I add friends?",
+      answer: "Go to your Profile tab and tap on your friends count, then tap 'Find Friends'. Search for users by username and send them a friend request."
     },
     {
       question: "How do I change my profile picture?",
@@ -235,7 +243,7 @@ export default function HelpSupport() {
     },
     {
       question: "How do I reset my password?",
-      answer: "On the login screen, tap 'Forgot Password' and enter your email address. You'll receive a link to reset your password. You can also change it in Settings > Account Security."
+      answer: "On the login screen, tap 'Forgot Password' and enter your email address. You'll receive a link to reset your password. You can also change it in Settings > Account."
     }
   ];
 
