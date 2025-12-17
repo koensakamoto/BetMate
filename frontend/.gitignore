@@ -33,9 +33,10 @@ yarn-error.*
 # local env files
 .env*.local
 
-# Firebase
-google-services.json
-GoogleService-Info.plist
+# Firebase - NOTE: These files are safe to commit for mobile apps
+# The API keys are restricted by package name/bundle ID
+# google-services.json
+# GoogleService-Info.plist
 
 # typescript
 *.tsbuildinfo
