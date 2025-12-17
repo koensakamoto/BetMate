@@ -161,19 +161,21 @@ const getNotificationStyle = (notificationType?: string, priority?: string) => {
 
 const SuccessToast = ({ text1, text2 }: CustomToastProps) => {
   const insets = useSafeAreaInsets();
+  const accentColor = '#00D4AA';
 
   return (
     <View
       style={{
         marginTop: insets.top,
         marginHorizontal: 16,
+        width: SCREEN_WIDTH - 32,
         backgroundColor: '#1a1a1f',
         borderRadius: 12,
         padding: 16,
         flexDirection: 'row',
         alignItems: 'center',
         borderLeftWidth: 4,
-        borderLeftColor: '#00D4AA',
+        borderLeftColor: accentColor,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
@@ -181,6 +183,19 @@ const SuccessToast = ({ text1, text2 }: CustomToastProps) => {
         elevation: 8,
       }}
     >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: `${accentColor}25`,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 12,
+        }}
+      >
+        <MaterialIcons name="check-circle" size={22} color={accentColor} />
+      </View>
       <View style={{ flex: 1 }}>
         {text1 && (
           <Text
@@ -188,7 +203,7 @@ const SuccessToast = ({ text1, text2 }: CustomToastProps) => {
               color: '#ffffff',
               fontSize: 15,
               fontWeight: '600',
-              marginBottom: text2 ? 2 : 0,
+              marginBottom: text2 ? 4 : 0,
             }}
           >
             {text1}
@@ -197,8 +212,9 @@ const SuccessToast = ({ text1, text2 }: CustomToastProps) => {
         {text2 && (
           <Text
             style={{
-              color: 'rgba(255, 255, 255, 0.6)',
+              color: 'rgba(255, 255, 255, 0.7)',
               fontSize: 13,
+              lineHeight: 18,
             }}
             numberOfLines={2}
           >
@@ -212,19 +228,21 @@ const SuccessToast = ({ text1, text2 }: CustomToastProps) => {
 
 const CustomErrorToast = ({ text1, text2 }: CustomToastProps) => {
   const insets = useSafeAreaInsets();
+  const accentColor = '#FF6B6B';
 
   return (
     <View
       style={{
         marginTop: insets.top,
         marginHorizontal: 16,
+        width: SCREEN_WIDTH - 32,
         backgroundColor: '#1a1a1f',
         borderRadius: 12,
         padding: 16,
         flexDirection: 'row',
         alignItems: 'center',
         borderLeftWidth: 4,
-        borderLeftColor: '#FF6B6B',
+        borderLeftColor: accentColor,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
@@ -232,6 +250,19 @@ const CustomErrorToast = ({ text1, text2 }: CustomToastProps) => {
         elevation: 8,
       }}
     >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: `${accentColor}25`,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 12,
+        }}
+      >
+        <MaterialIcons name="error" size={22} color={accentColor} />
+      </View>
       <View style={{ flex: 1 }}>
         {text1 && (
           <Text
@@ -239,7 +270,7 @@ const CustomErrorToast = ({ text1, text2 }: CustomToastProps) => {
               color: '#ffffff',
               fontSize: 15,
               fontWeight: '600',
-              marginBottom: text2 ? 2 : 0,
+              marginBottom: text2 ? 4 : 0,
             }}
           >
             {text1}
@@ -248,8 +279,9 @@ const CustomErrorToast = ({ text1, text2 }: CustomToastProps) => {
         {text2 && (
           <Text
             style={{
-              color: 'rgba(255, 255, 255, 0.6)',
+              color: 'rgba(255, 255, 255, 0.7)',
               fontSize: 13,
+              lineHeight: 18,
             }}
             numberOfLines={2}
           >
@@ -263,19 +295,21 @@ const CustomErrorToast = ({ text1, text2 }: CustomToastProps) => {
 
 const InfoToast = ({ text1, text2 }: CustomToastProps) => {
   const insets = useSafeAreaInsets();
+  const accentColor = '#4A9EFF';
 
   return (
     <View
       style={{
         marginTop: insets.top,
         marginHorizontal: 16,
+        width: SCREEN_WIDTH - 32,
         backgroundColor: '#1a1a1f',
         borderRadius: 12,
         padding: 16,
         flexDirection: 'row',
         alignItems: 'center',
         borderLeftWidth: 4,
-        borderLeftColor: '#4A9EFF',
+        borderLeftColor: accentColor,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
@@ -283,6 +317,19 @@ const InfoToast = ({ text1, text2 }: CustomToastProps) => {
         elevation: 8,
       }}
     >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: `${accentColor}25`,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 12,
+        }}
+      >
+        <MaterialIcons name="info" size={22} color={accentColor} />
+      </View>
       <View style={{ flex: 1 }}>
         {text1 && (
           <Text
@@ -290,7 +337,7 @@ const InfoToast = ({ text1, text2 }: CustomToastProps) => {
               color: '#ffffff',
               fontSize: 15,
               fontWeight: '600',
-              marginBottom: text2 ? 2 : 0,
+              marginBottom: text2 ? 4 : 0,
             }}
           >
             {text1}
@@ -299,8 +346,9 @@ const InfoToast = ({ text1, text2 }: CustomToastProps) => {
         {text2 && (
           <Text
             style={{
-              color: 'rgba(255, 255, 255, 0.6)',
+              color: 'rgba(255, 255, 255, 0.7)',
               fontSize: 13,
+              lineHeight: 18,
             }}
             numberOfLines={2}
           >
@@ -314,19 +362,21 @@ const InfoToast = ({ text1, text2 }: CustomToastProps) => {
 
 const WarningToast = ({ text1, text2 }: CustomToastProps) => {
   const insets = useSafeAreaInsets();
+  const accentColor = '#FFB84D';
 
   return (
     <View
       style={{
         marginTop: insets.top,
         marginHorizontal: 16,
+        width: SCREEN_WIDTH - 32,
         backgroundColor: '#1a1a1f',
         borderRadius: 12,
         padding: 16,
         flexDirection: 'row',
         alignItems: 'center',
         borderLeftWidth: 4,
-        borderLeftColor: '#FFB84D',
+        borderLeftColor: accentColor,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
@@ -334,6 +384,19 @@ const WarningToast = ({ text1, text2 }: CustomToastProps) => {
         elevation: 8,
       }}
     >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: `${accentColor}25`,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 12,
+        }}
+      >
+        <MaterialIcons name="warning" size={22} color={accentColor} />
+      </View>
       <View style={{ flex: 1 }}>
         {text1 && (
           <Text
@@ -341,7 +404,7 @@ const WarningToast = ({ text1, text2 }: CustomToastProps) => {
               color: '#ffffff',
               fontSize: 15,
               fontWeight: '600',
-              marginBottom: text2 ? 2 : 0,
+              marginBottom: text2 ? 4 : 0,
             }}
           >
             {text1}
@@ -350,8 +413,9 @@ const WarningToast = ({ text1, text2 }: CustomToastProps) => {
         {text2 && (
           <Text
             style={{
-              color: 'rgba(255, 255, 255, 0.6)',
+              color: 'rgba(255, 255, 255, 0.7)',
               fontSize: 13,
+              lineHeight: 18,
             }}
             numberOfLines={2}
           >
@@ -373,6 +437,7 @@ const NotificationToast = ({ text1, text2, props }: NotificationToastProps) => {
       style={{
         marginTop: insets.top,
         marginHorizontal: 16,
+        width: SCREEN_WIDTH - 32,
         backgroundColor: '#1a1a1f',
         borderRadius: 12,
         padding: 16,
