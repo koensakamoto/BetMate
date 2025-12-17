@@ -1,0 +1,46 @@
+# EAS Build ignore file
+# Same as .gitignore but WITHOUT Firebase files (they need to be uploaded for builds)
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# NOTE: Firebase files are NOT ignored - explicitly include them
+!google-services.json
+!GoogleService-Info.plist
+!ios/RivalPicks/GoogleService-Info.plist
+!android/app/google-services.json
+
+# typescript
+*.tsbuildinfo
+
+app-example
