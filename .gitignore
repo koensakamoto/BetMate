@@ -88,6 +88,10 @@ Thumbs.db
 **/firebase*.json
 !**/firebase.json
 
+# Firebase config files (contain API keys)
+**/google-services.json
+**/GoogleService-Info.plist
+
 # Node.js (for frontend)
 npm-debug.log*
 yarn-debug.log*
