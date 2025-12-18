@@ -88,9 +88,10 @@ Thumbs.db
 **/firebase*.json
 !**/firebase.json
 
-# Firebase config files (contain API keys)
-**/google-services.json
-**/GoogleService-Info.plist
+# Firebase config files - SAFE to commit for mobile apps
+# API keys are restricted by bundle ID/package name
+# **/google-services.json
+# **/GoogleService-Info.plist
 
 # Node.js (for frontend)
 npm-debug.log*

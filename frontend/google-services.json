@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "46395801472",
+    "project_id": "rival-picks-app",
+    "storage_bucket": "rival-picks-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:46395801472:android:37b2198eaac5d0e7810b65",
+        "android_client_info": {
+          "package_name": "com.rivalpicks.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "46395801472-bl69o6cbgtnek5e8uljom7bm02biqpt3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBmFcUxL0pBUzvWaKc9xQ9nrj1rrpo4f9M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "46395801472-bl69o6cbgtnek5e8uljom7bm02biqpt3.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "46395801472-6u4laj3io3ls67jephok6ls6r47v6c84.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.rivalpicks.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
