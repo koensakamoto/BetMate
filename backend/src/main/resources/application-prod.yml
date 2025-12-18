@@ -83,4 +83,4 @@ management:
 
 # App Configuration
 app:
-  frontend-url: rivalpicks://
+  frontend-url: rivalpicks:/

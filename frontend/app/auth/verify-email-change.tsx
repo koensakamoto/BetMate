@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Text, View, StatusBar, ActivityIndicator } from 'react-native';
+import { Text, View, StatusBar, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -44,6 +44,9 @@ export default function VerifyEmailChange() {
   }, [token]);
 
   const handleConfirmEmailChange = async () => {
+    // DEBUG: Show alert when button is pressed
+    Alert.alert('Debug', `Button pressed! Token: ${token ? 'exists' : 'MISSING'}`);
+
     if (!token) {
       setError('Invalid token');
       return;
@@ -61,6 +64,8 @@ export default function VerifyEmailChange() {
         setError(result.message);
       }
     } catch (err: any) {
+      // DEBUG: Show error in alert
+      Alert.alert('Error', err.message || 'Unknown error');
       setError(err.response?.data?.message || err.message || 'Failed to confirm email change');
     } finally {
       setIsConfirming(false);
