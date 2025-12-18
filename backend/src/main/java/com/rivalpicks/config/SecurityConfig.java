@@ -87,6 +87,10 @@ public class SecurityConfig {
         "/.well-known/assetlinks.json"
     };
 
+    private static final String[] PUBLIC_DEEP_LINK_FALLBACK_ENDPOINTS = {
+        "/auth/**"  // Deep link fallbacks for when app is not installed
+    };
+
     private static final String[] ADMIN_ENDPOINTS = {
         "/api/admin/**"
     };
@@ -132,6 +136,7 @@ public class SecurityConfig {
                 .requestMatchers(PUBLIC_WEBSOCKET_ENDPOINTS).permitAll()
                 .requestMatchers(PUBLIC_FILE_ENDPOINTS).permitAll()
                 .requestMatchers(PUBLIC_APP_LINKS_ENDPOINTS).permitAll()
+                .requestMatchers(PUBLIC_DEEP_LINK_FALLBACK_ENDPOINTS).permitAll()
 
                 // Admin endpoints require ADMIN role
                 .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")
