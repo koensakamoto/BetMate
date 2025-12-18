@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Redirect } from 'expo-router';
 import AuthLoadingScreen from '../../components/auth/AuthLoadingScreen';
 import { PushNotificationInitializer } from '../../components/notification/PushNotificationInitializer';
+import PendingInviteHandler from '../../components/group/PendingInviteHandler';
 import { PresenceProvider } from '../../contexts/PresenceContext';
 
 export default function AppLayout() {
@@ -20,6 +21,7 @@ export default function AppLayout() {
   return (
     <PresenceProvider>
       <PushNotificationInitializer />
+      <PendingInviteHandler />
       <Stack
         screenOptions={{
           headerShown: false,

@@ -5,7 +5,7 @@ import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { groupService, type GroupMemberResponse, type PendingRequestResponse } from '../../services/group/groupService';
-import { debugLog, errorLog } from '../../config/env';
+import { ENV, debugLog, errorLog } from '../../config/env';
 import { Avatar } from '../common/Avatar';
 import { Badge } from '../common/Badge';
 import { colors } from '../../constants/theme';
@@ -167,9 +167,8 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
   // Helper functions for invite functionality
   const generateInviteLink = () => {
     const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
-    // Use custom scheme for now - works in dev and production
-    // For production with universal links, change to: https://rivalpicks.app/invite/${currentGroupId}
-    const link = `rivalpicks://invite/${currentGroupId}`;
+    // Use HTTPS link with backend fallback - works even if app is not installed
+    const link = `${ENV.API_BASE_URL}/invite/${currentGroupId}`;
     setInviteLink(link);
     return link;
   };

@@ -88,7 +88,7 @@ const SwipeableToast = ({ children }: SwipeableToastProps) => {
 
   return (
     <GestureDetector gesture={panGesture}>
-      <Animated.View style={animatedStyle}>{children}</Animated.View>
+      <Animated.View style={[{ width: SCREEN_WIDTH }, animatedStyle]}>{children}</Animated.View>
     </GestureDetector>
   );
 };

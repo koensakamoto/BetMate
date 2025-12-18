@@ -9,6 +9,7 @@ import { debugLog, errorLog } from '../../config/env';
 import { getErrorMessage } from '../../utils/errorUtils';
 import { getDisplayName } from '../../utils/memberUtils';
 import { Avatar } from '../../components/common/Avatar';
+import { SkeletonUserCard } from '../../components/common/SkeletonCard';
 
 export default function FriendsList() {
   const insets = useSafeAreaInsets();
@@ -94,13 +95,11 @@ export default function FriendsList() {
   );
 
 
-  if (authLoading || isLoading) {
+  // Only show full loading state for auth, not for friends list loading
+  if (authLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#00D4AA" />
-        <Text style={{ color: '#ffffff', marginTop: 16, fontSize: 16 }}>
-          Loading friends...
-        </Text>
       </View>
     );
   }
@@ -108,6 +107,9 @@ export default function FriendsList() {
   if (!isAuthenticated) {
     return null;
   }
+
+  // Show skeleton loading state while friends are loading
+  const showSkeletons = isLoading && friends.length === 0;
 
   if (error && friends.length === 0) {
     return (
@@ -192,7 +194,7 @@ export default function FriendsList() {
               color: 'rgba(255, 255, 255, 0.4)',
               marginTop: 2
             }}>
-              {friends.length} {friends.length === 1 ? 'friend' : 'friends'}
+              {showSkeletons ? 'Loading...' : `${friends.length} ${friends.length === 1 ? 'friend' : 'friends'}`}
             </Text>
           </View>
         </View>
@@ -239,7 +241,15 @@ export default function FriendsList() {
 
         {/* Friends List */}
         <View style={{ paddingHorizontal: 20 }}>
-          {filteredFriends.length === 0 ? (
+          {showSkeletons ? (
+            /* Show skeleton cards while loading */
+            <View>
+              <SkeletonUserCard />
+              <SkeletonUserCard />
+              <SkeletonUserCard />
+              <SkeletonUserCard />
+            </View>
+          ) : filteredFriends.length === 0 ? (
             <View style={{
               alignItems: 'center',
               paddingVertical: 60

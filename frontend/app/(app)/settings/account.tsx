@@ -396,7 +396,7 @@ export default function AccountSecurity() {
             />
           </TouchableOpacity>
           
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={{
               fontSize: 24,
               fontWeight: '700',

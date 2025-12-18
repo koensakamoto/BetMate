@@ -168,9 +168,9 @@ export default function CreateGroup() {
               // Dismiss modal and force refresh with parameter
               router.dismissAll();
               router.navigate({
-                pathname: '/(app)/(tabs)/group/index',
+                pathname: '/(tabs)/group' as any,
                 params: { refresh: Date.now().toString() }
-              } as any);
+              });
             }
           }
         ]

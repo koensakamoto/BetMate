@@ -88,7 +88,8 @@ public class SecurityConfig {
     };
 
     private static final String[] PUBLIC_DEEP_LINK_FALLBACK_ENDPOINTS = {
-        "/auth/**"  // Deep link fallbacks for when app is not installed
+        "/auth/**",   // Deep link fallbacks for when app is not installed
+        "/invite/**"  // Group invite fallbacks for when app is not installed
     };
 
     private static final String[] ADMIN_ENDPOINTS = {
