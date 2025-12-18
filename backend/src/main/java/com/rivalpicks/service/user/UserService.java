@@ -61,6 +61,14 @@ public class UserService {
     }
 
     /**
+     * Retrieves a user by Apple user ID.
+     */
+    public Optional<User> getUserByAppleUserId(@NotNull String appleUserId) {
+        return userRepository.findByAppleUserId(appleUserId)
+            .filter(user -> !user.isDeleted());
+    }
+
+    /**
      * Optimized method to retrieve a user by username OR email in a single database query.
      * This is more efficient than calling getUserByUsername().or(() -> getUserByEmail()).
      */

@@ -25,7 +25,8 @@ import com.rivalpicks.entity.messaging.Notification;
     @Index(name = "idx_user_username", columnList = "username"),
     @Index(name = "idx_user_email", columnList = "email"),
     @Index(name = "idx_user_active", columnList = "isActive"),
-    @Index(name = "idx_user_deleted_at", columnList = "deletedAt")
+    @Index(name = "idx_user_deleted_at", columnList = "deletedAt"),
+    @Index(name = "idx_user_apple_user_id", columnList = "appleUserId")
 })
 public class User {
 
@@ -87,6 +88,9 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AuthProvider authProvider = AuthProvider.LOCAL;
+
+    @Column(unique = true, length = 255)
+    private String appleUserId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -229,6 +233,9 @@ public class User {
 
     public AuthProvider getAuthProvider() { return authProvider; }
     public void setAuthProvider(AuthProvider authProvider) { this.authProvider = authProvider; }
+
+    public String getAppleUserId() { return appleUserId; }
+    public void setAppleUserId(String appleUserId) { this.appleUserId = appleUserId; }
 
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
@@ -405,7 +412,7 @@ public class User {
     }
 
     public enum AuthProvider {
-        LOCAL, GOOGLE
+        LOCAL, GOOGLE, APPLE
     }
 
     public enum DevicePlatform {

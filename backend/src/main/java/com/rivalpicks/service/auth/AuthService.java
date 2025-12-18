@@ -397,32 +397,35 @@ public class AuthService {
             throw new AuthenticationException.InvalidCredentialsException("Apple user ID mismatch");
         }
 
-        // Try to find existing user by Apple user ID
-        // Apple may not provide email on subsequent logins, so we generate a consistent placeholder
+        // Try to find existing user by Apple user ID first (reliable for subsequent logins)
         User user;
-        Optional<User> existingUser = Optional.empty();
+        Optional<User> existingUser = userService.getUserByAppleUserId(appleAuthRequest.userId());
 
-        // Determine the email to use for lookup
-        String lookupEmail;
-        if (appleAuthRequest.email() != null && !appleAuthRequest.email().isEmpty()) {
-            // Use provided email (first sign-in or user shared email)
-            lookupEmail = appleAuthRequest.email();
-        } else {
-            // Generate placeholder email using Apple user ID (same as first sign-in)
-            lookupEmail = appleAuthRequest.userId() + "@privaterelay.appleid.com";
+        if (existingUser.isEmpty() && appleAuthRequest.email() != null && !appleAuthRequest.email().isEmpty()) {
+            // First sign-in with email provided - check if user exists by email (for account linking)
+            existingUser = userService.getUserByEmail(appleAuthRequest.email());
         }
-
-        // Try to find user by email (works for both provided and placeholder emails)
-        existingUser = userService.getUserByEmail(lookupEmail);
 
         if (existingUser.isPresent()) {
             user = existingUser.get();
-            log.info("Existing user found for Apple login: {} (email: {})", user.getUsername(), lookupEmail);
+            // Link Apple user ID if not already set (first Apple sign-in for existing account)
+            if (user.getAppleUserId() == null) {
+                user.setAppleUserId(appleAuthRequest.userId());
+                log.info("Linked Apple user ID {} to existing user: {}", appleAuthRequest.userId(), user.getUsername());
+            }
+            log.info("Existing user found for Apple login: {}", user.getUsername());
         } else {
             // Create new user from Apple account
-            log.info("Creating new user from Apple account: {} with email: {}", appleAuthRequest.userId(), lookupEmail);
+            log.info("Creating new user from Apple account: {}", appleAuthRequest.userId());
             user = new User();
-            user.setEmail(lookupEmail);
+            user.setAppleUserId(appleAuthRequest.userId());
+            user.setAuthProvider(User.AuthProvider.APPLE);
+
+            // Set email - use provided email or generate placeholder
+            String userEmail = (appleAuthRequest.email() != null && !appleAuthRequest.email().isEmpty())
+                ? appleAuthRequest.email()
+                : appleAuthRequest.userId() + "@privaterelay.appleid.com";
+            user.setEmail(userEmail);
 
             // Apple only provides name on first sign-in
             if (appleAuthRequest.firstName() != null) {
