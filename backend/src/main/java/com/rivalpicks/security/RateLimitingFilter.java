@@ -87,9 +87,12 @@ public class RateLimitingFilter extends OncePerRequestFilter {
                 return RateLimitType.REGISTER;
             }
 
-            if (path.equals("/api/auth/forgot-password") ||
-                path.equals("/api/auth/reset-password")) {
+            if (path.equals("/api/auth/forgot-password")) {
                 return RateLimitType.FORGOT_PASSWORD;
+            }
+
+            if (path.equals("/api/auth/reset-password")) {
+                return RateLimitType.RESET_PASSWORD;
             }
         }
 

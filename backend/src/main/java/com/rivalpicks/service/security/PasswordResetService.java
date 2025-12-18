@@ -145,6 +145,13 @@ public class PasswordResetService {
                     return new AuthenticationException.InvalidCredentialsException("Invalid or expired reset token");
                 });
 
+        // Check if token is locked out due to too many failed attempts
+        if (resetToken.isLockedOut()) {
+            log.warn("Password reset attempted with locked out token for user: {}",
+                    resetToken.getUser().getUsername());
+            throw new AuthenticationException.InvalidCredentialsException("Token has been invalidated due to too many failed attempts. Please request a new password reset.");
+        }
+
         if (!resetToken.isValid()) {
             log.warn("Password reset attempted with invalid/expired token for user: {}",
                     resetToken.getUser().getUsername());
@@ -154,7 +161,19 @@ public class PasswordResetService {
         // Validate new password strength
         InputValidator.PasswordValidationResult passwordValidation = inputValidator.validatePassword(newPassword);
         if (!passwordValidation.isValid()) {
-            log.warn("Password reset failed: weak password for user: {}", resetToken.getUser().getUsername());
+            // Increment failed attempts on password validation failure
+            boolean lockedOut = resetToken.incrementFailedAttempts();
+            tokenRepository.save(resetToken);
+
+            if (lockedOut) {
+                log.warn("Token locked out after {} failed attempts for user: {}",
+                        resetToken.getFailedAttempts(), resetToken.getUser().getUsername());
+                throw new AuthenticationException.InvalidCredentialsException(
+                        "Token has been invalidated due to too many failed attempts. Please request a new password reset.");
+            }
+
+            log.warn("Password reset failed: weak password for user: {} (attempt {}/5)",
+                    resetToken.getUser().getUsername(), resetToken.getFailedAttempts());
             throw new AuthenticationException.InvalidCredentialsException(passwordValidation.getErrorMessage());
         }
 

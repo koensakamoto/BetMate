@@ -37,6 +37,11 @@ public class PasswordResetToken {
     @Column(nullable = false)
     private Boolean used = false;
 
+    @Column(nullable = false)
+    private Integer failedAttempts = 0;
+
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -64,10 +69,26 @@ public class PasswordResetToken {
     }
 
     /**
-     * Checks if the token is valid (not expired and not used).
+     * Checks if the token is valid (not expired, not used, and not exceeded max failed attempts).
      */
     public boolean isValid() {
-        return !used && LocalDateTime.now(ZoneOffset.UTC).isBefore(expiresAt);
+        return !used && failedAttempts < MAX_FAILED_ATTEMPTS && LocalDateTime.now(ZoneOffset.UTC).isBefore(expiresAt);
+    }
+
+    /**
+     * Checks if the token has exceeded max failed attempts.
+     */
+    public boolean isLockedOut() {
+        return failedAttempts >= MAX_FAILED_ATTEMPTS;
+    }
+
+    /**
+     * Increments the failed attempt counter.
+     * @return true if the token is now locked out (reached max attempts)
+     */
+    public boolean incrementFailedAttempts() {
+        this.failedAttempts++;
+        return this.failedAttempts >= MAX_FAILED_ATTEMPTS;
     }
 
     /**
@@ -136,5 +157,13 @@ public class PasswordResetToken {
 
     public void setUsedAt(LocalDateTime usedAt) {
         this.usedAt = usedAt;
+    }
+
+    public Integer getFailedAttempts() {
+        return failedAttempts;
+    }
+
+    public void setFailedAttempts(Integer failedAttempts) {
+        this.failedAttempts = failedAttempts;
     }
 }

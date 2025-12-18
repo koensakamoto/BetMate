@@ -87,6 +87,9 @@ rate-limiting:
   forgot-password:
     requests: 3
     duration-minutes: 60
+  reset-password:
+    requests: 10
+    duration-minutes: 15
   default:
     requests: 100
     duration-minutes: 1

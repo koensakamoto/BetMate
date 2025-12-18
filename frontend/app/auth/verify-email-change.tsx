@@ -5,10 +5,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import AuthButton from '../../components/auth/AuthButton';
 import { userService } from '../../services/user/userService';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function VerifyEmailChange() {
   const insets = useSafeAreaInsets();
   const { token } = useLocalSearchParams<{ token: string }>();
+  const { refreshUser } = useAuth();
 
   const [isValidating, setIsValidating] = useState(true);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -58,6 +60,8 @@ export default function VerifyEmailChange() {
       const result = await userService.confirmEmailChange(token);
 
       if (result.success) {
+        // Refresh user data in Auth context so the new email is reflected everywhere
+        await refreshUser();
         setIsSuccess(true);
         setNewEmail(result.email);
       } else {

@@ -13,6 +13,7 @@ public class RateLimitConfig {
     private RateLimitProperties login = new RateLimitProperties(5, 15);
     private RateLimitProperties register = new RateLimitProperties(3, 60);
     private RateLimitProperties forgotPassword = new RateLimitProperties(3, 60);
+    private RateLimitProperties resetPassword = new RateLimitProperties(10, 15);
     private RateLimitProperties defaultLimit = new RateLimitProperties(100, 1);
 
     @Data

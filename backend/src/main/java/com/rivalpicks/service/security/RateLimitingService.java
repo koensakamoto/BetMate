@@ -96,6 +96,7 @@ public class RateLimitingService {
         LOGIN,
         REGISTER,
         FORGOT_PASSWORD,
+        RESET_PASSWORD,
         DEFAULT
     }
 
@@ -132,6 +133,7 @@ public class RateLimitingService {
             case LOGIN -> rateLimitConfig.getLogin();
             case REGISTER -> rateLimitConfig.getRegister();
             case FORGOT_PASSWORD -> rateLimitConfig.getForgotPassword();
+            case RESET_PASSWORD -> rateLimitConfig.getResetPassword();
             case DEFAULT -> rateLimitConfig.getDefault();
         };
     }
