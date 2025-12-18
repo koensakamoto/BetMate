@@ -62,7 +62,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         "/v3/api-docs/**",
         "/error",
         "/ws/**",
-        "/.well-known/**"
+        "/.well-known/**",
+        "/auth/**"  // Deep link fallbacks for when app is not installed
     );
 
     // Endpoints that accept optional authentication
