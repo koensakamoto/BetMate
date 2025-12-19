@@ -1,8 +1,9 @@
 package com.rivalpicks.controller;
 
-import com.rivalpicks.service.FileStorageService;
+import com.rivalpicks.service.storage.LocalStorageService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -17,17 +18,19 @@ import java.nio.file.Path;
 /**
  * REST controller for serving uploaded files.
  * Handles file retrieval for profile pictures and other uploaded content.
+ * Only active when using local storage (storage.type=local).
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/files")
+@ConditionalOnProperty(name = "storage.type", havingValue = "local", matchIfMissing = true)
 public class FileController {
 
-    private final FileStorageService fileStorageService;
+    private final LocalStorageService localStorageService;
 
     @Autowired
-    public FileController(FileStorageService fileStorageService) {
-        this.fileStorageService = fileStorageService;
+    public FileController(LocalStorageService localStorageService) {
+        this.localStorageService = localStorageService;
     }
 
     /**
@@ -51,7 +54,7 @@ public class FileController {
             }
 
             // Get the base storage location and normalize it
-            Path baseLocation = fileStorageService.getFileStorageLocation().toAbsolutePath().normalize();
+            Path baseLocation = localStorageService.getFileStorageLocation().toAbsolutePath().normalize();
 
             // Resolve the file path and normalize it
             Path filePath = baseLocation.resolve(fileName).normalize();

@@ -5,15 +5,17 @@ import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { userService, ProfileVisibility } from '../../../services/user/userService';
 import { useAuth } from '../../../contexts/AuthContext';
+import { getErrorMessage } from '../../../utils/errorUtils';
 import { debugLog, errorLog } from '../../../config/env';
 import { File, Paths } from 'expo-file-system/next';
 import * as Sharing from 'expo-sharing';
 
 export default function AccountSecurity() {
   const insets = useSafeAreaInsets();
-  const { user, updateProfileVisibility } = useAuth();
+  const { user, updateProfileVisibility, logout } = useAuth();
   const [isExportingData, setIsExportingData] = useState(false);
   const [isSavingVisibility, setIsSavingVisibility] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const profileVisibility = user?.profileVisibility ?? 'PUBLIC';
 
@@ -204,15 +206,15 @@ export default function AccountSecurity() {
   };
 
   const handleChangePassword = () => {
-    router.push('/(app)/settings/change-password');
+    router.push('/settings/change-password');
   };
 
   const handleChangeUsername = () => {
-    router.push('/(app)/settings/change-username');
+    router.push('/settings/change-username');
   };
 
   const handleChangeEmail = () => {
-    router.push('/(app)/settings/change-email');
+    router.push('/settings/change-email');
   };
 
   const handleTwoFactor = () => {
@@ -303,17 +305,52 @@ export default function AccountSecurity() {
   const handleDeleteAccount = () => {
     Alert.alert(
       'Delete Account',
-      'This action cannot be undone. Are you sure you want to permanently delete your account?',
+      'This action cannot be undone. All your data including bets, groups, and profile information will be permanently deleted.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: () => {
+            // Second confirmation
             Alert.alert(
-              'Account Deletion',
-              'Please contact support to proceed with account deletion.',
-              [{ text: 'OK' }]
+              'Are you absolutely sure?',
+              'Type DELETE to confirm account deletion.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete My Account',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      setIsDeletingAccount(true);
+                      debugLog('Deleting account...');
+
+                      await userService.deleteAccount();
+
+                      debugLog('Account deleted successfully');
+
+                      // Logout and redirect to auth screen
+                      await logout();
+
+                      Alert.alert(
+                        'Account Deleted',
+                        'Your account has been successfully deleted.',
+                        [{ text: 'OK' }]
+                      );
+                    } catch (error) {
+                      errorLog('Failed to delete account:', error);
+                      Alert.alert(
+                        'Error',
+                        getErrorMessage(error),
+                        [{ text: 'OK' }]
+                      );
+                    } finally {
+                      setIsDeletingAccount(false);
+                    }
+                  }
+                }
+              ]
             );
           }
         }
@@ -481,8 +518,9 @@ export default function AccountSecurity() {
         </Section>
 
         {/* Delete Account */}
-        <TouchableOpacity 
-          onPress={handleDeleteAccount}
+        <TouchableOpacity
+          onPress={isDeletingAccount ? undefined : handleDeleteAccount}
+          disabled={isDeletingAccount}
           style={{
             backgroundColor: 'rgba(255, 255, 255, 0.03)',
             borderRadius: 16,
@@ -492,7 +530,8 @@ export default function AccountSecurity() {
             borderColor: 'rgba(255, 255, 255, 0.08)',
             flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'space-between'
+            justifyContent: 'space-between',
+            opacity: isDeletingAccount ? 0.6 : 1
           }}
           activeOpacity={0.7}
         >
@@ -504,10 +543,10 @@ export default function AccountSecurity() {
               alignItems: 'center',
               marginRight: 12
             }}>
-              <MaterialIcons 
-                name="delete-forever" 
-                size={18} 
-                color="#EF4444" 
+              <MaterialIcons
+                name="delete-forever"
+                size={18}
+                color="#EF4444"
               />
             </View>
             <Text style={{
@@ -515,13 +554,13 @@ export default function AccountSecurity() {
               fontWeight: '500',
               color: '#EF4444'
             }}>
-              Delete Account
+              {isDeletingAccount ? 'Deleting Account...' : 'Delete Account'}
             </Text>
           </View>
-          <MaterialIcons 
-            name="chevron-right" 
-            size={20} 
-            color="rgba(239, 68, 68, 0.6)" 
+          <MaterialIcons
+            name="chevron-right"
+            size={20}
+            color="rgba(239, 68, 68, 0.6)"
           />
         </TouchableOpacity>
 

@@ -333,6 +333,7 @@ class BetService extends BaseApiService {
   }
 
   // Upload fulfillment proof photo
+  // Returns the storedValue (for saving to DB) - the backend will resolve it to a display URL when needed
   async uploadFulfillmentProof(betId: number, imageUri: string, fileName: string): Promise<string> {
     const getContentType = (filename: string): string => {
       const ext = filename.split('.').pop()?.toLowerCase();
@@ -354,9 +355,14 @@ class BetService extends BaseApiService {
     };
     formData.append('file', file as unknown as Blob);
 
-    return this.post<string, FormData>(`/${betId}/fulfillment/upload-proof`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await this.post<{ storedValue: string; displayUrl: string }, FormData>(
+      `/${betId}/fulfillment/upload-proof`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+
+    // Return the storedValue which is what should be saved to the database
+    return response.storedValue;
   }
 }
 

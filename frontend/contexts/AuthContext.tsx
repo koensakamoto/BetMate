@@ -72,6 +72,7 @@ export interface AppleLoginData {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  isInitializing: boolean; // True only during initial auth check on app start
   error: AuthError | null;
   isAuthenticated: boolean;
   login: (data: LoginData) => Promise<void>;
@@ -135,6 +136,7 @@ const transformUser = (userResponse: UserProfileResponse, profileVisibility?: Pr
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true); // Only true during initial auth check
   const [error, setError] = useState<AuthError | null>(null);
 
   const isAuthenticated = !!user;
@@ -250,6 +252,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Don't set error state for initial auth check - user might just not be logged in
     } finally {
       setIsLoading(false);
+      setIsInitializing(false); // Initial auth check is complete
     }
   }, []);
 
@@ -507,6 +510,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value = useMemo<AuthContextType>(() => ({
     user,
     isLoading,
+    isInitializing,
     error,
     isAuthenticated,
     login,
@@ -523,6 +527,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }), [
     user,
     isLoading,
+    isInitializing,
     error,
     isAuthenticated,
     login,

@@ -77,6 +77,7 @@ export const API_ENDPOINTS = {
   USER_SEARCH: '/users/search',
   USER_STATS: (id: number) => `/users/${id}/stats`,
   USER_DATA_EXPORT: '/users/me/export',
+  USER_DELETE_ACCOUNT: '/users/profile',
   
   // Store
   STORE: '/store',

@@ -17,7 +17,7 @@ export default function Bet() {
   const { refresh } = useLocalSearchParams();
   const { user: authUser, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
-  const tabs = ['My Bets', 'You Owe', 'Owed to You'];
+  const tabs = ['My Bets', 'Losses', 'Winnings'];
   const [searchQuery, setSearchQuery] = useState('');
   const [myBets, setMyBets] = useState<BetSummaryResponse[]>([]);
   // const [discoverBets, setDiscoverBets] = useState<BetSummaryResponse[]>([]); // Commented out - TODO: Implement guest/public betting
@@ -30,17 +30,17 @@ export default function Bet() {
   const [loadingUnfulfilledBets, setLoadingUnfulfilledBets] = useState(false);
   const [unfulfilledBetsError, setUnfulfilledBetsError] = useState<string | null>(null);
 
-  // Filters for "You Owe" tab
-  const [youOweFilter, setYouOweFilter] = useState<'all' | 'todo' | 'submitted'>('all');
-  const youOweFilters = [
+  // Filters for "Losses" tab
+  const [lossesFilter, setLossesFilter] = useState<'all' | 'todo' | 'submitted'>('all');
+  const lossesFilters = [
     { key: 'all' as const, label: 'All' },
     { key: 'todo' as const, label: 'To-Do' },
     { key: 'submitted' as const, label: 'Submitted' }
   ];
 
-  // Filters for "Owed to You" tab
-  const [owedToYouFilter, setOwedToYouFilter] = useState<'all' | 'waiting' | 'completed'>('all');
-  const owedToYouFilters = [
+  // Filters for "Winnings" tab
+  const [winningsFilter, setWinningsFilter] = useState<'all' | 'waiting' | 'completed'>('all');
+  const winningsFilters = [
     { key: 'all' as const, label: 'All' },
     { key: 'waiting' as const, label: 'Waiting' },
     { key: 'completed' as const, label: 'Completed' }
@@ -132,12 +132,10 @@ export default function Bet() {
       setLoadingUnfulfilledBets(true);
       setUnfulfilledBetsError(null);
       const allBets = await betService.getMyBets();
-      // Filter for unfulfilled social bets only
-      // Unfulfilled means: status is RESOLVED and fulfillmentStatus is PENDING or PARTIALLY_FULFILLED
+      // Filter for resolved social bets (includes all fulfillment statuses for history)
       const unfulfilled = allBets.filter(bet =>
         bet.status === 'RESOLVED' &&
-        bet.stakeType === 'SOCIAL' &&
-        (bet.fulfillmentStatus === 'PENDING' || bet.fulfillmentStatus === 'PARTIALLY_FULFILLED')
+        bet.stakeType === 'SOCIAL'
       );
       setUnfulfilledBets(unfulfilled);
       lastOwedStakesFetchTime.current = Date.now();
@@ -283,16 +281,16 @@ export default function Bet() {
     setMyBetsFilter(filter);
   }, []);
 
-  // Handler for "You Owe" tab filters
-  const handleYouOweFilterChange = useCallback((filter: 'all' | 'todo' | 'submitted') => {
+  // Handler for "Losses" tab filters
+  const handleLossesFilterChange = useCallback((filter: 'all' | 'todo' | 'submitted') => {
     Haptics.selectionAsync();
-    setYouOweFilter(filter);
+    setLossesFilter(filter);
   }, []);
 
-  // Handler for "Owed to You" tab filters
-  const handleOwedToYouFilterChange = useCallback((filter: 'all' | 'waiting' | 'completed') => {
+  // Handler for "Winnings" tab filters
+  const handleWinningsFilterChange = useCallback((filter: 'all' | 'waiting' | 'completed') => {
     Haptics.selectionAsync();
-    setOwedToYouFilter(filter);
+    setWinningsFilter(filter);
   }, []);
 
   interface BetHistoryItem {
@@ -617,12 +615,12 @@ export default function Bet() {
                   marginBottom: 16,
                   gap: 8
                 }}>
-                  {youOweFilters.map((filter) => {
-                    const isActive = filter.key === youOweFilter;
+                  {lossesFilters.map((filter) => {
+                    const isActive = filter.key === lossesFilter;
                     return (
                       <TouchableOpacity
                         key={filter.key}
-                        onPress={() => handleYouOweFilterChange(filter.key)}
+                        onPress={() => handleLossesFilterChange(filter.key)}
                         accessible={true}
                         accessibilityRole="button"
                         accessibilityLabel={`Filter: ${filter.label}`}
@@ -685,15 +683,15 @@ export default function Bet() {
                   </View>
                 ) : (() => {
                   // Filter for bets where user owes (lost)
-                  const youOweBets = unfulfilledBets.filter(bet =>
+                  const lossesBets = unfulfilledBets.filter(bet =>
                     bet.userParticipationStatus === 'LOST'
                   );
 
                   // Apply sub-filter
-                  const filteredBets = youOweBets.filter(bet => {
-                    if (youOweFilter === 'all') return true;
-                    if (youOweFilter === 'todo') return !bet.hasCurrentUserClaimedFulfillment;
-                    if (youOweFilter === 'submitted') return bet.hasCurrentUserClaimedFulfillment;
+                  const filteredBets = lossesBets.filter(bet => {
+                    if (lossesFilter === 'all') return true;
+                    if (lossesFilter === 'todo') return !bet.hasCurrentUserClaimedFulfillment && bet.fulfillmentStatus !== 'FULFILLED';
+                    if (lossesFilter === 'submitted') return bet.hasCurrentUserClaimedFulfillment || bet.fulfillmentStatus === 'FULFILLED';
                     return true;
                   });
 
@@ -869,9 +867,9 @@ export default function Bet() {
 
                   // Empty state
                   if (filteredBets.length === 0) {
-                    const emptyMessage = youOweFilter === 'todo'
+                    const emptyMessage = lossesFilter === 'todo'
                       ? 'No pending stakes to fulfill'
-                      : youOweFilter === 'submitted'
+                      : lossesFilter === 'submitted'
                       ? 'No submitted stakes yet'
                       : "You don't owe anyone anything";
 
@@ -918,12 +916,12 @@ export default function Bet() {
                   marginBottom: 16,
                   gap: 8
                 }}>
-                  {owedToYouFilters.map((filter) => {
-                    const isActive = filter.key === owedToYouFilter;
+                  {winningsFilters.map((filter) => {
+                    const isActive = filter.key === winningsFilter;
                     return (
                       <TouchableOpacity
                         key={filter.key}
-                        onPress={() => handleOwedToYouFilterChange(filter.key)}
+                        onPress={() => handleWinningsFilterChange(filter.key)}
                         accessible={true}
                         accessibilityRole="button"
                         accessibilityLabel={`Filter: ${filter.label}`}
@@ -986,17 +984,17 @@ export default function Bet() {
                   </View>
                 ) : (() => {
                   // Filter for bets where user is owed (won or creator)
-                  const owedToYouBets = unfulfilledBets.filter(bet => {
+                  const winningsBets = unfulfilledBets.filter(bet => {
                     if (bet.userParticipationStatus === 'WON') return true;
                     if (!bet.hasUserParticipated && bet.creatorUsername === authUser?.username) return true;
                     return false;
                   });
 
                   // Apply sub-filter
-                  const filteredBets = owedToYouBets.filter(bet => {
-                    if (owedToYouFilter === 'all') return true;
-                    if (owedToYouFilter === 'waiting') return bet.fulfillmentStatus !== 'FULFILLED';
-                    if (owedToYouFilter === 'completed') return bet.fulfillmentStatus === 'FULFILLED';
+                  const filteredBets = winningsBets.filter(bet => {
+                    if (winningsFilter === 'all') return true;
+                    if (winningsFilter === 'waiting') return bet.fulfillmentStatus !== 'FULFILLED';
+                    if (winningsFilter === 'completed') return bet.fulfillmentStatus === 'FULFILLED';
                     return true;
                   });
 
@@ -1172,9 +1170,9 @@ export default function Bet() {
 
                   // Empty state
                   if (filteredBets.length === 0) {
-                    const emptyMessage = owedToYouFilter === 'waiting'
+                    const emptyMessage = winningsFilter === 'waiting'
                       ? 'No pending stakes from others'
-                      : owedToYouFilter === 'completed'
+                      : winningsFilter === 'completed'
                       ? 'No stakes have been fulfilled yet'
                       : 'No one owes you anything right now';
 

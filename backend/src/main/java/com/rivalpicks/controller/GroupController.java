@@ -22,7 +22,7 @@ import com.rivalpicks.service.group.GroupMembershipService;
 import com.rivalpicks.service.group.GroupInviteService;
 import com.rivalpicks.service.group.GroupService;
 import com.rivalpicks.service.user.UserService;
-import com.rivalpicks.service.FileStorageService;
+import com.rivalpicks.service.storage.StorageService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,7 +51,7 @@ public class GroupController {
     private final GroupMembershipService groupMembershipService;
     private final GroupInviteService groupInviteService;
     private final UserService userService;
-    private final FileStorageService fileStorageService;
+    private final StorageService storageService;
 
     @Autowired
     public GroupController(GroupService groupService,
@@ -59,13 +59,13 @@ public class GroupController {
                           GroupMembershipService groupMembershipService,
                           GroupInviteService groupInviteService,
                           UserService userService,
-                          FileStorageService fileStorageService) {
+                          StorageService storageService) {
         this.groupService = groupService;
         this.groupCreationService = groupCreationService;
         this.groupMembershipService = groupMembershipService;
         this.groupInviteService = groupInviteService;
         this.userService = userService;
-        this.fileStorageService = fileStorageService;
+        this.storageService = storageService;
     }
 
     /**
@@ -384,19 +384,15 @@ public class GroupController {
             // Get old group picture URL for deletion
             String oldGroupPictureUrl = group.getGroupPictureUrl();
 
-            // Store the new file
-            String fileName = fileStorageService.storeProfilePicture(file, groupId);
+            // Upload to private storage (group pictures are private)
+            var uploadResult = storageService.uploadPrivateFile(file, "groups", groupId);
 
-            // Generate the URL (relative path) - reuse profile-pictures directory
-            String groupPictureUrl = "/api/files/profile-pictures/" + fileName;
-
-            // Update group's picture URL
-            Group updatedGroup = groupService.updateGroupPicture(groupId, groupPictureUrl);
+            // Update group's picture URL with the stored value
+            Group updatedGroup = groupService.updateGroupPicture(groupId, uploadResult.storedValue());
 
             // Delete old group picture if it exists
             if (oldGroupPictureUrl != null && !oldGroupPictureUrl.isEmpty()) {
-                String oldFileName = oldGroupPictureUrl.substring(oldGroupPictureUrl.lastIndexOf('/') + 1);
-                fileStorageService.deleteFile(oldFileName);
+                storageService.deleteFile(oldGroupPictureUrl);
             }
 
             GroupResponseDto response = convertToDetailedResponse(updatedGroup, currentUser);
@@ -417,7 +413,8 @@ public class GroupController {
         response.setId(group.getId());
         response.setGroupName(group.getGroupName());
         response.setDescription(group.getDescription());
-        response.setGroupPictureUrl(group.getGroupPictureUrl());
+        // Resolve group picture URL (generates signed URL for private storage)
+        response.setGroupPictureUrl(storageService.resolveUrl(group.getGroupPictureUrl()));
         response.setPrivacy(group.getPrivacy());
         response.setMemberCount(group.getMemberCount());
         response.setMaxMembers(group.getMaxMembers());
@@ -468,7 +465,8 @@ public class GroupController {
         response.setId(group.getId());
         response.setGroupName(group.getGroupName());
         response.setDescription(group.getDescription());
-        response.setGroupPictureUrl(group.getGroupPictureUrl());
+        // Resolve group picture URL (generates signed URL for private storage)
+        response.setGroupPictureUrl(storageService.resolveUrl(group.getGroupPictureUrl()));
         response.setPrivacy(group.getPrivacy());
         response.setOwnerUsername(group.getOwner().getUsername());
         response.setMemberCount(group.getMemberCount());

@@ -233,7 +233,7 @@ export default function Settings() {
             materialIcon="security"
             title="Account & Privacy"
             description="Username, email, password, privacy settings"
-            onPress={() => router.push('/(app)/settings/account')}
+            onPress={() => router.push('/settings/account')}
           />
         </SettingSection>
 
@@ -243,7 +243,7 @@ export default function Settings() {
             materialIcon="tune"
             title="Notification Preferences"
             description="Choose what notifications to receive"
-            onPress={() => router.push('/(app)/settings/notification-preferences')}
+            onPress={() => router.push('/settings/notification-preferences')}
           />
         </SettingSection>
 
@@ -254,25 +254,25 @@ export default function Settings() {
             materialIcon="help"
             title="Help & Support"
             description="Get help with using the app"
-            onPress={() => router.push('/(app)/settings/help-support')}
+            onPress={() => router.push('/settings/help-support')}
           />
           <SettingItem
             materialIcon="description"
             title="Terms of Service"
             description="Read our terms and conditions"
-            onPress={() => router.push('/(app)/settings/terms-of-service')}
+            onPress={() => router.push('/settings/terms-of-service')}
           />
           <SettingItem
             materialIcon="privacy-tip"
             title="Privacy Policy"
             description="Learn about data protection"
-            onPress={() => router.push('/(app)/settings/privacy-policy')}
+            onPress={() => router.push('/settings/privacy-policy')}
           />
           <SettingItem
             materialIcon="info"
             title="About"
             description="App version 1.0.0"
-            onPress={() => router.push('/(app)/settings/about')}
+            onPress={() => router.push('/settings/about')}
           />
         </SettingSection>
 

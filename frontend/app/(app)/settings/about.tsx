@@ -293,7 +293,7 @@ export default function About() {
             borderColor: 'rgba(255, 255, 255, 0.05)'
           }}>
             <TouchableOpacity
-              onPress={() => router.push('/(app)/settings/help-support')}
+              onPress={() => router.push('/settings/help-support')}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -324,7 +324,7 @@ export default function About() {
             borderColor: 'rgba(255, 255, 255, 0.05)'
           }}>
             <TouchableOpacity
-              onPress={() => router.push('/(app)/settings/terms-of-service')}
+              onPress={() => router.push('/settings/terms-of-service')}
               style={{
                 flexDirection: 'row',
                 justifyContent: 'space-between',
@@ -346,7 +346,7 @@ export default function About() {
             </TouchableOpacity>
             
             <TouchableOpacity
-              onPress={() => router.push('/(app)/settings/privacy-policy')}
+              onPress={() => router.push('/settings/privacy-policy')}
               style={{
                 flexDirection: 'row',
                 justifyContent: 'space-between',

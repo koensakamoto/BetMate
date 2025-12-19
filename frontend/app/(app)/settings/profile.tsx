@@ -438,7 +438,7 @@ export default function ProfileSettings() {
 
           {/* Username - Tappable to change */}
           <TouchableOpacity
-            onPress={() => router.push('/(app)/settings/change-username')}
+            onPress={() => router.push('/settings/change-username')}
             activeOpacity={0.7}
             style={{ marginBottom: 20 }}
           >
@@ -478,7 +478,7 @@ export default function ProfileSettings() {
 
           {/* Email - Tappable to change */}
           <TouchableOpacity
-            onPress={() => router.push('/(app)/settings/change-email')}
+            onPress={() => router.push('/settings/change-email')}
             activeOpacity={0.7}
             style={{ marginBottom: 20 }}
           >

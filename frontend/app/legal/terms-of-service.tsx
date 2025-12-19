@@ -147,12 +147,24 @@ export default function TermsOfService() {
 
         <Section title="Use License">
           <Paragraph>
-            Permission is granted to temporarily download one copy of RivalPicks per device for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:
+            Subject to your compliance with these Terms, RivalPicks grants you a limited, non-exclusive, non-transferable, revocable license to download, install, and use the application on devices you own or control for your personal, non-commercial use.
           </Paragraph>
-          <ListItem>modify or copy the materials</ListItem>
-          <ListItem>use the materials for any commercial purpose or for any public display</ListItem>
-          <ListItem>attempt to reverse engineer any software contained in RivalPicks</ListItem>
-          <ListItem>remove any copyright or other proprietary notations from the materials</ListItem>
+          <Paragraph>
+            This license permits you to:
+          </Paragraph>
+          <ListItem>Access and use RivalPicks features including betting, groups, and social interactions</ListItem>
+          <ListItem>Store your account data and betting history within the app</ListItem>
+          <Paragraph>
+            Under this license, you may not:
+          </Paragraph>
+          <ListItem>Copy, modify, or create derivative works of the app or its content</ListItem>
+          <ListItem>Reverse engineer, decompile, or disassemble any part of the software</ListItem>
+          <ListItem>Use the app for any commercial purpose or public display</ListItem>
+          <ListItem>Remove or alter any copyright, trademark, or proprietary notices</ListItem>
+          <ListItem>Transfer, sublicense, or assign your license to any third party</ListItem>
+          <Paragraph>
+            This license is effective until terminated. Your rights under this license will terminate automatically without notice if you fail to comply with any of these terms. Upon termination, you must cease all use of the app and delete all copies from your devices.
+          </Paragraph>
         </Section>
 
         <Section title="User Account">

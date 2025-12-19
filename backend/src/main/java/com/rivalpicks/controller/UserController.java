@@ -18,7 +18,7 @@ import com.rivalpicks.entity.user.UserSettings.ProfileVisibility;
 import com.rivalpicks.service.user.FriendshipService;
 import com.rivalpicks.entity.user.Transaction;
 import com.rivalpicks.entity.user.User;
-import com.rivalpicks.service.FileStorageService;
+import com.rivalpicks.service.storage.StorageService;
 import com.rivalpicks.service.security.EmailChangeService;
 import com.rivalpicks.service.security.UserDetailsServiceImpl;
 import com.rivalpicks.service.user.DailyLoginRewardService;
@@ -56,7 +56,7 @@ public class UserController {
     private final UserService userService;
     private final UserRegistrationService userRegistrationService;
     private final UserStatisticsService userStatisticsService;
-    private final FileStorageService fileStorageService;
+    private final StorageService storageService;
     private final TransactionService transactionService;
     private final DailyLoginRewardService dailyLoginRewardService;
     private final FriendshipService friendshipService;
@@ -64,13 +64,13 @@ public class UserController {
 
     @Autowired
     public UserController(UserService userService, UserRegistrationService userRegistrationService,
-                         UserStatisticsService userStatisticsService, FileStorageService fileStorageService,
+                         UserStatisticsService userStatisticsService, StorageService storageService,
                          TransactionService transactionService, DailyLoginRewardService dailyLoginRewardService,
                          FriendshipService friendshipService, EmailChangeService emailChangeService) {
         this.userService = userService;
         this.userRegistrationService = userRegistrationService;
         this.userStatisticsService = userStatisticsService;
-        this.fileStorageService = fileStorageService;
+        this.storageService = storageService;
         this.transactionService = transactionService;
         this.dailyLoginRewardService = dailyLoginRewardService;
         this.friendshipService = friendshipService;
@@ -202,20 +202,15 @@ public class UserController {
             User currentUser = userService.getUserById(userPrincipal.getUserId());
             String oldProfileImageUrl = currentUser.getProfileImageUrl();
 
-            // Store the new file
-            String fileName = fileStorageService.storeProfilePicture(file, userPrincipal.getUserId());
+            // Upload to public storage (profile pictures are always public)
+            var uploadResult = storageService.uploadPublicFile(file, "profiles", userPrincipal.getUserId());
 
-            // Generate the URL (relative path)
-            String profileImageUrl = "/api/files/profile-pictures/" + fileName;
-
-            // Update user's profile picture URL
-            User updatedUser = userService.updateProfilePicture(userPrincipal.getUserId(), profileImageUrl);
+            // Update user's profile picture URL with the stored value
+            User updatedUser = userService.updateProfilePicture(userPrincipal.getUserId(), uploadResult.storedValue());
 
             // Delete old profile picture if it exists
             if (oldProfileImageUrl != null && !oldProfileImageUrl.isEmpty()) {
-                // Extract filename from URL
-                String oldFileName = oldProfileImageUrl.substring(oldProfileImageUrl.lastIndexOf('/') + 1);
-                fileStorageService.deleteFile(oldFileName);
+                storageService.deleteFile(oldProfileImageUrl);
             }
 
             return ResponseEntity.ok(UserProfileResponseDto.fromUser(updatedUser));

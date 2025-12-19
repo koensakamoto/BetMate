@@ -32,7 +32,7 @@ import com.rivalpicks.repository.betting.BetResolverRepository;
 import com.rivalpicks.service.group.GroupService;
 import com.rivalpicks.service.group.GroupMembershipService;
 import com.rivalpicks.service.user.UserService;
-import com.rivalpicks.service.FileStorageService;
+import com.rivalpicks.service.storage.StorageService;
 import com.rivalpicks.repository.betting.LoserFulfillmentClaimRepository;
 import com.rivalpicks.repository.betting.BetResolutionVoteRepository;
 import com.rivalpicks.repository.betting.BetResolutionVoteWinnerRepository;
@@ -73,7 +73,7 @@ public class BetController {
     private final GroupService groupService;
     private final GroupMembershipService groupMembershipService;
     private final UserService userService;
-    private final FileStorageService fileStorageService;
+    private final StorageService storageService;
     private final LoserFulfillmentClaimRepository loserFulfillmentClaimRepository;
     private final BetResolutionVoteRepository betResolutionVoteRepository;
     private final BetResolverRepository betResolverRepository;
@@ -90,7 +90,7 @@ public class BetController {
                         GroupService groupService,
                         GroupMembershipService groupMembershipService,
                         UserService userService,
-                        FileStorageService fileStorageService,
+                        StorageService storageService,
                         LoserFulfillmentClaimRepository loserFulfillmentClaimRepository,
                         BetResolutionVoteRepository betResolutionVoteRepository,
                         BetResolverRepository betResolverRepository,
@@ -105,7 +105,7 @@ public class BetController {
         this.groupService = groupService;
         this.groupMembershipService = groupMembershipService;
         this.userService = userService;
-        this.fileStorageService = fileStorageService;
+        this.storageService = storageService;
         this.loserFulfillmentClaimRepository = loserFulfillmentClaimRepository;
         this.betResolutionVoteRepository = betResolutionVoteRepository;
         this.betResolverRepository = betResolverRepository;
@@ -622,7 +622,8 @@ public class BetController {
         // Fulfillment tracking fields
         response.setFulfillmentStatus(bet.getFulfillmentStatus());
         response.setLoserClaimedFulfilledAt(bet.getLoserClaimedFulfilledAt());
-        response.setLoserFulfillmentProofUrl(bet.getLoserFulfillmentProofUrl());
+        // Resolve proof URL (generates signed URL for private storage)
+        response.setLoserFulfillmentProofUrl(storageService.resolveUrl(bet.getLoserFulfillmentProofUrl()));
         response.setLoserFulfillmentProofDescription(bet.getLoserFulfillmentProofDescription());
         response.setAllWinnersConfirmedAt(bet.getAllWinnersConfirmedAt());
 
@@ -967,11 +968,15 @@ public class BetController {
             logger.debug("File details - Name: {}, Size: {}, Type: {}",
                 file.getOriginalFilename(), file.getSize(), file.getContentType());
 
-            String fileName = fileStorageService.storeFulfillmentProof(file, betId, currentUser.getId());
-            String proofUrl = "/api/files/profile-pictures/" + fileName;
+            // Upload to private storage (bet proofs are private)
+            var uploadResult = storageService.uploadPrivateFile(file, "bets", betId);
 
-            logger.info("Successfully uploaded fulfillment proof for bet {} - URL: {}", betId, proofUrl);
-            return ResponseEntity.ok(proofUrl);
+            logger.info("Successfully uploaded fulfillment proof for bet {} - stored: {}", betId, uploadResult.storedValue());
+            // Return the display URL for immediate use, but the stored value is saved to DB
+            return ResponseEntity.ok(Map.of(
+                "storedValue", uploadResult.storedValue(),
+                "displayUrl", uploadResult.displayUrl()
+            ));
         } catch (Exception e) {
             logger.error("Failed to upload fulfillment proof for bet {} by user {}: {}",
                 betId, authentication.getName(), e.getMessage(), e);

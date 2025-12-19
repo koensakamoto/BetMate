@@ -7,9 +7,10 @@ import PendingInviteHandler from '../../components/group/PendingInviteHandler';
 import { PresenceProvider } from '../../contexts/PresenceContext';
 
 export default function AppLayout() {
-  const { user, isLoading } = useAuth();
+  const { user, isInitializing } = useAuth();
 
-  if (isLoading) {
+  // Only show loading screen during initial auth check, not during other operations
+  if (isInitializing) {
     return <AuthLoadingScreen message="Loading..." />;
   }
 

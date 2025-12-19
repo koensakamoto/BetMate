@@ -7,7 +7,7 @@ spring:
     name: rivalpicks-backend
 
   datasource:
-    url: jdbc:mysql://localhost:3306/rivalpicks_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://localhost:3306/rivalpicks_db?useSSL=true&requireSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -69,6 +69,20 @@ contact:
 # File Upload Configuration
 file:
   upload-dir: ${FILE_UPLOAD_DIR:uploads/profile-pictures}
+
+# Storage Configuration (local or r2)
+storage:
+  type: ${STORAGE_TYPE:local}
+
+# Cloudflare R2 Configuration (only used when storage.type=r2)
+r2:
+  account-id: ${R2_ACCOUNT_ID:}
+  access-key-id: ${R2_ACCESS_KEY_ID:}
+  secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+  public-bucket: ${R2_PUBLIC_BUCKET:rivalpicks-public}
+  private-bucket: ${R2_PRIVATE_BUCKET:rivalpicks-private}
+  public-url: ${R2_PUBLIC_URL:}
+  signed-url-expiration-minutes: ${R2_SIGNED_URL_EXPIRATION:60}
 
 # Firebase Configuration
 firebase:

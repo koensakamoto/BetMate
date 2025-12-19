@@ -277,6 +277,13 @@ export class UserService extends BaseApiService {
       { params: { token } }
     );
   }
+
+  /**
+   * Delete current user's account
+   */
+  async deleteAccount(): Promise<void> {
+    await this.delete(API_ENDPOINTS.USER_DELETE_ACCOUNT);
+  }
 }
 
 // Export singleton instance

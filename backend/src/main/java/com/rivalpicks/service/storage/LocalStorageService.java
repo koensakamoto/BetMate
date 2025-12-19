@@ -1,6 +1,8 @@
-package com.rivalpicks.service;
+package com.rivalpicks.service.storage;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,20 +17,22 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Service for handling file storage operations.
- * Manages file uploads, validation, and storage for profile pictures.
+ * Local filesystem implementation of StorageService.
+ * Used for development when storage.type=local (default).
  */
+@Slf4j
 @Service
-public class FileStorageService {
+@ConditionalOnProperty(name = "storage.type", havingValue = "local", matchIfMissing = true)
+public class LocalStorageService implements StorageService {
 
     private final Path fileStorageLocation;
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("jpg", "jpeg", "png", "gif", "webp");
     private static final List<String> ALLOWED_CONTENT_TYPES = Arrays.asList(
-        "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"
+            "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"
     );
 
-    public FileStorageService(@Value("${file.upload-dir:uploads/profile-pictures}") String uploadDir) {
+    public LocalStorageService(@Value("${file.upload-dir:uploads/profile-pictures}") String uploadDir) {
         this.fileStorageLocation = Paths.get(uploadDir).toAbsolutePath().normalize();
 
         try {
@@ -38,122 +42,85 @@ public class FileStorageService {
         }
     }
 
-    /**
-     * Store a profile picture file
-     * @param file The multipart file to store
-     * @param userId The user ID for organizing files
-     * @return The filename of the stored file
-     */
-    public String storeProfilePicture(MultipartFile file, Long userId) {
-        // Validate file
+    @Override
+    public UploadResult uploadPublicFile(MultipartFile file, String prefix, Long id) {
+        return uploadFile(file, prefix, id);
+    }
+
+    @Override
+    public UploadResult uploadPrivateFile(MultipartFile file, String prefix, Long id) {
+        // For local storage, public and private are handled the same way
+        return uploadFile(file, prefix, id);
+    }
+
+    private UploadResult uploadFile(MultipartFile file, String prefix, Long id) {
         validateFile(file);
 
-        // Get original filename and extension
         String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
         String fileExtension = getFileExtension(originalFileName);
 
-        // Generate unique filename: userId_timestamp_uuid.ext
-        String fileName = String.format("user_%d_%d_%s.%s",
-            userId,
-            System.currentTimeMillis(),
-            UUID.randomUUID().toString().substring(0, 8),
-            fileExtension
+        // Generate unique filename: prefix_id_timestamp_uuid.ext
+        String fileName = String.format("%s_%d_%d_%s.%s",
+                prefix,
+                id,
+                System.currentTimeMillis(),
+                UUID.randomUUID().toString().substring(0, 8),
+                fileExtension
         );
 
         try {
-            // Check for invalid characters
             if (fileName.contains("..")) {
                 throw new RuntimeException("Invalid file path: " + fileName);
             }
 
-            // Copy file to target location
             Path targetLocation = this.fileStorageLocation.resolve(fileName);
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
-            return fileName;
+            // For local storage, return relative URL
+            String storedValue = "/api/files/profile-pictures/" + fileName;
+            return new UploadResult(storedValue, storedValue);
         } catch (IOException ex) {
             throw new RuntimeException("Could not store file " + fileName, ex);
         }
     }
 
-    /**
-     * Store a bet fulfillment proof photo
-     * @param file The multipart file to store
-     * @param betId The bet ID for organizing files
-     * @param userId The user ID for organizing files
-     * @return The filename of the stored file
-     */
-    public String storeFulfillmentProof(MultipartFile file, Long betId, Long userId) {
-        // Validate file
-        validateFile(file);
-
-        // Get original filename and extension
-        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
-        String fileExtension = getFileExtension(originalFileName);
-
-        // Generate unique filename: bet_betId_userId_timestamp_uuid.ext
-        String fileName = String.format("bet_%d_user_%d_%d_%s.%s",
-            betId,
-            userId,
-            System.currentTimeMillis(),
-            UUID.randomUUID().toString().substring(0, 8),
-            fileExtension
-        );
-
-        try {
-            // Check for invalid characters
-            if (fileName.contains("..")) {
-                throw new RuntimeException("Invalid file path: " + fileName);
-            }
-
-            // Copy file to target location
-            Path targetLocation = this.fileStorageLocation.resolve(fileName);
-            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
-
-            return fileName;
-        } catch (IOException ex) {
-            throw new RuntimeException("Could not store file " + fileName, ex);
-        }
+    @Override
+    public String resolveUrl(String storedValue) {
+        // For local storage, the stored value is already the URL
+        return storedValue;
     }
 
-    /**
-     * Delete a profile picture file
-     * @param fileName The filename to delete
-     */
-    public void deleteFile(String fileName) {
-        if (fileName == null || fileName.isEmpty()) {
+    @Override
+    public void deleteFile(String storedValue) {
+        if (storedValue == null || storedValue.isEmpty()) {
             return;
         }
 
         try {
+            // Extract filename from stored URL
+            String fileName = storedValue.substring(storedValue.lastIndexOf('/') + 1);
             Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
             Files.deleteIfExists(filePath);
         } catch (IOException ex) {
-            // Log but don't throw - deletion failure shouldn't block operations
-            // Silent failure - deletion is not critical
+            log.warn("Failed to delete file: {}", storedValue, ex);
         }
     }
 
-    /**
-     * Validate the uploaded file
-     */
-    private void validateFile(MultipartFile file) {
+    @Override
+    public void validateFile(MultipartFile file) {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("Cannot upload empty file");
         }
 
-        // Check file size
         if (file.getSize() > MAX_FILE_SIZE) {
             throw new IllegalArgumentException("File size exceeds maximum limit of 5MB");
         }
 
-        // Check content type
         String contentType = file.getContentType();
         if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase())) {
             throw new IllegalArgumentException("Invalid file type. Only images are allowed (JPG, PNG, GIF, WebP)");
         }
 
-        // Check file extension
         String fileName = file.getOriginalFilename();
         String extension = getFileExtension(fileName);
         if (!ALLOWED_EXTENSIONS.contains(extension.toLowerCase())) {
@@ -161,9 +128,6 @@ public class FileStorageService {
         }
     }
 
-    /**
-     * Get file extension from filename
-     */
     private String getFileExtension(String fileName) {
         if (fileName == null || fileName.isEmpty()) {
             return "";
@@ -178,7 +142,7 @@ public class FileStorageService {
     }
 
     /**
-     * Get the storage location path
+     * Get the storage location path (used by FileController)
      */
     public Path getFileStorageLocation() {
         return fileStorageLocation;
