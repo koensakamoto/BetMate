@@ -3,18 +3,42 @@ import { View, Text, TouchableOpacity, ScrollView, Image, StatusBar, Alert } fro
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { groupService, GroupDetailResponse } from '../../../../services/group/groupService';
+import { groupService, GroupDetailResponse, InviteValidationResponse } from '../../../../services/group/groupService';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { getFullImageUrl, getAvatarColor, getAvatarColorWithOpacity, getGroupInitials } from '../../../../utils/avatarUtils';
 
 export default function GroupPreview() {
   const insets = useSafeAreaInsets();
-  const { groupId } = useLocalSearchParams();
+  const { groupId, token } = useLocalSearchParams();
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const [groupData, setGroupData] = useState<GroupDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [tokenValidation, setTokenValidation] = useState<InviteValidationResponse | null>(null);
+  const [isValidatingToken, setIsValidatingToken] = useState(false);
+
+  // Extract and validate token
+  useEffect(() => {
+    const rawToken = Array.isArray(token) ? token[0] : token;
+    if (rawToken) {
+      setInviteToken(rawToken as string);
+      validateToken(rawToken as string);
+    }
+  }, [token]);
+
+  const validateToken = async (tokenToValidate: string) => {
+    setIsValidatingToken(true);
+    try {
+      const result = await groupService.validateInviteToken(tokenToValidate);
+      setTokenValidation(result);
+    } catch (error) {
+      setTokenValidation({ valid: false, reason: 'INVALID' });
+    } finally {
+      setIsValidatingToken(false);
+    }
+  };
 
   // Fetch group data
   useEffect(() => {
@@ -43,11 +67,32 @@ export default function GroupPreview() {
     fetchGroupData();
   }, [groupId, isAuthenticated, authLoading]);
 
+  // Check if user has a valid invite (can join private groups directly)
+  const hasValidInvite = inviteToken && tokenValidation?.valid;
+
   const handleJoinGroup = async () => {
     if (!groupData) return;
 
     try {
       setIsJoining(true);
+
+      // If we have a valid invite token, use it to join directly
+      if (hasValidInvite && inviteToken) {
+        const response = await groupService.acceptInviteToken(inviteToken);
+        Alert.alert(
+          'Joined Successfully!',
+          `Welcome to ${groupData.groupName}`,
+          [
+            {
+              text: 'Go to Group',
+              onPress: () => router.replace(`/group/${groupData.id}`)
+            }
+          ]
+        );
+        return;
+      }
+
+      // Otherwise use normal join flow
       const response = await groupService.joinGroup(groupData.id);
 
       if (response.status === 'PENDING') {
@@ -74,11 +119,27 @@ export default function GroupPreview() {
           ]
         );
       }
-    } catch (error) {
-      // Error handled silently
-      Alert.alert('Error', 'Failed to join group. Please try again.');
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to join group. Please try again.';
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsJoining(false);
+    }
+  };
+
+  // Get the appropriate message for invalid tokens
+  const getTokenErrorMessage = () => {
+    if (!tokenValidation || tokenValidation.valid) return null;
+
+    switch (tokenValidation.reason) {
+      case 'EXPIRED':
+        return 'This invite link has expired.';
+      case 'MAX_USES_REACHED':
+        return 'This invite link is no longer available.';
+      case 'REVOKED':
+        return 'This invite link has been revoked.';
+      default:
+        return 'Invalid invite link.';
     }
   };
 
@@ -292,17 +353,65 @@ export default function GroupPreview() {
             </View>
           </View>
 
+          {/* Invite Banner - show when user has valid invite */}
+          {hasValidInvite && (
+            <View style={{
+              backgroundColor: 'rgba(0, 212, 170, 0.15)',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(0, 212, 170, 0.3)',
+              flexDirection: 'row',
+              alignItems: 'center'
+            }}>
+              <MaterialIcons name="celebration" size={24} color="#00D4AA" style={{ marginRight: 12 }} />
+              <Text style={{
+                fontSize: 16,
+                fontWeight: '600',
+                color: '#00D4AA',
+                flex: 1
+              }}>
+                You've been invited!
+              </Text>
+            </View>
+          )}
+
+          {/* Invalid Token Warning - show when token is invalid */}
+          {inviteToken && tokenValidation && !tokenValidation.valid && (
+            <View style={{
+              backgroundColor: 'rgba(255, 107, 107, 0.15)',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 107, 107, 0.3)',
+              flexDirection: 'row',
+              alignItems: 'center'
+            }}>
+              <MaterialIcons name="error-outline" size={24} color="#ff6b6b" style={{ marginRight: 12 }} />
+              <Text style={{
+                fontSize: 14,
+                fontWeight: '500',
+                color: '#ff6b6b',
+                flex: 1
+              }}>
+                {getTokenErrorMessage()}
+              </Text>
+            </View>
+          )}
+
           {/* Join Button */}
           <TouchableOpacity
             onPress={handleJoinGroup}
-            disabled={isJoining || hasPendingRequest}
+            disabled={isJoining || hasPendingRequest || isValidatingToken}
             style={{
               backgroundColor: hasPendingRequest ? 'rgba(0, 212, 170, 0.3)' : '#00D4AA',
               borderRadius: 16,
               paddingVertical: 16,
               paddingHorizontal: 24,
               alignItems: 'center',
-              opacity: (isJoining || hasPendingRequest) ? 0.7 : 1
+              opacity: (isJoining || hasPendingRequest || isValidatingToken) ? 0.7 : 1
             }}
           >
             <Text style={{
@@ -313,8 +422,12 @@ export default function GroupPreview() {
               {hasPendingRequest
                 ? 'Request Pending'
                 : isJoining
-                  ? (groupData.privacy === 'PRIVATE' ? 'Sending Request...' : 'Joining...')
-                  : (groupData.privacy === 'PRIVATE' ? 'Request to Join' : 'Join Group')}
+                  ? 'Joining...'
+                  : isValidatingToken
+                    ? 'Validating invite...'
+                    : hasValidInvite
+                      ? 'Join Group'
+                      : (groupData.privacy === 'PRIVATE' ? 'Request to Join' : 'Join Group')}
             </Text>
           </TouchableOpacity>
 
@@ -328,9 +441,11 @@ export default function GroupPreview() {
           }}>
             {hasPendingRequest
               ? 'Your join request is pending approval from group admins. You will be notified once your request is reviewed.'
-              : groupData.privacy === 'PRIVATE'
-                ? 'This is a private group. Your request will be reviewed by group admins.'
-                : 'Join this group to participate in bets, chat with members, and access exclusive content.'}
+              : hasValidInvite
+                ? 'You have a valid invite! Click the button above to join this group.'
+                : groupData.privacy === 'PRIVATE'
+                  ? 'This is a private group. Your request will be reviewed by group admins.'
+                  : 'Join this group to participate in bets, chat with members, and access exclusive content.'}
           </Text>
         </View>
       </ScrollView>

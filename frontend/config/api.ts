@@ -51,6 +51,9 @@ export const API_ENDPOINTS = {
   GROUP_DENY_REQUEST: (groupId: number, requestId: number) => `/groups/${groupId}/pending-requests/${requestId}/deny`,
   GROUP_ACCEPT_INVITATION: (membershipId: number) => `/groups/invitations/${membershipId}/accept`,
   GROUP_REJECT_INVITATION: (membershipId: number) => `/groups/invitations/${membershipId}/reject`,
+  GROUP_CREATE_INVITE_TOKEN: (groupId: number) => `/groups/${groupId}/invite-token`,
+  GROUP_VALIDATE_INVITE_TOKEN: (token: string) => `/groups/invite-token/${token}/validate`,
+  GROUP_ACCEPT_INVITE_TOKEN: (token: string) => `/groups/invite-token/${token}/accept`,
   
   // Bets
   BETS: '/bets',

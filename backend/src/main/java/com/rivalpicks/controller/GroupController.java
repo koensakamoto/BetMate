@@ -10,12 +10,16 @@ import com.rivalpicks.dto.group.response.GroupMemberResponseDto;
 import com.rivalpicks.dto.group.response.JoinGroupResponseDto;
 import com.rivalpicks.dto.group.response.MemberPreviewDto;
 import com.rivalpicks.dto.group.response.PendingRequestResponseDto;
+import com.rivalpicks.dto.group.response.InviteTokenResponseDto;
+import com.rivalpicks.dto.group.response.InviteValidationResponseDto;
 import com.rivalpicks.entity.group.Group;
+import com.rivalpicks.entity.group.GroupInvite;
 import com.rivalpicks.entity.group.GroupMembership;
 import com.rivalpicks.entity.user.User;
 import com.rivalpicks.exception.group.GroupMembershipException;
 import com.rivalpicks.service.group.GroupCreationService;
 import com.rivalpicks.service.group.GroupMembershipService;
+import com.rivalpicks.service.group.GroupInviteService;
 import com.rivalpicks.service.group.GroupService;
 import com.rivalpicks.service.user.UserService;
 import com.rivalpicks.service.FileStorageService;
@@ -45,6 +49,7 @@ public class GroupController {
     private final GroupService groupService;
     private final GroupCreationService groupCreationService;
     private final GroupMembershipService groupMembershipService;
+    private final GroupInviteService groupInviteService;
     private final UserService userService;
     private final FileStorageService fileStorageService;
 
@@ -52,11 +57,13 @@ public class GroupController {
     public GroupController(GroupService groupService,
                           GroupCreationService groupCreationService,
                           GroupMembershipService groupMembershipService,
+                          GroupInviteService groupInviteService,
                           UserService userService,
                           FileStorageService fileStorageService) {
         this.groupService = groupService;
         this.groupCreationService = groupCreationService;
         this.groupMembershipService = groupMembershipService;
+        this.groupInviteService = groupInviteService;
         this.userService = userService;
         this.fileStorageService = fileStorageService;
     }
@@ -708,5 +715,70 @@ public class GroupController {
         } catch (Exception e) {
             throw e;
         }
+    }
+
+    // ==========================================
+    // INVITE TOKEN ENDPOINTS
+    // ==========================================
+
+    /**
+     * Create a new invite token for a group.
+     * Only admins and members with invite permissions can create invite tokens.
+     */
+    @PostMapping("/{groupId}/invite-token")
+    public ResponseEntity<InviteTokenResponseDto> createInviteToken(
+            @PathVariable Long groupId,
+            Authentication authentication) {
+
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        Group group = groupService.getGroupById(groupId);
+
+        GroupInvite invite = groupInviteService.createInvite(group, currentUser);
+        return ResponseEntity.status(HttpStatus.CREATED).body(InviteTokenResponseDto.fromEntity(invite));
+    }
+
+    /**
+     * Validate an invite token.
+     * This endpoint is accessible without authentication for preview purposes.
+     */
+    @GetMapping("/invite-token/{token}/validate")
+    public ResponseEntity<InviteValidationResponseDto> validateInviteToken(
+            @PathVariable String token) {
+
+        GroupInviteService.InviteValidationResult result = groupInviteService.validateInvite(token);
+        return ResponseEntity.ok(InviteValidationResponseDto.fromValidationResult(result));
+    }
+
+    /**
+     * Accept an invite token and join the group.
+     * This allows users to join private groups directly via invite link.
+     */
+    @PostMapping("/invite-token/{token}/accept")
+    public ResponseEntity<JoinGroupResponseDto> acceptInviteToken(
+            @PathVariable String token,
+            Authentication authentication) {
+
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        GroupMembership membership = groupInviteService.acceptInvite(token, currentUser);
+        return ResponseEntity.ok(JoinGroupResponseDto.fromMembership(membership));
+    }
+
+    /**
+     * Revoke an invite token.
+     * Only the token creator or group admins can revoke tokens.
+     */
+    @DeleteMapping("/invite-token/{token}")
+    public ResponseEntity<Void> revokeInviteToken(
+            @PathVariable String token,
+            Authentication authentication) {
+
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        groupInviteService.revokeInvite(token, currentUser);
+        return ResponseEntity.ok().build();
     }
 }

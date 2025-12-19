@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -29,10 +30,12 @@ public class InviteFallbackController {
 
     /**
      * Fallback for group invite deep link.
+     * Supports optional token parameter for invite-based joins.
      */
     @GetMapping("/{groupId}")
     public ResponseEntity<String> inviteFallback(
             @PathVariable Long groupId,
+            @RequestParam(required = false) String token,
             HttpServletRequest request) {
 
         // Validate groupId is positive
@@ -42,8 +45,11 @@ public class InviteFallbackController {
                 .body(buildErrorPage("Invalid invite link"));
         }
 
-        // Build the custom scheme URL
+        // Build the custom scheme URL with optional token
         String appSchemeUrl = "rivalpicks://invite/" + groupId;
+        if (token != null && !token.isEmpty()) {
+            appSchemeUrl += "?token=" + token;
+        }
 
         // Determine which store to use based on user agent
         String userAgent = request.getHeader("User-Agent");

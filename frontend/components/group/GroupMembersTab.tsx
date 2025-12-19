@@ -4,8 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { groupService, type GroupMemberResponse, type PendingRequestResponse } from '../../services/group/groupService';
-import { ENV, debugLog, errorLog } from '../../config/env';
+import { groupService, type GroupMemberResponse, type PendingRequestResponse, type InviteTokenResponse } from '../../services/group/groupService';
+import { debugLog, errorLog } from '../../config/env';
 import { Avatar } from '../common/Avatar';
 import { Badge } from '../common/Badge';
 import { colors } from '../../constants/theme';
@@ -35,6 +35,8 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
   const [inviteLink, setInviteLink] = useState('');
   const [pendingRequests, setPendingRequests] = useState<PendingRequestResponse[]>([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [isGeneratingToken, setIsGeneratingToken] = useState(false);
+  const [currentInviteToken, setCurrentInviteToken] = useState<string | null>(null);
   const memberFilters = ['All', 'Admins'];
 
   // Cache management: 5 minute cache
@@ -165,18 +167,36 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
   }, [members, activeFilter, groupData.ownerUsername]);
 
   // Helper functions for invite functionality
-  const generateInviteLink = () => {
-    const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
-    // Use HTTPS link with backend fallback - works even if app is not installed
-    const link = `${ENV.API_BASE_URL}/invite/${currentGroupId}`;
-    setInviteLink(link);
-    return link;
+  const generateInviteLink = async (): Promise<string | null> => {
+    // If we already have a token, reuse it
+    if (currentInviteToken) {
+      const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
+      return `https://rivalpicks-production.up.railway.app/invite/${currentGroupId}?token=${currentInviteToken}`;
+    }
+
+    setIsGeneratingToken(true);
+    try {
+      const groupId = typeof groupData.id === 'string' ? parseInt(groupData.id) : parseInt(groupData.id[0]);
+      const response = await groupService.createInviteToken(groupId);
+      setCurrentInviteToken(response.token);
+      const link = `https://rivalpicks-production.up.railway.app/invite/${groupId}?token=${response.token}`;
+      setInviteLink(link);
+      return link;
+    } catch (error) {
+      errorLog('Error generating invite token:', error);
+      Alert.alert('Error', 'Failed to generate invite link. Please try again.');
+      return null;
+    } finally {
+      setIsGeneratingToken(false);
+    }
   };
 
   const handleShareInviteLink = async () => {
     try {
-      const link = generateInviteLink();
-      const shareMessage = `You're invited to join "${groupData.name}" on RivalPicks!\n\nCompete with friends, make predictions, and see who comes out on top.\n\n${link}`;
+      const link = await generateInviteLink();
+      if (!link) return;
+
+      const shareMessage = `Join "${groupData.name}" on RivalPicks\n${link}`;
 
       // iOS handles message and url differently - use platform-specific sharing
       if (Platform.OS === 'ios') {
@@ -196,7 +216,9 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
 
   const handleCopyInviteLink = async () => {
     try {
-      const link = generateInviteLink();
+      const link = await generateInviteLink();
+      if (!link) return;
+
       await Clipboard.setStringAsync(link);
       Alert.alert('Copied!', 'Invite link copied to clipboard');
     } catch (error) {
@@ -696,8 +718,9 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
                 <View style={{ gap: 8 }}>
                   <TouchableOpacity
                     onPress={handleShareInviteLink}
+                    disabled={isGeneratingToken}
                     style={{
-                      backgroundColor: '#00D4AA',
+                      backgroundColor: isGeneratingToken ? 'rgba(0, 212, 170, 0.5)' : '#00D4AA',
                       borderRadius: 10,
                       padding: 12,
                       flexDirection: 'row',
@@ -711,12 +734,13 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
                       fontWeight: '600',
                       color: '#000000'
                     }}>
-                      Share Invite Link
+                      {isGeneratingToken ? 'Generating...' : 'Share Invite Link'}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     onPress={handleCopyInviteLink}
+                    disabled={isGeneratingToken}
                     style={{
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
                       borderRadius: 12,
@@ -724,7 +748,8 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
                       paddingHorizontal: 16,
                       flexDirection: 'row',
                       alignItems: 'center',
-                      justifyContent: 'center'
+                      justifyContent: 'center',
+                      opacity: isGeneratingToken ? 0.5 : 1
                     }}
                   >
                     <MaterialIcons name="content-copy" size={20} color="#ffffff" style={{ marginRight: 8 }} />
@@ -733,7 +758,7 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
                       fontWeight: '600',
                       color: '#ffffff'
                     }}>
-                      Copy Link
+                      {isGeneratingToken ? 'Generating...' : 'Copy Link'}
                     </Text>
                   </TouchableOpacity>
                 </View>

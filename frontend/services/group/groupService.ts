@@ -84,6 +84,23 @@ export interface JoinGroupResponse {
   message: string;
 }
 
+export interface InviteTokenResponse {
+  token: string;
+  groupId: number;
+  groupName: string;
+  expiresAt?: string;
+  maxUses?: number;
+  useCount: number;
+  createdAt: string;
+}
+
+export interface InviteValidationResponse {
+  valid: boolean;
+  reason?: 'EXPIRED' | 'MAX_USES_REACHED' | 'REVOKED' | 'INVALID';
+  groupId?: number;
+  groupName?: string;
+}
+
 export class GroupService extends BaseApiService {
   constructor() {
     super(''); // Group endpoints use the root API path
@@ -275,6 +292,30 @@ export class GroupService extends BaseApiService {
       `/groups/${groupId}/transfer-ownership`,
       { newOwnerId }
     );
+  }
+
+  /**
+   * Create an invite token for a group.
+   * Returns a token that can be shared to allow others to join.
+   */
+  async createInviteToken(groupId: number): Promise<InviteTokenResponse> {
+    return this.post<InviteTokenResponse>(API_ENDPOINTS.GROUP_CREATE_INVITE_TOKEN(groupId), {});
+  }
+
+  /**
+   * Validate an invite token.
+   * Can be called without authentication to check if token is valid.
+   */
+  async validateInviteToken(token: string): Promise<InviteValidationResponse> {
+    return this.get<InviteValidationResponse>(API_ENDPOINTS.GROUP_VALIDATE_INVITE_TOKEN(token));
+  }
+
+  /**
+   * Accept an invite token and join the group.
+   * Allows joining private groups directly via invite link.
+   */
+  async acceptInviteToken(token: string): Promise<JoinGroupResponse> {
+    return this.post<JoinGroupResponse>(API_ENDPOINTS.GROUP_ACCEPT_INVITE_TOKEN(token), {});
   }
 }
 

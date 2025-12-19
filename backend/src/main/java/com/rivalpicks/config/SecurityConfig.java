@@ -71,7 +71,8 @@ public class SecurityConfig {
     
     private static final String[] PUBLIC_GROUP_ENDPOINTS = {
         "/api/groups/public",
-        "/api/groups/search"
+        "/api/groups/search",
+        "/api/groups/invite-token/*/validate"
     };
     
     private static final String[] PUBLIC_WEBSOCKET_ENDPOINTS = {
