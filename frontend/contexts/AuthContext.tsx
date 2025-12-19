@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { Alert } from 'react-native';
 import { authService, UserProfileResponse } from '../services/auth/authService';
+import { userService, ProfileVisibility } from '../services/user/userService';
 import { ApiError } from '../services/api/baseClient';
 import { errorLog, debugLog } from '../config/env';
 import { getErrorMessage, hasResponse } from '../utils/errorUtils';
@@ -27,6 +28,9 @@ export interface User {
   name: string; // firstName + lastName or username
   credits: number; // totalCredits or 0
   joinedAt: Date; // parsed createdAt
+  profileVisibility?: ProfileVisibility; // PUBLIC or PRIVATE
+  hasPassword?: boolean; // Whether user has set a password
+  authProvider?: string; // LOCAL, GOOGLE, or APPLE
 }
 
 export interface SignupData {
@@ -79,6 +83,8 @@ interface AuthContextType {
   clearError: () => void;
   refreshUser: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  createPassword: (newPassword: string) => Promise<void>;
+  updateProfileVisibility: (visibility: ProfileVisibility) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -96,7 +102,7 @@ interface AuthProviderProps {
 }
 
 // Transform backend user response to frontend User interface
-const transformUser = (userResponse: UserProfileResponse): User => {
+const transformUser = (userResponse: UserProfileResponse, profileVisibility?: ProfileVisibility): User => {
   const name = userResponse.firstName && userResponse.lastName
     ? `${userResponse.firstName} ${userResponse.lastName}`
     : userResponse.username;
@@ -120,6 +126,9 @@ const transformUser = (userResponse: UserProfileResponse): User => {
     name,
     credits: userResponse.totalCredits || 0,
     joinedAt: new Date(userResponse.createdAt),
+    profileVisibility,
+    hasPassword: userResponse.hasPassword ?? true,
+    authProvider: userResponse.authProvider ?? 'LOCAL',
   };
 };
 
@@ -183,10 +192,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (isAuth) {
         // Validate session and get user profile with timeout
-        const userProfile = await Promise.race([
-          authService.getCurrentUser(),
+        const [userProfile, visibilityResponse] = await Promise.race([
+          Promise.all([
+            authService.getCurrentUser(),
+            userService.getProfileVisibility().catch(() => ({ visibility: 'PUBLIC' as ProfileVisibility }))
+          ]),
           timeoutPromise
-        ]);
+        ]) as [UserProfileResponse, { visibility: ProfileVisibility }];
 
         // Check if account is still active
         if (!userProfile.isActive) {
@@ -201,7 +213,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
-        const transformedUser = transformUser(userProfile);
+        const transformedUser = transformUser(userProfile, visibilityResponse.visibility);
         setUser(transformedUser);
         debugLog('Auth check successful - user logged in');
       } else {
@@ -251,7 +263,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         password: data.password,
       });
 
-      const transformedUser = transformUser(response.user);
+      // Fetch profile visibility after login
+      const visibilityResponse = await userService.getProfileVisibility().catch(() => ({ visibility: 'PUBLIC' as ProfileVisibility }));
+
+      const transformedUser = transformUser(response.user, visibilityResponse.visibility);
       setUser(transformedUser);
 
       debugLog('Login successful for user:', transformedUser.username);
@@ -279,7 +294,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         password: data.password,
       });
 
-      const transformedUser = transformUser(response.user);
+      // New users default to PUBLIC visibility
+      const transformedUser = transformUser(response.user, 'PUBLIC');
       setUser(transformedUser);
 
       debugLog('Signup successful for user:', transformedUser.username);
@@ -307,7 +323,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         profileImageUrl: data.profileImageUrl,
       });
 
-      const transformedUser = transformUser(response.user);
+      // Fetch profile visibility after login
+      const visibilityResponse = await userService.getProfileVisibility().catch(() => ({ visibility: 'PUBLIC' as ProfileVisibility }));
+
+      const transformedUser = transformUser(response.user, visibilityResponse.visibility);
       setUser(transformedUser);
 
       debugLog('Google login successful for user:', transformedUser.username);
@@ -335,7 +354,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         lastName: data.lastName,
       });
 
-      const transformedUser = transformUser(response.user);
+      // Fetch profile visibility after login
+      const visibilityResponse = await userService.getProfileVisibility().catch(() => ({ visibility: 'PUBLIC' as ProfileVisibility }));
+
+      const transformedUser = transformUser(response.user, visibilityResponse.visibility);
       setUser(transformedUser);
 
       debugLog('Apple login successful for user:', transformedUser.username);
@@ -398,8 +420,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshUser = useCallback(async () => {
     try {
-      const userProfile = await authService.getCurrentUser();
-      const transformedUser = transformUser(userProfile);
+      const [userProfile, visibilityResponse] = await Promise.all([
+        authService.getCurrentUser(),
+        userService.getProfileVisibility().catch(() => ({ visibility: 'PUBLIC' as ProfileVisibility }))
+      ]);
+      const transformedUser = transformUser(userProfile, visibilityResponse.visibility);
       setUser(transformedUser);
       debugLog('User profile refreshed');
     } catch (error) {
@@ -407,7 +432,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // If user profile fetch fails, the user might need to re-authenticate
       const authError = handleAuthError(error);
       setError(authError);
-      
+
       // If it's an auth error, clear the user
       if (error instanceof ApiError && error.statusCode === 401) {
         setUser(null);
@@ -419,12 +444,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       await authService.changePassword({
         currentPassword,
         newPassword,
       });
-      
+
       debugLog('Password changed successfully');
     } catch (error) {
       const authError = handleAuthError(error);
@@ -435,6 +460,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(false);
     }
   }, [handleAuthError]);
+
+  const createPassword = useCallback(async (newPassword: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      await authService.createPassword({
+        newPassword,
+      });
+
+      // Update user state to reflect they now have a password
+      setUser(prev => prev ? { ...prev, hasPassword: true } : null);
+
+      debugLog('Password created successfully');
+    } catch (error) {
+      const authError = handleAuthError(error);
+      setError(authError);
+      errorLog('Create password failed:', error);
+      throw authError;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [handleAuthError]);
+
+  const updateProfileVisibility = useCallback(async (visibility: ProfileVisibility) => {
+    if (!user) return;
+
+    const previousVisibility = user.profileVisibility;
+
+    // Optimistic update
+    setUser(prev => prev ? { ...prev, profileVisibility: visibility } : null);
+
+    try {
+      await userService.updateProfileVisibility(visibility);
+      debugLog('Profile visibility updated to:', visibility);
+    } catch (error) {
+      // Rollback on failure
+      setUser(prev => prev ? { ...prev, profileVisibility: previousVisibility } : null);
+      errorLog('Failed to update profile visibility:', error);
+      throw error;
+    }
+  }, [user]);
 
   // Memoize context value to prevent unnecessary re-renders of consumers
   const value = useMemo<AuthContextType>(() => ({
@@ -451,6 +518,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     clearError,
     refreshUser,
     changePassword,
+    createPassword,
+    updateProfileVisibility,
   }), [
     user,
     isLoading,
@@ -465,6 +534,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     clearError,
     refreshUser,
     changePassword,
+    createPassword,
+    updateProfileVisibility,
   ]);
 
   return (

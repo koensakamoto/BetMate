@@ -1,51 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { userService, ProfileVisibility } from '../../../services/user/userService';
+import { useAuth } from '../../../contexts/AuthContext';
 import { debugLog, errorLog } from '../../../config/env';
 import { File, Paths } from 'expo-file-system/next';
 import * as Sharing from 'expo-sharing';
 
 export default function AccountSecurity() {
   const insets = useSafeAreaInsets();
+  const { user, updateProfileVisibility } = useAuth();
   const [isExportingData, setIsExportingData] = useState(false);
-  const [profileVisibility, setProfileVisibility] = useState<ProfileVisibility>('PUBLIC');
-  const [isLoadingVisibility, setIsLoadingVisibility] = useState(true);
   const [isSavingVisibility, setIsSavingVisibility] = useState(false);
 
-  useEffect(() => {
-    loadProfileVisibility();
-  }, []);
-
-  const loadProfileVisibility = async () => {
-    try {
-      setIsLoadingVisibility(true);
-      const response = await userService.getProfileVisibility();
-      setProfileVisibility(response.visibility);
-    } catch (err) {
-      errorLog('Failed to load profile visibility:', err);
-    } finally {
-      setIsLoadingVisibility(false);
-    }
-  };
+  const profileVisibility = user?.profileVisibility ?? 'PUBLIC';
 
   const handleVisibilityChange = async (newVisibility: ProfileVisibility) => {
     if (newVisibility === profileVisibility) return;
 
-    const previousVisibility = profileVisibility;
-
-    // Optimistic update - change UI immediately
-    setProfileVisibility(newVisibility);
     setIsSavingVisibility(true);
 
     try {
-      await userService.updateProfileVisibility(newVisibility);
+      await updateProfileVisibility(newVisibility);
       debugLog('Profile visibility updated to:', newVisibility);
     } catch (err) {
-      // Rollback on failure
-      setProfileVisibility(previousVisibility);
       errorLog('Failed to update profile visibility:', err);
       Alert.alert('Error', 'Failed to update profile visibility. Please try again.');
     } finally {
@@ -173,7 +153,7 @@ export default function AccountSecurity() {
     return (
       <TouchableOpacity
         onPress={() => handleVisibilityChange(value)}
-        disabled={isSavingVisibility || isLoadingVisibility}
+        disabled={isSavingVisibility}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -433,34 +413,26 @@ export default function AccountSecurity() {
 
         {/* Privacy */}
         <Section title="Privacy">
-          {isLoadingVisibility ? (
-            <View style={{ padding: 20, alignItems: 'center' }}>
-              <ActivityIndicator size="small" color="#00D4AA" />
-            </View>
-          ) : (
-            <>
-              <VisibilityOption
-                value="PUBLIC"
-                title="Public"
-                description="Anyone can view your profile and stats"
-                icon="public"
-              />
-              <VisibilityOption
-                value="PRIVATE"
-                title="Private"
-                description="Only friends can view your full profile"
-                icon="lock"
-                isLast={true}
-              />
-            </>
-          )}
+          <VisibilityOption
+            value="PUBLIC"
+            title="Public"
+            description="Anyone can view your profile and stats"
+            icon="public"
+          />
+          <VisibilityOption
+            value="PRIVATE"
+            title="Private"
+            description="Only friends can view your full profile"
+            icon="lock"
+            isLast={true}
+          />
         </Section>
 
         {/* Password & Authentication */}
         <Section title="Password & Authentication">
           <SecurityItem
-            title="Change Password"
-            description="Update your account password"
+            title={user?.hasPassword ? "Change Password" : "Create Password"}
+            description={user?.hasPassword ? "Update your account password" : "Add a password to your account"}
             onPress={handleChangePassword}
             icon="lock"
             isLast={true}

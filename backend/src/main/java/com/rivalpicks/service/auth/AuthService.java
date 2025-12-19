@@ -6,6 +6,7 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.rivalpicks.dto.auth.request.AppleAuthRequestDto;
 import com.rivalpicks.dto.auth.request.ChangePasswordRequestDto;
+import com.rivalpicks.dto.auth.request.CreatePasswordRequestDto;
 import com.rivalpicks.dto.auth.request.GoogleAuthRequestDto;
 import com.rivalpicks.dto.auth.request.LoginRequestDto;
 import com.rivalpicks.dto.auth.request.RefreshTokenRequestDto;
@@ -223,6 +224,28 @@ public class AuthService {
     }
 
     /**
+     * Creates a password for OAuth users who don't have one.
+     */
+    public void createPassword(CreatePasswordRequestDto createPasswordRequest) {
+        log.debug("Processing create password request");
+
+        // Get current user from security context
+        UserDetailsServiceImpl.UserPrincipal userPrincipal = SecurityContextUtil.getCurrentUserPrincipal()
+            .orElseThrow(() -> {
+                log.warn("Create password attempted without valid authentication");
+                return new AuthenticationException.InvalidCredentialsException("User not authenticated");
+            });
+
+        // Create password using authentication service
+        authenticationService.createPassword(
+            userPrincipal.getUserId(),
+            createPasswordRequest.newPassword()
+        );
+
+        log.info("Password created successfully for user: {}", userPrincipal.getUsername());
+    }
+
+    /**
      * Gets the current authenticated user's profile information.
      */
     public UserProfileResponseDto getCurrentUserProfile() {
@@ -242,6 +265,9 @@ public class AuthService {
     /**
      * Authenticates user via Google OAuth and returns login response with tokens.
      * Creates a new user account if one doesn't exist for this Google account.
+     *
+     * Note: Similar to Apple, we store the Google user ID (sub claim) to reliably
+     * identify users even if they change their email address.
      */
     public LoginResponseDto loginWithGoogle(GoogleAuthRequestDto googleAuthRequest) {
         log.debug("Processing Google login request for email: {}", googleAuthRequest.email());
@@ -263,6 +289,9 @@ public class AuthService {
         // Get payload from verified token
         GoogleIdToken.Payload payload = idToken.getPayload();
         String tokenEmail = payload.getEmail();
+        String googleUserId = payload.getSubject(); // Google's unique user ID
+
+        log.debug("Google token payload - email: {}, sub: {}", tokenEmail, googleUserId);
 
         // Verify email matches
         if (tokenEmail == null || !tokenEmail.equalsIgnoreCase(googleAuthRequest.email())) {
@@ -276,18 +305,29 @@ public class AuthService {
             throw new AuthenticationException.InvalidCredentialsException("Google email not verified");
         }
 
-        // Find or create user
-        Optional<User> existingUser = userService.getUserByEmail(googleAuthRequest.email());
+        // Try to find existing user by Google user ID first (reliable for subsequent logins)
         User user;
+        Optional<User> existingUser = userService.getUserByGoogleUserId(googleUserId);
+
+        if (existingUser.isEmpty()) {
+            // First sign-in or legacy user - check if user exists by email (for account linking)
+            existingUser = userService.getUserByEmail(googleAuthRequest.email());
+        }
 
         if (existingUser.isPresent()) {
             user = existingUser.get();
+            // Link Google user ID if not already set (first Google sign-in for existing account)
+            if (user.getGoogleUserId() == null) {
+                user.setGoogleUserId(googleUserId);
+                log.info("Linked Google user ID {} to existing user: {}", googleUserId, user.getUsername());
+            }
             log.info("Existing user found for Google login: {}", user.getUsername());
-            // Note: We don't update profile image from Google - users can upload their own
         } else {
             // Create new user from Google account
             log.info("Creating new user from Google account: {}", googleAuthRequest.email());
             user = new User();
+            user.setGoogleUserId(googleUserId);
+            user.setAuthProvider(User.AuthProvider.GOOGLE);
             user.setEmail(googleAuthRequest.email());
             user.setFirstName(googleAuthRequest.firstName());
             user.setLastName(googleAuthRequest.lastName());
@@ -309,6 +349,7 @@ public class AuthService {
 
             // Set a random password (user can't login with password, only Google)
             user.setPasswordHash(UUID.randomUUID().toString());
+            user.setHasPassword(false);
         }
 
         // Update last login timestamp
@@ -455,6 +496,7 @@ public class AuthService {
 
             // Set a random password (user can't login with password, only Apple)
             user.setPasswordHash(UUID.randomUUID().toString());
+            user.setHasPassword(false);
         }
 
         // Update last login timestamp

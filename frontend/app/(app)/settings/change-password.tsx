@@ -5,6 +5,7 @@ import { router, useNavigation } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import SettingsInput from '../../../components/settings/SettingsInput';
 import { authService } from '../../../services/auth/authService';
+import { useAuth } from '../../../contexts/AuthContext';
 import { ApiError } from '../../../services/api/baseClient';
 import {
   isNetworkError,
@@ -12,10 +13,14 @@ import {
   isServerError,
   getErrorMessage,
 } from '../../../utils/errorUtils';
-import { showErrorToast } from '../../../utils/toast';
+import { showErrorToast, showSuccessToast } from '../../../utils/toast';
 
 export default function ChangePassword() {
   const insets = useSafeAreaInsets();
+  const { user, createPassword } = useAuth();
+
+  // Determine if this is create mode (OAuth user without password) or change mode
+  const isCreateMode = !user?.hasPassword;
 
   const [formData, setFormData] = useState({
     currentPassword: '',
@@ -67,8 +72,8 @@ export default function ChangePassword() {
   const validateForm = (): boolean => {
     const newErrors: {[key: string]: string} = {};
 
-    // Current password validation
-    if (!formData.currentPassword.trim()) {
+    // Current password validation (only in change mode)
+    if (!isCreateMode && !formData.currentPassword.trim()) {
       newErrors.currentPassword = 'Current password is required';
     }
 
@@ -90,7 +95,7 @@ export default function ChangePassword() {
 
       if (missing.length > 0) {
         newErrors.newPassword = `Password must contain: ${missing.join(', ')}`;
-      } else if (formData.newPassword === formData.currentPassword) {
+      } else if (!isCreateMode && formData.newPassword === formData.currentPassword) {
         newErrors.newPassword = 'New password must be different from current password';
       }
     }
@@ -115,10 +120,18 @@ export default function ChangePassword() {
       setIsLoading(true);
       setErrors({}); // Clear any previous errors
 
-      await authService.changePassword({
-        currentPassword: formData.currentPassword,
-        newPassword: formData.newPassword,
-      });
+      if (isCreateMode) {
+        // Create password for OAuth users
+        await createPassword(formData.newPassword);
+        showSuccessToast('Success', 'Password created successfully');
+      } else {
+        // Change existing password
+        await authService.changePassword({
+          currentPassword: formData.currentPassword,
+          newPassword: formData.newPassword,
+        });
+        showSuccessToast('Success', 'Password changed successfully');
+      }
 
       router.back();
     } catch (error) {
@@ -138,7 +151,9 @@ export default function ChangePassword() {
         return;
       }
 
-      let errorMessage = 'Failed to change password. Please try again.';
+      let errorMessage = isCreateMode
+        ? 'Failed to create password. Please try again.'
+        : 'Failed to change password. Please try again.';
 
       // Extract error message from ApiError or general error
       if (error instanceof ApiError) {
@@ -155,9 +170,16 @@ export default function ChangePassword() {
         setErrors({ newPassword: errorMessage });
       } else if (errorMessage.toLowerCase().includes('same as') || errorMessage.toLowerCase().includes('cannot be the same')) {
         setErrors({ newPassword: 'New password cannot be the same as your current password' });
+      } else if (errorMessage.toLowerCase().includes('already have a password')) {
+        // User already has a password - shouldn't happen but handle it
+        showErrorToast('Error', errorMessage);
       } else {
-        // Generic error - show inline on current password field
-        setErrors({ currentPassword: errorMessage });
+        // Generic error - show inline on new password field in create mode, current password in change mode
+        if (isCreateMode) {
+          setErrors({ newPassword: errorMessage });
+        } else {
+          setErrors({ currentPassword: errorMessage });
+        }
       }
     } finally {
       setIsLoading(false);
@@ -245,14 +267,14 @@ export default function ChangePassword() {
                 fontWeight: '700',
                 color: '#ffffff'
               }}>
-                Change Password
+                {isCreateMode ? 'Create Password' : 'Change Password'}
               </Text>
               <Text style={{
                 fontSize: 14,
                 color: 'rgba(255, 255, 255, 0.5)',
                 marginTop: 4
               }}>
-                Update your account password
+                {isCreateMode ? 'Add a password to your account' : 'Update your account password'}
               </Text>
             </View>
           </View>
@@ -284,18 +306,20 @@ export default function ChangePassword() {
             </Text>
           </View>
 
-          {/* Current Password */}
-          <SettingsInput
-            label="Current Password"
-            value={formData.currentPassword}
-            onChangeText={(text) => updateField('currentPassword', text)}
-            placeholder="Enter your current password"
-            secureTextEntry
-            showPasswordToggle
-            error={errors.currentPassword}
-            autoCapitalize="none"
-            editable={!isLoading}
-          />
+          {/* Current Password - only shown in change mode */}
+          {!isCreateMode && (
+            <SettingsInput
+              label="Current Password"
+              value={formData.currentPassword}
+              onChangeText={(text) => updateField('currentPassword', text)}
+              placeholder="Enter your current password"
+              secureTextEntry
+              showPasswordToggle
+              error={errors.currentPassword}
+              autoCapitalize="none"
+              editable={!isLoading}
+            />
+          )}
 
           {/* New Password */}
           <SettingsInput
@@ -363,7 +387,7 @@ export default function ChangePassword() {
             editable={!isLoading}
           />
 
-          {/* Change Password Button */}
+          {/* Create/Change Password Button */}
           <TouchableOpacity
             onPress={handleChangePassword}
             disabled={isLoading}
@@ -381,7 +405,7 @@ export default function ChangePassword() {
               <ActivityIndicator size="small" color="#000000" />
             ) : (
               <Text style={{ fontSize: 16, fontWeight: '600', color: '#000000' }}>
-                Change Password
+                {isCreateMode ? 'Create Password' : 'Change Password'}
               </Text>
             )}
           </TouchableOpacity>

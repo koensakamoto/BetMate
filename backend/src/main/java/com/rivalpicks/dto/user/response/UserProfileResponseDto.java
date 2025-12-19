@@ -24,6 +24,9 @@ public class UserProfileResponseDto {
     private Integer totalWins;
     private Integer totalLosses;
     private Double winRate;
+    private boolean hasPassword;
+    private String authProvider;
+
     public static UserProfileResponseDto fromUser(User user) {
         UserProfileResponseDto response = new UserProfileResponseDto();
         response.id = user.getId();
@@ -41,6 +44,8 @@ public class UserProfileResponseDto {
         response.totalWins = user.getWinCount();
         response.totalLosses = user.getLossCount();
         response.winRate = user.getWinRate();
+        response.hasPassword = Boolean.TRUE.equals(user.getHasPassword());
+        response.authProvider = user.getAuthProvider() != null ? user.getAuthProvider().name() : "LOCAL";
         return response;
     }
 
@@ -61,4 +66,6 @@ public class UserProfileResponseDto {
     public Integer getTotalWins() { return totalWins; }
     public Integer getTotalLosses() { return totalLosses; }
     public Double getWinRate() { return winRate; }
+    public boolean isHasPassword() { return hasPassword; }
+    public String getAuthProvider() { return authProvider; }
 }

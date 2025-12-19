@@ -137,6 +137,33 @@ public class AuthenticationService {
     }
 
     /**
+     * Creates a password for OAuth users who don't have one.
+     * @throws AuthenticationException.InvalidCredentialsException when user already has a password
+     */
+    public void createPassword(@NotNull Long userId, @NotBlank String newPassword) {
+        User user = userService.getUserById(userId);
+
+        // Check if user already has a password
+        if (Boolean.TRUE.equals(user.getHasPassword())) {
+            log.warn("Create password failed: User already has a password: {}", user.getUsername());
+            throw new AuthenticationException.InvalidCredentialsException("You already have a password. Use change password instead.");
+        }
+
+        // Validate new password strength
+        InputValidator.PasswordValidationResult passwordValidation = inputValidator.validatePassword(newPassword);
+        if (!passwordValidation.isValid()) {
+            log.warn("Create password failed: Password validation failed for user: {} - {}",
+                user.getUsername(), passwordValidation.getErrorMessage());
+            throw new AuthenticationException.InvalidCredentialsException(passwordValidation.getErrorMessage());
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setHasPassword(true);
+        userService.saveUser(user);
+        log.info("Password created successfully for OAuth user: {}", user.getUsername());
+    }
+
+    /**
      * Resets password (for admin or forgot password flow).
      */
     public void resetPassword(@NotNull Long userId, @NotBlank String newPassword) {
@@ -157,6 +184,7 @@ public class AuthenticationService {
         }
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setHasPassword(true);
         user.setFailedLoginAttempts(0);
         user.setAccountLockedUntil(null);
         userService.saveUser(user);

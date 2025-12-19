@@ -2,6 +2,7 @@ package com.rivalpicks.controller;
 
 import com.rivalpicks.dto.auth.request.AppleAuthRequestDto;
 import com.rivalpicks.dto.auth.request.ChangePasswordRequestDto;
+import com.rivalpicks.dto.auth.request.CreatePasswordRequestDto;
 import com.rivalpicks.dto.auth.request.ForgotPasswordRequestDto;
 import com.rivalpicks.dto.auth.request.GoogleAuthRequestDto;
 import com.rivalpicks.dto.auth.request.LoginRequestDto;
@@ -68,6 +69,16 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> changePassword(@Valid @RequestBody ChangePasswordRequestDto changePasswordRequest) {
         authService.changePassword(changePasswordRequest);
         ApiResponse<Void> response = ApiResponse.success("Password changed successfully");
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Create password for OAuth users who don't have one.
+     */
+    @PostMapping("/create-password")
+    public ResponseEntity<ApiResponse<Void>> createPassword(@Valid @RequestBody CreatePasswordRequestDto createPasswordRequest) {
+        authService.createPassword(createPasswordRequest);
+        ApiResponse<Void> response = ApiResponse.success("Password created successfully");
         return ResponseEntity.ok(response);
     }
 

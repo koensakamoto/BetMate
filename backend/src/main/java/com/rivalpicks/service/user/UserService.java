@@ -69,6 +69,14 @@ public class UserService {
     }
 
     /**
+     * Retrieves a user by Google user ID.
+     */
+    public Optional<User> getUserByGoogleUserId(@NotNull String googleUserId) {
+        return userRepository.findByGoogleUserId(googleUserId)
+            .filter(user -> !user.isDeleted());
+    }
+
+    /**
      * Optimized method to retrieve a user by username OR email in a single database query.
      * This is more efficient than calling getUserByUsername().or(() -> getUserByEmail()).
      */

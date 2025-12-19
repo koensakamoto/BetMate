@@ -22,6 +22,10 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+export interface CreatePasswordRequest {
+  newPassword: string;
+}
+
 export interface GoogleAuthRequest {
   idToken: string;
   email: string;
@@ -71,6 +75,8 @@ export interface UserProfileResponse {
   totalLosses?: number;
   winRate?: number;
   groupMembershipCount?: number;
+  hasPassword?: boolean;
+  authProvider?: string;
 }
 
 export class AuthService extends BaseApiService {
@@ -171,6 +177,16 @@ export class AuthService extends BaseApiService {
     return this.post<void>(
       API_ENDPOINTS.CHANGE_PASSWORD,
       passwords
+    );
+  }
+
+  /**
+   * Create password for OAuth users who don't have one
+   */
+  async createPassword(request: CreatePasswordRequest): Promise<void> {
+    return this.post<void>(
+      '/auth/create-password',
+      request
     );
   }
 

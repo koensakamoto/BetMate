@@ -26,7 +26,8 @@ import com.rivalpicks.entity.messaging.Notification;
     @Index(name = "idx_user_email", columnList = "email"),
     @Index(name = "idx_user_active", columnList = "isActive"),
     @Index(name = "idx_user_deleted_at", columnList = "deletedAt"),
-    @Index(name = "idx_user_apple_user_id", columnList = "appleUserId")
+    @Index(name = "idx_user_apple_user_id", columnList = "appleUserId"),
+    @Index(name = "idx_user_google_user_id", columnList = "googleUserId")
 })
 public class User {
 
@@ -92,9 +93,15 @@ public class User {
     @Column(unique = true, length = 255)
     private String appleUserId;
 
+    @Column(unique = true, length = 255)
+    private String googleUserId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role = Role.USER;
+
+    @Column(nullable = false)
+    private Boolean hasPassword = true;
 
     // ==========================================
     // BETTING ANALYTICS & STATISTICS
@@ -237,8 +244,14 @@ public class User {
     public String getAppleUserId() { return appleUserId; }
     public void setAppleUserId(String appleUserId) { this.appleUserId = appleUserId; }
 
+    public String getGoogleUserId() { return googleUserId; }
+    public void setGoogleUserId(String googleUserId) { this.googleUserId = googleUserId; }
+
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
+
+    public Boolean getHasPassword() { return hasPassword; }
+    public void setHasPassword(Boolean hasPassword) { this.hasPassword = hasPassword; }
 
     public Integer getWinCount() { return winCount; }
     public void setWinCount(Integer winCount) { this.winCount = winCount; }
