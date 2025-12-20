@@ -1,6 +1,7 @@
 package com.rivalpicks.config;
 
 import com.rivalpicks.websocket.WebSocketAuthenticationInterceptor;
+import com.rivalpicks.websocket.WebSocketRateLimitInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -18,10 +19,13 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthenticationInterceptor authenticationInterceptor;
+    private final WebSocketRateLimitInterceptor rateLimitInterceptor;
 
     @Autowired
-    public WebSocketConfig(WebSocketAuthenticationInterceptor authenticationInterceptor) {
+    public WebSocketConfig(WebSocketAuthenticationInterceptor authenticationInterceptor,
+                          WebSocketRateLimitInterceptor rateLimitInterceptor) {
         this.authenticationInterceptor = authenticationInterceptor;
+        this.rateLimitInterceptor = rateLimitInterceptor;
     }
 
     @Override
@@ -46,7 +50,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        // Add authentication interceptor for WebSocket connections
-        registration.interceptors(authenticationInterceptor);
+        // Add interceptors for WebSocket connections
+        // Order matters: authentication first, then rate limiting
+        registration.interceptors(authenticationInterceptor, rateLimitInterceptor);
     }
 }

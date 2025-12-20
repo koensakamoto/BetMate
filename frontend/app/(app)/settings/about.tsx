@@ -272,7 +272,7 @@ export default function About() {
                   lineHeight: 20,
                   letterSpacing: 0.1
                 }}>
-                  Bet for fun stakes like "loser buys coffee" — no real money involved
+                  Bet for fun stakes like &quot;loser buys coffee&quot; — no real money involved
                 </Text>
               </View>
             </View>

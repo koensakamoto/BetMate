@@ -212,7 +212,7 @@ export const ResolverInfoSection: React.FC<ResolverInfoSectionProps> = React.mem
           }}>
             <MaterialIcons name="how-to-vote" size={16} color="#00D4AA" />
             <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 12, flex: 1 }}>
-              When you join, you'll vote on the outcome after betting closes
+              When you join, you&apos;ll vote on the outcome after betting closes
             </Text>
           </View>
         </View>

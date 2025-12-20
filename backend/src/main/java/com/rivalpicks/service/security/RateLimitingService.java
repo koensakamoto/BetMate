@@ -97,7 +97,11 @@ public class RateLimitingService {
         REGISTER,
         FORGOT_PASSWORD,
         RESET_PASSWORD,
-        DEFAULT
+        DEFAULT,
+        FILE_UPLOAD,
+        // WebSocket rate limit types
+        WEBSOCKET_CONNECT,
+        WEBSOCKET_MESSAGE
     }
 
     public RateLimitResult tryConsume(String key, RateLimitType type) {
@@ -135,6 +139,9 @@ public class RateLimitingService {
             case FORGOT_PASSWORD -> rateLimitConfig.getForgotPassword();
             case RESET_PASSWORD -> rateLimitConfig.getResetPassword();
             case DEFAULT -> rateLimitConfig.getDefault();
+            case FILE_UPLOAD -> rateLimitConfig.getFileUpload();
+            case WEBSOCKET_CONNECT -> rateLimitConfig.getWebsocketConnect();
+            case WEBSOCKET_MESSAGE -> rateLimitConfig.getWebsocketMessage();
         };
     }
 

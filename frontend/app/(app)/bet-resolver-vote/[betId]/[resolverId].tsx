@@ -450,7 +450,7 @@ export default function BetResolverVote() {
               fontSize: 13,
               marginTop: 4
             }}>
-              This resolver hasn't submitted their vote yet
+              This resolver hasn&apos;t submitted their vote yet
             </Text>
           </View>
         )}

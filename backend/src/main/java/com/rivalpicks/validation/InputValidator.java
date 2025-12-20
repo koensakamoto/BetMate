@@ -58,10 +58,7 @@ public class InputValidator {
         if (password == null) {
             return PasswordValidationResult.invalid("Password cannot be null");
         }
-        
-        // Trim whitespace
-        password = password.trim();
-        
+
         if (password.isEmpty()) {
             return PasswordValidationResult.invalid("Password cannot be empty");
         }

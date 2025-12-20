@@ -445,7 +445,7 @@ export default function Group() {
                       width: '100%',
                       marginTop: 20
                     }}>
-                      You haven't joined any groups yet. Create one or discover groups below!
+                      You haven&apos;t joined any groups yet. Create one or discover groups below!
                     </Text>
                   </View>
                 );

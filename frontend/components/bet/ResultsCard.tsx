@@ -118,7 +118,7 @@ export function ResultsCard({
         {/* Draw Banner - Compact style matching Win/Loss */}
         <View style={styles.drawBanner} accessible={false}>
           <MaterialIcons name="balance" size={20} color="#60a5fa" accessible={false} />
-          <Text style={styles.drawBannerText} accessible={false}>It's a draw</Text>
+          <Text style={styles.drawBannerText} accessible={false}>It&apos;s a draw</Text>
         </View>
 
         {/* All Options */}

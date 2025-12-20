@@ -227,7 +227,7 @@ export default function ChangeEmail() {
                   How it works
                 </Text>
                 <Text style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.7)', lineHeight: 20 }}>
-                  • We'll send a verification link to your new email{'\n'}
+                  • We&apos;ll send a verification link to your new email{'\n'}
                   • Click the link within 24 hours to confirm{'\n'}
                   • Your current email will be notified of this change
                 </Text>

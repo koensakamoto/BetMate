@@ -372,7 +372,7 @@ export default function GroupPreview() {
                 color: '#00D4AA',
                 flex: 1
               }}>
-                You've been invited!
+                You&apos;ve been invited!
               </Text>
             </View>
           )}

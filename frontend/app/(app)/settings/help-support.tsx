@@ -317,7 +317,7 @@ export default function HelpSupport() {
               marginTop: 4,
               letterSpacing: 0.2
             }}>
-              We're here to help
+              We&apos;re here to help
             </Text>
           </View>
         </View>
@@ -350,7 +350,7 @@ export default function HelpSupport() {
         {/* Contact & Support */}
         <Section title="Contact & Support">
           <Paragraph>
-            Need help? Fill out the form below and we'll get back to you within 24 hours.
+            Need help? Fill out the form below and we&apos;ll get back to you within 24 hours.
           </Paragraph>
           <View style={{
             backgroundColor: 'rgba(255, 255, 255, 0.02)',

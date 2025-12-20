@@ -84,6 +84,13 @@ r2:
   public-url: ${R2_PUBLIC_URL:}
   signed-url-expiration-minutes: ${R2_SIGNED_URL_EXPIRATION:60}
 
+# OAuth Configuration
+oauth:
+  google:
+    client-id: ${GOOGLE_WEB_CLIENT_ID}
+  apple:
+    bundle-id: ${APPLE_BUNDLE_ID:com.rivalpicks.app}
+
 # Firebase Configuration
 firebase:
   credentials:
@@ -106,6 +113,13 @@ rate-limiting:
     duration-minutes: 15
   default:
     requests: 100
+    duration-minutes: 1
+  # WebSocket rate limits
+  websocket-connect:
+    requests: 5
+    duration-minutes: 1
+  websocket-message:
+    requests: 30
     duration-minutes: 1
 
 # Bet Scheduling Configuration

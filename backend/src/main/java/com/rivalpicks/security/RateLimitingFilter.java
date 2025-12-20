@@ -94,6 +94,13 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             if (path.equals("/api/auth/reset-password")) {
                 return RateLimitType.RESET_PASSWORD;
             }
+
+            // File upload endpoints
+            if (path.equals("/api/users/profile-picture") ||
+                path.matches("/api/groups/[^/]+/picture") ||
+                path.matches("/api/bets/[^/]+/fulfillment/upload-proof")) {
+                return RateLimitType.FILE_UPLOAD;
+            }
         }
 
         // Default rate limiting for all /api/** endpoints (any method)

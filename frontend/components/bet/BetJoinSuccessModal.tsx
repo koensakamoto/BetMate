@@ -97,7 +97,7 @@ export const BetJoinSuccessModal: React.FC<BetJoinSuccessModalProps> = ({
 
           {/* Content */}
           <View style={styles.content}>
-            <Text style={styles.title}>You're in!</Text>
+            <Text style={styles.title}>You&apos;re in!</Text>
           </View>
         </Animated.View>
       </View>

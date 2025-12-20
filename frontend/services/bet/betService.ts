@@ -16,7 +16,7 @@ export interface CreateBetRequest {
   resolutionMethod: 'SELF' | 'ASSIGNED_RESOLVERS' | 'PARTICIPANT_VOTE';
   bettingDeadline: string; // ISO string
   resolveDate?: string; // ISO string
-  minimumBet: number; // DEPRECATED: For backward compatibility with variable-stake bets
+  minimumBet?: number; // DEPRECATED: For backward compatibility with variable-stake bets
   maximumBet?: number; // DEPRECATED: For backward compatibility with variable-stake bets
   fixedStakeAmount?: number; // NEW: Fixed stake amount - everyone must bet exactly this amount (for CREDIT bets)
   stakeType?: 'CREDIT' | 'SOCIAL'; // NEW: Type of stake - CREDIT uses in-game credits, SOCIAL is fun stakes

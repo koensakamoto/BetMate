@@ -685,7 +685,7 @@ export class WebSocketMessagingService {
 
     try {
       const indicator: Omit<TypingIndicator, 'username'> = {
-        isTyping,
+        typing: isTyping,
         groupId
       };
 
@@ -860,8 +860,8 @@ export class WebSocketMessagingService {
    * Get the connected username from STOMP headers
    */
   getConnectedUsername(): string | null {
-    // Use our stored username (connectedHeaders is unreliable in some STOMP client versions)
-    return this.connectedUsername || this.client?.connectedHeaders?.['user-name'] || null;
+    // Use our stored username (connectHeaders is unreliable in some STOMP client versions)
+    return this.connectedUsername || this.client?.connectHeaders?.['user-name'] || null;
   }
 }
 

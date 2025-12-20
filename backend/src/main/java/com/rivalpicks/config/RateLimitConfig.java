@@ -15,6 +15,11 @@ public class RateLimitConfig {
     private RateLimitProperties forgotPassword = new RateLimitProperties(3, 60);
     private RateLimitProperties resetPassword = new RateLimitProperties(10, 15);
     private RateLimitProperties defaultLimit = new RateLimitProperties(100, 1);
+    // File upload rate limit (10 uploads per hour)
+    private RateLimitProperties fileUpload = new RateLimitProperties(10, 60);
+    // WebSocket rate limits
+    private RateLimitProperties websocketConnect = new RateLimitProperties(5, 1);
+    private RateLimitProperties websocketMessage = new RateLimitProperties(30, 1);
 
     @Data
     public static class RateLimitProperties {

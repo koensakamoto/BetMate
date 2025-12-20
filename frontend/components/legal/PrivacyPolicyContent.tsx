@@ -201,7 +201,7 @@ export default function PrivacyPolicyContent() {
           <ListItem>To facilitate group betting and social interactions</ListItem>
           <ListItem>To process and track betting transactions</ListItem>
           <ListItem>To send you notifications about bets and group activities</ListItem>
-          <ListItem>To improve our app's functionality and user experience</ListItem>
+          <ListItem>To improve our app&apos;s functionality and user experience</ListItem>
           <ListItem>To ensure compliance with age restrictions and legal requirements</ListItem>
           <ListItem>To prevent fraud and maintain platform security</ListItem>
           <ListItem>To provide customer support and respond to your inquiries</ListItem>

@@ -132,7 +132,7 @@ export default function FulfillmentDetails() {
               color: '#ffffff',
               marginBottom: 12
             }}>
-              What's at Stake
+              What&apos;s at Stake
             </Text>
             <Text style={{
               color: '#00D4AA',

@@ -56,13 +56,13 @@ public class AuthService {
     private final DailyLoginRewardService dailyLoginRewardService;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
 
-    // Google OAuth Web Client ID - should match the one used in the mobile app
-    private static final String GOOGLE_CLIENT_ID = "46395801472-bl69o6cbgtnek5e8uljom7bm02biqpt3.apps.googleusercontent.com";
-
-    // Apple Sign-In configuration
+    // Apple Sign-In configuration (public endpoints - never change)
     private static final String APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys";
     private static final String APPLE_ISSUER = "https://appleid.apple.com";
-    private static final String APPLE_BUNDLE_ID = "com.rivalpicks.app";
+
+    // Injected OAuth configuration
+    private final String googleClientId;
+    private final String appleBundleId;
 
     private final HttpsJwksVerificationKeyResolver appleKeyResolver;
 
@@ -71,18 +71,22 @@ public class AuthService {
                       JwtService jwtService,
                       AuthenticationService authenticationService,
                       UserService userService,
-                      DailyLoginRewardService dailyLoginRewardService) {
+                      DailyLoginRewardService dailyLoginRewardService,
+                      @Value("${oauth.google.client-id}") String googleClientId,
+                      @Value("${oauth.apple.bundle-id}") String appleBundleId) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.authenticationService = authenticationService;
         this.userService = userService;
         this.dailyLoginRewardService = dailyLoginRewardService;
+        this.googleClientId = googleClientId;
+        this.appleBundleId = appleBundleId;
 
         // Initialize Google ID token verifier
         this.googleIdTokenVerifier = new GoogleIdTokenVerifier.Builder(
                 new NetHttpTransport(),
                 GsonFactory.getDefaultInstance())
-                .setAudience(Collections.singletonList(GOOGLE_CLIENT_ID))
+                .setAudience(Collections.singletonList(googleClientId))
                 .build();
 
         // Initialize Apple JWKS key resolver
@@ -90,8 +94,8 @@ public class AuthService {
         this.appleKeyResolver = new HttpsJwksVerificationKeyResolver(appleJwks);
 
         log.info("AuthService initialized with all dependencies");
-        log.info("Google OAuth configured with client ID: {}...", GOOGLE_CLIENT_ID.substring(0, 20));
-        log.info("Apple Sign-In configured with bundle ID: {}", APPLE_BUNDLE_ID);
+        log.info("Google OAuth configured with client ID: {}...", googleClientId.substring(0, Math.min(20, googleClientId.length())));
+        log.info("Apple Sign-In configured with bundle ID: {}", appleBundleId);
     }
 
     /**
@@ -403,11 +407,11 @@ public class AuthService {
         // Verify the Apple identity token
         JwtClaims claims;
         try {
-            log.debug("Building JWT consumer with issuer: {} and audience: {}", APPLE_ISSUER, APPLE_BUNDLE_ID);
+            log.debug("Building JWT consumer with issuer: {} and audience: {}", APPLE_ISSUER, appleBundleId);
             JwtConsumer jwtConsumer = new JwtConsumerBuilder()
                     .setVerificationKeyResolver(appleKeyResolver)
                     .setExpectedIssuer(APPLE_ISSUER)
-                    .setExpectedAudience(APPLE_BUNDLE_ID)
+                    .setExpectedAudience(appleBundleId)
                     .setRequireExpirationTime()
                     .setRequireSubject()
                     .build();

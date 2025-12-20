@@ -928,7 +928,7 @@ export default function CreateBet() {
                   color: 'rgba(255, 255, 255, 0.6)',
                   marginBottom: 8
                 }}>
-                  What's at stake? (e.g., "Loser buys pizza", "Winner picks next movie")
+                  What&apos;s at stake? (e.g., &quot;Loser buys pizza&quot;, &quot;Winner picks next movie&quot;)
                 </Text>
                 <View style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.04)',

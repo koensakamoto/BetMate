@@ -1003,7 +1003,7 @@ export default function BetDetails() {
                 color: '#ffffff',
                 marginBottom: 12
               }}>
-                What's at Stake
+                What&apos;s at Stake
               </Text>
               <Text style={{
                 color: '#00D4AA',
@@ -1163,7 +1163,7 @@ export default function BetDetails() {
                   fontSize: 12,
                   lineHeight: 18
                 }}>
-                  If you lose this bet, you'll receive {betData.insuranceRefundPercentage}% of your stake back as a refund.
+                  If you lose this bet, you&apos;ll receive {betData.insuranceRefundPercentage}% of your stake back as a refund.
                 </Text>
               </View>
             </View>
