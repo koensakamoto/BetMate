@@ -1,5 +1,5 @@
 import { Text, View, TouchableOpacity, ScrollView, Image, StatusBar, TextInput, RefreshControl } from "react-native";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -19,6 +19,11 @@ const getFullImageUrl = (relativePath: string | null | undefined): string | null
 };
 const icon = require("../../../../assets/images/icon.png");
 
+// Module-level cache to survive component unmounts during navigation
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+let moduleLastFetchTime = 0;
+let moduleHasFetchedMyGroups = false;
+let moduleHasFetchedPublicGroups = false;
 
 export default function Group() {
   const params = useLocalSearchParams<{ refresh?: string }>();
@@ -35,16 +40,8 @@ export default function Group() {
   const tabs = ['My Groups', 'Discover'];
   const insets = useSafeAreaInsets();
 
-  // Cache management: 5 minute cache
-  const lastFetchTime = useRef<number>(0);
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-  // Track if we've fetched data at least once
-  const hasFetchedMyGroups = useRef<boolean>(false);
-  const hasFetchedPublicGroups = useRef<boolean>(false);
-
   const isCacheValid = useCallback(() => {
-    return (Date.now() - lastFetchTime.current) < CACHE_DURATION;
+    return (Date.now() - moduleLastFetchTime) < CACHE_DURATION;
   }, []);
 
   // Refresh both groups lists
@@ -66,11 +63,11 @@ export default function Group() {
       setPublicGroups(publicGroupsData);
 
       // Mark that we've fetched both
-      hasFetchedMyGroups.current = true;
-      hasFetchedPublicGroups.current = true;
+      moduleHasFetchedMyGroups = true;
+      moduleHasFetchedPublicGroups = true;
 
       // Update cache timestamp
-      lastFetchTime.current = Date.now();
+      moduleLastFetchTime = Date.now();
     } catch (error) {
       errorLog('Error refreshing groups:', error);
     } finally {
@@ -80,12 +77,12 @@ export default function Group() {
     }
   }, []);
 
-  // Watch for refresh parameter changes (e.g., after deleting a group)
+  // Watch for refresh parameter changes (e.g., after creating/deleting a group)
   useEffect(() => {
     if (params.refresh) {
       debugLog('Refresh parameter detected, forcing groups refresh');
       // Invalidate cache and force refresh
-      lastFetchTime.current = 0;
+      moduleLastFetchTime = 0;
       refreshGroups(false, true);
     }
   }, [params.refresh, refreshGroups]);
@@ -113,22 +110,22 @@ export default function Group() {
       try {
         if (activeTab === 0) {
           // Fetch my groups if not already fetched
-          if (!hasFetchedMyGroups.current && myGroups.length === 0) {
+          if (!moduleHasFetchedMyGroups && myGroups.length === 0) {
             setIsLoading(true);
             didFetch = true;
             const groups = await groupService.getMyGroups();
             setMyGroups(groups);
-            hasFetchedMyGroups.current = true;
+            moduleHasFetchedMyGroups = true;
             debugLog('My groups fetched:', groups);
           }
         } else {
           // Fetch public groups if not already fetched
-          if (!hasFetchedPublicGroups.current && publicGroups.length === 0) {
+          if (!moduleHasFetchedPublicGroups && publicGroups.length === 0) {
             setIsLoading(true);
             didFetch = true;
             const groups = await groupService.getPublicGroups();
             setPublicGroups(groups);
-            hasFetchedPublicGroups.current = true;
+            moduleHasFetchedPublicGroups = true;
             debugLog('Public groups fetched:', groups);
           }
         }

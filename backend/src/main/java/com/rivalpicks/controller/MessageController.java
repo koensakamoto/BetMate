@@ -282,11 +282,11 @@ public class MessageController {
     // Helper method to convert Message entity to DTO
     private MessageResponseDto convertToMessageResponse(Message message, User currentUser) {
         MessageResponseDto response = new MessageResponseDto();
-        
+
         response.setId(message.getId());
         response.setGroupId(message.getGroup().getId());
         response.setGroupName(message.getGroup().getGroupName());
-        
+
         if (message.getSender() != null) {
             response.setSenderId(message.getSender().getId());
             response.setSenderUsername(message.getSender().getUsername());
@@ -297,7 +297,7 @@ public class MessageController {
             response.setSenderUsername("System");
             response.setSenderDisplayName("System");
         }
-        
+
         response.setContent(message.getContent());
         response.setMessageType(message.getMessageType());
         response.setAttachmentUrl(message.getAttachmentUrl());
@@ -305,19 +305,24 @@ public class MessageController {
         response.setIsEdited(message.getIsEdited());
         response.setEditedAt(message.getEditedAt());
         response.setReplyCount(message.getReplyCount());
-        
+
         if (message.getParentMessage() != null) {
             response.setParentMessageId(message.getParentMessage().getId());
         }
-        
+
         response.setCreatedAt(message.getCreatedAt());
         response.setUpdatedAt(message.getUpdatedAt());
-        
-        // Set user permissions
-        response.setCanEdit(messageService.canUserEditMessage(message.getId(), currentUser.getUsername()));
-        response.setCanDelete(messageService.canUserDeleteMessage(message.getId(), currentUser.getUsername()));
+
+        // Compute permissions inline to avoid extra DB queries (N+1 problem)
+        // User can edit/delete their own non-system messages
+        boolean isOwnMessage = message.getSender() != null &&
+                               message.getSender().getUsername().equals(currentUser.getUsername());
+        boolean isNotSystemMessage = message.getMessageType() != Message.MessageType.SYSTEM;
+
+        response.setCanEdit(isOwnMessage && isNotSystemMessage);
+        response.setCanDelete(isOwnMessage && isNotSystemMessage);
         response.setCanReply(true); // All active members can reply
-        
+
         return response;
     }
 }

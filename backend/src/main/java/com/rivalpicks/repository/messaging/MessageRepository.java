@@ -5,6 +5,7 @@ import com.rivalpicks.entity.messaging.Message;
 import com.rivalpicks.entity.user.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,15 +20,22 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     // Group messages
     List<Message> findByGroup(Group group);
     List<Message> findByGroupOrderByCreatedAtDesc(Group group);
+
+    // Eagerly fetch sender and group to avoid N+1 queries when converting to DTOs
+    @EntityGraph(attributePaths = {"sender", "group"})
     Page<Message> findByGroupAndDeletedAtIsNull(Group group, Pageable pageable);
 
     // Pagination support - load messages before a timestamp
+    // Eagerly fetch sender and group to avoid N+1 queries
+    @EntityGraph(attributePaths = {"sender", "group"})
     @Query("SELECT m FROM Message m WHERE m.group = :group AND m.deletedAt IS NULL " +
            "AND m.createdAt < :before ORDER BY m.createdAt DESC")
     List<Message> findMessagesBefore(@Param("group") Group group,
                                      @Param("before") LocalDateTime before,
                                      Pageable pageable);
 
+    // Eagerly fetch sender and group to avoid N+1 queries
+    @EntityGraph(attributePaths = {"sender", "group"})
     @Query("SELECT m FROM Message m WHERE m.group = :group AND m.deletedAt IS NULL ORDER BY m.createdAt DESC")
     List<Message> findActiveMessagesByGroup(@Param("group") Group group);
     

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   FlatList,
@@ -84,16 +84,13 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
     setHasMoreMessages(true);
     setLoadingMore(false);
 
-    // Force a brief delay to ensure state clearing completes before WebSocket setup
-    const initTimeout = setTimeout(() => {
-      if (isComponentMounted && user && !authLoading) {
-        initializeChat();
-      }
-    }, 50); // Small delay to ensure state is cleared
+    // Initialize chat immediately - state clearing is synchronous
+    if (user && !authLoading) {
+      initializeChat();
+    }
 
     return () => {
       isComponentMounted = false;
-      clearTimeout(initTimeout);
       cleanup(currentGroupId);
     };
   }, [groupId, user, authLoading]);
@@ -159,11 +156,11 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
         return;
       }
 
-      // Load initial messages
-      await loadMessages();
-
-      // Setup WebSocket connection
-      await setupWebSocket();
+      // Load messages and setup WebSocket in parallel for faster initialization
+      await Promise.all([
+        loadMessages(),
+        setupWebSocket()
+      ]);
 
     } catch (error) {
       // Error handled silently
@@ -413,17 +410,17 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
     }
   };
 
-  const handleReply = (message: MessageResponse) => {
+  const handleReply = useCallback((message: MessageResponse) => {
     setReplyToMessage(message);
     setEditingMessage(null);
-  };
+  }, []);
 
-  const handleEdit = (message: MessageResponse) => {
+  const handleEdit = useCallback((message: MessageResponse) => {
     setEditingMessage(message);
     setReplyToMessage(null);
-  };
+  }, []);
 
-  const handleDelete = async (message: MessageResponse) => {
+  const handleDelete = useCallback(async (message: MessageResponse) => {
     try {
       await messagingService.deleteMessage(message.id);
       // The deletion will be handled by WebSocket event or we handle it locally
@@ -432,16 +429,16 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
       // Error handled silently
       Alert.alert('Error', 'Failed to delete message. Please try again.');
     }
-  };
+  }, [handleMessageDelete]);
 
-  const cancelReply = () => setReplyToMessage(null);
-  const cancelEdit = () => setEditingMessage(null);
+  const cancelReply = useCallback(() => setReplyToMessage(null), []);
+  const cancelEdit = useCallback(() => setEditingMessage(null), []);
 
   // ==========================================
   // RENDER METHODS
   // ==========================================
 
-  const renderMessage = ({ item, index }: { item: MessageResponse; index: number }) => {
+  const renderMessage = useCallback(({ item, index }: { item: MessageResponse; index: number }) => {
     // Note: FlatList is inverted, so index 0 is newest (bottom of screen)
     // "Above" visually = index + 1 in array (older message)
     const messageAbove = index < messages.length - 1 ? messages[index + 1] : null;
@@ -461,8 +458,9 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
       ? messagingService.formatDateSeparator(item.createdAt)
       : '';
 
+    // Use View instead of Fragment for proper FlatList cell recycling
     return (
-      <>
+      <View>
         <MessageBubble
           message={item}
           currentUsername={effectiveUsername}
@@ -473,11 +471,11 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
         />
         {/* Date separator appears ABOVE the message visually (rendered after due to inversion) */}
         {showDateSeparator && <DateSeparator date={dateSeparatorText} />}
-      </>
+      </View>
     );
-  };
+  }, [messages, effectiveUsername, handleReply, handleEdit, handleDelete]);
 
-  const keyExtractor = (item: MessageResponse) => item.id.toString();
+  const keyExtractor = useCallback((item: MessageResponse) => item.id.toString(), []);
 
   // Show loading state while auth is loading
   if (authLoading) {
@@ -509,8 +507,8 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
     );
   }
 
-  // Get effective username for message alignment - try multiple fallbacks
-  const getEffectiveUsername = (user: any): string => {
+  // Get effective username for message alignment - memoized for performance
+  const effectiveUsername = useMemo(() => {
     // Try username field first
     if (user && user.username && typeof user.username === 'string' && user.username.trim() !== '') {
       return user.username.trim();
@@ -532,11 +530,8 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
     }
 
     // DEVELOPMENT: For testing purposes when user is not authenticated
-    // Return a development username instead of blocking
     return 'dev_user';
-  };
-
-  const effectiveUsername = getEffectiveUsername(user);
+  }, [user]);
 
   return (
     <Animated.View
@@ -618,9 +613,11 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
           }}
           // Performance optimizations
           initialNumToRender={15}
-          maxToRenderPerBatch={10}
-          windowSize={10}
+          maxToRenderPerBatch={8}
+          windowSize={7}
           updateCellsBatchingPeriod={50}
+          removeClippedSubviews={true}
+          legacyImplementation={false}
         />
 
         {/* Typing Indicator */}
@@ -636,13 +633,7 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
           editingMessage={editingMessage}
           onCancelEdit={cancelEdit}
           disabled={false}
-          placeholder={
-            connectionStatus === 'connecting'
-              ? 'Connecting to real-time...'
-              : connectionStatus === 'connected'
-              ? 'Type a message...'
-              : 'Type a message... (using HTTP)'
-          }
+          placeholder="Type a message..."
         />
       </View>
     </Animated.View>

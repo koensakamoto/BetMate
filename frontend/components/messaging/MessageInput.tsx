@@ -41,7 +41,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   editingMessage,
   onCancelEdit,
   disabled = false,
-  placeholder = "Message..."
+  placeholder = "Type a message..."
 }) => {
   const insets = useSafeAreaInsets();
   const [message, setMessage] = useState('');
