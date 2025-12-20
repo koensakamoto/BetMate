@@ -52,6 +52,70 @@ public class UserSettings {
     @Column(nullable = false)
     private Boolean groupInviteNotifications = true;
 
+    // ==========================================
+    // BETTING NOTIFICATIONS
+    // ==========================================
+
+    @Column(nullable = false)
+    private Boolean betCreatedNotifications = true;
+
+    @Column(nullable = false)
+    private Boolean betUpdatedNotifications = true;
+
+    @Column(nullable = false)
+    private Boolean betDeadlineNotifications = true;
+
+    @Column(nullable = false)
+    private Boolean betResolutionReminderNotifications = true;
+
+    @Column(nullable = false)
+    private Boolean betCancelledNotifications = true;
+
+    @Column(nullable = false)
+    private Boolean betFulfillmentNotifications = true;
+
+    // ==========================================
+    // GROUP NOTIFICATIONS
+    // ==========================================
+
+    @Column(nullable = false)
+    private Boolean groupMessageNotifications = true;
+
+    @Column(nullable = false)
+    private Boolean groupMemberJoinedNotifications = true;
+
+    @Column(nullable = false)
+    private Boolean groupMemberLeftNotifications = true;
+
+    @Column(nullable = false)
+    private Boolean groupRoleChangedNotifications = true;
+
+    @Column(nullable = false)
+    private Boolean groupJoinRequestNotifications = true;
+
+    @Column(nullable = false)
+    private Boolean groupDeletedNotifications = true;
+
+    // ==========================================
+    // SOCIAL NOTIFICATIONS
+    // ==========================================
+
+    @Column(nullable = false)
+    private Boolean friendNotifications = true;
+
+    // ==========================================
+    // SYSTEM NOTIFICATIONS
+    // ==========================================
+
+    @Column(nullable = false)
+    private Boolean accountSecurityNotifications = true;
+
+    @Column(nullable = false)
+    private Boolean systemAnnouncementNotifications = true;
+
+    @Column(nullable = false)
+    private Boolean promotionNotifications = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ProfileVisibility profileVisibility = ProfileVisibility.PUBLIC;
@@ -162,6 +226,138 @@ public class UserSettings {
         this.groupInviteNotifications = groupInviteNotifications;
     }
 
+    // Betting Notifications
+    public Boolean getBetCreatedNotifications() {
+        return betCreatedNotifications;
+    }
+
+    public void setBetCreatedNotifications(Boolean betCreatedNotifications) {
+        this.betCreatedNotifications = betCreatedNotifications;
+    }
+
+    public Boolean getBetUpdatedNotifications() {
+        return betUpdatedNotifications;
+    }
+
+    public void setBetUpdatedNotifications(Boolean betUpdatedNotifications) {
+        this.betUpdatedNotifications = betUpdatedNotifications;
+    }
+
+    public Boolean getBetDeadlineNotifications() {
+        return betDeadlineNotifications;
+    }
+
+    public void setBetDeadlineNotifications(Boolean betDeadlineNotifications) {
+        this.betDeadlineNotifications = betDeadlineNotifications;
+    }
+
+    public Boolean getBetResolutionReminderNotifications() {
+        return betResolutionReminderNotifications;
+    }
+
+    public void setBetResolutionReminderNotifications(Boolean betResolutionReminderNotifications) {
+        this.betResolutionReminderNotifications = betResolutionReminderNotifications;
+    }
+
+    public Boolean getBetCancelledNotifications() {
+        return betCancelledNotifications;
+    }
+
+    public void setBetCancelledNotifications(Boolean betCancelledNotifications) {
+        this.betCancelledNotifications = betCancelledNotifications;
+    }
+
+    public Boolean getBetFulfillmentNotifications() {
+        return betFulfillmentNotifications;
+    }
+
+    public void setBetFulfillmentNotifications(Boolean betFulfillmentNotifications) {
+        this.betFulfillmentNotifications = betFulfillmentNotifications;
+    }
+
+    // Group Notifications
+    public Boolean getGroupMessageNotifications() {
+        return groupMessageNotifications;
+    }
+
+    public void setGroupMessageNotifications(Boolean groupMessageNotifications) {
+        this.groupMessageNotifications = groupMessageNotifications;
+    }
+
+    public Boolean getGroupMemberJoinedNotifications() {
+        return groupMemberJoinedNotifications;
+    }
+
+    public void setGroupMemberJoinedNotifications(Boolean groupMemberJoinedNotifications) {
+        this.groupMemberJoinedNotifications = groupMemberJoinedNotifications;
+    }
+
+    public Boolean getGroupMemberLeftNotifications() {
+        return groupMemberLeftNotifications;
+    }
+
+    public void setGroupMemberLeftNotifications(Boolean groupMemberLeftNotifications) {
+        this.groupMemberLeftNotifications = groupMemberLeftNotifications;
+    }
+
+    public Boolean getGroupRoleChangedNotifications() {
+        return groupRoleChangedNotifications;
+    }
+
+    public void setGroupRoleChangedNotifications(Boolean groupRoleChangedNotifications) {
+        this.groupRoleChangedNotifications = groupRoleChangedNotifications;
+    }
+
+    public Boolean getGroupJoinRequestNotifications() {
+        return groupJoinRequestNotifications;
+    }
+
+    public void setGroupJoinRequestNotifications(Boolean groupJoinRequestNotifications) {
+        this.groupJoinRequestNotifications = groupJoinRequestNotifications;
+    }
+
+    public Boolean getGroupDeletedNotifications() {
+        return groupDeletedNotifications;
+    }
+
+    public void setGroupDeletedNotifications(Boolean groupDeletedNotifications) {
+        this.groupDeletedNotifications = groupDeletedNotifications;
+    }
+
+    // Social Notifications
+    public Boolean getFriendNotifications() {
+        return friendNotifications;
+    }
+
+    public void setFriendNotifications(Boolean friendNotifications) {
+        this.friendNotifications = friendNotifications;
+    }
+
+    // System Notifications
+    public Boolean getAccountSecurityNotifications() {
+        return accountSecurityNotifications;
+    }
+
+    public void setAccountSecurityNotifications(Boolean accountSecurityNotifications) {
+        this.accountSecurityNotifications = accountSecurityNotifications;
+    }
+
+    public Boolean getSystemAnnouncementNotifications() {
+        return systemAnnouncementNotifications;
+    }
+
+    public void setSystemAnnouncementNotifications(Boolean systemAnnouncementNotifications) {
+        this.systemAnnouncementNotifications = systemAnnouncementNotifications;
+    }
+
+    public Boolean getPromotionNotifications() {
+        return promotionNotifications;
+    }
+
+    public void setPromotionNotifications(Boolean promotionNotifications) {
+        this.promotionNotifications = promotionNotifications;
+    }
+
     public ProfileVisibility getProfileVisibility() {
         return profileVisibility;
     }
@@ -253,10 +449,29 @@ public class UserSettings {
         }
 
         return switch (notificationType) {
+            // Betting notifications
             case BET_RESULT -> betResultNotifications;
+            case BET_CREATED -> betCreatedNotifications;
+            case BET_UPDATED -> betUpdatedNotifications;
+            case BET_DEADLINE -> betDeadlineNotifications;
+            case BET_RESOLUTION_REMINDER -> betResolutionReminderNotifications;
+            case BET_CANCELLED -> betCancelledNotifications;
+            case BET_FULFILLMENT_SUBMITTED -> betFulfillmentNotifications;
+            // Group notifications
             case GROUP_INVITE -> groupInviteNotifications;
-            case GROUP_JOINED, GROUP_LEFT, GROUP_ROLE_CHANGED -> groupInviteNotifications;
-            default -> true; // Default to true for other notification types
+            case GROUP_MESSAGE -> groupMessageNotifications;
+            case GROUP_JOINED -> groupMemberJoinedNotifications;
+            case GROUP_LEFT -> groupMemberLeftNotifications;
+            case GROUP_ROLE_CHANGED -> groupRoleChangedNotifications;
+            case GROUP_JOIN_REQUEST -> groupJoinRequestNotifications;
+            case GROUP_DELETED -> groupDeletedNotifications;
+            // Social notifications
+            case FRIEND_REQUEST, FRIEND_ACCEPTED -> friendNotifications;
+            // System notifications
+            case ACCOUNT_WARNING -> accountSecurityNotifications;
+            case SYSTEM_ANNOUNCEMENT, MAINTENANCE -> systemAnnouncementNotifications;
+            // Default to true for other notification types (WELCOME, etc.)
+            default -> true;
         };
     }
 
@@ -300,10 +515,31 @@ public class UserSettings {
      * Resets all notification settings to default (enabled).
      */
     public void resetNotificationDefaults() {
+        // General
         this.pushNotifications = true;
-        this.betResultNotifications = true;
-        this.groupInviteNotifications = true;
         this.emailNotifications = false;
+        // Betting
+        this.betResultNotifications = true;
+        this.betCreatedNotifications = true;
+        this.betUpdatedNotifications = true;
+        this.betDeadlineNotifications = true;
+        this.betResolutionReminderNotifications = true;
+        this.betCancelledNotifications = true;
+        this.betFulfillmentNotifications = true;
+        // Groups
+        this.groupInviteNotifications = true;
+        this.groupMessageNotifications = true;
+        this.groupMemberJoinedNotifications = true;
+        this.groupMemberLeftNotifications = true;
+        this.groupRoleChangedNotifications = true;
+        this.groupJoinRequestNotifications = true;
+        this.groupDeletedNotifications = true;
+        // Social
+        this.friendNotifications = true;
+        // System
+        this.accountSecurityNotifications = true;
+        this.systemAnnouncementNotifications = true;
+        this.promotionNotifications = false;
     }
 
     /**

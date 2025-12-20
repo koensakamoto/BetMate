@@ -1,35 +1,82 @@
-import React, { useState } from 'react';
-import { Text, View, ScrollView, StatusBar, TouchableOpacity, Switch } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Text, View, ScrollView, StatusBar, TouchableOpacity, Switch, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { userService } from '../../../services/user/userService';
+import { NotificationPreferences } from '../../../types/api';
+import { showSuccessToast, showErrorToast } from '../../../utils/toast';
 
-export default function NotificationPreferences() {
+const defaultPreferences: NotificationPreferences = {
+  pushNotifications: true,
+  emailNotifications: false,
+  betResultNotifications: true,
+  betCreatedNotifications: true,
+  betUpdatedNotifications: true,
+  betDeadlineNotifications: true,
+  betResolutionReminderNotifications: true,
+  betCancelledNotifications: true,
+  betFulfillmentNotifications: true,
+  groupInviteNotifications: true,
+  groupMessageNotifications: true,
+  groupMemberJoinedNotifications: true,
+  groupMemberLeftNotifications: true,
+  groupRoleChangedNotifications: true,
+  groupJoinRequestNotifications: true,
+  groupDeletedNotifications: true,
+  friendNotifications: true,
+  accountSecurityNotifications: true,
+  systemAnnouncementNotifications: true,
+  promotionNotifications: false,
+};
+
+export default function NotificationPreferencesScreen() {
   const insets = useSafeAreaInsets();
+  const [preferences, setPreferences] = useState<NotificationPreferences>(defaultPreferences);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [originalPreferences, setOriginalPreferences] = useState<NotificationPreferences>(defaultPreferences);
 
-  // Notification preferences state
-  // General
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(false);
+  useEffect(() => {
+    loadPreferences();
+  }, []);
 
-  // Betting Activity
-  const [betCreated, setBetCreated] = useState(true);
-  const [betUpdates, setBetUpdates] = useState(true);
-  const [betDeadline, setBetDeadline] = useState(true);
-  const [betResolutionReminder, setBetResolutionReminder] = useState(true);
-  const [betResults, setBetResults] = useState(true);
-  const [betCancelled, setBetCancelled] = useState(true);
+  const loadPreferences = async () => {
+    try {
+      setIsLoading(true);
+      const prefs = await userService.getNotificationPreferences();
+      setPreferences(prefs);
+      setOriginalPreferences(prefs);
+    } catch (error) {
+      console.error('Failed to load notification preferences:', error);
+      showErrorToast('Error', 'Failed to load notification preferences');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // Social & Groups
-  const [groupInvites, setGroupInvites] = useState(true);
-  const [groupMessages, setGroupMessages] = useState(true);
-  const [groupMemberJoined, setGroupMemberJoined] = useState(true);
-  const [groupMemberLeft, setGroupMemberLeft] = useState(true);
-  const [groupRoleChanged, setGroupRoleChanged] = useState(true);
+  const handleToggle = (key: keyof NotificationPreferences) => (value: boolean) => {
+    const newPreferences = { ...preferences, [key]: value };
+    setPreferences(newPreferences);
+    setHasChanges(JSON.stringify(newPreferences) !== JSON.stringify(originalPreferences));
+  };
 
-  // Account & Security
-  const [accountSecurity, setAccountSecurity] = useState(true);
-  const [promotions, setPromotions] = useState(false);
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      const updated = await userService.updateNotificationPreferences(preferences);
+      setPreferences(updated);
+      setOriginalPreferences(updated);
+      setHasChanges(false);
+      showSuccessToast('Success', 'Notification preferences saved');
+    } catch (error) {
+      console.error('Failed to save notification preferences:', error);
+      showErrorToast('Error', 'Failed to save notification preferences');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <View style={{
@@ -52,18 +99,20 @@ export default function NotificationPreferences() {
     </View>
   );
 
-  const ToggleItem = ({ 
-    title, 
-    description, 
-    value, 
+  const ToggleItem = ({
+    title,
+    description,
+    value,
     onValueChange,
-    icon
+    icon,
+    disabled = false
   }: {
     title: string;
     description: string;
     value: boolean;
     onValueChange: (value: boolean) => void;
     icon: string;
+    disabled?: boolean;
   }) => (
     <View style={{
       flexDirection: 'row',
@@ -72,7 +121,8 @@ export default function NotificationPreferences() {
       paddingVertical: 12,
       borderBottomWidth: 0.5,
       borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-      marginBottom: 8
+      marginBottom: 8,
+      opacity: disabled ? 0.5 : 1
     }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
         <View style={{
@@ -82,10 +132,10 @@ export default function NotificationPreferences() {
           alignItems: 'center',
           marginRight: 12
         }}>
-          <MaterialIcons 
-            name={icon as any} 
-            size={18} 
-            color="rgba(255, 255, 255, 0.8)" 
+          <MaterialIcons
+            name={icon as any}
+            size={18}
+            color="rgba(255, 255, 255, 0.8)"
           />
         </View>
         <View style={{ flex: 1 }}>
@@ -104,16 +154,25 @@ export default function NotificationPreferences() {
           </Text>
         </View>
       </View>
-      
+
       <Switch
         value={value}
         onValueChange={onValueChange}
         trackColor={{ false: 'rgba(255, 255, 255, 0.2)', true: '#00D4AA' }}
         thumbColor={value ? '#ffffff' : '#ffffff'}
         ios_backgroundColor="rgba(255, 255, 255, 0.2)"
+        disabled={disabled}
       />
     </View>
   );
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#00D4AA" />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
@@ -138,7 +197,7 @@ export default function NotificationPreferences() {
         style={{ flex: 1, marginTop: insets.top }}
         contentContainerStyle={{
           paddingTop: 16,
-          paddingBottom: insets.bottom + 60,
+          paddingBottom: insets.bottom + 100,
           paddingHorizontal: 24
         }}
         showsVerticalScrollIndicator={false}
@@ -150,7 +209,7 @@ export default function NotificationPreferences() {
           marginBottom: 48,
           paddingVertical: 8
         }}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => router.back()}
             style={{
               width: 40,
@@ -163,13 +222,13 @@ export default function NotificationPreferences() {
             }}
             activeOpacity={0.7}
           >
-            <MaterialIcons 
-              name="arrow-back" 
-              size={20} 
-              color="rgba(255, 255, 255, 0.9)" 
+            <MaterialIcons
+              name="arrow-back"
+              size={20}
+              color="rgba(255, 255, 255, 0.9)"
             />
           </TouchableOpacity>
-          
+
           <View style={{ flex: 1 }}>
             <Text style={{
               fontSize: 24,
@@ -194,16 +253,9 @@ export default function NotificationPreferences() {
           <ToggleItem
             title="Push Notifications"
             description="Enable notifications on your device"
-            value={pushNotifications}
-            onValueChange={setPushNotifications}
+            value={preferences.pushNotifications}
+            onValueChange={handleToggle('pushNotifications')}
             icon="notifications"
-          />
-          <ToggleItem
-            title="Email Notifications"
-            description="Receive notifications via email"
-            value={emailNotifications}
-            onValueChange={setEmailNotifications}
-            icon="email"
           />
         </Section>
 
@@ -212,44 +264,58 @@ export default function NotificationPreferences() {
           <ToggleItem
             title="Bet Created"
             description="New bets created in your groups"
-            value={betCreated}
-            onValueChange={setBetCreated}
+            value={preferences.betCreatedNotifications}
+            onValueChange={handleToggle('betCreatedNotifications')}
             icon="add-circle"
+            disabled={!preferences.pushNotifications}
           />
           <ToggleItem
             title="Bet Updated"
             description="When bet details are modified"
-            value={betUpdates}
-            onValueChange={setBetUpdates}
+            value={preferences.betUpdatedNotifications}
+            onValueChange={handleToggle('betUpdatedNotifications')}
             icon="update"
+            disabled={!preferences.pushNotifications}
           />
           <ToggleItem
             title="Bet Deadline Approaching"
             description="Reminders before bet deadlines"
-            value={betDeadline}
-            onValueChange={setBetDeadline}
+            value={preferences.betDeadlineNotifications}
+            onValueChange={handleToggle('betDeadlineNotifications')}
             icon="schedule"
+            disabled={!preferences.pushNotifications}
           />
           <ToggleItem
             title="Bet Resolution Reminder"
             description="Reminders to resolve bets you created"
-            value={betResolutionReminder}
-            onValueChange={setBetResolutionReminder}
+            value={preferences.betResolutionReminderNotifications}
+            onValueChange={handleToggle('betResolutionReminderNotifications')}
             icon="gavel"
+            disabled={!preferences.pushNotifications}
           />
           <ToggleItem
             title="Bet Results"
             description="When your bets are resolved"
-            value={betResults}
-            onValueChange={setBetResults}
+            value={preferences.betResultNotifications}
+            onValueChange={handleToggle('betResultNotifications')}
             icon="emoji-events"
+            disabled={!preferences.pushNotifications}
           />
           <ToggleItem
             title="Bet Cancelled"
             description="When bets are cancelled with refund info"
-            value={betCancelled}
-            onValueChange={setBetCancelled}
+            value={preferences.betCancelledNotifications}
+            onValueChange={handleToggle('betCancelledNotifications')}
             icon="cancel"
+            disabled={!preferences.pushNotifications}
+          />
+          <ToggleItem
+            title="Bet Fulfillment"
+            description="When users submit bet fulfillment proof"
+            value={preferences.betFulfillmentNotifications}
+            onValueChange={handleToggle('betFulfillmentNotifications')}
+            icon="verified"
+            disabled={!preferences.pushNotifications}
           />
         </Section>
 
@@ -258,37 +324,66 @@ export default function NotificationPreferences() {
           <ToggleItem
             title="Group Invites"
             description="When you're invited to join a betting group"
-            value={groupInvites}
-            onValueChange={setGroupInvites}
+            value={preferences.groupInviteNotifications}
+            onValueChange={handleToggle('groupInviteNotifications')}
             icon="group-add"
+            disabled={!preferences.pushNotifications}
           />
           <ToggleItem
             title="Group Messages"
             description="New messages in your betting groups"
-            value={groupMessages}
-            onValueChange={setGroupMessages}
+            value={preferences.groupMessageNotifications}
+            onValueChange={handleToggle('groupMessageNotifications')}
             icon="chat"
+            disabled={!preferences.pushNotifications}
           />
           <ToggleItem
             title="Group Member Joined"
             description="When members join your groups"
-            value={groupMemberJoined}
-            onValueChange={setGroupMemberJoined}
+            value={preferences.groupMemberJoinedNotifications}
+            onValueChange={handleToggle('groupMemberJoinedNotifications')}
             icon="person-add"
+            disabled={!preferences.pushNotifications}
           />
           <ToggleItem
             title="Group Member Left"
             description="When members leave your groups"
-            value={groupMemberLeft}
-            onValueChange={setGroupMemberLeft}
+            value={preferences.groupMemberLeftNotifications}
+            onValueChange={handleToggle('groupMemberLeftNotifications')}
             icon="person-remove"
+            disabled={!preferences.pushNotifications}
           />
           <ToggleItem
             title="Group Role Changed"
             description="When your role in a group changes"
-            value={groupRoleChanged}
-            onValueChange={setGroupRoleChanged}
+            value={preferences.groupRoleChangedNotifications}
+            onValueChange={handleToggle('groupRoleChangedNotifications')}
             icon="admin-panel-settings"
+            disabled={!preferences.pushNotifications}
+          />
+          <ToggleItem
+            title="Group Join Requests"
+            description="When users request to join your private groups"
+            value={preferences.groupJoinRequestNotifications}
+            onValueChange={handleToggle('groupJoinRequestNotifications')}
+            icon="how-to-reg"
+            disabled={!preferences.pushNotifications}
+          />
+          <ToggleItem
+            title="Group Deleted"
+            description="When groups you're in are deleted"
+            value={preferences.groupDeletedNotifications}
+            onValueChange={handleToggle('groupDeletedNotifications')}
+            icon="delete-forever"
+            disabled={!preferences.pushNotifications}
+          />
+          <ToggleItem
+            title="Friend Requests"
+            description="Friend requests and acceptances"
+            value={preferences.friendNotifications}
+            onValueChange={handleToggle('friendNotifications')}
+            icon="people"
+            disabled={!preferences.pushNotifications}
           />
         </Section>
 
@@ -297,19 +392,70 @@ export default function NotificationPreferences() {
           <ToggleItem
             title="Account Security"
             description="Important account security updates"
-            value={accountSecurity}
-            onValueChange={setAccountSecurity}
+            value={preferences.accountSecurityNotifications}
+            onValueChange={handleToggle('accountSecurityNotifications')}
             icon="security"
+            disabled={!preferences.pushNotifications}
+          />
+          <ToggleItem
+            title="System Announcements"
+            description="Important system news and maintenance notices"
+            value={preferences.systemAnnouncementNotifications}
+            onValueChange={handleToggle('systemAnnouncementNotifications')}
+            icon="campaign"
+            disabled={!preferences.pushNotifications}
           />
           <ToggleItem
             title="Promotions"
             description="Special offers and promotional content"
-            value={promotions}
-            onValueChange={setPromotions}
+            value={preferences.promotionNotifications}
+            onValueChange={handleToggle('promotionNotifications')}
             icon="local-offer"
+            disabled={!preferences.pushNotifications}
           />
         </Section>
       </ScrollView>
+
+      {/* Save Button */}
+      {hasChanges && (
+        <View style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          paddingHorizontal: 24,
+          paddingTop: 16,
+          paddingBottom: insets.bottom + 16,
+          backgroundColor: '#0a0a0f',
+          borderTopWidth: 0.5,
+          borderTopColor: 'rgba(255, 255, 255, 0.1)'
+        }}>
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={isSaving}
+            style={{
+              backgroundColor: '#00D4AA',
+              borderRadius: 12,
+              paddingVertical: 16,
+              alignItems: 'center',
+              opacity: isSaving ? 0.7 : 1
+            }}
+            activeOpacity={0.8}
+          >
+            {isSaving ? (
+              <ActivityIndicator color="#0a0a0f" />
+            ) : (
+              <Text style={{
+                color: '#0a0a0f',
+                fontSize: 16,
+                fontWeight: '600'
+              }}>
+                Save Changes
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }

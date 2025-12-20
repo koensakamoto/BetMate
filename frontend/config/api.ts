@@ -78,6 +78,7 @@ export const API_ENDPOINTS = {
   USER_STATS: (id: number) => `/users/${id}/stats`,
   USER_DATA_EXPORT: '/users/me/export',
   USER_DELETE_ACCOUNT: '/users/profile',
+  USER_NOTIFICATION_PREFERENCES: '/users/notification-preferences',
   
   // Store
   STORE: '/store',

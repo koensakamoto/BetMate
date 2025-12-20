@@ -369,3 +369,38 @@ export interface ContactMessageResponse {
   status: string;
   createdAt: string;
 }
+
+// Notification Preferences
+export interface NotificationPreferences {
+  // General
+  pushNotifications: boolean;
+  emailNotifications: boolean;
+
+  // Betting
+  betResultNotifications: boolean;
+  betCreatedNotifications: boolean;
+  betUpdatedNotifications: boolean;
+  betDeadlineNotifications: boolean;
+  betResolutionReminderNotifications: boolean;
+  betCancelledNotifications: boolean;
+  betFulfillmentNotifications: boolean;
+
+  // Groups
+  groupInviteNotifications: boolean;
+  groupMessageNotifications: boolean;
+  groupMemberJoinedNotifications: boolean;
+  groupMemberLeftNotifications: boolean;
+  groupRoleChangedNotifications: boolean;
+  groupJoinRequestNotifications: boolean;
+  groupDeletedNotifications: boolean;
+
+  // Social
+  friendNotifications: boolean;
+
+  // System
+  accountSecurityNotifications: boolean;
+  systemAnnouncementNotifications: boolean;
+  promotionNotifications: boolean;
+}
+
+export type NotificationPreferencesUpdate = Partial<NotificationPreferences>;

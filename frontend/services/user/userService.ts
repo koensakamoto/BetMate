@@ -1,6 +1,6 @@
 import { BaseApiService } from '../api/baseService';
 import { API_ENDPOINTS } from '../../config/api';
-import { ApiResponse } from '../../types/api';
+import { ApiResponse, NotificationPreferences, NotificationPreferencesUpdate } from '../../types/api';
 import { apiClient } from '../api/baseClient';
 
 // React Native FormData file type (not officially typed by RN)
@@ -283,6 +283,27 @@ export class UserService extends BaseApiService {
    */
   async deleteAccount(): Promise<void> {
     await this.delete(API_ENDPOINTS.USER_DELETE_ACCOUNT);
+  }
+
+  // ==========================================
+  // NOTIFICATION PREFERENCES
+  // ==========================================
+
+  /**
+   * Get current user's notification preferences
+   */
+  async getNotificationPreferences(): Promise<NotificationPreferences> {
+    return this.get<NotificationPreferences>(API_ENDPOINTS.USER_NOTIFICATION_PREFERENCES);
+  }
+
+  /**
+   * Update current user's notification preferences
+   */
+  async updateNotificationPreferences(preferences: NotificationPreferencesUpdate): Promise<NotificationPreferences> {
+    return this.put<NotificationPreferences>(
+      API_ENDPOINTS.USER_NOTIFICATION_PREFERENCES,
+      preferences
+    );
   }
 }
 

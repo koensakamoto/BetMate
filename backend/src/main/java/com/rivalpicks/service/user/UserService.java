@@ -211,6 +211,40 @@ public class UserService {
     }
 
     // ==========================================
+    // NOTIFICATION PREFERENCES
+    // ==========================================
+
+    /**
+     * Retrieves the notification preferences for a user.
+     * Returns default preferences if settings don't exist.
+     */
+    public com.rivalpicks.dto.user.NotificationPreferencesDto getNotificationPreferences(@NotNull Long userId) {
+        return userSettingsRepository.findByUserId(userId)
+            .map(com.rivalpicks.dto.user.NotificationPreferencesDto::fromEntity)
+            .orElse(com.rivalpicks.dto.user.NotificationPreferencesDto.defaults());
+    }
+
+    /**
+     * Updates the notification preferences for a user.
+     * Creates settings if they don't exist.
+     */
+    @Transactional
+    public com.rivalpicks.dto.user.NotificationPreferencesDto updateNotificationPreferences(
+            @NotNull Long userId,
+            @NotNull com.rivalpicks.dto.user.NotificationPreferencesDto preferences) {
+        UserSettings settings = userSettingsRepository.findByUserId(userId)
+            .orElseGet(() -> {
+                // Create default settings if they don't exist
+                User user = getUserById(userId);
+                UserSettings newSettings = UserSettings.createDefaultSettings(user);
+                return userSettingsRepository.save(newSettings);
+            });
+        preferences.applyTo(settings);
+        userSettingsRepository.save(settings);
+        return com.rivalpicks.dto.user.NotificationPreferencesDto.fromEntity(settings);
+    }
+
+    // ==========================================
     // PUSH NOTIFICATION TOKEN MANAGEMENT
     // ==========================================
 

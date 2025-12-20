@@ -14,6 +14,7 @@ import com.rivalpicks.dto.user.response.UserProfileResponseDto;
 import com.rivalpicks.dto.user.response.UserSearchResultResponseDto;
 import com.rivalpicks.dto.user.response.TransactionResponseDto;
 import com.rivalpicks.dto.user.response.UsernameChangeResponseDto;
+import com.rivalpicks.dto.user.NotificationPreferencesDto;
 import com.rivalpicks.entity.user.UserSettings.ProfileVisibility;
 import com.rivalpicks.service.user.FriendshipService;
 import com.rivalpicks.entity.user.Transaction;
@@ -271,6 +272,46 @@ public class UserController {
             return ResponseEntity.ok(java.util.Map.of("visibility", updated.name()));
         } catch (Exception e) {
             log.error("Failed to update profile visibility", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get current user's notification preferences.
+     */
+    @GetMapping("/notification-preferences")
+    public ResponseEntity<NotificationPreferencesDto> getNotificationPreferences() {
+        try {
+            UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
+            if (userPrincipal == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            NotificationPreferencesDto preferences = userService.getNotificationPreferences(userPrincipal.getUserId());
+            return ResponseEntity.ok(preferences);
+        } catch (Exception e) {
+            log.error("Failed to get notification preferences", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Update current user's notification preferences.
+     */
+    @PutMapping("/notification-preferences")
+    public ResponseEntity<NotificationPreferencesDto> updateNotificationPreferences(
+            @RequestBody NotificationPreferencesDto preferences) {
+        try {
+            UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
+            if (userPrincipal == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+
+            NotificationPreferencesDto updated = userService.updateNotificationPreferences(
+                userPrincipal.getUserId(), preferences);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            log.error("Failed to update notification preferences", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
