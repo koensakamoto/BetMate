@@ -132,7 +132,7 @@ public class GroupService {
         LocalDateTime now = LocalDateTime.now();
 
         // Get all member IDs before deactivating (for notification)
-        List<GroupMembership> memberships = membershipRepository.findByGroup(group);
+        List<GroupMembership> memberships = membershipRepository.findByGroupWithUser(group);
         List<Long> memberIds = memberships.stream()
             .filter(m -> m.getIsActive())
             .map(m -> m.getUser().getId())

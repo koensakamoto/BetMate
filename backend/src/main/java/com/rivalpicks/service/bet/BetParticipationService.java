@@ -255,7 +255,7 @@ public class BetParticipationService {
      * NOTE: This should be called after the bet has already been resolved.
      */
     public void settleParticipationsForResolvedBet(@NotNull Bet bet) {
-        List<BetParticipation> participations = participationRepository.findByBet(bet);
+        List<BetParticipation> participations = participationRepository.findByBetWithUser(bet);
 
         for (BetParticipation participation : participations) {
             if (participation.getStatus() == BetParticipation.ParticipationStatus.ACTIVE) {

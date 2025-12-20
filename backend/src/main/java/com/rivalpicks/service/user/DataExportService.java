@@ -104,7 +104,7 @@ public class DataExportService {
     }
 
     private List<BetParticipationExportDto> exportBetParticipations(User user) {
-        List<BetParticipation> participations = betParticipationRepository.findByUser(user);
+        List<BetParticipation> participations = betParticipationRepository.findByUserWithRelations(user);
         return participations.stream()
             .map(BetParticipationExportDto::fromBetParticipation)
             .toList();

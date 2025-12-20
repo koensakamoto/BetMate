@@ -24,6 +24,12 @@ public interface BetParticipationRepository extends JpaRepository<BetParticipati
     // ID-based queries
     @Query("SELECT bp FROM BetParticipation bp WHERE bp.bet.id = :betId")
     List<BetParticipation> findByBetId(@Param("betId") Long betId);
+
+    @Query("SELECT bp FROM BetParticipation bp JOIN FETCH bp.user WHERE bp.bet = :bet")
+    List<BetParticipation> findByBetWithUser(@Param("bet") Bet bet);
+
+    @Query("SELECT bp FROM BetParticipation bp JOIN FETCH bp.bet JOIN FETCH bp.user LEFT JOIN FETCH bp.insuranceItem WHERE bp.user = :user")
+    List<BetParticipation> findByUserWithRelations(@Param("user") User user);
     
     // Bet option queries
     List<BetParticipation> findByBetAndChosenOption(Bet bet, Integer chosenOption);

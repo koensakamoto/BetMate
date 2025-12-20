@@ -334,17 +334,8 @@ public class BetScheduledTaskService {
         try {
             LocalDateTime oneHourFromNow = now.plusHours(1);
 
-            // Find bets with resolveDate < 1 hour that have no reminders sent
-            List<Bet> urgentBets = betRepository.findAll().stream()
-                .filter(bet -> bet.getResolveDate() != null)
-                .filter(bet -> bet.getResolveDate().isAfter(now))
-                .filter(bet -> bet.getResolveDate().isBefore(oneHourFromNow))
-                .filter(bet -> bet.getResolution24HourReminderSentAt() == null)
-                .filter(bet -> bet.getResolution1HourReminderSentAt() == null)
-                .filter(bet -> bet.getStatus() != Bet.BetStatus.CANCELLED)
-                .filter(bet -> bet.getStatus() != Bet.BetStatus.RESOLVED)
-                .filter(bet -> bet.getDeletedAt() == null)
-                .collect(java.util.stream.Collectors.toList());
+            // Find bets with resolveDate < 1 hour that have no reminders sent (using optimized DB query)
+            List<Bet> urgentBets = betRepository.findUrgentBetsNeedingResolutionReminder(now, oneHourFromNow);
 
             if (!urgentBets.isEmpty()) {
                 log.info("Found {} urgent bets needing immediate reminders", urgentBets.size());
@@ -503,16 +494,8 @@ public class BetScheduledTaskService {
         try {
             LocalDateTime oneHourFromNow = now.plusHours(1);
 
-            // Find bets with bettingDeadline < 1 hour that have no reminders sent
-            List<Bet> urgentBets = betRepository.findAll().stream()
-                .filter(bet -> bet.getBettingDeadline() != null)
-                .filter(bet -> bet.getBettingDeadline().isAfter(now))
-                .filter(bet -> bet.getBettingDeadline().isBefore(oneHourFromNow))
-                .filter(bet -> bet.getBetting24HourReminderSentAt() == null)
-                .filter(bet -> bet.getBetting1HourReminderSentAt() == null)
-                .filter(bet -> bet.getStatus() == Bet.BetStatus.OPEN)
-                .filter(bet -> bet.getDeletedAt() == null)
-                .collect(java.util.stream.Collectors.toList());
+            // Find bets with bettingDeadline < 1 hour that have no reminders sent (using optimized DB query)
+            List<Bet> urgentBets = betRepository.findUrgentBetsNeedingBettingReminder(now, oneHourFromNow);
 
             if (!urgentBets.isEmpty()) {
                 log.info("Found {} urgent bets needing immediate betting reminders", urgentBets.size());

@@ -21,6 +21,9 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
     List<GroupMembership> findByUser(User user);
     List<GroupMembership> findByGroup(Group group);
 
+    @Query("SELECT gm FROM GroupMembership gm JOIN FETCH gm.user WHERE gm.group = :group")
+    List<GroupMembership> findByGroupWithUser(@Param("group") Group group);
+
     // ID-based queries
     @Query("SELECT gm FROM GroupMembership gm WHERE gm.group.id = :groupId")
     List<GroupMembership> findByGroupId(@Param("groupId") Long groupId);

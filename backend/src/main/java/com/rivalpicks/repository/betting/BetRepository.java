@@ -122,6 +122,29 @@ public interface BetRepository extends JpaRepository<Bet, Long> {
         @Param("oneHour15Minutes") LocalDateTime oneHour15Minutes
     );
 
+    // Urgent fallback queries - for bets that missed the regular reminder windows
+    @Query("SELECT b FROM Bet b WHERE b.resolveDate IS NOT NULL " +
+           "AND b.resolveDate > :now AND b.resolveDate < :oneHourFromNow " +
+           "AND b.resolution24HourReminderSentAt IS NULL " +
+           "AND b.resolution1HourReminderSentAt IS NULL " +
+           "AND b.status NOT IN (com.rivalpicks.entity.betting.Bet.BetStatus.CANCELLED, com.rivalpicks.entity.betting.Bet.BetStatus.RESOLVED) " +
+           "AND b.deletedAt IS NULL")
+    List<Bet> findUrgentBetsNeedingResolutionReminder(
+        @Param("now") LocalDateTime now,
+        @Param("oneHourFromNow") LocalDateTime oneHourFromNow
+    );
+
+    @Query("SELECT b FROM Bet b WHERE b.bettingDeadline IS NOT NULL " +
+           "AND b.bettingDeadline > :now AND b.bettingDeadline < :oneHourFromNow " +
+           "AND b.betting24HourReminderSentAt IS NULL " +
+           "AND b.betting1HourReminderSentAt IS NULL " +
+           "AND b.status = com.rivalpicks.entity.betting.Bet.BetStatus.OPEN " +
+           "AND b.deletedAt IS NULL")
+    List<Bet> findUrgentBetsNeedingBettingReminder(
+        @Param("now") LocalDateTime now,
+        @Param("oneHourFromNow") LocalDateTime oneHourFromNow
+    );
+
     // Analytics queries
     @Query("SELECT COUNT(b) FROM Bet b WHERE b.createdAt >= :start AND b.createdAt < :end")
     Long countBetsCreatedBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);

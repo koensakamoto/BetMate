@@ -18,6 +18,9 @@ public interface BetResolverRepository extends JpaRepository<BetResolver, Long> 
     // Basic resolver queries
     Optional<BetResolver> findByBetAndResolverAndIsActiveTrue(Bet bet, User resolver);
     List<BetResolver> findByBetAndIsActiveTrue(Bet bet);
+
+    @Query("SELECT br.resolver.id FROM BetResolver br WHERE br.bet = :bet AND br.isActive = true")
+    List<Long> findActiveResolverUserIdsByBet(@Param("bet") Bet bet);
     List<BetResolver> findByResolverAndIsActiveTrue(User resolver);
     
     // Assignment queries

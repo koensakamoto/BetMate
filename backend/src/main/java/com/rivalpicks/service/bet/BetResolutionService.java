@@ -1,6 +1,8 @@
 package com.rivalpicks.service.bet;
 
 import com.rivalpicks.entity.betting.Bet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.rivalpicks.entity.betting.BetParticipation;
 import com.rivalpicks.entity.betting.BetResolver;
 import com.rivalpicks.entity.betting.BetResolutionVote;
@@ -27,6 +29,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -39,6 +43,8 @@ import java.util.stream.Collectors;
 @Validated
 @Transactional
 public class BetResolutionService {
+
+    private static final Logger logger = LoggerFactory.getLogger(BetResolutionService.class);
 
     private final BetRepository betRepository;
     private final BetResolverRepository betResolverRepository;
@@ -145,10 +151,15 @@ public class BetResolutionService {
         vote.setVoter(resolver);
         vote.setReasoning(reasoning);
         betResolutionVoteRepository.save(vote);
+
+        // Batch fetch all winner users
+        List<User> winnerUsers = userRepository.findAllById(winnerUserIds);
+        if (winnerUsers.size() != winnerUserIds.size()) {
+            throw new BetResolutionException("One or more winner users not found");
+        }
+
         // Add winner votes
-        for (Long winnerId : winnerUserIds) {
-            User winnerUser = userRepository.findById(winnerId)
-                .orElseThrow(() -> new BetResolutionException("Winner user not found: " + winnerId));
+        for (User winnerUser : winnerUsers) {
             BetResolutionVoteWinner winnerVote = new BetResolutionVoteWinner(vote, winnerUser);
             betResolutionVoteWinnerRepository.save(winnerVote);
         }
@@ -589,7 +600,8 @@ public class BetResolutionService {
             eventPublisher.publishEvent(event);
         } catch (Exception e) {
             // Don't fail bet resolution if event publishing fails
-            // Silent failure - event publishing is not critical
+            // Event publishing is not critical, but log for debugging
+            logger.warn("Failed to publish BetResolvedEvent for bet {}: {}", bet.getId(), e.getMessage(), e);
         }
     }
 
@@ -680,6 +692,14 @@ public class BetResolutionService {
         // Get total resolvers
         long totalResolvers = getTotalResolverCount(bet);
 
+        // Batch fetch all resolver user IDs for this bet
+        Set<Long> resolverUserIds = new java.util.HashSet<>(betResolverRepository.findActiveResolverUserIdsByBet(bet));
+
+        // Add creator if they have vote permission
+        if (bet.getAllowCreatorVote() != null && bet.getAllowCreatorVote()) {
+            resolverUserIds.add(bet.getCreator().getId());
+        }
+
         // For each participation, calculate expected votes
         // Each resolver votes on each participation EXCEPT their own
         long totalExpectedVotes = 0;
@@ -688,7 +708,7 @@ public class BetResolutionService {
             long resolversForThisParticipation = totalResolvers;
 
             // If participant is a resolver, they can't vote on themselves
-            if (isUserAResolver(bet, participation.getUser())) {
+            if (resolverUserIds.contains(participation.getUserId())) {
                 resolversForThisParticipation--;
             }
 
@@ -863,11 +883,13 @@ public class BetResolutionService {
             savedVote = betResolutionVoteRepository.save(vote);
         }
 
-        // Add winner selections to join table
-        for (Long winnerId : winnerUserIds) {
-            User winnerUser = userRepository.findById(winnerId)
-                .orElseThrow(() -> new BetResolutionException("Winner user not found: " + winnerId));
+        // Batch fetch all winner users and add to join table
+        List<User> winnerUsers = userRepository.findAllById(winnerUserIds);
+        if (winnerUsers.size() != winnerUserIds.size()) {
+            throw new BetResolutionException("One or more winner users not found");
+        }
 
+        for (User winnerUser : winnerUsers) {
             BetResolutionVoteWinner winnerVote = new BetResolutionVoteWinner(savedVote, winnerUser);
             betResolutionVoteWinnerRepository.save(winnerVote);
         }
