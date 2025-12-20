@@ -1,6 +1,23 @@
 import { ENV } from '../config/env';
 
 /**
+ * Image size variants for optimized loading.
+ * - thumb: 100px - for small avatars in lists
+ * - medium: 400px - for profile headers
+ * - original: 1200px - for full-screen view
+ */
+export type ImageSizeVariant = 'thumb' | 'medium' | 'original';
+
+/**
+ * Prefixes for thumbnail variants (must match backend ImageProcessingService)
+ */
+const SIZE_PREFIXES: Record<ImageSizeVariant, string> = {
+  thumb: 'thumb_',
+  medium: 'medium_',
+  original: '',
+};
+
+/**
  * Predefined colors for avatar backgrounds - consistent, visually appealing palette.
  * Used for both user avatars and group avatars when no image is provided.
  */
@@ -98,23 +115,61 @@ export function getGroupInitials(name?: string | null): string {
 
 /**
  * Resolve an image URL, handling relative paths by prepending the API base URL.
+ * Optionally requests a specific size variant (thumbnail) for optimized loading.
  *
  * @param url - Image URL (can be relative or absolute)
  * @param cacheBuster - Optional cache-busting timestamp to force image refresh
+ * @param sizeVariant - Optional size variant (thumb, medium, original)
  * @returns Full URL string, or null if no URL provided
  */
-export function getFullImageUrl(url?: string | null, cacheBuster?: number | string): string | null {
+export function getFullImageUrl(
+  url?: string | null,
+  cacheBuster?: number | string,
+  sizeVariant?: ImageSizeVariant
+): string | null {
   if (!url) return null;
-  let fullUrl: string;
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    fullUrl = url;
-  } else {
-    fullUrl = `${ENV.API_BASE_URL}${url}`;
+
+  let processedUrl = url;
+
+  // Apply size variant prefix if specified and URL is a local file path
+  if (sizeVariant && sizeVariant !== 'original' && !url.startsWith('http')) {
+    const prefix = SIZE_PREFIXES[sizeVariant];
+    // URL format: /api/files/profile-pictures/profiles_123_xxx.jpg
+    // We need to insert the prefix before the filename
+    const lastSlashIndex = processedUrl.lastIndexOf('/');
+    if (lastSlashIndex !== -1) {
+      const path = processedUrl.substring(0, lastSlashIndex + 1);
+      const filename = processedUrl.substring(lastSlashIndex + 1);
+      processedUrl = `${path}${prefix}${filename}`;
+    }
   }
+
+  let fullUrl: string;
+  if (processedUrl.startsWith('http://') || processedUrl.startsWith('https://')) {
+    fullUrl = processedUrl;
+  } else {
+    fullUrl = `${ENV.API_BASE_URL}${processedUrl}`;
+  }
+
   // Add cache-busting parameter if provided
   if (cacheBuster) {
     const separator = fullUrl.includes('?') ? '&' : '?';
     fullUrl = `${fullUrl}${separator}t=${cacheBuster}`;
   }
   return fullUrl;
+}
+
+/**
+ * Get the appropriate size variant based on the avatar pixel size.
+ *
+ * @param pixelSize - The size of the avatar in pixels
+ * @returns The appropriate size variant
+ */
+export function getSizeVariantForPixels(pixelSize: number): ImageSizeVariant {
+  if (pixelSize <= 100) {
+    return 'thumb';
+  } else if (pixelSize <= 400) {
+    return 'medium';
+  }
+  return 'original';
 }

@@ -15,10 +15,12 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -40,33 +42,50 @@ public class R2StorageService implements StorageService {
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
     private final R2Properties r2Properties;
+    private final ImageProcessingService imageProcessingService;
 
-    public R2StorageService(S3Client s3Client, S3Presigner s3Presigner, R2Properties r2Properties) {
+    public R2StorageService(S3Client s3Client, S3Presigner s3Presigner, R2Properties r2Properties,
+                            ImageProcessingService imageProcessingService) {
         this.s3Client = s3Client;
         this.s3Presigner = s3Presigner;
         this.r2Properties = r2Properties;
+        this.imageProcessingService = imageProcessingService;
     }
 
     @Override
     public UploadResult uploadPublicFile(MultipartFile file, String prefix, Long id) {
         validateFile(file);
 
-        String objectKey = generateObjectKey(prefix, id, file.getOriginalFilename());
-        String contentType = file.getContentType();
+        String baseObjectKey = generateBaseObjectKey(prefix, id);
+        String contentType = imageProcessingService.getProcessedContentType();
+        String extension = imageProcessingService.getProcessedExtension();
 
         try {
-            PutObjectRequest putRequest = PutObjectRequest.builder()
-                    .bucket(r2Properties.getPublicBucket())
-                    .key(objectKey)
-                    .contentType(contentType)
-                    .build();
+            // Generate all image variants
+            Map<String, byte[]> variants = imageProcessingService.generateVariants(file);
 
-            s3Client.putObject(putRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+            // Upload all variants
+            for (Map.Entry<String, byte[]> entry : variants.entrySet()) {
+                String variantPrefix = imageProcessingService.getVariantPrefix(entry.getKey());
+                String variantKey = prefix + "/" + variantPrefix + baseObjectKey + "." + extension;
+                byte[] imageBytes = entry.getValue();
 
-            // Public URL: https://pub-xxx.r2.dev/prefix/filename
+                PutObjectRequest putRequest = PutObjectRequest.builder()
+                        .bucket(r2Properties.getPublicBucket())
+                        .key(variantKey)
+                        .contentType(contentType)
+                        .cacheControl("public, max-age=2592000, immutable")
+                        .build();
+
+                s3Client.putObject(putRequest, RequestBody.fromBytes(imageBytes));
+                log.debug("Uploaded {} variant to R2: {} ({} bytes)", entry.getKey(), variantKey, imageBytes.length);
+            }
+
+            // Public URL for original: https://pub-xxx.r2.dev/prefix/filename
+            String objectKey = prefix + "/" + baseObjectKey + "." + extension;
             String publicUrl = r2Properties.getPublicUrl() + "/" + objectKey;
 
-            log.info("Uploaded public file to R2: {}", objectKey);
+            log.info("Uploaded public file with {} variants to R2: {}", variants.size(), objectKey);
             return new UploadResult(publicUrl, publicUrl);
         } catch (IOException e) {
             throw new RuntimeException("Failed to upload file to R2: " + e.getMessage(), e);
@@ -77,24 +96,38 @@ public class R2StorageService implements StorageService {
     public UploadResult uploadPrivateFile(MultipartFile file, String prefix, Long id) {
         validateFile(file);
 
-        String objectKey = generateObjectKey(prefix, id, file.getOriginalFilename());
-        String contentType = file.getContentType();
+        String baseObjectKey = generateBaseObjectKey(prefix, id);
+        String contentType = imageProcessingService.getProcessedContentType();
+        String extension = imageProcessingService.getProcessedExtension();
 
         try {
-            PutObjectRequest putRequest = PutObjectRequest.builder()
-                    .bucket(r2Properties.getPrivateBucket())
-                    .key(objectKey)
-                    .contentType(contentType)
-                    .build();
+            // Generate all image variants
+            Map<String, byte[]> variants = imageProcessingService.generateVariants(file);
 
-            s3Client.putObject(putRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+            // Upload all variants
+            for (Map.Entry<String, byte[]> entry : variants.entrySet()) {
+                String variantPrefix = imageProcessingService.getVariantPrefix(entry.getKey());
+                String variantKey = prefix + "/" + variantPrefix + baseObjectKey + "." + extension;
+                byte[] imageBytes = entry.getValue();
+
+                PutObjectRequest putRequest = PutObjectRequest.builder()
+                        .bucket(r2Properties.getPrivateBucket())
+                        .key(variantKey)
+                        .contentType(contentType)
+                        .cacheControl("public, max-age=2592000, immutable")
+                        .build();
+
+                s3Client.putObject(putRequest, RequestBody.fromBytes(imageBytes));
+                log.debug("Uploaded {} variant to R2: {} ({} bytes)", entry.getKey(), variantKey, imageBytes.length);
+            }
 
             // Store with private: prefix so we know to generate signed URL later
+            String objectKey = prefix + "/" + baseObjectKey + "." + extension;
             String storedValue = PRIVATE_PREFIX + objectKey;
             // Generate signed URL for immediate display
             String signedUrl = generateSignedUrl(objectKey);
 
-            log.info("Uploaded private file to R2: {}", objectKey);
+            log.info("Uploaded private file with {} variants to R2: {}", variants.size(), objectKey);
             return new UploadResult(storedValue, signedUrl);
         } catch (IOException e) {
             throw new RuntimeException("Failed to upload file to R2: " + e.getMessage(), e);
@@ -138,15 +171,31 @@ public class R2StorageService implements StorageService {
                 return;
             }
 
+            // Delete original
+            deleteObject(bucket, objectKey);
+
+            // Delete thumbnail variants
+            String directory = objectKey.substring(0, objectKey.lastIndexOf('/') + 1);
+            String filename = objectKey.substring(objectKey.lastIndexOf('/') + 1);
+
+            deleteObject(bucket, directory + ImageProcessingService.THUMB_PREFIX + filename);
+            deleteObject(bucket, directory + ImageProcessingService.MEDIUM_PREFIX + filename);
+
+            log.info("Deleted file and variants from R2: bucket={}, key={}", bucket, objectKey);
+        } catch (Exception e) {
+            log.warn("Failed to delete file from R2: {}", storedValue, e);
+        }
+    }
+
+    private void deleteObject(String bucket, String objectKey) {
+        try {
             DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
                     .bucket(bucket)
                     .key(objectKey)
                     .build();
-
             s3Client.deleteObject(deleteRequest);
-            log.info("Deleted file from R2: bucket={}, key={}", bucket, objectKey);
         } catch (Exception e) {
-            log.warn("Failed to delete file from R2: {}", storedValue, e);
+            log.debug("Could not delete object (may not exist): {}", objectKey);
         }
     }
 
@@ -170,6 +219,15 @@ public class R2StorageService implements StorageService {
         if (!ALLOWED_EXTENSIONS.contains(extension.toLowerCase())) {
             throw new IllegalArgumentException("Invalid file extension. Only JPG, PNG, GIF, and WebP are allowed");
         }
+    }
+
+    private String generateBaseObjectKey(String prefix, Long id) {
+        return String.format("%s_%d_%d_%s",
+                prefix,
+                id,
+                System.currentTimeMillis(),
+                UUID.randomUUID().toString().substring(0, 8)
+        );
     }
 
     private String generateObjectKey(String prefix, Long id, String originalFilename) {

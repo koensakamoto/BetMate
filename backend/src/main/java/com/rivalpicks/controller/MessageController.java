@@ -12,6 +12,8 @@ import com.rivalpicks.service.messaging.MessageNotificationService;
 import com.rivalpicks.service.user.UserService;
 import com.rivalpicks.service.group.GroupService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +31,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/messages")
 public class MessageController {
+
+    private static final Logger logger = LoggerFactory.getLogger(MessageController.class);
 
     private final MessageService messageService;
     private final MessageNotificationService notificationService;
@@ -106,15 +110,35 @@ public class MessageController {
             @RequestParam(defaultValue = "50") int limit,
             Authentication authentication) {
 
+        long totalStart = System.currentTimeMillis();
+
+        // PERF: User lookup
+        long userStart = System.currentTimeMillis();
         User currentUser = userService.getUserByUsername(authentication.getName())
             .orElseThrow(() -> new RuntimeException("User not found"));
+        long userTime = System.currentTimeMillis() - userStart;
 
+        // PERF: Group lookup
+        long groupStart = System.currentTimeMillis();
         Group group = groupService.getGroupById(groupId);
-        List<Message> messages = messageService.getRecentGroupMessages(group, limit);
+        long groupTime = System.currentTimeMillis() - groupStart;
 
+        // PERF: Message query
+        long queryStart = System.currentTimeMillis();
+        List<Message> messages = messageService.getRecentGroupMessages(group, limit);
+        long queryTime = System.currentTimeMillis() - queryStart;
+
+        // PERF: DTO conversion
+        long convertStart = System.currentTimeMillis();
         List<MessageResponseDto> response = messages.stream()
             .map(message -> convertToMessageResponse(message, currentUser))
             .toList();
+        long convertTime = System.currentTimeMillis() - convertStart;
+
+        long totalTime = System.currentTimeMillis() - totalStart;
+
+        logger.info("[PERF] GET /group/{}/recent - total: {}ms (user: {}ms, group: {}ms, query: {}ms, convert: {}ms, count: {})",
+            groupId, totalTime, userTime, groupTime, queryTime, convertTime, messages.size());
 
         return ResponseEntity.ok(response);
     }

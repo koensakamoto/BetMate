@@ -11,9 +11,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -26,14 +26,18 @@ import java.util.UUID;
 public class LocalStorageService implements StorageService {
 
     private final Path fileStorageLocation;
+    private final ImageProcessingService imageProcessingService;
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("jpg", "jpeg", "png", "gif", "webp");
     private static final List<String> ALLOWED_CONTENT_TYPES = Arrays.asList(
             "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"
     );
 
-    public LocalStorageService(@Value("${file.upload-dir:uploads/profile-pictures}") String uploadDir) {
+    public LocalStorageService(
+            @Value("${file.upload-dir:uploads/profile-pictures}") String uploadDir,
+            ImageProcessingService imageProcessingService) {
         this.fileStorageLocation = Paths.get(uploadDir).toAbsolutePath().normalize();
+        this.imageProcessingService = imageProcessingService;
 
         try {
             Files.createDirectories(this.fileStorageLocation);
@@ -56,31 +60,39 @@ public class LocalStorageService implements StorageService {
     private UploadResult uploadFile(MultipartFile file, String prefix, Long id) {
         validateFile(file);
 
-        String originalFileName = StringUtils.cleanPath(file.getOriginalFilename());
-        String fileExtension = getFileExtension(originalFileName);
-
-        // Generate unique filename: prefix_id_timestamp_uuid.ext
-        String fileName = String.format("%s_%d_%d_%s.%s",
+        // Generate base filename (without extension since we'll use jpg after processing)
+        String baseFileName = String.format("%s_%d_%d_%s",
                 prefix,
                 id,
                 System.currentTimeMillis(),
-                UUID.randomUUID().toString().substring(0, 8),
-                fileExtension
+                UUID.randomUUID().toString().substring(0, 8)
         );
 
         try {
-            if (fileName.contains("..")) {
-                throw new RuntimeException("Invalid file path: " + fileName);
+            if (baseFileName.contains("..")) {
+                throw new RuntimeException("Invalid file path: " + baseFileName);
             }
 
-            Path targetLocation = this.fileStorageLocation.resolve(fileName);
-            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            // Generate all image variants (thumb, medium, original)
+            Map<String, byte[]> variants = imageProcessingService.generateVariants(file);
+            String extension = imageProcessingService.getProcessedExtension();
 
-            // For local storage, return relative URL
+            // Save all variants
+            for (Map.Entry<String, byte[]> entry : variants.entrySet()) {
+                String variantPrefix = imageProcessingService.getVariantPrefix(entry.getKey());
+                String variantFileName = variantPrefix + baseFileName + "." + extension;
+                Path targetLocation = this.fileStorageLocation.resolve(variantFileName);
+                Files.write(targetLocation, entry.getValue());
+                log.debug("Saved {} variant: {} ({} bytes)", entry.getKey(), variantFileName, entry.getValue().length);
+            }
+
+            // Return URL to the original (full-size) version
+            String fileName = baseFileName + "." + extension;
             String storedValue = "/api/files/profile-pictures/" + fileName;
+            log.info("Uploaded image with {} variants: {}", variants.size(), storedValue);
             return new UploadResult(storedValue, storedValue);
         } catch (IOException ex) {
-            throw new RuntimeException("Could not store file " + fileName, ex);
+            throw new RuntimeException("Could not store file " + baseFileName, ex);
         }
     }
 
@@ -99,8 +111,21 @@ public class LocalStorageService implements StorageService {
         try {
             // Extract filename from stored URL
             String fileName = storedValue.substring(storedValue.lastIndexOf('/') + 1);
+
+            // Delete original
             Path filePath = this.fileStorageLocation.resolve(fileName).normalize();
             Files.deleteIfExists(filePath);
+
+            // Delete thumbnail variants
+            String thumbFileName = ImageProcessingService.THUMB_PREFIX + fileName;
+            Path thumbPath = this.fileStorageLocation.resolve(thumbFileName).normalize();
+            Files.deleteIfExists(thumbPath);
+
+            String mediumFileName = ImageProcessingService.MEDIUM_PREFIX + fileName;
+            Path mediumPath = this.fileStorageLocation.resolve(mediumFileName).normalize();
+            Files.deleteIfExists(mediumPath);
+
+            log.debug("Deleted image and variants: {}", fileName);
         } catch (IOException ex) {
             log.warn("Failed to delete file: {}", storedValue, ex);
         }

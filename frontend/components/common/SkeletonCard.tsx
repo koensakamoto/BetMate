@@ -421,33 +421,8 @@ export function SkeletonGroupDetail() {
         </View>
       </View>
 
-      {/* Content Area */}
-      <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
-        {/* Chat Messages Skeleton */}
-        <View style={{ marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
-            <SkeletonCard width={32} height={32} borderRadius={16} style={{ marginRight: 8 }} />
-            <View style={{ flex: 1 }}>
-              <SkeletonCard width={80} height={12} borderRadius={6} style={{ marginBottom: 6 }} />
-              <SkeletonCard width="70%" height={40} borderRadius={12} />
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
-            <SkeletonCard width={32} height={32} borderRadius={16} style={{ marginRight: 8 }} />
-            <View style={{ flex: 1 }}>
-              <SkeletonCard width={100} height={12} borderRadius={6} style={{ marginBottom: 6 }} />
-              <SkeletonCard width="85%" height={60} borderRadius={12} />
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
-            <SkeletonCard width={32} height={32} borderRadius={16} style={{ marginRight: 8 }} />
-            <View style={{ flex: 1 }}>
-              <SkeletonCard width={70} height={12} borderRadius={6} style={{ marginBottom: 6 }} />
-              <SkeletonCard width="50%" height={36} borderRadius={12} />
-            </View>
-          </View>
-        </View>
-      </View>
+      {/* Content Area - Empty while loading */}
+      <View style={{ flex: 1 }} />
     </View>
   );
 }

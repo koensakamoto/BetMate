@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, Image, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import {
   getAvatarColor,
   getInitials as getInitialsUtil,
   getFullImageUrl as getFullImageUrlUtil,
+  getSizeVariantForPixels,
 } from '../../utils/avatarUtils';
 import { colors } from '../../constants/theme';
 
@@ -81,7 +83,9 @@ export const Avatar = React.memo(function Avatar({
   const fontSize = customSize ? customSize * 0.38 : FONT_SIZE_MAP[size];
   const borderRadius = avatarSize / 2;
 
-  const fullImageUrl = getFullImageUrlUtil(imageUrl, cacheBuster);
+  // Get the appropriate thumbnail size based on avatar dimensions
+  const sizeVariant = getSizeVariantForPixels(avatarSize);
+  const fullImageUrl = getFullImageUrlUtil(imageUrl, cacheBuster, sizeVariant);
   const initials = getInitialsUtil(firstName, lastName, username);
   const backgroundColor = getAvatarColor(userId);
 
@@ -119,7 +123,7 @@ export const Avatar = React.memo(function Avatar({
     >
       {fullImageUrl && !imageError ? (
         <Image
-          source={{ uri: fullImageUrl, cache: 'default' }}
+          source={fullImageUrl}
           style={[
             styles.image,
             {
@@ -128,8 +132,13 @@ export const Avatar = React.memo(function Avatar({
               borderRadius,
             },
           ]}
-          accessible={false}
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
+          recyclingKey={`avatar-${userId || 'unknown'}`}
+          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
           onError={() => setImageError(true)}
+          accessible={false}
         />
       ) : (
         <View
@@ -180,7 +189,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   image: {
-    resizeMode: 'cover',
+    // contentFit is set via prop for expo-image
   },
   initialsContainer: {
     alignItems: 'center',

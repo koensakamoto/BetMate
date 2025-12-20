@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
 import BetCard from '../bet/BetCard';
 import { betService, BetSummaryResponse } from '../../services/bet/betService';
 import { parseBackendDate } from '../../utils/dateUtils';
@@ -45,15 +44,6 @@ const GroupBetsTab: React.FC<GroupBetsTabProps> = ({ groupData, forceRefresh }) 
       loadGroupBets();
     }
   }, [forceRefresh]);
-
-  // Refresh when screen comes into focus (e.g., after navigating back from bet-details)
-  useFocusEffect(
-    useCallback(() => {
-      if (!isCacheValid() || bets.length === 0) {
-        loadGroupBets();
-      }
-    }, [isCacheValid, bets.length])
-  );
 
   const loadGroupBets = async () => {
     setLoading(true);

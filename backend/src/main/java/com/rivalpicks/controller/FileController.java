@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 
 /**
  * REST controller for serving uploaded files.
@@ -85,9 +86,15 @@ public class FileController {
             // Security: Sanitize filename in Content-Disposition header
             String safeFilename = fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
 
+            // Generate ETag based on file size and last modified time
+            BasicFileAttributes attrs = Files.readAttributes(filePath, BasicFileAttributes.class);
+            String etag = String.format("\"%d-%d\"", attrs.size(), attrs.lastModifiedTime().toMillis());
+
             return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + safeFilename + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=2592000, immutable")
+                .header(HttpHeaders.ETAG, etag)
                 .body(resource);
         } catch (Exception ex) {
             log.error("Error serving file: {}", fileName, ex);

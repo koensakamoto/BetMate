@@ -156,11 +156,30 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
         return;
       }
 
+      // PROFILING: Track initialization time
+      const initStart = performance.now();
+      console.log(`[PERF] Chat init started for group ${groupId}`);
+
       // Load messages and setup WebSocket in parallel for faster initialization
-      await Promise.all([
-        loadMessages(),
-        setupWebSocket()
+      const [messagesResult, wsResult] = await Promise.all([
+        (async () => {
+          const start = performance.now();
+          await loadMessages();
+          const duration = performance.now() - start;
+          console.log(`[PERF] loadMessages: ${duration.toFixed(0)}ms`);
+          return duration;
+        })(),
+        (async () => {
+          const start = performance.now();
+          await setupWebSocket();
+          const duration = performance.now() - start;
+          console.log(`[PERF] setupWebSocket: ${duration.toFixed(0)}ms`);
+          return duration;
+        })()
       ]);
+
+      const totalDuration = performance.now() - initStart;
+      console.log(`[PERF] Total init: ${totalDuration.toFixed(0)}ms (messages: ${messagesResult.toFixed(0)}ms, ws: ${wsResult.toFixed(0)}ms)`);
 
     } catch (error) {
       // Error handled silently

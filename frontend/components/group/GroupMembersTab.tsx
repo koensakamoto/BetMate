@@ -511,12 +511,16 @@ const GroupMembersTab: React.FC<GroupMembersTabProps> = ({ groupData, forceRefre
               alignItems: 'center',
               marginBottom: 4
             }}>
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '600',
-                color: '#ffffff',
-                marginRight: 8
-              }}>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: '#ffffff',
+                  marginRight: 8,
+                  flexShrink: 1
+                }}
+                numberOfLines={1}
+              >
                 {getDisplayName(member)}
               </Text>
 
