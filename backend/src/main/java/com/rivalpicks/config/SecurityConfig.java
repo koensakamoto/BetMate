@@ -219,20 +219,34 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        // Parse allowed origins from environment variable (comma-separated)
-        List<String> origins = Arrays.asList(corsAllowedOrigins.split(","));
-        configuration.setAllowedOrigins(origins);
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
-        configuration.setExposedHeaders(List.of("Authorization"));
-        configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L); // Cache preflight for 1 hour
-
-        log.info("CORS configured with allowed origins: {}", origins);
-
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+
+        // Strict CORS for API endpoints
+        CorsConfiguration apiConfig = new CorsConfiguration();
+        List<String> origins = Arrays.asList(corsAllowedOrigins.split(","));
+        apiConfig.setAllowedOrigins(origins);
+        apiConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        apiConfig.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
+        apiConfig.setExposedHeaders(List.of("Authorization"));
+        apiConfig.setAllowCredentials(true);
+        apiConfig.setMaxAge(3600L);
+
+        // Permissive CORS for WebSocket endpoints
+        // Mobile apps (React Native/iOS/Android) don't send standard Origin headers,
+        // and WebSocket authentication is handled via JWT at STOMP level
+        CorsConfiguration wsConfig = new CorsConfiguration();
+        wsConfig.setAllowedOriginPatterns(List.of("*"));
+        wsConfig.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+        wsConfig.setAllowedHeaders(List.of("*"));
+        wsConfig.setAllowCredentials(true);
+
+        // Register configurations - more specific paths first
+        source.registerCorsConfiguration("/ws/**", wsConfig);
+        source.registerCorsConfiguration("/api/**", apiConfig);
+        source.registerCorsConfiguration("/**", apiConfig);
+
+        log.info("CORS configured: API origins={}, WebSocket=all origins (JWT auth at STOMP level)", origins);
+
         return source;
     }
 

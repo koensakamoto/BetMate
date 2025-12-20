@@ -7,6 +7,7 @@ import { errorLog, debugLog } from '../config/env';
 import { getErrorMessage, hasResponse } from '../utils/errorUtils';
 import { webSocketService } from '../services/messaging/webSocketService';
 import { clearAllBetCaches } from '../hooks/useBetDetailsCache';
+import { notificationPreferencesStorage } from '../services/notification/notificationPreferencesStorage';
 
 // Updated User interface to match backend response
 export interface User {
@@ -381,6 +382,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Clear all cached data to prevent data leaking between accounts
       clearAllBetCaches();
+      await notificationPreferencesStorage.clear();
 
       // Disconnect WebSocket before logging out
       try {

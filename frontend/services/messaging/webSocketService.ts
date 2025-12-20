@@ -1,6 +1,6 @@
 import { Client, StompSubscription, IMessage } from '@stomp/stompjs';
 import { z } from 'zod';
-import { ENV, errorLog } from '../../config/env';
+import { ENV, errorLog, debugLog } from '../../config/env';
 import { tokenStorage } from '../api';
 import {
   MessageResponse,
@@ -108,10 +108,19 @@ export class WebSocketMessagingService {
 
       // CRITICAL for React Native: Provide WebSocket factory
       webSocketFactory: () => {
+        debugLog('[WS-FACTORY] Creating WebSocket to:', ENV.WS_BASE_URL);
         const ws = new WebSocket(ENV.WS_BASE_URL);
+
+        ws.onopen = () => {
+          debugLog('[WS-RAW] ✅ WebSocket connection opened');
+        };
 
         ws.onerror = (event) => {
           errorLog('[WS-RAW] ❌ WebSocket error', event);
+        };
+
+        ws.onclose = (event) => {
+          debugLog('[WS-RAW] WebSocket closed, code:', event.code, 'reason:', event.reason);
         };
 
         return ws;
@@ -340,7 +349,8 @@ export class WebSocketMessagingService {
         }
       }, delay);
     } else {
-      errorLog('Max reconnection attempts reached');
+      errorLog('Max reconnection attempts reached. WebSocket will not auto-reconnect.');
+      this.globalEventHandlers.onDisconnect?.();
     }
   }
 

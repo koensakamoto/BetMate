@@ -6,6 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { userService } from '../../../services/user/userService';
 import { NotificationPreferences } from '../../../types/api';
 import { showSuccessToast, showErrorToast } from '../../../utils/toast';
+import { notificationPreferencesStorage } from '../../../services/notification/notificationPreferencesStorage';
 
 const defaultPreferences: NotificationPreferences = {
   pushNotifications: true,
@@ -39,18 +40,32 @@ export default function NotificationPreferencesScreen() {
   const [originalPreferences, setOriginalPreferences] = useState<NotificationPreferences>(defaultPreferences);
 
   useEffect(() => {
-    loadPreferences();
+    loadFromCacheFirst();
   }, []);
 
-  const loadPreferences = async () => {
+  const loadFromCacheFirst = async () => {
+    // 1. Load from cache first (instant, no spinner)
+    const cached = await notificationPreferencesStorage.get();
+    if (cached) {
+      setPreferences(cached);
+      setOriginalPreferences(cached);
+      setIsLoading(false);
+    }
+
+    // 2. Sync with API in background
     try {
-      setIsLoading(true);
       const prefs = await userService.getNotificationPreferences();
       setPreferences(prefs);
       setOriginalPreferences(prefs);
+      setHasChanges(false);
+      // Update cache with fresh data
+      await notificationPreferencesStorage.set(prefs);
     } catch (error) {
-      console.error('Failed to load notification preferences:', error);
-      showErrorToast('Error', 'Failed to load notification preferences');
+      // Only show error if we had no cached data
+      if (!cached) {
+        console.error('Failed to load notification preferences:', error);
+        showErrorToast('Error', 'Failed to load notification preferences');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -69,6 +84,8 @@ export default function NotificationPreferencesScreen() {
       setPreferences(updated);
       setOriginalPreferences(updated);
       setHasChanges(false);
+      // Update cache with saved preferences
+      await notificationPreferencesStorage.set(updated);
       showSuccessToast('Success', 'Notification preferences saved');
     } catch (error) {
       console.error('Failed to save notification preferences:', error);
