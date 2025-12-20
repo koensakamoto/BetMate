@@ -5,7 +5,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { apiClient } from '../api/baseClient';
-import { showInfoToast } from '../../utils/toast';
+// import { showInfoToast } from '../../utils/toast'; // Disabled for MVP
 
 // Check if we're running in Expo Go (no native modules available)
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -248,22 +248,21 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       };
     }
 
-    // FCM foreground message handler - show toast for in-app notifications
+    // FCM foreground message handler
+    // TODO: Re-enable in-app toasts after MVP launch
+    // In-app toast notifications temporarily disabled - using push notifications only
     const unsubscribeForeground = firebaseMessaging.onMessage(messagingInstance, async (remoteMessage: any) => {
-      // Skip toast for group messages (user is already in-app)
-      if (remoteMessage.data?.type === 'GROUP_MESSAGE') {
-        return;
-      }
-
-      // Show toast notification instead of system notification when app is in foreground
-      if (remoteMessage.notification) {
-        const title = remoteMessage.notification.title || 'Notification';
-        const body = remoteMessage.notification.body || '';
-
-        showInfoToast(title, body, {
-          onPress: () => router.push('/(app)/notifications'),
-        });
-      }
+      // Foreground toast disabled for MVP - push notifications handle everything
+      // if (remoteMessage.data?.type === 'GROUP_MESSAGE') {
+      //   return;
+      // }
+      // if (remoteMessage.notification) {
+      //   const title = remoteMessage.notification.title || 'Notification';
+      //   const body = remoteMessage.notification.body || '';
+      //   showInfoToast(title, body, {
+      //     onPress: () => router.push('/(app)/notifications'),
+      //   });
+      // }
     });
 
     // FCM background/quit message handler for navigation

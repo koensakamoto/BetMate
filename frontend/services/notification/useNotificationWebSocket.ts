@@ -7,7 +7,8 @@ import {
   NotificationType,
   NotificationPriority
 } from '../../types/api';
-import { showNotificationToast, hideToast } from '../../utils/toast';
+import { hideToast } from '../../utils/toast';
+// import { showNotificationToast } from '../../utils/toast'; // Disabled for MVP
 import { webSocketService } from '../messaging/webSocketService';
 
 interface UseNotificationWebSocketOptions {
@@ -62,20 +63,19 @@ export function useNotificationWebSocket(options: UseNotificationWebSocketOption
       onNotificationReceived(notification);
     }
 
-    // Show in-app notification toast (works on all platforms)
-    // Use content, message, or a fallback
-    const toastMessage = notification.content || notification.message || 'Tap to view';
-
-    showNotificationToast(
-      notification.title,
-      toastMessage,
-      {
-        notificationType: notification.type,
-        priority: notification.priority,
-        actionUrl: notification.actionUrl,
-        onPress: () => handleNotificationPress(notification),
-      }
-    );
+    // TODO: Re-enable in-app toasts after MVP launch
+    // In-app toast notifications temporarily disabled - using push notifications only
+    // const toastMessage = notification.content || notification.message || 'Tap to view';
+    // showNotificationToast(
+    //   notification.title,
+    //   toastMessage,
+    //   {
+    //     notificationType: notification.type,
+    //     priority: notification.priority,
+    //     actionUrl: notification.actionUrl,
+    //     onPress: () => handleNotificationPress(notification),
+    //   }
+    // );
 
     // Also show browser notification on web if permission granted
     if (Platform.OS === 'web' && 'Notification' in window && Notification.permission === 'granted') {

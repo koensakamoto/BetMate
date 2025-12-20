@@ -127,7 +127,7 @@ public interface BetRepository extends JpaRepository<Bet, Long> {
            "AND b.resolveDate > :now AND b.resolveDate < :oneHourFromNow " +
            "AND b.resolution24HourReminderSentAt IS NULL " +
            "AND b.resolution1HourReminderSentAt IS NULL " +
-           "AND b.status NOT IN (com.rivalpicks.entity.betting.Bet.BetStatus.CANCELLED, com.rivalpicks.entity.betting.Bet.BetStatus.RESOLVED) " +
+           "AND b.status NOT IN ('CANCELLED', 'RESOLVED') " +
            "AND b.deletedAt IS NULL")
     List<Bet> findUrgentBetsNeedingResolutionReminder(
         @Param("now") LocalDateTime now,
@@ -138,7 +138,7 @@ public interface BetRepository extends JpaRepository<Bet, Long> {
            "AND b.bettingDeadline > :now AND b.bettingDeadline < :oneHourFromNow " +
            "AND b.betting24HourReminderSentAt IS NULL " +
            "AND b.betting1HourReminderSentAt IS NULL " +
-           "AND b.status = com.rivalpicks.entity.betting.Bet.BetStatus.OPEN " +
+           "AND b.status = 'OPEN' " +
            "AND b.deletedAt IS NULL")
     List<Bet> findUrgentBetsNeedingBettingReminder(
         @Param("now") LocalDateTime now,

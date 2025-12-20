@@ -100,6 +100,14 @@ public class GroupNotificationListener {
                     continue;
                 }
 
+                // Check user settings - skip if they have disabled group join request notifications
+                if (admin.getSettings() != null &&
+                    !admin.getSettings().shouldReceiveNotification(NotificationType.GROUP_JOIN_REQUEST)) {
+                    logger.debug("Skipping notification for user {} - group join request notifications disabled",
+                               admin.getUsername());
+                    continue;
+                }
+
                 try {
                     // Create notification title and message
                     String title = "Join Request for " + event.getGroupName();
@@ -170,6 +178,14 @@ public class GroupNotificationListener {
             User invitedUser = userRepository.findById(event.getInvitedUserId()).orElse(null);
             if (invitedUser == null) {
                 logger.warn("Invited user {} not found for group invitation", event.getInvitedUserId());
+                return;
+            }
+
+            // Check user settings - skip if they have disabled group invite notifications
+            if (invitedUser.getSettings() != null &&
+                !invitedUser.getSettings().shouldReceiveNotification(NotificationType.GROUP_INVITE)) {
+                logger.debug("Skipping notification for user {} - group invite notifications disabled",
+                           invitedUser.getUsername());
                 return;
             }
 
@@ -244,6 +260,14 @@ public class GroupNotificationListener {
                 // Skip the new member who just joined
                 if (member.getId().equals(event.getNewMemberId())) {
                     logger.debug("Skipping notification for the new member: {}", member.getUsername());
+                    continue;
+                }
+
+                // Check user settings - skip if they have disabled group member joined notifications
+                if (member.getSettings() != null &&
+                    !member.getSettings().shouldReceiveNotification(NotificationType.GROUP_JOINED)) {
+                    logger.debug("Skipping notification for user {} - group member joined notifications disabled",
+                               member.getUsername());
                     continue;
                 }
 
@@ -388,6 +412,14 @@ public class GroupNotificationListener {
                     continue;
                 }
 
+                // Check user settings - skip if they have disabled group member left notifications
+                if (member.getSettings() != null &&
+                    !member.getSettings().shouldReceiveNotification(NotificationType.GROUP_LEFT)) {
+                    logger.debug("Skipping notification for user {} - group member left notifications disabled",
+                               member.getUsername());
+                    continue;
+                }
+
                 try {
                     // Create notification title and message
                     String title = event.wasKicked()
@@ -523,6 +555,14 @@ public class GroupNotificationListener {
                 return;
             }
 
+            // Check user settings - skip if they have disabled group role changed notifications
+            if (targetUser.getSettings() != null &&
+                !targetUser.getSettings().shouldReceiveNotification(NotificationType.GROUP_ROLE_CHANGED)) {
+                logger.debug("Skipping notification for user {} - group role changed notifications disabled",
+                           targetUser.getUsername());
+                return;
+            }
+
             // 2. Create notification message using Option 1 style
             String message;
             if (event.wasPromoted()) {
@@ -599,6 +639,14 @@ public class GroupNotificationListener {
                     User member = userRepository.findById(memberId).orElse(null);
                     if (member == null) {
                         logger.warn("User {} not found for group deleted notification", memberId);
+                        continue;
+                    }
+
+                    // Check user settings - skip if they have disabled group deleted notifications
+                    if (member.getSettings() != null &&
+                        !member.getSettings().shouldReceiveNotification(NotificationType.GROUP_DELETED)) {
+                        logger.debug("Skipping notification for user {} - group deleted notifications disabled",
+                                   member.getUsername());
                         continue;
                     }
 
@@ -679,32 +727,39 @@ public class GroupNotificationListener {
             try {
                 User newOwner = userRepository.findById(event.getNewOwnerId()).orElse(null);
                 if (newOwner != null) {
-                    String title = "You're now the owner of " + event.getGroupName();
-                    String message = event.getPreviousOwnerName() + " transferred ownership to you";
-                    String actionUrl = "/groups/" + event.getGroupId();
+                    // Check user settings - skip if they have disabled group role changed notifications
+                    if (newOwner.getSettings() == null ||
+                        newOwner.getSettings().shouldReceiveNotification(NotificationType.GROUP_ROLE_CHANGED)) {
+                        String title = "You're now the owner of " + event.getGroupName();
+                        String message = event.getPreviousOwnerName() + " transferred ownership to you";
+                        String actionUrl = "/groups/" + event.getGroupId();
 
-                    if (title.length() > 100) {
-                        title = title.substring(0, 97) + "...";
+                        if (title.length() > 100) {
+                            title = title.substring(0, 97) + "...";
+                        }
+                        if (message.length() > 500) {
+                            message = message.substring(0, 497) + "...";
+                        }
+
+                        Notification notification = notificationService.createNotification(
+                            newOwner,
+                            title,
+                            message,
+                            NotificationType.GROUP_ROLE_CHANGED,
+                            NotificationPriority.HIGH,
+                            actionUrl,
+                            event.getGroupId(),
+                            "GROUP"
+                        );
+
+                        messageNotificationService.sendNotificationToUser(newOwner.getId(), notification);
+                        pushNotificationService.sendPushNotification(newOwner, notification);
+                        notificationsCreated++;
+                        logger.debug("Created ownership notification for new owner: {}", newOwner.getUsername());
+                    } else {
+                        logger.debug("Skipping notification for user {} - group role changed notifications disabled",
+                                   newOwner.getUsername());
                     }
-                    if (message.length() > 500) {
-                        message = message.substring(0, 497) + "...";
-                    }
-
-                    Notification notification = notificationService.createNotification(
-                        newOwner,
-                        title,
-                        message,
-                        NotificationType.GROUP_ROLE_CHANGED,
-                        NotificationPriority.HIGH,
-                        actionUrl,
-                        event.getGroupId(),
-                        "GROUP"
-                    );
-
-                    messageNotificationService.sendNotificationToUser(newOwner.getId(), notification);
-                    pushNotificationService.sendPushNotification(newOwner, notification);
-                    notificationsCreated++;
-                    logger.debug("Created ownership notification for new owner: {}", newOwner.getUsername());
                 }
             } catch (Exception e) {
                 logger.error("Failed to create notification for new owner {}: {}",
@@ -715,32 +770,39 @@ public class GroupNotificationListener {
             try {
                 User previousOwner = userRepository.findById(event.getPreviousOwnerId()).orElse(null);
                 if (previousOwner != null) {
-                    String title = "Ownership Transferred";
-                    String message = "You transferred ownership of " + event.getGroupName() + " to " + event.getNewOwnerName();
-                    String actionUrl = "/groups/" + event.getGroupId();
+                    // Check user settings - skip if they have disabled group role changed notifications
+                    if (previousOwner.getSettings() == null ||
+                        previousOwner.getSettings().shouldReceiveNotification(NotificationType.GROUP_ROLE_CHANGED)) {
+                        String title = "Ownership Transferred";
+                        String message = "You transferred ownership of " + event.getGroupName() + " to " + event.getNewOwnerName();
+                        String actionUrl = "/groups/" + event.getGroupId();
 
-                    if (title.length() > 100) {
-                        title = title.substring(0, 97) + "...";
+                        if (title.length() > 100) {
+                            title = title.substring(0, 97) + "...";
+                        }
+                        if (message.length() > 500) {
+                            message = message.substring(0, 497) + "...";
+                        }
+
+                        Notification notification = notificationService.createNotification(
+                            previousOwner,
+                            title,
+                            message,
+                            NotificationType.GROUP_ROLE_CHANGED,
+                            NotificationPriority.NORMAL,
+                            actionUrl,
+                            event.getGroupId(),
+                            "GROUP"
+                        );
+
+                        messageNotificationService.sendNotificationToUser(previousOwner.getId(), notification);
+                        pushNotificationService.sendPushNotification(previousOwner, notification);
+                        notificationsCreated++;
+                        logger.debug("Created ownership notification for previous owner: {}", previousOwner.getUsername());
+                    } else {
+                        logger.debug("Skipping notification for user {} - group role changed notifications disabled",
+                                   previousOwner.getUsername());
                     }
-                    if (message.length() > 500) {
-                        message = message.substring(0, 497) + "...";
-                    }
-
-                    Notification notification = notificationService.createNotification(
-                        previousOwner,
-                        title,
-                        message,
-                        NotificationType.GROUP_ROLE_CHANGED,
-                        NotificationPriority.NORMAL,
-                        actionUrl,
-                        event.getGroupId(),
-                        "GROUP"
-                    );
-
-                    messageNotificationService.sendNotificationToUser(previousOwner.getId(), notification);
-                    pushNotificationService.sendPushNotification(previousOwner, notification);
-                    notificationsCreated++;
-                    logger.debug("Created ownership notification for previous owner: {}", previousOwner.getUsername());
                 }
             } catch (Exception e) {
                 logger.error("Failed to create notification for previous owner {}: {}",
@@ -762,6 +824,14 @@ public class GroupNotificationListener {
 
                     // Skip inactive admins
                     if (!membership.getIsActive()) {
+                        continue;
+                    }
+
+                    // Check user settings - skip if they have disabled group role changed notifications
+                    if (admin.getSettings() != null &&
+                        !admin.getSettings().shouldReceiveNotification(NotificationType.GROUP_ROLE_CHANGED)) {
+                        logger.debug("Skipping notification for user {} - group role changed notifications disabled",
+                                   admin.getUsername());
                         continue;
                     }
 

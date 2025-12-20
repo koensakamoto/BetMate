@@ -251,7 +251,7 @@ export default function NotificationPreferencesScreen() {
         {/* General Settings */}
         <Section title="General">
           <ToggleItem
-            title="Push Notifications"
+            title="Notifications"
             description="Enable notifications on your device"
             value={preferences.pushNotifications}
             onValueChange={handleToggle('pushNotifications')}

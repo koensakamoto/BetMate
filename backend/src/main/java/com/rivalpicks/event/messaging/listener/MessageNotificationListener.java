@@ -98,6 +98,14 @@ public class MessageNotificationListener {
                     continue;
                 }
 
+                // Check user settings - skip if they have disabled group message notifications
+                if (member.getSettings() != null &&
+                    !member.getSettings().shouldReceiveNotification(NotificationType.GROUP_MESSAGE)) {
+                    logger.debug("Skipping notification for user {} - group message notifications disabled",
+                               member.getUsername());
+                    continue;
+                }
+
                 recipients.add(member);
 
                 // Track users with push tokens for push notifications

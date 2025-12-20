@@ -105,6 +105,14 @@ public class BetNotificationListener {
                     continue;
                 }
 
+                // Check user settings - skip if they have disabled bet created notifications
+                if (member.getSettings() != null &&
+                    !member.getSettings().shouldReceiveNotification(NotificationType.BET_CREATED)) {
+                    logger.debug("Skipping notification for user {} - bet created notifications disabled",
+                               member.getUsername());
+                    continue;
+                }
+
                 try {
                     // Check if this member is an assigned resolver
                     boolean isAssignedResolver = "ASSIGNED_RESOLVERS".equals(event.getResolutionMethod())
@@ -217,6 +225,14 @@ public class BetNotificationListener {
                     User participant = participation.getUser();
                     if (participant == null) {
                         logger.warn("User {} not found for bet cancellation notification", userId);
+                        continue;
+                    }
+
+                    // Check user settings - skip if they have disabled bet cancelled notifications
+                    if (participant.getSettings() != null &&
+                        !participant.getSettings().shouldReceiveNotification(NotificationType.BET_CANCELLED)) {
+                        logger.debug("Skipping notification for user {} - bet cancelled notifications disabled",
+                                   participant.getUsername());
                         continue;
                     }
 
@@ -346,6 +362,14 @@ public class BetNotificationListener {
                         continue;
                     }
 
+                    // Check user settings - skip if they have disabled bet resolution reminder notifications
+                    if (resolver.getSettings() != null &&
+                        !resolver.getSettings().shouldReceiveNotification(NotificationType.BET_RESOLUTION_REMINDER)) {
+                        logger.debug("Skipping notification for user {} - bet resolution reminder notifications disabled",
+                                   resolver.getUsername());
+                        continue;
+                    }
+
                     // Create notification title and message with accurate time
                     String timeString = formatDeadlineTime(event.getMinutesUntilDeadline());
                     boolean isUrgent = event.isUrgent();
@@ -450,6 +474,14 @@ public class BetNotificationListener {
                     continue;
                 }
 
+                // Check user settings - skip if they have disabled bet deadline notifications
+                if (member.getSettings() != null &&
+                    !member.getSettings().shouldReceiveNotification(NotificationType.BET_DEADLINE)) {
+                    logger.debug("Skipping notification for user {} - bet deadline notifications disabled",
+                               member.getUsername());
+                    continue;
+                }
+
                 try {
                     // Create notification title and message with accurate time
                     String timeString = formatDeadlineTime(event.getMinutesRemaining());
@@ -546,6 +578,14 @@ public class BetNotificationListener {
             // 4. Create notification for each group member
             int notificationsCreated = 0;
             for (User member : groupMembers) {
+                // Check user settings - skip if they have disabled bet deadline notifications
+                if (member.getSettings() != null &&
+                    !member.getSettings().shouldReceiveNotification(NotificationType.BET_DEADLINE)) {
+                    logger.debug("Skipping notification for user {} - bet deadline notifications disabled",
+                               member.getUsername());
+                    continue;
+                }
+
                 try {
                     boolean isParticipant = participantIds.contains(member.getId());
 
@@ -664,8 +704,7 @@ public class BetNotificationListener {
 
                     // Check user settings - skip if they have disabled bet result notifications
                     if (participant.getSettings() != null &&
-                        participant.getSettings().getBetResultNotifications() != null &&
-                        !participant.getSettings().getBetResultNotifications()) {
+                        !participant.getSettings().shouldReceiveNotification(NotificationType.BET_RESULT)) {
                         logger.debug("Skipping notification for user {} - bet result notifications disabled",
                                    participant.getUsername());
                         continue;

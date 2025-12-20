@@ -82,6 +82,14 @@ public class BetFulfillmentNotificationListener {
                     continue;
                 }
 
+                // Check user settings - skip if they have disabled bet fulfillment notifications
+                if (participant.getSettings() != null &&
+                    !participant.getSettings().shouldReceiveNotification(NotificationType.BET_FULFILLMENT_SUBMITTED)) {
+                    logger.debug("Skipping notification for user {} - bet fulfillment notifications disabled",
+                               participant.getUsername());
+                    continue;
+                }
+
                 try {
                     // Create notification title and message
                     String title = "Fulfillment Submitted";
