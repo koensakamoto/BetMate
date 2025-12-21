@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { userService, UserProfileResponse, UserProfileUpdateRequest } from '../../services/user/userService';
+import { userService, UserProfileUpdateRequest } from '../../services/user/userService';
 import SettingsInput from '../../components/settings/SettingsInput';
 import { useAuth } from '../../contexts/AuthContext';
 import { debugLog, errorLog } from '../../config/env';
@@ -15,56 +15,36 @@ import { showErrorToast } from '../../utils/toast';
 
 export default function EditProfile() {
   const insets = useSafeAreaInsets();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const [userProfile, setUserProfile] = useState<UserProfileResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { isAuthenticated, isLoading: authLoading, user, updateUser } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
+  // Initialize form data from cached user data
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    bio: ''
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    bio: user?.bio || ''
   });
   const [imageTimestamp, setImageTimestamp] = useState<number>(Date.now());
   const [errors, setErrors] = useState<{[key: string]: string}>({});
 
+  // Update form if user data changes (e.g., after image upload)
   useEffect(() => {
-    if (!authLoading) {
-      if (isAuthenticated) {
-        loadUserProfile();
-      } else {
-        // User is not authenticated, redirect to login
-        router.replace('/auth/login');
-      }
+    if (user) {
+      setFormData(prev => ({
+        firstName: prev.firstName || user.firstName || '',
+        lastName: prev.lastName || user.lastName || '',
+        bio: prev.bio || user.bio || ''
+      }));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      // User is not authenticated, redirect to login
+      router.replace('/auth/login');
     }
   }, [authLoading, isAuthenticated]);
-
-  const loadUserProfile = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const profile = await userService.getCurrentUserProfile();
-      setUserProfile(profile);
-
-      // Pre-fill form with current data
-      setFormData({
-        firstName: profile.firstName || '',
-        lastName: profile.lastName || '',
-        bio: profile.bio || ''
-      });
-      // Update timestamp to bust image cache when profile is loaded
-      setImageTimestamp(Date.now());
-
-      debugLog('User profile loaded for editing:', profile);
-    } catch (err) {
-      errorLog('Failed to load user profile:', err);
-      setError(getErrorMessage(err));
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const pickImage = async () => {
     try {
@@ -137,11 +117,11 @@ export default function EditProfile() {
       // Extract filename from URI
       const fileName = uri.split('/').pop() || `profile_${Date.now()}.jpg`;
 
-      // Upload the image
+      // Upload the image and get updated profile
       const updatedProfile = await userService.uploadProfilePicture(uri, fileName);
 
-      // Update local state
-      setUserProfile(updatedProfile);
+      // Update user in AuthContext with new profile image URL
+      updateUser({ profileImageUrl: updatedProfile.profileImageUrl });
       // Update timestamp to bust image cache
       setImageTimestamp(Date.now());
     } catch (err) {
@@ -203,10 +183,14 @@ export default function EditProfile() {
       };
 
       const updatedProfile = await userService.updateProfile(updateData);
-      debugLog('Profile updated successfully:', updatedProfile);
+      debugLog('Profile updated successfully');
 
-      // Update local state with the new profile data
-      setUserProfile(updatedProfile);
+      // Update user in AuthContext with new profile data
+      updateUser({
+        firstName: updatedProfile.firstName,
+        lastName: updatedProfile.lastName,
+        bio: updatedProfile.bio,
+      });
 
       router.back();
     } catch (err) {
@@ -236,13 +220,13 @@ export default function EditProfile() {
     }
   };
 
-  // Show loading while checking authentication or loading profile data
-  if (authLoading || isLoading) {
+  // Show loading while checking authentication
+  if (authLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#00D4AA" />
         <Text style={{ color: '#ffffff', marginTop: 16, fontSize: 16 }}>
-          {authLoading ? 'Checking authentication...' : 'Loading profile...'}
+          Checking authentication...
         </Text>
       </View>
     );
@@ -334,11 +318,11 @@ export default function EditProfile() {
               marginBottom: 20
             }}>
               <Avatar
-                imageUrl={userProfile?.profileImageUrl}
-                firstName={userProfile?.firstName}
-                lastName={userProfile?.lastName}
-                username={userProfile?.username}
-                userId={userProfile?.id}
+                imageUrl={user?.profileImageUrl}
+                firstName={user?.firstName}
+                lastName={user?.lastName}
+                username={user?.username}
+                userId={user?.id}
                 customSize={100}
                 showBorder
                 borderColor="rgba(255, 255, 255, 0.1)"

@@ -16,6 +16,7 @@ export interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  bio?: string;
   profileImageUrl?: string;
   createdAt: string;
   lastLoginAt?: string;
@@ -84,6 +85,7 @@ interface AuthContextType {
   forgotPassword: (email: string) => Promise<void>;
   clearError: () => void;
   refreshUser: () => Promise<void>;
+  updateUser: (updates: Partial<User>) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   createPassword: (newPassword: string) => Promise<void>;
   updateProfileVisibility: (visibility: ProfileVisibility) => Promise<void>;
@@ -115,6 +117,7 @@ const transformUser = (userResponse: UserProfileResponse, profileVisibility?: Pr
     email: userResponse.email,
     firstName: userResponse.firstName,
     lastName: userResponse.lastName,
+    bio: userResponse.bio,
     profileImageUrl: userResponse.profileImageUrl,
     createdAt: userResponse.createdAt,
     lastLoginAt: userResponse.lastLoginAt,
@@ -445,6 +448,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [handleAuthError]);
 
+  // Update user state without making an API call (for local updates after mutations)
+  const updateUser = useCallback((updates: Partial<User>) => {
+    setUser(prev => prev ? { ...prev, ...updates } : null);
+    debugLog('User updated locally:', updates);
+  }, []);
+
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     try {
       setIsLoading(true);
@@ -523,6 +532,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     forgotPassword,
     clearError,
     refreshUser,
+    updateUser,
     changePassword,
     createPassword,
     updateProfileVisibility,
@@ -540,6 +550,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     forgotPassword,
     clearError,
     refreshUser,
+    updateUser,
     changePassword,
     createPassword,
     updateProfileVisibility,

@@ -4,14 +4,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { userService } from '../../../services/user/userService';
+import { tokenStorage } from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
-import { errorLog } from '../../../config/env';
+import { errorLog, debugLog } from '../../../config/env';
 import SettingsInput from '../../../components/settings/SettingsInput';
 import { showErrorToast } from '../../../utils/toast';
 
 export default function ChangeUsername() {
   const insets = useSafeAreaInsets();
-  const { user, isAuthenticated, isLoading: authLoading, refreshUser } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, updateUser } = useAuth();
 
   const currentUsername = user?.username || '';
   const [newUsername, setNewUsername] = useState('');
@@ -79,10 +80,15 @@ export default function ChangeUsername() {
 
       const response = await userService.changeUsername(newUsername);
 
-      if (response.success) {
-        // Refresh user context with new username
-        await refreshUser();
+      if (response.success && response.newUsername) {
+        // Save new tokens if provided (username is embedded in JWT)
+        if (response.accessToken && response.refreshToken) {
+          await tokenStorage.setTokens(response.accessToken, response.refreshToken);
+          debugLog('New tokens saved after username change');
+        }
 
+        // Update user context with new username
+        updateUser({ username: response.newUsername });
         router.back();
       } else {
         showErrorToast('Error', response.message);

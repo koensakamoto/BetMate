@@ -75,6 +75,8 @@ export interface UsernameChangeResponse {
   success: boolean;
   message: string;
   newUsername: string | null;
+  accessToken?: string;
+  refreshToken?: string;
 }
 
 // Email change DTOs

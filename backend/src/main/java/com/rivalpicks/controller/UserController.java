@@ -21,6 +21,7 @@ import com.rivalpicks.entity.user.Transaction;
 import com.rivalpicks.entity.user.User;
 import com.rivalpicks.service.storage.StorageService;
 import com.rivalpicks.service.security.EmailChangeService;
+import com.rivalpicks.service.security.JwtService;
 import com.rivalpicks.service.security.UserDetailsServiceImpl;
 import com.rivalpicks.service.user.DailyLoginRewardService;
 import com.rivalpicks.service.user.TransactionService;
@@ -38,6 +39,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -62,12 +64,15 @@ public class UserController {
     private final DailyLoginRewardService dailyLoginRewardService;
     private final FriendshipService friendshipService;
     private final EmailChangeService emailChangeService;
+    private final JwtService jwtService;
+    private final UserDetailsServiceImpl userDetailsService;
 
     @Autowired
     public UserController(UserService userService, UserRegistrationService userRegistrationService,
                          UserStatisticsService userStatisticsService, StorageService storageService,
                          TransactionService transactionService, DailyLoginRewardService dailyLoginRewardService,
-                         FriendshipService friendshipService, EmailChangeService emailChangeService) {
+                         FriendshipService friendshipService, EmailChangeService emailChangeService,
+                         JwtService jwtService, UserDetailsServiceImpl userDetailsService) {
         this.userService = userService;
         this.userRegistrationService = userRegistrationService;
         this.userStatisticsService = userStatisticsService;
@@ -76,6 +81,8 @@ public class UserController {
         this.dailyLoginRewardService = dailyLoginRewardService;
         this.friendshipService = friendshipService;
         this.emailChangeService = emailChangeService;
+        this.jwtService = jwtService;
+        this.userDetailsService = userDetailsService;
     }
 
     // ==========================================
@@ -340,6 +347,7 @@ public class UserController {
 
     /**
      * Change current user's username.
+     * Returns new JWT tokens since username is embedded in the token subject.
      */
     @PutMapping("/profile/username")
     public ResponseEntity<?> changeUsername(@Valid @RequestBody UsernameChangeRequestDto request) {
@@ -350,21 +358,31 @@ public class UserController {
             }
 
             User updatedUser = userService.changeUsername(userPrincipal.getUserId(), request.newUsername());
+
+            // Generate new tokens with the updated username
+            UserDetails userDetails = userDetailsService.loadUserByUsername(updatedUser.getUsername());
+            String newAccessToken = jwtService.generateAccessToken(userDetails, updatedUser.getId());
+            String newRefreshToken = jwtService.generateRefreshToken(userDetails, updatedUser.getId());
+
             return ResponseEntity.ok(new UsernameChangeResponseDto(
                 true,
                 "Username changed successfully",
-                updatedUser.getUsername()
+                updatedUser.getUsername(),
+                newAccessToken,
+                newRefreshToken
             ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new UsernameChangeResponseDto(
                 false,
                 e.getMessage(),
+                null,
+                null,
                 null
             ));
         } catch (Exception e) {
             log.error("Failed to change username", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new UsernameChangeResponseDto(false, "Failed to change username", null));
+                .body(new UsernameChangeResponseDto(false, "Failed to change username", null, null, null));
         }
     }
 

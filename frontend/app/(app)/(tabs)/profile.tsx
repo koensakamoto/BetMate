@@ -72,6 +72,32 @@ export default function Profile() {
     }
   }, [authLoading, isAuthenticated]);
 
+  // Sync userProfile with authUser changes (e.g., after edit-profile save or username change)
+  useEffect(() => {
+    if (authUser && userProfile) {
+      // Check if any editable fields have changed
+      const hasChanges =
+        authUser.username !== userProfile.username ||
+        authUser.firstName !== userProfile.firstName ||
+        authUser.lastName !== userProfile.lastName ||
+        authUser.bio !== userProfile.bio ||
+        authUser.profileImageUrl !== userProfile.profileImageUrl;
+
+      if (hasChanges) {
+        setUserProfile(prev => prev ? {
+          ...prev,
+          username: authUser.username,
+          firstName: authUser.firstName,
+          lastName: authUser.lastName,
+          bio: authUser.bio,
+          profileImageUrl: authUser.profileImageUrl,
+        } : prev);
+        setProfileImageTimestamp(Date.now());
+        debugLog('Profile synced with AuthContext user');
+      }
+    }
+  }, [authUser?.username, authUser?.firstName, authUser?.lastName, authUser?.bio, authUser?.profileImageUrl]);
+
   // Smart refresh on focus: only refetch if cache expired
   useFocusEffect(
     useCallback(() => {
