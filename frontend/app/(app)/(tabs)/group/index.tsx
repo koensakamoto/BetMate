@@ -1,190 +1,63 @@
-import { Text, View, TouchableOpacity, ScrollView, Image, StatusBar, TextInput, RefreshControl } from "react-native";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { Text, View, TouchableOpacity, ScrollView, StatusBar, TextInput, RefreshControl } from "react-native";
+import { useState, useCallback, useMemo } from "react";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import { router, useLocalSearchParams } from 'expo-router';
 import GroupCard from "../../../../components/group/groupcard";
-import { groupService, type GroupSummaryResponse } from '../../../../services/group/groupService';
-import { debugLog, errorLog, ENV } from '../../../../config/env';
+import { type GroupSummaryResponse } from '../../../../services/group/groupService';
 import { haptic } from '../../../../utils/haptics';
 import { SkeletonGroupCard } from '../../../../components/common/SkeletonCard';
-
-// Helper function to convert relative image URL to absolute URL
-const getFullImageUrl = (relativePath: string | null | undefined): string | null => {
-  if (!relativePath) return null;
-  if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
-    return relativePath;
-  }
-  return `${ENV.API_BASE_URL}${relativePath}`;
-};
-const icon = require("../../../../assets/images/icon.png");
-
-// Module-level cache to survive component unmounts during navigation
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-let moduleLastFetchTime = 0;
-let moduleHasFetchedMyGroups = false;
-let moduleHasFetchedPublicGroups = false;
+import { useMyGroups, usePublicGroups, useSearchGroups, useInvalidateGroups } from '../../../../hooks/useGroupQueries';
 
 export default function Group() {
   const params = useLocalSearchParams<{ refresh?: string }>();
   const [activeTab, setActiveTab] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [myGroups, setMyGroups] = useState<GroupSummaryResponse[]>([]);
-  const [publicGroups, setPublicGroups] = useState<GroupSummaryResponse[]>([]);
-  const [searchResults, setSearchResults] = useState<GroupSummaryResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const tabs = ['My Groups', 'Discover'];
   const insets = useSafeAreaInsets();
 
-  const isCacheValid = useCallback(() => {
-    return (Date.now() - moduleLastFetchTime) < CACHE_DURATION;
-  }, []);
+  // React Query hooks
+  const { data: myGroups = [], isLoading: isLoadingMyGroups, refetch: refetchMyGroups } = useMyGroups();
+  const { data: publicGroups = [], isLoading: isLoadingPublicGroups, refetch: refetchPublicGroups } = usePublicGroups();
+  const { data: searchResults = [], isFetching: isSearching } = useSearchGroups(debouncedSearch);
+  const { invalidateAll } = useInvalidateGroups();
 
-  // Refresh both groups lists
-  const refreshGroups = useCallback(async (isRefreshing: boolean = false, forceLoading: boolean = false) => {
-    if (isRefreshing) {
-      setRefreshing(true);
-    } else if (forceLoading) {
-      setIsLoading(true);
-    }
-
-    try {
-      // Fetch both groups lists in parallel
-      const [myGroupsData, publicGroupsData] = await Promise.all([
-        groupService.getMyGroups(),
-        groupService.getPublicGroups()
-      ]);
-
-      setMyGroups(myGroupsData);
-      setPublicGroups(publicGroupsData);
-
-      // Mark that we've fetched both
-      moduleHasFetchedMyGroups = true;
-      moduleHasFetchedPublicGroups = true;
-
-      // Update cache timestamp
-      moduleLastFetchTime = Date.now();
-    } catch (error) {
-      errorLog('Error refreshing groups:', error);
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
-      setHasInitiallyLoaded(true);
-    }
-  }, []);
-
-  // Watch for refresh parameter changes (e.g., after creating/deleting a group)
-  useEffect(() => {
+  // Handle refresh param from navigation (after create/delete)
+  useMemo(() => {
     if (params.refresh) {
-      debugLog('Refresh parameter detected, forcing groups refresh');
-      // Invalidate cache and force refresh
-      moduleLastFetchTime = 0;
-      refreshGroups(false, true);
+      invalidateAll();
     }
-  }, [params.refresh, refreshGroups]);
+  }, [params.refresh, invalidateAll]);
 
-  // Smart refresh on focus: only refetch if cache expired
-  useFocusEffect(
-    useCallback(() => {
-      if (!isCacheValid() || myGroups.length === 0) {
-        // Only show loading skeleton if we have no data at all
-        const shouldShowLoading = myGroups.length === 0 && publicGroups.length === 0;
-        refreshGroups(false, shouldShowLoading);
-      }
-    }, [refreshGroups, isCacheValid, myGroups.length, publicGroups.length])
-  );
-
-  // Pull-to-refresh handler
-  const onRefresh = useCallback(() => {
-    refreshGroups(true);
-  }, [refreshGroups]);
-
-  // Fetch data based on active tab (for tab switching only - useFocusEffect handles initial load)
-  useEffect(() => {
-    const fetchData = async () => {
-      let didFetch = false;
-      try {
-        if (activeTab === 0) {
-          // Fetch my groups if not already fetched
-          if (!moduleHasFetchedMyGroups && myGroups.length === 0) {
-            setIsLoading(true);
-            didFetch = true;
-            const groups = await groupService.getMyGroups();
-            setMyGroups(groups);
-            moduleHasFetchedMyGroups = true;
-            debugLog('My groups fetched:', groups);
-          }
-        } else {
-          // Fetch public groups if not already fetched
-          if (!moduleHasFetchedPublicGroups && publicGroups.length === 0) {
-            setIsLoading(true);
-            didFetch = true;
-            const groups = await groupService.getPublicGroups();
-            setPublicGroups(groups);
-            moduleHasFetchedPublicGroups = true;
-            debugLog('Public groups fetched:', groups);
-          }
-        }
-      } catch (error) {
-        errorLog('Error fetching groups:', error);
-      } finally {
-        if (didFetch) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    // Only fetch if we already have some data loaded (to avoid double fetching with useFocusEffect)
-    if (myGroups.length > 0 || publicGroups.length > 0) {
-      fetchData();
-    }
-  }, [activeTab, myGroups.length, publicGroups.length]);
-
-  // Handle search
-  useEffect(() => {
-    // Immediately set isSearching to true when there's a query to avoid showing empty state
-    if (searchQuery.trim().length > 0) {
-      setIsSearching(true);
-      setHasSearched(true);
-    } else {
-      setIsSearching(false);
-      setHasSearched(false);
-      setSearchResults([]);
-    }
-
-    const handleSearch = async () => {
-      if (searchQuery.trim().length > 0) {
-        try {
-          const results = await groupService.searchGroups(searchQuery.trim());
-          setSearchResults(results);
-          setIsSearching(false);
-          debugLog('Search results:', results);
-        } catch (error) {
-          errorLog('Error searching groups:', error);
-          setSearchResults([]);
-          setIsSearching(false);
-        }
-      }
-    };
-
-    const timeoutId = setTimeout(handleSearch, 300); // Debounce search
+  // Debounced search
+  useMemo(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 300);
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-  // Get groups to display based on current state - memoized to avoid recalculating on every render
+  // Pull-to-refresh handler
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([refetchMyGroups(), refetchPublicGroups()]);
+    setRefreshing(false);
+  }, [refetchMyGroups, refetchPublicGroups]);
+
+  // Get groups to display based on current state
   const groupsToDisplay = useMemo((): GroupSummaryResponse[] => {
-    if (searchQuery.trim().length > 0) {
+    if (debouncedSearch.length > 0) {
       return searchResults;
     }
-    const result = activeTab === 0 ? myGroups : publicGroups;
-    return result;
-  }, [searchQuery, searchResults, activeTab, myGroups, publicGroups]);
+    return activeTab === 0 ? myGroups : publicGroups;
+  }, [debouncedSearch, searchResults, activeTab, myGroups, publicGroups]);
 
-  // Memoize tab change handler to provide stable reference
+  // Loading state
+  const isLoading = activeTab === 0 ? isLoadingMyGroups : isLoadingPublicGroups;
+  const hasSearched = debouncedSearch.length > 0;
+
+  // Memoize tab change handler
   const handleTabChange = useCallback((index: number) => {
     haptic.selection();
     setActiveTab(index);
@@ -259,7 +132,7 @@ export default function Group() {
               transform: [{ rotate: '45deg' }]
             }} />
           </View>
-          
+
           <TextInput
             style={{
               flex: 1,
@@ -273,7 +146,7 @@ export default function Group() {
             onChangeText={setSearchQuery}
             selectionColor="#ffffff"
           />
-          
+
           {searchQuery.length > 0 && (
             <TouchableOpacity
               onPress={() => setSearchQuery('')}
@@ -373,7 +246,7 @@ export default function Group() {
                     <SkeletonGroupCard />
                   </View>
                 );
-              } else if (!hasInitiallyLoaded || (isLoading && myGroups.length === 0)) {
+              } else if (isLoading) {
                 return (
                   /* First time loading - show skeletons */
                   <View style={{
@@ -395,11 +268,11 @@ export default function Group() {
                     flexWrap: 'wrap',
                     justifyContent: 'space-between'
                   }}>
-                    {groupsToDisplay.map((group, index) => (
+                    {groupsToDisplay.map((group) => (
                       <View key={group.id} style={{ width: '48%', marginBottom: 16 }}>
                         <GroupCard
                           name={group.groupName}
-                          img={getFullImageUrl(group.groupPictureUrl) ? { uri: getFullImageUrl(group.groupPictureUrl)! } : undefined}
+                          imageUrl={group.groupPictureUrl}
                           description={group.description || 'No description available'}
                           memberCount={group.memberCount}
                           memberPreviews={group.memberPreviews}
@@ -410,7 +283,7 @@ export default function Group() {
                     ))}
                   </View>
                 );
-              } else if (hasSearched && searchQuery.trim().length > 0) {
+              } else if (hasSearched) {
                 return (
                   /* Search completed with no results */
                   <View style={{
@@ -465,7 +338,7 @@ export default function Group() {
                 <SkeletonGroupCard />
                 <SkeletonGroupCard />
               </View>
-            ) : (!hasInitiallyLoaded || (isLoading && publicGroups.length === 0)) ? (
+            ) : isLoading ? (
               /* First time loading - show skeletons */
               <View style={{
                 flexDirection: 'row',
@@ -484,11 +357,11 @@ export default function Group() {
                 flexWrap: 'wrap',
                 justifyContent: 'space-between'
               }}>
-                {groupsToDisplay.map((group, index) => (
+                {groupsToDisplay.map((group) => (
                   <View key={group.id} style={{ width: '48%', marginBottom: 16 }}>
                     <GroupCard
                       name={group.groupName}
-                      img={getFullImageUrl(group.groupPictureUrl) ? { uri: getFullImageUrl(group.groupPictureUrl)! } : undefined}
+                      imageUrl={group.groupPictureUrl}
                       description={group.description || 'No description available'}
                       memberCount={group.memberCount}
                       memberPreviews={group.memberPreviews}
@@ -498,7 +371,7 @@ export default function Group() {
                   </View>
                 ))}
               </View>
-            ) : hasSearched && searchQuery.trim().length > 0 ? (
+            ) : hasSearched ? (
               /* Search completed with no results */
               <View style={{
                 flexDirection: 'row',

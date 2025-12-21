@@ -1,133 +1,67 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Text, View, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { friendshipService } from '../../../services/user/friendshipService';
-import { userService, UserProfileResponse, UserStatistics } from '../../../services/user/userService';
-import { betService, BetSummaryResponse } from '../../../services/bet/betService';
-import { debugLog, errorLog } from '../../../config/env';
+import { BetSummaryResponse } from '../../../services/bet/betService';
 import { SkeletonCard } from '../../../components/common/SkeletonCard';
 import { formatPercentage } from '../../../utils/formatters';
-import { getErrorMessage } from '../../../utils/errorUtils';
 import { Avatar } from '../../../components/common/Avatar';
+import { useUserProfile, useUserStatistics } from '../../../hooks/useUserQueries';
+import {
+  useFriendshipStatus,
+  useMutualFriendsCount,
+  useSendFriendRequest,
+  useRemoveFriend
+} from '../../../hooks/useFriendshipQueries';
+import { useProfileBets } from '../../../hooks/useBetQueries';
 
 export default function UserProfilePage() {
   const insets = useSafeAreaInsets();
   const { userId } = useLocalSearchParams<{ userId: string }>();
-  const [user, setUser] = useState<UserProfileResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [friendshipStatus, setFriendshipStatus] = useState<'none' | 'pending_sent' | 'pending_received' | 'friends' | 'blocked'>('none');
+  const numericUserId = userId ? Number(userId) : undefined;
+
   const [isProcessing, setIsProcessing] = useState(false);
-  const [friendsCount, setFriendsCount] = useState<number>(0);
-  const [stats, setStats] = useState<UserStatistics | null>(null);
-  const [recentBets, setRecentBets] = useState<BetSummaryResponse[]>([]);
 
-  useEffect(() => {
-    if (userId) {
-      loadUserProfile();
-      checkFriendshipStatus();
-    }
-  }, [userId]);
+  // React Query hooks for data fetching
+  const { data: user, isLoading: userLoading, error: userError } = useUserProfile(numericUserId);
+  const { data: friendshipStatus } = useFriendshipStatus(numericUserId);
 
-  // Load additional data only after we know the profile is not private
-  useEffect(() => {
-    if (user && !user.private) {
-      loadUserStats();
-      loadFriendsCount();
-      loadRecentBets();
-    }
-  }, [user]);
+  // Only fetch additional data if profile is not private
+  const isPrivateProfile = user?.private === true;
 
-  const loadUserProfile = async () => {
-    try {
-      setLoading(true);
-      const response = await userService.getUserById(Number(userId));
-      setUser(response);
-    } catch (err) {
-      errorLog('Failed to load user profile:', err);
-      setError('Failed to load user profile');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: stats } = useUserStatistics(!isPrivateProfile ? numericUserId : undefined);
+  const { data: mutualFriendsCount = 0 } = useMutualFriendsCount(!isPrivateProfile ? numericUserId : undefined);
+  const { data: recentBets = [] } = useProfileBets(!isPrivateProfile ? numericUserId : undefined, 0, 3);
 
-  const loadUserStats = async () => {
-    try {
-      const statistics = await userService.getUserStatistics(Number(userId));
-      setStats(statistics);
-      debugLog('User stats loaded:', statistics);
-    } catch (err) {
-      errorLog('Failed to load user stats:', err);
-    }
-  };
+  // Mutations
+  const sendFriendRequestMutation = useSendFriendRequest();
+  const removeFriendMutation = useRemoveFriend();
 
-  const loadFriendsCount = async () => {
-    try {
-      const { mutualFriendsCount } = await friendshipService.getMutualFriendsCount(Number(userId));
-      setFriendsCount(mutualFriendsCount);
-      debugLog('Friends count loaded:', mutualFriendsCount);
-    } catch (err) {
-      errorLog('Failed to load friends count:', err);
-      setFriendsCount(0);
-    }
-  };
-
-  const loadRecentBets = async () => {
-    try {
-      const bets = await betService.getProfileBets(Number(userId), 0, 3);
-      setRecentBets(bets);
-      debugLog('Recent bets loaded:', bets);
-    } catch (err) {
-      errorLog('Failed to load recent bets:', err);
-      setRecentBets([]);
-    }
-  };
-
-  const checkFriendshipStatus = async () => {
-    try {
-      // Check if already friends
-      const friends = await friendshipService.getFriends();
-      const isFriend = friends.some(friend => friend.id === Number(userId));
-
-      if (isFriend) {
-        setFriendshipStatus('friends');
-        return;
-      }
-
-      // Check if there's a pending request
-      const sentRequests = await friendshipService.getPendingRequestsSent();
-      const hasPendingRequest = sentRequests.some(request => request.user.id === Number(userId));
-
-      if (hasPendingRequest) {
-        setFriendshipStatus('pending_sent');
-      } else {
-        setFriendshipStatus('none');
-      }
-    } catch (err) {
-      // Error handled silently
-    }
-  };
+  // Derive friendship state from the status response
+  const friendshipState = useMemo(() => {
+    if (!friendshipStatus) return 'none';
+    if (friendshipStatus.areFriends) return 'friends';
+    if (friendshipStatus.hasPendingRequest) return 'pending_sent';
+    return 'none';
+  }, [friendshipStatus]);
 
   const handleSendFriendRequest = async () => {
-    if (!userId) return;
+    if (!numericUserId) return;
 
     setIsProcessing(true);
     try {
-      await friendshipService.sendFriendRequest(Number(userId));
-      setFriendshipStatus('pending_sent');
+      await sendFriendRequestMutation.mutateAsync(numericUserId);
       Alert.alert('Success', 'Friend request sent!');
     } catch (err) {
       Alert.alert('Error', 'Failed to send friend request');
-      // Error handled silently
     } finally {
       setIsProcessing(false);
     }
   };
 
   const handleRemoveFriend = async () => {
-    if (!userId) return;
+    if (!numericUserId) return;
 
     Alert.alert(
       'Remove Friend',
@@ -140,12 +74,10 @@ export default function UserProfilePage() {
           onPress: async () => {
             setIsProcessing(true);
             try {
-              await friendshipService.removeFriend(Number(userId));
-              setFriendshipStatus('none');
+              await removeFriendMutation.mutateAsync(numericUserId);
               Alert.alert('Success', 'Friend removed');
             } catch (err) {
               Alert.alert('Error', 'Failed to remove friend');
-              // Error handled silently
             } finally {
               setIsProcessing(false);
             }
@@ -156,7 +88,7 @@ export default function UserProfilePage() {
   };
 
   const getActionButtonConfig = () => {
-    switch (friendshipStatus) {
+    switch (friendshipState) {
       case 'friends':
         return {
           text: 'Friends',
@@ -206,12 +138,10 @@ export default function UserProfilePage() {
 
   const getBetResult = (bet: BetSummaryResponse): 'win' | 'loss' | 'pending' => {
     if (bet.status !== 'RESOLVED') return 'pending';
-    // This is a simplified check - you may need to add more logic based on your bet structure
-    // For now, we'll assume hasUserParticipated means they were involved
     return bet.outcome ? 'win' : 'loss';
   };
 
-  if (loading) {
+  if (userLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
         <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
@@ -226,16 +156,10 @@ export default function UserProfilePage() {
 
           {/* Profile Section Skeleton */}
           <View style={{ paddingHorizontal: 24, alignItems: 'center', marginBottom: 24 }}>
-            {/* Avatar */}
             <SkeletonCard width={90} height={90} borderRadius={45} style={{ marginBottom: 16 }} />
-
-            {/* Name */}
             <SkeletonCard width={160} height={24} borderRadius={8} style={{ marginBottom: 8 }} />
-
-            {/* Username */}
             <SkeletonCard width={100} height={16} borderRadius={8} style={{ marginBottom: 24 }} />
 
-            {/* Stats Row */}
             <View style={{ flexDirection: 'row', gap: 32, marginBottom: 24, width: '100%', justifyContent: 'center' }}>
               <View style={{ alignItems: 'center' }}>
                 <SkeletonCard width={40} height={20} borderRadius={6} style={{ marginBottom: 4 }} />
@@ -251,14 +175,11 @@ export default function UserProfilePage() {
               </View>
             </View>
 
-            {/* Action Button */}
             <SkeletonCard width={'100%'} height={44} borderRadius={8} />
           </View>
 
-          {/* Divider */}
           <View style={{ height: 1, backgroundColor: 'rgba(255, 255, 255, 0.05)', marginBottom: 24 }} />
 
-          {/* Performance Section Skeleton */}
           <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
             <SkeletonCard width={120} height={18} borderRadius={6} style={{ marginBottom: 12 }} />
             <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -267,7 +188,6 @@ export default function UserProfilePage() {
             </View>
           </View>
 
-          {/* Recent Activity Section Skeleton */}
           <View style={{ paddingHorizontal: 24 }}>
             <SkeletonCard width={140} height={18} borderRadius={6} style={{ marginBottom: 12 }} />
             {[1, 2, 3].map((i) => (
@@ -279,7 +199,7 @@ export default function UserProfilePage() {
     );
   }
 
-  if (error || !user) {
+  if (userError || !user) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
         <MaterialIcons name="person-off" size={56} color="rgba(255, 255, 255, 0.2)" />
@@ -287,7 +207,7 @@ export default function UserProfilePage() {
           Profile Not Found
         </Text>
         <Text style={{ fontSize: 14, color: 'rgba(255, 255, 255, 0.4)', textAlign: 'center', marginTop: 8, marginBottom: 32 }}>
-          {error || 'This user could not be found'}
+          This user could not be found
         </Text>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -312,9 +232,6 @@ export default function UserProfilePage() {
 
   const username = user.username;
   const actionButton = getActionButtonConfig();
-
-  // Check if profile is private (limited view)
-  const isPrivateProfile = user.private === true;
 
   // Use actual stats or defaults
   const totalBets = stats?.totalGames ?? 0;
@@ -412,7 +329,7 @@ export default function UserProfilePage() {
                   color: '#ffffff',
                   marginBottom: 4
                 }}>
-                  {formatNumber(friendsCount)}
+                  {formatNumber(mutualFriendsCount)}
                 </Text>
                 <Text style={{
                   fontSize: 13,
@@ -461,7 +378,7 @@ export default function UserProfilePage() {
           {/* Action Button */}
           <TouchableOpacity
             onPress={actionButton.onPress}
-            disabled={isProcessing || friendshipStatus === 'pending_sent'}
+            disabled={isProcessing || friendshipState === 'pending_sent'}
             style={{
               backgroundColor: actionButton.backgroundColor,
               paddingVertical: 12,

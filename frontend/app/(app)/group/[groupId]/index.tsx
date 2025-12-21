@@ -1,96 +1,33 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { View, Text, StatusBar } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import React, { useMemo } from "react";
+import { View, StatusBar } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GroupMemberView from '../../../../components/group/GroupMemberView';
 import GroupPreview from '../../../../components/group/GroupPreview';
-import { groupService, GroupDetailResponse } from '../../../../services/group/groupService';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { getFullImageUrl } from '../../../../utils/avatarUtils';
 import { SkeletonGroupDetail } from '../../../../components/common/SkeletonCard';
+import { useGroup } from '../../../../hooks/useGroupQueries';
 
 export default function GroupDetails() {
   const searchParams = useLocalSearchParams();
   const { groupId } = searchParams;
   const insets = useSafeAreaInsets();
 
-  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  // State for real group name and member count - keyed by groupId to prevent cross-contamination
-  const [groupDataCache, setGroupDataCache] = useState<{[key: string]: GroupDetailResponse}>({});
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Get current group's cached data - use useMemo to ensure this updates when cache changes
-  const currentGroupId = useMemo(() => {
-    return Array.isArray(groupId) ? groupId[0] : groupId;
+  // Parse groupId
+  const numericGroupId = useMemo(() => {
+    const id = Array.isArray(groupId) ? groupId[0] : groupId;
+    return id ? parseInt(id) : undefined;
   }, [groupId]);
 
-  const currentGroupData = useMemo(() => {
-    return groupDataCache[currentGroupId as string];
-  }, [groupDataCache, currentGroupId]);
+  // Use React Query hook - gets instant data from cache if available
+  const { data: currentGroupData, isLoading } = useGroup(
+    isAuthenticated ? numericGroupId : undefined
+  );
 
-  // Check authentication first - don't load data if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      // Could redirect to login page or show auth required message
-      return;
-    }
-  }, [isAuthenticated, authLoading, user]);
-
-  // Fetch real group name and member count
-  useEffect(() => {
-    // Only proceed if user is authenticated
-    if (!isAuthenticated || authLoading) {
-      return;
-    }
-    let isCancelled = false; // Cleanup flag to prevent race conditions
-    const currentGroupId = Array.isArray(groupId) ? groupId[0] : groupId;
-
-    const fetchGroupInfo = async () => {
-      if (!groupId) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const numericGroupId = Array.isArray(groupId) ? parseInt(groupId[0]) : parseInt(groupId as string);
-
-        const apiResponse: GroupDetailResponse = await groupService.getGroupById(numericGroupId);
-
-        // Only update state if this effect hasn't been cancelled (user didn't navigate away)
-        if (!isCancelled) {
-          // Force a re-render by updating the cache with a new object reference
-          setGroupDataCache(prev => ({
-            ...prev,
-            [numericGroupId.toString()]: apiResponse
-          }));
-          setIsLoading(false);
-        }
-      } catch (err) {
-        // Error handled silently
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    // Check if we already have data for this group
-    if (!groupDataCache[currentGroupId as string]) {
-      setIsLoading(true);
-      fetchGroupInfo();
-    } else {
-      // Data already cached, no need to show loading
-      setIsLoading(false);
-    }
-
-    // Cleanup function to cancel the effect if component unmounts or groupId changes
-    return () => {
-      isCancelled = true;
-    };
-  }, [groupId, isAuthenticated, authLoading, user]);
-
-  // Build group data - use cached data if available, fallback to loading placeholders
-  // Use useMemo to ensure this recalculates when groupDataCache changes
+  // Build group data from cached/fetched data
   const groupData = useMemo(() => {
     return {
       id: groupId,
@@ -104,20 +41,21 @@ export default function GroupDetails() {
           })
         : 'Loading...',
       isAdmin: currentGroupData?.userRole === 'ADMIN' || false,
-      isMember: currentGroupData?.isUserMember || true, // Assume member to show UI
+      isMember: currentGroupData?.isUserMember ?? true, // Assume member to show UI
       image: getFullImageUrl(currentGroupData?.groupPictureUrl) ?? null,
-      groupPictureUrl: currentGroupData?.groupPictureUrl, // Raw URL for settings tab
+      groupPictureUrl: currentGroupData?.groupPictureUrl,
       privacy: currentGroupData?.privacy,
       totalBets: currentGroupData?.totalMessages || 0,
-      userPosition: null, // Not available in API
-      groupAchievements: 8, // Placeholder
-      userRole: currentGroupData?.userRole, // Add userRole field for GroupMemberView
-      ownerUsername: currentGroupData?.ownerUsername // Add ownerUsername to identify group owner
+      userPosition: null,
+      groupAchievements: 8,
+      userRole: currentGroupData?.userRole,
+      ownerUsername: currentGroupData?.ownerUsername
     };
   }, [groupId, currentGroupData]);
 
-  // Show loading skeleton while fetching data
-  if (isLoading || authLoading) {
+  // Show loading skeleton only if we have no data at all
+  // If we have cached data from the list, we skip the skeleton entirely
+  if ((isLoading && !currentGroupData) || authLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0a0a0f', paddingTop: insets.top }}>
         <StatusBar barStyle="light-content" backgroundColor="#0a0a0f" translucent={true} />

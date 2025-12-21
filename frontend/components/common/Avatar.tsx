@@ -136,7 +136,6 @@ export const Avatar = React.memo(function Avatar({
           transition={200}
           cachePolicy="memory-disk"
           recyclingKey={`avatar-${userId || 'unknown'}`}
-          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
           onError={() => setImageError(true)}
           accessible={false}
         />

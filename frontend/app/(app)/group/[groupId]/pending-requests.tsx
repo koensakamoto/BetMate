@@ -1,59 +1,50 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, StatusBar } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import PendingRequestCard from '../../../../components/group/PendingRequestCard';
-import { groupService, PendingRequestResponse } from '../../../../services/group/groupService';
+import { usePendingRequests, useApprovePendingRequest, useDenyPendingRequest } from '../../../../hooks/useGroupQueries';
 
 export default function PendingRequestsPage() {
   const insets = useSafeAreaInsets();
   const { groupId } = useLocalSearchParams();
-  const [pendingRequests, setPendingRequests] = useState<PendingRequestResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchPendingRequests = useCallback(async () => {
-    try {
-      const numericGroupId = typeof groupId === 'string' ? parseInt(groupId) : parseInt(groupId[0]);
-      const requests = await groupService.getPendingRequests(numericGroupId);
-      setPendingRequests(requests);
-    } catch (error) {
-      // Error handled silently
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
-    }
+  // Parse groupId
+  const numericGroupId = useMemo(() => {
+    if (!groupId) return undefined;
+    return typeof groupId === 'string' ? parseInt(groupId) : parseInt(groupId[0]);
   }, [groupId]);
 
-  useEffect(() => {
-    fetchPendingRequests();
-  }, [fetchPendingRequests]);
+  // React Query hooks
+  const { data: pendingRequests = [], isLoading, refetch } = usePendingRequests(numericGroupId);
+  const approveMutation = useApprovePendingRequest();
+  const denyMutation = useDenyPendingRequest();
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    fetchPendingRequests();
-  }, [fetchPendingRequests]);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   const handleApproveRequest = useCallback(async (requestId: number) => {
+    if (!numericGroupId) return;
     try {
-      const numericGroupId = typeof groupId === 'string' ? parseInt(groupId) : parseInt(groupId[0]);
-      await groupService.approvePendingRequest(numericGroupId, requestId);
-      setPendingRequests(prev => prev.filter(r => r.requestId !== requestId));
+      await approveMutation.mutateAsync({ groupId: numericGroupId, requestId });
     } catch (error) {
-      // Error handled silently
+      // Error handled by mutation
     }
-  }, [groupId]);
+  }, [numericGroupId, approveMutation]);
 
   const handleDenyRequest = useCallback(async (requestId: number) => {
+    if (!numericGroupId) return;
     try {
-      const numericGroupId = typeof groupId === 'string' ? parseInt(groupId) : parseInt(groupId[0]);
-      await groupService.denyPendingRequest(numericGroupId, requestId);
-      setPendingRequests(prev => prev.filter(r => r.requestId !== requestId));
+      await denyMutation.mutateAsync({ groupId: numericGroupId, requestId });
     } catch (error) {
-      // Error handled silently
+      // Error handled by mutation
     }
-  }, [groupId]);
+  }, [numericGroupId, denyMutation]);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>

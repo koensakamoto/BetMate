@@ -31,6 +31,16 @@
         "buildType": "apk"
       }
     },
+    "preview-testflight": {
+      "extends": "base",
+      "distribution": "store",
+      "env": {
+        "APP_ENV": "preview"
+      },
+      "ios": {
+        "autoIncrement": true
+      }
+    },
     "production": {
       "extends": "base",
       "env": {

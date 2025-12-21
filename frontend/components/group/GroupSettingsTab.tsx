@@ -1,12 +1,14 @@
 import React, { useState, useCallback } from 'react';
-import { Text, View, TouchableOpacity, Alert, TextInput, Image, Linking, Modal, ScrollView, ActivityIndicator } from 'react-native';
+import { Text, View, TouchableOpacity, Alert, TextInput, Linking, Modal, ScrollView, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { groupService, GroupMemberResponse, GroupDetailResponse } from '../../services/group/groupService';
 import { Avatar } from '../common/Avatar';
+import { OptimizedImage } from '../common/OptimizedImage';
 import { getFullImageUrl, getAvatarColor, getAvatarColorWithOpacity, getGroupInitials } from '../../utils/avatarUtils';
 import { colors, spacing, borderRadius, fontSize, fontWeight } from '../../constants/theme';
+import { showSuccessToast, showErrorToast } from '../../utils/toast';
 
 const icon = require("../../assets/images/icon.png");
 
@@ -88,10 +90,10 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
       }
 
       setIsEditingName(false);
-      Alert.alert('Success', 'Group name updated successfully!');
+      showSuccessToast('Name Updated', 'Group name updated successfully!');
     } catch (error) {
       // Error handled silently
-      Alert.alert('Error', 'Failed to update group name. Please try again.');
+      showErrorToast('Update Failed', 'Failed to update group name. Please try again.');
       setEditedName(groupData.name);
     } finally {
       setIsUpdating(false);
@@ -120,10 +122,10 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
       }
 
       setIsEditingDescription(false);
-      Alert.alert('Success', 'Group description updated successfully!');
+      showSuccessToast('Description Updated', 'Group description updated successfully!');
     } catch (error) {
       // Error handled silently
-      Alert.alert('Error', 'Failed to update group description. Please try again.');
+      showErrorToast('Update Failed', 'Failed to update group description. Please try again.');
       setEditedDescription(groupData.description);
     } finally {
       setIsUpdating(false);
@@ -204,10 +206,13 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
         onGroupUpdated(updatedGroup);
       }
 
-      Alert.alert('Success', 'Group photo updated successfully!');
+      // Clear local photo so it uses the new server URL from props
+      setSelectedPhoto(null);
+
+      showSuccessToast('Photo Updated', 'Group photo updated successfully!');
     } catch (error) {
       // Error handled silently
-      Alert.alert('Error', 'Failed to update group photo. Please try again.');
+      showErrorToast('Upload Failed', 'Failed to update group photo. Please try again.');
       setSelectedPhoto(null);
     } finally {
       setIsUpdating(false);
@@ -229,10 +234,10 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
       }
 
       setIsEditingPrivacy(false);
-      Alert.alert('Success', 'Privacy settings updated successfully!');
+      showSuccessToast('Privacy Updated', 'Privacy settings updated successfully!');
     } catch (error) {
       // Error handled silently
-      Alert.alert('Error', 'Failed to update privacy settings. Please try again.');
+      showErrorToast('Update Failed', 'Failed to update privacy settings. Please try again.');
       setTempPrivacy(groupData.privacy || 'PRIVATE');
     } finally {
       setIsUpdating(false);
@@ -435,19 +440,23 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
           marginBottom: 20
         }}>
           {currentGroupPhotoUrl ? (
-            <Image
-              source={{ uri: currentGroupPhotoUrl }}
-              style={{
-                width: 100,
-                height: 100,
-                borderRadius: 50,
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                borderWidth: 2,
-                borderColor: 'rgba(255, 255, 255, 0.1)'
-              }}
-              resizeMode="cover"
-              defaultSource={icon}
-            />
+            <View style={{
+              borderWidth: 2,
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: 50,
+              overflow: 'hidden'
+            }}>
+              <OptimizedImage
+                source={currentGroupPhotoUrl}
+                width={100}
+                height={100}
+                borderRadius={50}
+                sizeVariant="medium"
+                transition={0}
+                recyclingKey={`group-settings-${groupData.id}`}
+                accessibilityLabel="Group photo"
+              />
+            </View>
           ) : (
             <View style={{
               width: 100,

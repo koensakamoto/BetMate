@@ -1,7 +1,8 @@
 import React, { useCallback } from 'react';
-import { Text, View, Image, TouchableOpacity, StyleSheet, ImageSourcePropType } from 'react-native';
+import { Text, View, TouchableOpacity, StyleSheet, ImageSourcePropType } from 'react-native';
 import { router } from 'expo-router';
 import { Avatar } from '../common/Avatar';
+import { OptimizedImage } from '../common/OptimizedImage';
 import { getAvatarColor, getAvatarColorWithOpacity } from '../../utils/avatarUtils';
 
 interface MemberPreview {
@@ -15,7 +16,10 @@ interface MemberPreview {
 interface GroupCardProps {
     name: string;
     memberCount: number;
+    /** @deprecated Use imageUrl instead for optimized loading */
     img?: ImageSourcePropType;
+    /** Raw image URL (relative or absolute) - preferred over img */
+    imageUrl?: string | null;
     description?: string;
     memberPreviews?: MemberPreview[];
     isJoined?: boolean;
@@ -25,14 +29,15 @@ interface GroupCardProps {
 const GroupCard: React.FC<GroupCardProps> = ({
     name,
     img,
+    imageUrl,
     description,
     memberCount,
     memberPreviews,
     isJoined = false,
     groupId
-
-
 }) => {
+    // Resolve image source - prefer imageUrl over deprecated img prop
+    const resolvedImageUrl = imageUrl || (img && typeof img === 'object' && 'uri' in img ? img.uri : null);
     const handlePress = useCallback(() => {
         if (groupId) {
             if (isJoined) {
@@ -106,8 +111,14 @@ const GroupCard: React.FC<GroupCardProps> = ({
         >
             {/* Profile Image */}
             <View style={styles.imageContainer}>
-                {img ? (
-                    <Image source={img} style={styles.profileImage} />
+                {resolvedImageUrl ? (
+                    <OptimizedImage
+                        source={resolvedImageUrl}
+                        width={48}
+                        height={48}
+                        borderRadius={12}
+                        recyclingKey={`group-${groupId}`}
+                    />
                 ) : (
                     <View style={[
                         styles.initialsContainer,

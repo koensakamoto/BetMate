@@ -25,7 +25,7 @@ export default function EditProfile() {
     lastName: user?.lastName || '',
     bio: user?.bio || ''
   });
-  const [imageTimestamp, setImageTimestamp] = useState<number>(Date.now());
+  const [imageTimestamp, setImageTimestamp] = useState<number | undefined>(undefined);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
 
   // Update form if user data changes (e.g., after image upload)

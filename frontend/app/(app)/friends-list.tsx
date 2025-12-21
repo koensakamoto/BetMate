@@ -1,67 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Text, View, ScrollView, StatusBar, TouchableOpacity, ActivityIndicator, Alert, TextInput, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
-import { friendshipService, FriendDto } from '../../services/friendship/friendshipService';
-import { debugLog, errorLog } from '../../config/env';
-import { getErrorMessage } from '../../utils/errorUtils';
+import { FriendDto } from '../../services/friendship/friendshipService';
 import { getDisplayName } from '../../utils/memberUtils';
 import { Avatar } from '../../components/common/Avatar';
 import { SkeletonUserCard } from '../../components/common/SkeletonCard';
+import { useFriends, useRemoveFriend } from '../../hooks/useFriendshipQueries';
 
 export default function FriendsList() {
   const insets = useSafeAreaInsets();
-  const { user: authUser, isAuthenticated, isLoading: authLoading } = useAuth();
-  const [friends, setFriends] = useState<FriendDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (!authLoading) {
-      if (isAuthenticated) {
-        loadFriends();
-      } else {
-        router.replace('/auth/login');
-      }
-    }
-  }, [authLoading, isAuthenticated]);
+  // React Query hooks
+  const { data: friends = [], isLoading, error, refetch } = useFriends();
+  const removeFriendMutation = useRemoveFriend();
 
-  const loadFriends = async (isRefresh: boolean = false) => {
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setIsLoading(true);
-      }
-      setError(null);
-
-      const friendsList = await friendshipService.getFriends();
-      setFriends(friendsList);
-      debugLog('Friends loaded:', friendsList);
-
-    } catch (err) {
-      errorLog('Failed to load friends:', err);
-      setError(getErrorMessage(err));
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const onRefresh = () => {
-    loadFriends(true);
-  };
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   const handleViewProfile = (friend: FriendDto) => {
     router.push(`/(app)/profile/${friend.id}`);
   };
 
   const handleRemoveFriend = async (friend: FriendDto) => {
-    // Create display name with fallback to username
     const displayName = friend.firstName && friend.lastName
       ? `${friend.firstName} ${friend.lastName}`
       : friend.username;
@@ -76,11 +45,8 @@ export default function FriendsList() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await friendshipService.removeFriend(friend.id);
-              setFriends(prev => prev.filter(f => f.id !== friend.id));
-              // No success alert - the friend disappearing from the list is enough feedback
+              await removeFriendMutation.mutateAsync(friend.id);
             } catch (error) {
-              errorLog('Failed to remove friend:', error);
               Alert.alert('Error', 'Failed to remove friend. Please try again.');
             }
           }
@@ -89,13 +55,14 @@ export default function FriendsList() {
     );
   };
 
-  const filteredFriends = friends.filter(friend =>
-    friend.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    `${friend.firstName} ${friend.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredFriends = useMemo(() => {
+    return friends.filter(friend =>
+      friend.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      `${friend.firstName} ${friend.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [friends, searchQuery]);
 
-
-  // Only show full loading state for auth, not for friends list loading
+  // Auth loading state
   if (authLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' }}>
@@ -105,6 +72,7 @@ export default function FriendsList() {
   }
 
   if (!isAuthenticated) {
+    router.replace('/auth/login');
     return null;
   }
 
@@ -116,9 +84,11 @@ export default function FriendsList() {
       <View style={{ flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 }}>
         <MaterialIcons name="error-outline" size={48} color="#EF4444" />
         <Text style={{ color: '#ffffff', marginTop: 16, fontSize: 18, textAlign: 'center' }}>Failed to load friends</Text>
-        <Text style={{ color: 'rgba(255, 255, 255, 0.6)', marginTop: 8, fontSize: 14, textAlign: 'center' }}>{error}</Text>
+        <Text style={{ color: 'rgba(255, 255, 255, 0.6)', marginTop: 8, fontSize: 14, textAlign: 'center' }}>
+          {error instanceof Error ? error.message : 'Unknown error'}
+        </Text>
         <TouchableOpacity
-          onPress={() => loadFriends()}
+          onPress={() => refetch()}
           style={{
             backgroundColor: '#00D4AA',
             paddingHorizontal: 24,
@@ -242,7 +212,6 @@ export default function FriendsList() {
         {/* Friends List */}
         <View style={{ paddingHorizontal: 20 }}>
           {showSkeletons ? (
-            /* Show skeleton cards while loading */
             <View>
               <SkeletonUserCard />
               <SkeletonUserCard />
@@ -308,7 +277,7 @@ export default function FriendsList() {
               )}
             </View>
           ) : (
-            filteredFriends.map((friend, index) => (
+            filteredFriends.map((friend) => (
               <TouchableOpacity
                 key={friend.id}
                 onPress={() => handleViewProfile(friend)}

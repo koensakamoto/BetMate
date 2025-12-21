@@ -1,34 +1,36 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, Alert, RefreshControl } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import BetCard from '../../../components/bet/BetCard';
-import { betService, BetSummaryResponse } from '../../../services/bet/betService';
+import { BetSummaryResponse } from '../../../services/bet/betService';
 import { SkeletonBetCard, SkeletonOwedStakesCard } from '../../../components/common/SkeletonCard';
 import * as Haptics from 'expo-haptics';
 import { parseBackendDate } from '../../../utils/dateUtils';
-import { colors, cache } from '../../../constants/theme';
+import { colors } from '../../../constants/theme';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useMyBets } from '../../../hooks/useBetQueries';
 
 export default function Bet() {
   const insets = useSafeAreaInsets();
-  const { refresh } = useLocalSearchParams();
-  const { user: authUser, isAuthenticated } = useAuth();
+  const { user: authUser } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
   const tabs = ['My Bets', 'Losses', 'Winnings'];
   const [searchQuery, setSearchQuery] = useState('');
-  const [myBets, setMyBets] = useState<BetSummaryResponse[]>([]);
-  // const [discoverBets, setDiscoverBets] = useState<BetSummaryResponse[]>([]); // Commented out - TODO: Implement guest/public betting
-  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Owed Stakes state
-  const [unfulfilledBets, setUnfulfilledBets] = useState<BetSummaryResponse[]>([]);
-  const [loadingUnfulfilledBets, setLoadingUnfulfilledBets] = useState(false);
-  const [unfulfilledBetsError, setUnfulfilledBetsError] = useState<string | null>(null);
+  // React Query hook - handles caching automatically
+  const { data: myBets = [], isLoading: loading, refetch } = useMyBets();
+
+  // Filters for "My Bets" tab
+  const [myBetsFilter, setMyBetsFilter] = useState<'all' | 'open' | 'pending' | 'resolved'>('all');
+  const myBetsFilters = [
+    { key: 'all' as const, label: 'All' },
+    { key: 'open' as const, label: 'Open' },
+    { key: 'pending' as const, label: 'Pending' },
+    { key: 'resolved' as const, label: 'Resolved' }
+  ];
 
   // Filters for "Losses" tab
   const [lossesFilter, setLossesFilter] = useState<'all' | 'todo' | 'submitted'>('all');
@@ -46,123 +48,22 @@ export default function Bet() {
     { key: 'completed' as const, label: 'Completed' }
   ];
 
-  // Filter states for My Bets tab
-  const [myBetsFilter, setMyBetsFilter] = useState<'all' | 'open' | 'pending' | 'resolved'>('all');
-  const myBetsFilters = [
-    { key: 'all' as const, label: 'All' },
-    { key: 'open' as const, label: 'Open' },
-    { key: 'pending' as const, label: 'Pending' },
-    { key: 'resolved' as const, label: 'Resolved' }
-  ];
-
-  // Cache management
-  const lastFetchTime = useRef<number>(0);
-  const hasFetchedMyBets = useRef<boolean>(false);
-
-  // Cache management for owed stakes
-  const lastOwedStakesFetchTime = useRef<number>(0);
-  const OWED_STAKES_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
-
-  const isCacheValid = useCallback(() => {
-    return (Date.now() - lastFetchTime.current) < cache.DEFAULT_DURATION;
-  }, []);
-
-  const isOwedStakesCacheValid = useCallback(() => {
-    return lastOwedStakesFetchTime.current > 0 && (Date.now() - lastOwedStakesFetchTime.current) < OWED_STAKES_CACHE_DURATION;
-  }, []);
-
-  // Load bets from API
-  const loadBets = useCallback(async (isRefreshing: boolean = false) => {
-    if (isRefreshing) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-
-    try {
-      // Load my bets
-      const myBetsData = await betService.getMyBets();
-      setMyBets(myBetsData);
-
-      // TODO: Implement guest/public betting - Discover bets loading commented out
-      // Load discover bets (all open bets excluding user's own and participated bets)
-      // const openBets = await betService.getBetsByStatus('OPEN');
-      // Filter out bets the user has already participated in
-      // const discoverableBets = openBets.filter(bet => !bet.hasUserParticipated);
-      // setDiscoverBets(discoverableBets);
-
-      // Update cache timestamp and fetch status
-      lastFetchTime.current = Date.now();
-      hasFetchedMyBets.current = true;
-
-    } catch {
-      Alert.alert('Error', 'Failed to load bets. Please try again.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  // Always refresh on focus to ensure fresh data after bet creation/updates
-  useFocusEffect(
-    useCallback(() => {
-      loadBets(false);
-    }, [loadBets])
-  );
-
-  // Trigger refresh when URL refresh parameter changes (from bet creation)
-  useEffect(() => {
-    if (refresh) {
-      loadBets(false);
-    }
-  }, [refresh, loadBets]);
-
-  // Fetch user unfulfilled bets with caching
-  const fetchUnfulfilledBets = useCallback(async (forceRefresh: boolean = false) => {
-    if (!isAuthenticated) {
-      return;
-    }
-
-    // Check cache validity - skip fetch if cache is still valid and not forced
-    if (!forceRefresh && isOwedStakesCacheValid()) {
-      return;
-    }
-
-    try {
-      setLoadingUnfulfilledBets(true);
-      setUnfulfilledBetsError(null);
-      const allBets = await betService.getMyBets();
-      // Filter for resolved social bets (includes all fulfillment statuses for history)
-      const unfulfilled = allBets.filter(bet =>
-        bet.status === 'RESOLVED' &&
-        bet.stakeType === 'SOCIAL'
-      );
-      setUnfulfilledBets(unfulfilled);
-      lastOwedStakesFetchTime.current = Date.now();
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load stakes';
-      setUnfulfilledBetsError(errorMessage);
-    } finally {
-      setLoadingUnfulfilledBets(false);
-    }
-  }, [isAuthenticated, isOwedStakesCacheValid]);
-
-  // Fetch unfulfilled bets when either owed stakes tab is active
-  useEffect(() => {
-    if ((activeTab === 1 || activeTab === 2) && isAuthenticated) {
-      fetchUnfulfilledBets();
-    }
-  }, [activeTab, isAuthenticated, fetchUnfulfilledBets]);
+  // Derive unfulfilled bets from myBets (resolved social bets)
+  const unfulfilledBets = useMemo(() => {
+    return myBets.filter(bet =>
+      bet.status === 'RESOLVED' &&
+      bet.stakeType === 'SOCIAL'
+    );
+  }, [myBets]);
 
   // Pull-to-refresh handler
-  const onRefresh = useCallback(() => {
-    loadBets(true);
-    if (activeTab === 1 || activeTab === 2) {
-      fetchUnfulfilledBets(true);
-    }
-  }, [activeTab, fetchUnfulfilledBets]);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
-  // Calculate time remaining until deadline - memoized for performance
+  // Calculate time remaining until deadline
   const calculateTimeRemaining = useCallback((deadline: string | null | undefined): string => {
     if (!deadline) return 'N/A';
 
@@ -188,25 +89,24 @@ export default function Bet() {
     return diff > 0 && diff < 24 * 60 * 60 * 1000;
   }, []);
 
-  // Transform backend bet data to frontend format - memoized for performance
+  // Transform backend bet data to frontend format
   const transformBetData = useCallback((bet: BetSummaryResponse) => {
     const bettingTimeRemaining = calculateTimeRemaining(bet.bettingDeadline);
     const resolveTimeRemaining = calculateTimeRemaining(bet.resolveDate);
 
-    // Map backend status to frontend display status
     let displayStatus: 'open' | 'active' | 'resolved';
     if (bet.status === 'OPEN') {
       displayStatus = 'open';
     } else if (bet.status === 'CLOSED') {
       displayStatus = 'active';
     } else {
-      displayStatus = 'resolved'; // Both RESOLVED and CANCELLED
+      displayStatus = 'resolved';
     }
 
     return {
       id: bet.id.toString(),
       title: bet.title,
-      description: '',  // Description not in summary, would need full bet details
+      description: '',
       timeRemaining: bettingTimeRemaining,
       resolveTimeRemaining: resolveTimeRemaining,
       isUrgent: isDeadlineUrgent(bet.bettingDeadline),
@@ -217,7 +117,7 @@ export default function Bet() {
       stakeType: bet.stakeType,
       socialStakeDescription: bet.socialStakeDescription,
       status: displayStatus,
-      backendStatus: bet.status, // Pass original backend status for badge display
+      backendStatus: bet.status,
       isJoined: bet.hasUserParticipated,
       creatorName: bet.creatorUsername,
       userStake: bet.userAmount,
@@ -226,10 +126,9 @@ export default function Bet() {
     };
   }, [calculateTimeRemaining, isDeadlineUrgent]);
 
-  // Filter my bets based on selected filter and search query - memoized to avoid recalculating on every render
+  // Filter my bets based on selected filter and search query
   const filteredMyBets = useMemo(() => {
     return myBets.filter(bet => {
-      // Status filter
       let matchesStatus = false;
       switch (myBetsFilter) {
         case 'open':
@@ -239,7 +138,6 @@ export default function Bet() {
           matchesStatus = bet.status === 'CLOSED';
           break;
         case 'resolved':
-          // Include both RESOLVED and CANCELLED in the Resolved filter
           matchesStatus = bet.status === 'RESOLVED' || bet.status === 'CANCELLED';
           break;
         case 'all':
@@ -247,35 +145,28 @@ export default function Bet() {
           matchesStatus = true;
       }
 
-      // Search filter - search across title, creator, group name, and bet type
       const matchesSearch = searchQuery.length === 0 ||
         bet.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         bet.creatorUsername.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (bet.groupName && bet.groupName.toLowerCase().includes(searchQuery.toLowerCase())) ||
         bet.betType.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Both filters must match
       return matchesStatus && matchesSearch;
     });
   }, [myBets, myBetsFilter, searchQuery]);
 
-  // Memoize transformed bet arrays to avoid recalculating on every render
+  // Memoize transformed bet arrays
   const transformedMyBets = useMemo(() => {
     return filteredMyBets.map(bet => transformBetData(bet));
   }, [filteredMyBets, transformBetData]);
 
-  // TODO: Implement guest/public betting - Discover bets transformation commented out
-  // const transformedDiscoverBets = useMemo(() => {
-  //   return discoverBets.map(bet => transformBetData(bet));
-  // }, [discoverBets, transformBetData]);
-
-  // Memoize tab change handler to provide stable reference
+  // Memoize tab change handler
   const handleTabChange = useCallback((index: number) => {
     Haptics.selectionAsync();
     setActiveTab(index);
   }, []);
 
-  // Memoize filter change handler to provide stable reference
+  // Memoize filter change handler
   const handleFilterChange = useCallback((filter: 'all' | 'open' | 'pending' | 'resolved') => {
     Haptics.selectionAsync();
     setMyBetsFilter(filter);
@@ -293,70 +184,6 @@ export default function Bet() {
     setWinningsFilter(filter);
   }, []);
 
-  interface BetHistoryItem {
-    id: string;
-    game: string;
-    bet: string;
-    amount: number;
-    odds: number;
-    status: 'won' | 'lost' | 'pending';
-    payout: number;
-    date: string;
-  }
-
-  const betHistory: BetHistoryItem[] = [
-    { id: '1', game: 'Chiefs vs Bills', bet: 'Chiefs -2.5', amount: 100, odds: -110, status: 'won', payout: 190.91, date: '2 days ago' },
-    { id: '2', game: 'Lakers vs Warriors', bet: 'Over 225.5', amount: 50, odds: -110, status: 'lost', payout: 0, date: '1 week ago' },
-    { id: '3', game: 'Cowboys vs Giants', bet: 'Cowboys ML', amount: 75, odds: -150, status: 'pending', payout: 0, date: 'Today' }
-  ];
-
-  const HistoryItem = ({ bet }: { bet: BetHistoryItem }) => (
-    <View style={{
-      backgroundColor: colors.surfaceLight,
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 12,
-      borderLeftWidth: 3,
-      borderLeftColor: bet.status === 'won' ? colors.success : bet.status === 'lost' ? colors.errorAlt : colors.warning
-    }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>
-          {bet.game}
-        </Text>
-        <View style={{
-          backgroundColor: bet.status === 'won' ? colors.success : bet.status === 'lost' ? colors.errorAlt : colors.warning,
-          paddingHorizontal: 8,
-          paddingVertical: 4,
-          borderRadius: 12
-        }}>
-          <Text style={{
-            fontSize: 10,
-            fontWeight: '600',
-            color: bet.status === 'pending' ? colors.textDark : colors.textPrimary,
-            textTransform: 'uppercase'
-          }}>
-            {bet.status}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 8 }}>
-        {bet.bet} • ${bet.amount} @ {bet.odds > 0 ? '+' : ''}{bet.odds}
-      </Text>
-
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={{ fontSize: 12, color: colors.textMuted }}>
-          {bet.date}
-        </Text>
-        {bet.payout > 0 && (
-          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.success }}>
-            +${bet.payout}
-          </Text>
-        )}
-      </View>
-    </View>
-  );
-
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar
@@ -364,7 +191,6 @@ export default function Bet() {
         backgroundColor="transparent"
         translucent={true}
       />
-      {/* Solid background behind status bar - Instagram style */}
       <View style={{
         position: 'absolute',
         top: 0,
@@ -405,7 +231,6 @@ export default function Bet() {
                 marginRight: 8,
                 position: 'relative'
               }}>
-                {/* Search circle */}
                 <View style={{
                   position: 'absolute',
                   top: 1,
@@ -417,7 +242,6 @@ export default function Bet() {
                   borderRadius: 5,
                   backgroundColor: 'transparent'
                 }} />
-                {/* Search handle */}
                 <View style={{
                   position: 'absolute',
                   bottom: 1,
@@ -547,23 +371,21 @@ export default function Bet() {
             {activeTab === 0 ? (
               /* My Bets Section */
               <>
-                {/* My Bets Feed */}
-                {loading && !hasFetchedMyBets.current ? (
+                {loading && myBets.length === 0 ? (
                   <>
                     <SkeletonBetCard />
                     <SkeletonBetCard />
                     <SkeletonBetCard />
                   </>
-                ) : (() => {
-                  return transformedMyBets.length > 0 ? (
-                    transformedMyBets.map((bet) => (
-                      <BetCard
-                        key={bet.id}
-                        {...bet}
-                        showJoinedIndicator={false}
-                      />
-                    ))
-                  ) : (
+                ) : transformedMyBets.length > 0 ? (
+                  transformedMyBets.map((bet) => (
+                    <BetCard
+                      key={bet.id}
+                      {...bet}
+                      showJoinedIndicator={false}
+                    />
+                  ))
+                ) : (
                   <View style={{
                     backgroundColor: 'rgba(255, 255, 255, 0.02)',
                     borderRadius: 8,
@@ -603,8 +425,7 @@ export default function Bet() {
                        'Create your first bet to get started'}
                     </Text>
                   </View>
-                  );
-                })()}
+                )}
               </>
             ) : activeTab === 1 ? (
               /* You Owe Tab */
@@ -647,47 +468,16 @@ export default function Bet() {
                   })}
                 </View>
 
-                {loadingUnfulfilledBets ? (
+                {loading && myBets.length === 0 ? (
                   <>
                     <SkeletonOwedStakesCard />
                     <SkeletonOwedStakesCard />
                   </>
-                ) : unfulfilledBetsError ? (
-                  <View style={{
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    borderWidth: 1,
-                    borderColor: 'rgba(239, 68, 68, 0.2)',
-                    borderRadius: 12,
-                    padding: 20,
-                    alignItems: 'center',
-                    marginBottom: 16
-                  }}>
-                    <MaterialIcons name="error-outline" size={32} color="#EF4444" />
-                    <Text style={{
-                      color: '#EF4444',
-                      fontSize: 14,
-                      fontWeight: '600',
-                      marginTop: 8,
-                      textAlign: 'center'
-                    }}>
-                      Failed to load stakes
-                    </Text>
-                    <Text style={{
-                      color: 'rgba(239, 68, 68, 0.7)',
-                      fontSize: 12,
-                      marginTop: 4,
-                      textAlign: 'center'
-                    }}>
-                      Pull down to retry
-                    </Text>
-                  </View>
                 ) : (() => {
-                  // Filter for bets where user owes (lost)
                   const lossesBets = unfulfilledBets.filter(bet =>
                     bet.userParticipationStatus === 'LOST'
                   );
 
-                  // Apply sub-filter
                   const filteredBets = lossesBets.filter(bet => {
                     if (lossesFilter === 'all') return true;
                     if (lossesFilter === 'todo') return !bet.hasCurrentUserClaimedFulfillment && bet.fulfillmentStatus !== 'FULFILLED';
@@ -695,7 +485,6 @@ export default function Bet() {
                     return true;
                   });
 
-                  // Helper function to render a bet card for You Owe tab
                   const renderYouOweBetCard = (bet: BetSummaryResponse) => {
                     let badgeConfig: { bgColor: string; textColor: string; text: string };
 
@@ -730,7 +519,6 @@ export default function Bet() {
                           position: 'relative'
                         }}
                       >
-                        {/* Status Badge */}
                         <View
                           style={{
                             position: 'absolute',
@@ -753,7 +541,6 @@ export default function Bet() {
                           </Text>
                         </View>
 
-                        {/* Loss indicator */}
                         <View style={{
                           flexDirection: 'row',
                           alignItems: 'center',
@@ -774,7 +561,6 @@ export default function Bet() {
                           </Text>
                         </View>
 
-                        {/* Bet Title */}
                         <Text
                           style={{
                             fontSize: 16,
@@ -788,7 +574,6 @@ export default function Bet() {
                           {bet.title}
                         </Text>
 
-                        {/* Social Stake Description */}
                         <View
                           style={{
                             backgroundColor: 'rgba(239, 68, 68, 0.08)',
@@ -809,7 +594,6 @@ export default function Bet() {
                           </Text>
                         </View>
 
-                        {/* Group Name */}
                         <View
                           style={{
                             flexDirection: 'row',
@@ -833,7 +617,6 @@ export default function Bet() {
                           </Text>
                         </View>
 
-                        {/* Tap to view indicator */}
                         <View
                           style={{
                             marginTop: 12,
@@ -865,7 +648,6 @@ export default function Bet() {
                     );
                   };
 
-                  // Empty state
                   if (filteredBets.length === 0) {
                     const emptyMessage = lossesFilter === 'todo'
                       ? 'No pending stakes to fulfill'
@@ -948,49 +730,18 @@ export default function Bet() {
                   })}
                 </View>
 
-                {loadingUnfulfilledBets ? (
+                {loading && myBets.length === 0 ? (
                   <>
                     <SkeletonOwedStakesCard />
                     <SkeletonOwedStakesCard />
                   </>
-                ) : unfulfilledBetsError ? (
-                  <View style={{
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    borderWidth: 1,
-                    borderColor: 'rgba(239, 68, 68, 0.2)',
-                    borderRadius: 12,
-                    padding: 20,
-                    alignItems: 'center',
-                    marginBottom: 16
-                  }}>
-                    <MaterialIcons name="error-outline" size={32} color="#EF4444" />
-                    <Text style={{
-                      color: '#EF4444',
-                      fontSize: 14,
-                      fontWeight: '600',
-                      marginTop: 8,
-                      textAlign: 'center'
-                    }}>
-                      Failed to load stakes
-                    </Text>
-                    <Text style={{
-                      color: 'rgba(239, 68, 68, 0.7)',
-                      fontSize: 12,
-                      marginTop: 4,
-                      textAlign: 'center'
-                    }}>
-                      Pull down to retry
-                    </Text>
-                  </View>
                 ) : (() => {
-                  // Filter for bets where user is owed (won or creator)
                   const winningsBets = unfulfilledBets.filter(bet => {
                     if (bet.userParticipationStatus === 'WON') return true;
                     if (!bet.hasUserParticipated && bet.creatorUsername === authUser?.username) return true;
                     return false;
                   });
 
-                  // Apply sub-filter
                   const filteredBets = winningsBets.filter(bet => {
                     if (winningsFilter === 'all') return true;
                     if (winningsFilter === 'waiting') return bet.fulfillmentStatus !== 'FULFILLED';
@@ -998,7 +749,6 @@ export default function Bet() {
                     return true;
                   });
 
-                  // Helper function to render a bet card for Owed to You tab
                   const renderOwedToYouBetCard = (bet: BetSummaryResponse) => {
                     let badgeConfig: { bgColor: string; textColor: string; text: string };
 
@@ -1033,7 +783,6 @@ export default function Bet() {
                           position: 'relative'
                         }}
                       >
-                        {/* Status Badge */}
                         <View
                           style={{
                             position: 'absolute',
@@ -1056,7 +805,6 @@ export default function Bet() {
                           </Text>
                         </View>
 
-                        {/* Win indicator */}
                         <View style={{
                           flexDirection: 'row',
                           alignItems: 'center',
@@ -1077,7 +825,6 @@ export default function Bet() {
                           </Text>
                         </View>
 
-                        {/* Bet Title */}
                         <Text
                           style={{
                             fontSize: 16,
@@ -1091,7 +838,6 @@ export default function Bet() {
                           {bet.title}
                         </Text>
 
-                        {/* Social Stake Description */}
                         <View
                           style={{
                             backgroundColor: 'rgba(0, 212, 170, 0.08)',
@@ -1112,7 +858,6 @@ export default function Bet() {
                           </Text>
                         </View>
 
-                        {/* Group Name */}
                         <View
                           style={{
                             flexDirection: 'row',
@@ -1136,7 +881,6 @@ export default function Bet() {
                           </Text>
                         </View>
 
-                        {/* Tap to view indicator */}
                         <View
                           style={{
                             marginTop: 12,
@@ -1168,7 +912,6 @@ export default function Bet() {
                     );
                   };
 
-                  // Empty state
                   if (filteredBets.length === 0) {
                     const emptyMessage = winningsFilter === 'waiting'
                       ? 'No pending stakes from others'
@@ -1211,65 +954,6 @@ export default function Bet() {
                 })()}
               </View>
             ) : null}
-            {/* TODO: Implement guest/public betting - Discover Section commented out
-            : (
-              // Discover Section
-              <>
-                {/* Discover Bets Feed *\/}
-                {loading ? (
-                  <>
-                    <SkeletonBetCard />
-                    <SkeletonBetCard />
-                    <SkeletonBetCard />
-                  </>
-                ) : transformedDiscoverBets.length > 0 ? (
-                  transformedDiscoverBets.map((bet) => (
-                    <BetCard
-                      key={bet.id}
-                      {...bet}
-                    />
-                  ))
-                ) : (
-                  <View style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                    borderRadius: 8,
-                    padding: 24,
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: 'rgba(255, 255, 255, 0.05)',
-                    marginBottom: 32
-                  }}>
-                    <View style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 24,
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      marginBottom: 16
-                    }}>
-                      <MaterialIcons name="explore" size={24} color="rgba(255, 255, 255, 0.4)" />
-                    </View>
-                    <Text style={{
-                      fontSize: 16,
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      textAlign: 'center',
-                      marginBottom: 4
-                    }}>
-                      No bets to discover
-                    </Text>
-                    <Text style={{
-                      fontSize: 14,
-                      color: 'rgba(255, 255, 255, 0.4)',
-                      textAlign: 'center'
-                    }}>
-                      Public bets from the community will appear here
-                    </Text>
-                  </View>
-                )}
-              </>
-            )
-            */}
 
             {/* Additional spacing for scroll */}
             <View style={{ height: 60 }} />

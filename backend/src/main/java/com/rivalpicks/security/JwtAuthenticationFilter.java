@@ -139,6 +139,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             log.warn("Malformed JWT token for request: {} - {}", request.getRequestURI(), e.getMessage());
             sendErrorResponse(response, HttpStatus.BAD_REQUEST, "JWT token is malformed", request.getRequestURI());
             return;
+        } catch (JwtException.InvalidTokenException e) {
+            log.warn("Invalid JWT token for request: {} - {}", request.getRequestURI(), e.getMessage());
+            sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "JWT token is invalid", request.getRequestURI());
+            return;
+        } catch (JwtException.UnsupportedTokenException e) {
+            log.warn("Unsupported JWT token for request: {} - {}", request.getRequestURI(), e.getMessage());
+            sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "JWT token is unsupported", request.getRequestURI());
+            return;
+        } catch (JwtException e) {
+            log.warn("JWT authentication failed for request: {} - {}", request.getRequestURI(), e.getMessage());
+            sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "Authentication failed", request.getRequestURI());
+            return;
         } catch (UsernameNotFoundException e) {
             log.warn("User not found during JWT authentication for request: {} - {}", request.getRequestURI(), e.getMessage());
             sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "Authentication failed", request.getRequestURI());

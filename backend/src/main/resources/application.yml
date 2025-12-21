@@ -103,7 +103,7 @@ rate-limiting:
     requests: 5
     duration-minutes: 15
   register:
-    requests: 3
+    requests: 5
     duration-minutes: 60
   forgot-password:
     requests: 3

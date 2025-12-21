@@ -81,11 +81,17 @@ export default function ChangeUsername() {
       const response = await userService.changeUsername(newUsername);
 
       if (response.success && response.newUsername) {
-        // Save new tokens if provided (username is embedded in JWT)
-        if (response.accessToken && response.refreshToken) {
-          await tokenStorage.setTokens(response.accessToken, response.refreshToken);
-          debugLog('New tokens saved after username change');
+        // Tokens are REQUIRED after username change (JWT has username embedded)
+        if (!response.accessToken || !response.refreshToken) {
+          errorLog('Username change succeeded but tokens are missing from response:', {
+            hasAccessToken: !!response.accessToken,
+            hasRefreshToken: !!response.refreshToken,
+          });
+          throw new Error('Server did not return new authentication tokens. Please log in again.');
         }
+
+        await tokenStorage.setTokens(response.accessToken, response.refreshToken);
+        debugLog('New tokens saved after username change');
 
         // Update user context with new username
         updateUser({ username: response.newUsername });

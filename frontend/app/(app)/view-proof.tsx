@@ -1,13 +1,14 @@
 import React from 'react';
-import { Text, View, TouchableOpacity, ScrollView, StatusBar, Image } from 'react-native';
+import { Text, View, TouchableOpacity, ScrollView, StatusBar, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { ENV } from '../../config/env';
 import { haptic } from '../../utils/haptics';
+import { OptimizedImage } from '../../components/common/OptimizedImage';
 
 export default function ViewProof() {
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const {
     loserName,
     claimedAt,
@@ -22,14 +23,7 @@ export default function ViewProof() {
     betTitle?: string;
   }>();
 
-  // Get full image URL helper
-  const getFullImageUrl = (imageUrl: string | undefined): string | null => {
-    if (!imageUrl) return null;
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
-    }
-    return `${ENV.API_BASE_URL}${imageUrl}`;
-  };
+  const imageWidth = screenWidth - 40; // 20px padding on each side
 
   const formatDate = (dateString: string) => {
     try {
@@ -45,8 +39,6 @@ export default function ViewProof() {
       return dateString;
     }
   };
-
-  const fullProofUrl = getFullImageUrl(proofUrl);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0a0a0f' }}>
@@ -95,7 +87,7 @@ export default function ViewProof() {
         showsVerticalScrollIndicator={false}
       >
         {/* Proof Photo - Lead with visual content */}
-        {fullProofUrl && (
+        {proofUrl && (
           <View style={{ marginBottom: 20 }}>
             <View style={{
               borderRadius: 16,
@@ -103,13 +95,14 @@ export default function ViewProof() {
               borderWidth: 1,
               borderColor: 'rgba(255, 255, 255, 0.08)',
             }}>
-              <Image
-                source={{ uri: fullProofUrl }}
-                style={{
-                  width: '100%',
-                  aspectRatio: 4/3,
-                }}
-                resizeMode="cover"
+              <OptimizedImage
+                source={proofUrl}
+                width={imageWidth}
+                aspectRatio={4/3}
+                borderRadius={16}
+                sizeVariant="original"
+                priority="high"
+                accessibilityLabel="Fulfillment proof photo"
               />
             </View>
           </View>
@@ -136,7 +129,7 @@ export default function ViewProof() {
         )}
 
         {/* No Proof Message */}
-        {!proofDescription && !fullProofUrl && (
+        {!proofDescription && !proofUrl && (
           <View style={{
             backgroundColor: 'rgba(255, 255, 255, 0.02)',
             borderRadius: 12,
@@ -168,7 +161,7 @@ export default function ViewProof() {
         )}
 
         {/* Date Footer */}
-        {(proofDescription || fullProofUrl) && claimedAt && (
+        {(proofDescription || proofUrl) && claimedAt && (
           <View style={{
             flexDirection: 'row',
             alignItems: 'center',

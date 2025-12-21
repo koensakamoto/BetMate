@@ -255,7 +255,17 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
               <TouchableOpacity
                 onPress={() => {
                   const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
-                  router.push(`/(app)/group/${currentGroupId}/config`);
+                  router.push({
+                    pathname: `/(app)/group/${currentGroupId}/config`,
+                    params: {
+                      groupName: groupData.name,
+                      groupDescription: groupData.description,
+                      groupPictureUrl: (groupData as any).groupPictureUrl || '',
+                      memberCount: groupData.memberCount.toString(),
+                      privacy: (groupData as any).privacy || 'PRIVATE',
+                      ownerUsername: (groupData as any).ownerUsername || '',
+                    }
+                  });
                 }}
                 style={{
                   width: 36,

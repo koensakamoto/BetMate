@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, StatusBar, TouchableOpacity, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -10,18 +10,34 @@ import { useAuth } from '../../../../contexts/AuthContext';
 
 export default function GroupConfig() {
   const insets = useSafeAreaInsets();
-  const { groupId } = useLocalSearchParams();
+  const { groupId, groupName, groupDescription, groupPictureUrl, memberCount, privacy, ownerUsername } = useLocalSearchParams();
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
-  const [groupData, setGroupData] = useState<GroupDetailResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch group data
+  // Initialize with params for instant rendering, then update with fresh data
+  const initialData: GroupDetailResponse | null = groupId ? {
+    id: Array.isArray(groupId) ? parseInt(groupId[0]) : parseInt(groupId as string),
+    groupName: (Array.isArray(groupName) ? groupName[0] : groupName) || '',
+    description: (Array.isArray(groupDescription) ? groupDescription[0] : groupDescription) || '',
+    groupPictureUrl: (Array.isArray(groupPictureUrl) ? groupPictureUrl[0] : groupPictureUrl) || undefined,
+    memberCount: parseInt((Array.isArray(memberCount) ? memberCount[0] : memberCount) || '0'),
+    privacy: ((Array.isArray(privacy) ? privacy[0] : privacy) || 'PRIVATE') as 'PUBLIC' | 'PRIVATE' | 'SECRET',
+    ownerUsername: (Array.isArray(ownerUsername) ? ownerUsername[0] : ownerUsername) || undefined,
+    isUserMember: true,
+    userRole: 'ADMIN',
+  } as GroupDetailResponse : null;
+
+  const [groupData, setGroupData] = useState<GroupDetailResponse | null>(initialData);
+  const [isLoading, setIsLoading] = useState(!initialData);
+
+  // Fetch group data only if we don't have params data
   useEffect(() => {
+    // Skip fetch entirely if we have data from params
+    if (initialData?.groupName) return;
+
     const fetchGroupData = async () => {
       if (!isAuthenticated || authLoading || !groupId) return;
 
       try {
-        setIsLoading(true);
         const numericGroupId = Array.isArray(groupId) ? parseInt(groupId[0]) : parseInt(groupId as string);
         const data = await groupService.getGroupById(numericGroupId);
         setGroupData(data);
@@ -35,7 +51,7 @@ export default function GroupConfig() {
     fetchGroupData();
   }, [groupId, isAuthenticated, authLoading]);
 
-  const handleGroupUpdated = (updatedGroup: any) => {
+  const handleGroupUpdated = useCallback((updatedGroup: any) => {
     setGroupData(prev => {
       if (!prev) return null;
 
@@ -49,20 +65,20 @@ export default function GroupConfig() {
         ...(updatedGroup.updatedAt !== undefined && { updatedAt: updatedGroup.updatedAt }),
       };
     });
-  };
+  }, []);
 
-  // Transform data for GroupSettingsTab
-  const settingsGroupData = groupData ? {
+  // Transform data for GroupSettingsTab - memoized to prevent unnecessary re-renders
+  const settingsGroupData = useMemo(() => groupData ? {
     id: groupData.id,
     name: groupData.groupName,
     description: groupData.description || '',
     memberCount: groupData.memberCount,
     privacy: groupData.privacy || 'PRIVATE' as 'PUBLIC' | 'PRIVATE' | 'SECRET',
     groupPictureUrl: groupData.groupPictureUrl
-  } : null;
+  } : null, [groupData?.id, groupData?.groupName, groupData?.description, groupData?.memberCount, groupData?.privacy, groupData?.groupPictureUrl]);
 
   // Check if current user is the owner
-  const isOwner = user?.username === groupData?.ownerUsername;
+  const isOwner = useMemo(() => user?.username === groupData?.ownerUsername, [user?.username, groupData?.ownerUsername]);
 
   if (isLoading || !groupData || !settingsGroupData) {
     return (
