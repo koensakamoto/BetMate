@@ -1,6 +1,7 @@
 package com.rivalpicks.controller;
 
 import com.rivalpicks.dto.common.ErrorResponseDto;
+import com.rivalpicks.dto.common.PagedResponseDto;
 import com.rivalpicks.dto.user.request.EmailChangeConfirmRequestDto;
 import com.rivalpicks.dto.user.request.EmailChangeRequestDto;
 import com.rivalpicks.dto.user.request.UserAvailabilityCheckRequestDto;
@@ -35,6 +36,8 @@ import jakarta.validation.constraints.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -521,21 +524,31 @@ public class UserController {
     }
 
     /**
-     * Search users by name.
+     * Search users by name with pagination.
      */
     @GetMapping("/search")
-    public ResponseEntity<List<UserSearchResultResponseDto>> searchUsers(
-            @RequestParam @NotBlank String q) {
+    public ResponseEntity<PagedResponseDto<UserSearchResultResponseDto>> searchUsers(
+            @RequestParam @NotBlank String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         UserDetailsServiceImpl.UserPrincipal userPrincipal = getCurrentUser();
         if (userPrincipal == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        List<User> users = userService.searchUsers(q, userPrincipal.getUserId());
-        List<UserSearchResultResponseDto> results = users.stream()
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "username"));
+        Page<User> usersPage = userService.searchUsersPaginated(q, userPrincipal.getUserId(), pageable);
+
+        List<UserSearchResultResponseDto> results = usersPage.getContent().stream()
             .map(UserSearchResultResponseDto::fromUser)
             .toList();
-        return ResponseEntity.ok(results);
+
+        return ResponseEntity.ok(new PagedResponseDto<>(
+            results,
+            usersPage.getNumber(),
+            usersPage.getSize(),
+            usersPage.getTotalElements()
+        ));
     }
 
     /**

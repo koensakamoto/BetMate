@@ -154,15 +154,11 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
       debugLog('Attempting to refresh access token...');
 
-      // SECURITY: Send refresh token in Authorization header instead of body
       // Use a fresh axios instance to avoid interceptor loops
       const refreshResponse = await axios.post(
         `${apiConfig.baseURL}/auth/refresh`,
-        {},
-        {
-          timeout: apiConfig.timeout,
-          headers: { 'Authorization': `Bearer ${refreshToken}` }
-        }
+        { refreshToken },
+        { timeout: apiConfig.timeout }
       );
 
       const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.data;
@@ -259,33 +255,43 @@ const createApiClient = (): AxiosInstance => {
 
       // Handle 401 Unauthorized - attempt token refresh with mutex
       if (error.response?.status === 401 && !originalRequest._retry) {
-        originalRequest._retry = true;
+        const errorMessage = (error.response?.data as { message?: string })?.message || '';
 
-        try {
-          let newAccessToken: string | null;
+        // If JWT signature is invalid, the secret changed - don't bother refreshing
+        // Just clear tokens and let the user re-login
+        if (errorMessage.includes('signature is invalid') || errorMessage.includes('signature validation failed')) {
+          debugLog('JWT signature invalid - clearing tokens (secret may have changed)');
+          await tokenStorage.clearTokens();
+          // Fall through to error handling - user needs to re-login
+        } else {
+          originalRequest._retry = true;
 
-          // If a refresh is already in progress, queue this request
-          if (isRefreshing) {
-            debugLog('Refresh in progress, queueing request...');
-            newAccessToken = await queueFailedRequest();
-          } else {
-            // Start a new refresh
-            newAccessToken = await refreshAccessToken();
-          }
+          try {
+            let newAccessToken: string | null;
 
-          if (newAccessToken) {
-            // Retry original request with new token
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+            // If a refresh is already in progress, queue this request
+            if (isRefreshing) {
+              debugLog('Refresh in progress, queueing request...');
+              newAccessToken = await queueFailedRequest();
+            } else {
+              // Start a new refresh
+              newAccessToken = await refreshAccessToken();
             }
-            return client(originalRequest);
-          }
 
-          // No token available, fall through to error handling
-          errorLog('No access token available after refresh attempt');
-        } catch (refreshError) {
-          errorLog('Failed to refresh token or retry request:', refreshError);
-          // Fall through to error handling
+            if (newAccessToken) {
+              // Retry original request with new token
+              if (originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+              }
+              return client(originalRequest);
+            }
+
+            // No token available, fall through to error handling
+            errorLog('No access token available after refresh attempt');
+          } catch (refreshError) {
+            errorLog('Failed to refresh token or retry request:', refreshError);
+            // Fall through to error handling
+          }
         }
       }
 

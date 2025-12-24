@@ -64,7 +64,7 @@ public class User {
     @Column(length = 50)
     private String lastName;
 
-    @Column(length = 500)
+    @Column(length = 150)
     private String bio;
 
     @Column(length = 255)

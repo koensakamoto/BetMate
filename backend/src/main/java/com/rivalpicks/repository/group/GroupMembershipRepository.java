@@ -3,6 +3,8 @@ package com.rivalpicks.repository.group;
 import com.rivalpicks.entity.group.Group;
 import com.rivalpicks.entity.group.GroupMembership;
 import com.rivalpicks.entity.user.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -76,6 +78,11 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
     // Group discovery for user
     @Query("SELECT gm.group FROM GroupMembership gm WHERE gm.user = :user AND gm.isActive = true")
     List<Group> findGroupsByUser(@Param("user") User user);
+
+    // Paginated user groups (only approved memberships) - JOIN approach for clean sorting
+    @Query("SELECT g FROM Group g JOIN GroupMembership gm ON gm.group = g " +
+           "WHERE gm.user = :user AND gm.isActive = true AND gm.status = 'APPROVED' AND g.deletedAt IS NULL")
+    Page<Group> findGroupsByUserPaginated(@Param("user") User user, Pageable pageable);
     
     @Query("SELECT gm.user FROM GroupMembership gm WHERE gm.group = :group AND gm.isActive = true")
     List<User> findUsersByGroup(@Param("group") Group group);

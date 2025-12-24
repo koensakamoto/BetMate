@@ -2,11 +2,15 @@ package com.rivalpicks.repository.betting;
 
 import com.rivalpicks.entity.betting.Bet;
 import com.rivalpicks.entity.betting.BetParticipation;
+import com.rivalpicks.entity.betting.BetStakeType;
 import com.rivalpicks.entity.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -112,4 +116,16 @@ public interface BetParticipationRepository extends JpaRepository<BetParticipati
     
     @Query("SELECT HOUR(bp.createdAt), COUNT(bp) FROM BetParticipation bp WHERE bp.user = :user GROUP BY HOUR(bp.createdAt)")
     List<Object[]> getUserBettingTimePattern(@Param("user") User user);
+
+    // Paginated queries for bet tabs
+    Page<BetParticipation> findByUserOrderByCreatedAtDesc(User user, Pageable pageable);
+
+    @Query("SELECT bp FROM BetParticipation bp JOIN bp.bet b WHERE bp.user = :user AND bp.status = :status AND b.status = :betStatus AND b.stakeType = :stakeType")
+    Page<BetParticipation> findUserByStatusAndBetCriteria(
+        @Param("user") User user,
+        @Param("status") BetParticipation.ParticipationStatus status,
+        @Param("betStatus") Bet.BetStatus betStatus,
+        @Param("stakeType") BetStakeType stakeType,
+        Pageable pageable
+    );
 }

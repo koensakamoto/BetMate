@@ -1,5 +1,6 @@
 import { BaseApiService } from '../api/baseService';
 import { API_ENDPOINTS } from '../../config/api';
+import { PagedResponse } from '../../types/api';
 
 // React Native FormData file type
 interface FormDataFile {
@@ -114,26 +115,34 @@ export class GroupService extends BaseApiService {
   }
 
   /**
-   * Get public groups for discovery
+   * Get public groups for discovery (paginated)
    */
-  async getPublicGroups(): Promise<GroupSummaryResponse[]> {
-    return this.get<GroupSummaryResponse[]>(API_ENDPOINTS.GROUP_PUBLIC);
+  async getPublicGroups(params?: { page?: number; size?: number }): Promise<PagedResponse<GroupSummaryResponse>> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', String(params?.page ?? 0));
+    queryParams.append('size', String(params?.size ?? 20));
+    return this.get<PagedResponse<GroupSummaryResponse>>(`${API_ENDPOINTS.GROUP_PUBLIC}?${queryParams}`);
   }
 
   /**
-   * Get current user's groups
+   * Get current user's groups (paginated)
    */
-  async getMyGroups(): Promise<GroupSummaryResponse[]> {
-    return this.get<GroupSummaryResponse[]>(API_ENDPOINTS.GROUP_MY_GROUPS);
+  async getMyGroups(params?: { page?: number; size?: number }): Promise<PagedResponse<GroupSummaryResponse>> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', String(params?.page ?? 0));
+    queryParams.append('size', String(params?.size ?? 20));
+    return this.get<PagedResponse<GroupSummaryResponse>>(`${API_ENDPOINTS.GROUP_MY_GROUPS}?${queryParams}`);
   }
 
   /**
-   * Search groups by name or description
+   * Search groups by name or description (paginated)
    */
-  async searchGroups(query: string): Promise<GroupSummaryResponse[]> {
-    return this.get<GroupSummaryResponse[]>(API_ENDPOINTS.GROUP_SEARCH, {
-      params: { q: query }
-    });
+  async searchGroups(query: string, params?: { page?: number; size?: number }): Promise<PagedResponse<GroupSummaryResponse>> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('q', query);
+    queryParams.append('page', String(params?.page ?? 0));
+    queryParams.append('size', String(params?.size ?? 20));
+    return this.get<PagedResponse<GroupSummaryResponse>>(`${API_ENDPOINTS.GROUP_SEARCH}?${queryParams}`);
   }
 
   /**

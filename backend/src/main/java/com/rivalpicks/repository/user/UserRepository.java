@@ -1,6 +1,8 @@
 package com.rivalpicks.repository.user;
 
 import com.rivalpicks.entity.user.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -48,6 +50,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
            "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
            "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     List<User> searchUsersByName(@Param("searchTerm") String searchTerm, @Param("currentUserId") Long currentUserId);
+
+    // Paginated search functionality
+    @Query("SELECT u FROM User u WHERE u.deletedAt IS NULL AND u.id != :currentUserId AND " +
+           "(LOWER(u.username) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    Page<User> searchUsersByNamePaginated(@Param("searchTerm") String searchTerm,
+                                          @Param("currentUserId") Long currentUserId,
+                                          Pageable pageable);
     
     // Admin queries
     @Query("SELECT COUNT(u) FROM User u WHERE u.isActive = true AND u.deletedAt IS NULL")

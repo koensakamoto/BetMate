@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, RefreshControl } from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, StatusBar, TextInput, RefreshControl, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -10,7 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { parseBackendDate } from '../../../utils/dateUtils';
 import { colors } from '../../../constants/theme';
 import { useAuth } from '../../../contexts/AuthContext';
-import { useMyBets } from '../../../hooks/useBetQueries';
+import { useMyBets, useMyLosses, useMyWinnings, useInvalidateBets } from '../../../hooks/useBetQueries';
 
 export default function Bet() {
   const insets = useSafeAreaInsets();
@@ -20,8 +20,54 @@ export default function Bet() {
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
-  // React Query hook - handles caching automatically
-  const { data: myBets = [], isLoading: loading, refetch } = useMyBets();
+  // React Query hooks - handles caching automatically with infinite scroll
+  const {
+    data: myBetsData,
+    isLoading: isLoadingMyBets,
+    refetch: refetchMyBets,
+    fetchNextPage: fetchNextMyBets,
+    hasNextPage: hasNextMyBets,
+    isFetchingNextPage: isFetchingNextMyBets,
+  } = useMyBets();
+
+  const {
+    data: lossesData,
+    isLoading: isLoadingLosses,
+    refetch: refetchLosses,
+    fetchNextPage: fetchNextLosses,
+    hasNextPage: hasNextLosses,
+    isFetchingNextPage: isFetchingNextLosses,
+  } = useMyLosses();
+
+  const {
+    data: winningsData,
+    isLoading: isLoadingWinnings,
+    refetch: refetchWinnings,
+    fetchNextPage: fetchNextWinnings,
+    hasNextPage: hasNextWinnings,
+    isFetchingNextPage: isFetchingNextWinnings,
+  } = useMyWinnings();
+
+  const { invalidateMyBets } = useInvalidateBets();
+
+  // Flatten paginated data
+  const myBets = useMemo(() =>
+    myBetsData?.pages?.flatMap(page => page?.content ?? []).filter(Boolean) ?? [],
+    [myBetsData]
+  );
+
+  const lossesBets = useMemo(() =>
+    lossesData?.pages?.flatMap(page => page?.content ?? []).filter(Boolean) ?? [],
+    [lossesData]
+  );
+
+  const winningsBets = useMemo(() =>
+    winningsData?.pages?.flatMap(page => page?.content ?? []).filter(Boolean) ?? [],
+    [winningsData]
+  );
+
+  // Loading state based on active tab
+  const loading = activeTab === 0 ? isLoadingMyBets : activeTab === 1 ? isLoadingLosses : isLoadingWinnings;
 
   // Filters for "My Bets" tab
   const [myBetsFilter, setMyBetsFilter] = useState<'all' | 'open' | 'pending' | 'resolved'>('all');
@@ -48,20 +94,47 @@ export default function Bet() {
     { key: 'completed' as const, label: 'Completed' }
   ];
 
-  // Derive unfulfilled bets from myBets (resolved social bets)
-  const unfulfilledBets = useMemo(() => {
-    return myBets.filter(bet =>
-      bet.status === 'RESOLVED' &&
-      bet.stakeType === 'SOCIAL'
-    );
-  }, [myBets]);
-
-  // Pull-to-refresh handler
+  // Pull-to-refresh handler based on active tab
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
+    if (activeTab === 0) {
+      await refetchMyBets();
+    } else if (activeTab === 1) {
+      await refetchLosses();
+    } else {
+      await refetchWinnings();
+    }
     setRefreshing(false);
-  }, [refetch]);
+  }, [activeTab, refetchMyBets, refetchLosses, refetchWinnings]);
+
+  // Infinite scroll handlers
+  const handleMyBetsEndReached = useCallback(() => {
+    if (hasNextMyBets && !isFetchingNextMyBets) {
+      fetchNextMyBets();
+    }
+  }, [hasNextMyBets, isFetchingNextMyBets, fetchNextMyBets]);
+
+  const handleLossesEndReached = useCallback(() => {
+    if (hasNextLosses && !isFetchingNextLosses) {
+      fetchNextLosses();
+    }
+  }, [hasNextLosses, isFetchingNextLosses, fetchNextLosses]);
+
+  const handleWinningsEndReached = useCallback(() => {
+    if (hasNextWinnings && !isFetchingNextWinnings) {
+      fetchNextWinnings();
+    }
+  }, [hasNextWinnings, isFetchingNextWinnings, fetchNextWinnings]);
+
+  // Footer loading component for infinite scroll
+  const renderFooter = useCallback((isFetching: boolean) => {
+    if (!isFetching) return <View style={{ height: 80 }} />;
+    return (
+      <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </View>
+    );
+  }, []);
 
   // Calculate time remaining until deadline
   const calculateTimeRemaining = useCallback((deadline: string | null | undefined): string => {
@@ -371,20 +444,41 @@ export default function Bet() {
             {activeTab === 0 ? (
               /* My Bets Section */
               <>
-                {loading && myBets.length === 0 ? (
+                {isLoadingMyBets && myBets.length === 0 ? (
                   <>
                     <SkeletonBetCard />
                     <SkeletonBetCard />
                     <SkeletonBetCard />
                   </>
                 ) : transformedMyBets.length > 0 ? (
-                  transformedMyBets.map((bet) => (
-                    <BetCard
-                      key={bet.id}
-                      {...bet}
-                      showJoinedIndicator={false}
-                    />
-                  ))
+                  <>
+                    {transformedMyBets.map((bet) => (
+                      <BetCard
+                        key={bet.id}
+                        {...bet}
+                        showJoinedIndicator={false}
+                      />
+                    ))}
+                    {hasNextMyBets && (
+                      <TouchableOpacity
+                        onPress={handleMyBetsEndReached}
+                        disabled={isFetchingNextMyBets}
+                        style={{
+                          alignItems: 'center',
+                          paddingVertical: 16,
+                          marginTop: 8
+                        }}
+                      >
+                        {isFetchingNextMyBets ? (
+                          <ActivityIndicator size="small" color={colors.primary} />
+                        ) : (
+                          <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                            Load More
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </>
                 ) : (
                   <View style={{
                     backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -468,16 +562,12 @@ export default function Bet() {
                   })}
                 </View>
 
-                {loading && myBets.length === 0 ? (
+                {isLoadingLosses && lossesBets.length === 0 ? (
                   <>
                     <SkeletonOwedStakesCard />
                     <SkeletonOwedStakesCard />
                   </>
                 ) : (() => {
-                  const lossesBets = unfulfilledBets.filter(bet =>
-                    bet.userParticipationStatus === 'LOST'
-                  );
-
                   const filteredBets = lossesBets.filter(bet => {
                     if (lossesFilter === 'all') return true;
                     if (lossesFilter === 'todo') return !bet.hasCurrentUserClaimedFulfillment && bet.fulfillmentStatus !== 'FULFILLED';
@@ -685,6 +775,25 @@ export default function Bet() {
                   return (
                     <View>
                       {filteredBets.map(bet => renderYouOweBetCard(bet))}
+                      {hasNextLosses && (
+                        <TouchableOpacity
+                          onPress={handleLossesEndReached}
+                          disabled={isFetchingNextLosses}
+                          style={{
+                            alignItems: 'center',
+                            paddingVertical: 16,
+                            marginTop: 8
+                          }}
+                        >
+                          {isFetchingNextLosses ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                          ) : (
+                            <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                              Load More
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      )}
                     </View>
                   );
                 })()}
@@ -730,18 +839,12 @@ export default function Bet() {
                   })}
                 </View>
 
-                {loading && myBets.length === 0 ? (
+                {isLoadingWinnings && winningsBets.length === 0 ? (
                   <>
                     <SkeletonOwedStakesCard />
                     <SkeletonOwedStakesCard />
                   </>
                 ) : (() => {
-                  const winningsBets = unfulfilledBets.filter(bet => {
-                    if (bet.userParticipationStatus === 'WON') return true;
-                    if (!bet.hasUserParticipated && bet.creatorUsername === authUser?.username) return true;
-                    return false;
-                  });
-
                   const filteredBets = winningsBets.filter(bet => {
                     if (winningsFilter === 'all') return true;
                     if (winningsFilter === 'waiting') return bet.fulfillmentStatus !== 'FULFILLED';
@@ -949,6 +1052,25 @@ export default function Bet() {
                   return (
                     <View>
                       {filteredBets.map(bet => renderOwedToYouBetCard(bet))}
+                      {hasNextWinnings && (
+                        <TouchableOpacity
+                          onPress={handleWinningsEndReached}
+                          disabled={isFetchingNextWinnings}
+                          style={{
+                            alignItems: 'center',
+                            paddingVertical: 16,
+                            marginTop: 8
+                          }}
+                        >
+                          {isFetchingNextWinnings ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                          ) : (
+                            <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                              Load More
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      )}
                     </View>
                   );
                 })()}

@@ -1,5 +1,6 @@
 import { BaseApiService } from '../api/baseService';
 import { API_ENDPOINTS } from '../../config/api';
+import { PagedResponse } from '../../types/api';
 
 // React Native FormData file type
 interface FormDataFile {
@@ -246,9 +247,25 @@ class BetService extends BaseApiService {
     return this.get<BetSummaryResponse[]>(`/group/${groupId}`);
   }
 
-  // Get current user's bets
-  async getMyBets(): Promise<BetSummaryResponse[]> {
-    return this.get<BetSummaryResponse[]>('/my');
+  // Get current user's bets (paginated)
+  async getMyBets(page: number = 0, size: number = 20): Promise<PagedResponse<BetSummaryResponse>> {
+    return this.get<PagedResponse<BetSummaryResponse>>('/my', {
+      params: { page, size }
+    });
+  }
+
+  // Get user's lost social bets (for Losses tab, paginated)
+  async getMyLosses(page: number = 0, size: number = 20): Promise<PagedResponse<BetSummaryResponse>> {
+    return this.get<PagedResponse<BetSummaryResponse>>('/my/losses', {
+      params: { page, size }
+    });
+  }
+
+  // Get user's won social bets (for Winnings tab, paginated)
+  async getMyWinnings(page: number = 0, size: number = 20): Promise<PagedResponse<BetSummaryResponse>> {
+    return this.get<PagedResponse<BetSummaryResponse>>('/my/winnings', {
+      params: { page, size }
+    });
   }
 
   // Get bets by status

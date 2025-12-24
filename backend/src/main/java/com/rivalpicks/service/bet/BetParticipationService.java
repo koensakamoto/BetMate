@@ -18,6 +18,8 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -288,6 +290,42 @@ public class BetParticipationService {
     @Transactional(readOnly = true)
     public List<BetParticipation> getUserParticipations(@NotNull User user) {
         return participationRepository.findByUser(user);
+    }
+
+    /**
+     * Gets paginated participations for a user.
+     */
+    @Transactional(readOnly = true)
+    public Page<BetParticipation> getUserParticipationsPaged(@NotNull User user, Pageable pageable) {
+        return participationRepository.findByUserOrderByCreatedAtDesc(user, pageable);
+    }
+
+    /**
+     * Gets paginated losses for a user (LOST status, RESOLVED social bets).
+     */
+    @Transactional(readOnly = true)
+    public Page<BetParticipation> getUserLossesPaged(@NotNull User user, Pageable pageable) {
+        return participationRepository.findUserByStatusAndBetCriteria(
+            user,
+            ParticipationStatus.LOST,
+            Bet.BetStatus.RESOLVED,
+            BetStakeType.SOCIAL,
+            pageable
+        );
+    }
+
+    /**
+     * Gets paginated winnings for a user (WON status, RESOLVED social bets).
+     */
+    @Transactional(readOnly = true)
+    public Page<BetParticipation> getUserWinningsPaged(@NotNull User user, Pageable pageable) {
+        return participationRepository.findUserByStatusAndBetCriteria(
+            user,
+            ParticipationStatus.WON,
+            Bet.BetStatus.RESOLVED,
+            BetStakeType.SOCIAL,
+            pageable
+        );
     }
 
     /**

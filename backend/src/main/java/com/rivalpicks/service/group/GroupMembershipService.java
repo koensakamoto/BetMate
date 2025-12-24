@@ -20,6 +20,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -611,6 +613,14 @@ public class GroupMembershipService {
     @Transactional(readOnly = true)
     public List<Group> getUserGroups(@NotNull User user) {
         return membershipRepository.findGroupsByUser(user);
+    }
+
+    /**
+     * Gets paginated groups a user is a member of (approved memberships only).
+     */
+    @Transactional(readOnly = true)
+    public Page<Group> getUserGroupsPaginated(@NotNull User user, @NotNull Pageable pageable) {
+        return membershipRepository.findGroupsByUserPaginated(user, pageable);
     }
 
     /**

@@ -7,6 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { userService, UserProfileResponse, UserProfileUpdateRequest } from '../../../services/user/userService';
 import { useAuth } from '../../../contexts/AuthContext';
+import { VALIDATION } from '../../../constants/validation';
 import { debugLog, errorLog, ENV } from '../../../config/env';
 import { getErrorMessage } from '../../../utils/errorUtils';
 import SettingsInput from '../../../components/settings/SettingsInput';
@@ -80,6 +81,16 @@ export default function ProfileSettings() {
     // Validation
     if (!firstName.trim() || !lastName.trim()) {
       showErrorToast('Error', 'First name and last name are required');
+      return;
+    }
+
+    if (firstName.trim().length > VALIDATION.FIRST_NAME_MAX_LENGTH) {
+      showErrorToast('Error', `First name must be ${VALIDATION.FIRST_NAME_MAX_LENGTH} characters or less`);
+      return;
+    }
+
+    if (lastName.trim().length > VALIDATION.LAST_NAME_MAX_LENGTH) {
+      showErrorToast('Error', `Last name must be ${VALIDATION.LAST_NAME_MAX_LENGTH} characters or less`);
       return;
     }
 
@@ -422,6 +433,7 @@ export default function ProfileSettings() {
                 onChangeText={setFirstName}
                 placeholder="First name"
                 autoCapitalize="words"
+                maxLength={VALIDATION.FIRST_NAME_MAX_LENGTH}
               />
             </View>
 
@@ -432,6 +444,7 @@ export default function ProfileSettings() {
                 onChangeText={setLastName}
                 placeholder="Last name"
                 autoCapitalize="words"
+                maxLength={VALIDATION.LAST_NAME_MAX_LENGTH}
               />
             </View>
           </View>

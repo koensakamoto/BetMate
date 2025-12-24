@@ -2,6 +2,8 @@ package com.rivalpicks.repository.group;
 
 import com.rivalpicks.entity.group.Group;
 import com.rivalpicks.entity.user.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -47,6 +49,18 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
     // PUBLIC and PRIVATE groups for discovery (SECRET excluded)
     @Query("SELECT g FROM Group g WHERE g.privacy IN ('PUBLIC', 'PRIVATE') AND g.isActive = true AND g.deletedAt IS NULL")
     List<Group> findPublicGroups();
+
+    // Paginated public groups for discovery (excludes groups user is member of)
+    @Query("SELECT g FROM Group g WHERE g.privacy IN ('PUBLIC', 'PRIVATE') AND g.isActive = true AND g.deletedAt IS NULL " +
+           "AND g.id NOT IN (SELECT gm.group.id FROM GroupMembership gm WHERE gm.user = :user AND gm.isActive = true)")
+    Page<Group> findPublicGroupsExcludingUserPaginated(@Param("user") User user, Pageable pageable);
+
+    // Paginated search (excludes SECRET groups)
+    @Query("SELECT g FROM Group g WHERE g.deletedAt IS NULL AND g.isActive = true AND " +
+           "g.privacy IN ('PUBLIC', 'PRIVATE') AND " +
+           "(LOWER(g.groupName) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(g.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    Page<Group> searchGroupsPaginated(@Param("searchTerm") String searchTerm, Pageable pageable);
     
     // Most active groups
     @Query("SELECT g FROM Group g WHERE g.deletedAt IS NULL AND g.isActive = true ORDER BY g.totalMessages DESC")

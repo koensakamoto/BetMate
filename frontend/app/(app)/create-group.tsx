@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { groupService } from '../../services/group/groupService';
 import { debugLog, errorLog } from '../../config/env';
 import { getErrorMessage } from '../../utils/errorUtils';
+import { GroupCreateSuccessModal } from '../../components/group/GroupCreateSuccessModal';
 
 const defaultIcon = require("../../assets/images/icon.png");
 
@@ -22,6 +23,16 @@ export default function CreateGroup() {
   const [groupPhoto, setGroupPhoto] = useState<string | null>(null);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [isCreating, setIsCreating] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    router.dismissAll();
+    router.navigate({
+      pathname: '/(tabs)/group' as any,
+      params: { refresh: Date.now().toString() }
+    });
+  };
 
   const updateField = (field: keyof typeof formData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -118,11 +129,7 @@ export default function CreateGroup() {
       newErrors.name = 'Group name must be 50 characters or less';
     }
 
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
-    } else if (formData.description.trim().length < 10) {
-      newErrors.description = 'Description must be at least 10 characters';
-    } else if (formData.description.length > 200) {
+    if (formData.description.length > 200) {
       newErrors.description = 'Description must be 200 characters or less';
     }
 
@@ -158,23 +165,7 @@ export default function CreateGroup() {
         }
       }
 
-      Alert.alert(
-        'Success',
-        'Group created successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Dismiss modal and force refresh with parameter
-              router.dismissAll();
-              router.navigate({
-                pathname: '/(tabs)/group' as any,
-                params: { refresh: Date.now().toString() }
-              });
-            }
-          }
-        ]
-      );
+      setShowSuccessModal(true);
     } catch (err: any) {
       Alert.alert(
         'Error',
@@ -601,6 +592,12 @@ export default function CreateGroup() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <GroupCreateSuccessModal
+        visible={showSuccessModal}
+        onClose={handleSuccessModalClose}
+        groupName={formData.name}
+      />
     </View>
   );
 }

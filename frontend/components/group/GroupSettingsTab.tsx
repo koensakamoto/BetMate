@@ -3,7 +3,9 @@ import { Text, View, TouchableOpacity, Alert, TextInput, Linking, Modal, ScrollV
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { groupService, GroupMemberResponse, GroupDetailResponse } from '../../services/group/groupService';
+import { groupKeys } from '../../hooks/useGroupQueries';
 import { Avatar } from '../common/Avatar';
 import { OptimizedImage } from '../common/OptimizedImage';
 import { getFullImageUrl, getAvatarColor, getAvatarColorWithOpacity, getGroupInitials } from '../../utils/avatarUtils';
@@ -49,6 +51,8 @@ const SettingSection = React.memo(({ title, children }: { title: string; childre
 SettingSection.displayName = 'SettingSection';
 
 const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner = false, currentUsername, onGroupUpdated }) => {
+  const queryClient = useQueryClient();
+
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(groupData.name);
 
@@ -85,6 +89,10 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
         groupName: editedName.trim()
       });
 
+      // Invalidate React Query cache so group page shows updated data
+      queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupData.id) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.myGroups() });
+
       if (onGroupUpdated) {
         onGroupUpdated(updatedGroup);
       }
@@ -116,6 +124,10 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
       const updatedGroup = await groupService.updateGroup(groupData.id, {
         description: editedDescription.trim()
       });
+
+      // Invalidate React Query cache so group page shows updated data
+      queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupData.id) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.myGroups() });
 
       if (onGroupUpdated) {
         onGroupUpdated(updatedGroup);
@@ -202,6 +214,10 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
         fileName
       );
 
+      // Invalidate React Query cache so group page shows updated data
+      queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupData.id) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.myGroups() });
+
       if (onGroupUpdated) {
         onGroupUpdated(updatedGroup);
       }
@@ -228,6 +244,11 @@ const GroupSettingsTab: React.FC<GroupSettingsTabProps> = ({ groupData, isOwner 
     setIsUpdating(true);
     try {
       const updatedGroup = await groupService.updateGroup(groupData.id, { privacy: tempPrivacy });
+
+      // Invalidate React Query cache so group page shows updated data
+      queryClient.invalidateQueries({ queryKey: groupKeys.detail(groupData.id) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.myGroups() });
+      queryClient.invalidateQueries({ queryKey: groupKeys.publicGroups() });
 
       if (onGroupUpdated) {
         onGroupUpdated(updatedGroup);

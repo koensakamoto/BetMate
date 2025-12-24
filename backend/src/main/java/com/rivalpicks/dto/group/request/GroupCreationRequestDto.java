@@ -13,7 +13,7 @@ public class GroupCreationRequestDto {
     @Pattern(regexp = "^[a-zA-Z0-9\\s_-]+$", message = "Group name can only contain letters, numbers, spaces, underscores, and hyphens")
     private String groupName;
     
-    @Size(max = 1000, message = "Description cannot exceed 1000 characters")
+    @Size(max = 200, message = "Description cannot exceed 200 characters")
     private String description;
     
     @Size(max = 500, message = "Group picture URL cannot exceed 500 characters")

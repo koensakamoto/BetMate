@@ -1,6 +1,6 @@
 import { BaseApiService } from '../api/baseService';
 import { API_ENDPOINTS } from '../../config/api';
-import { ApiResponse, NotificationPreferences, NotificationPreferencesUpdate } from '../../types/api';
+import { ApiResponse, NotificationPreferences, NotificationPreferencesUpdate, PagedResponse } from '../../types/api';
 import { apiClient } from '../api/baseClient';
 
 // React Native FormData file type (not officially typed by RN)
@@ -136,11 +136,23 @@ export class UserService extends BaseApiService {
   }
 
   /**
-   * Search users by name
+   * Search users by name (deprecated - use searchUsersPaginated instead)
    */
   async searchUsers(query: string): Promise<UserSearchResult[]> {
-    return this.get<UserSearchResult[]>(API_ENDPOINTS.USER_SEARCH, {
-      params: { q: query }
+    const response = await this.searchUsersPaginated(query, 0, 100);
+    return response.content;
+  }
+
+  /**
+   * Search users by name with pagination
+   */
+  async searchUsersPaginated(
+    query: string,
+    page: number = 0,
+    size: number = 20
+  ): Promise<PagedResponse<UserSearchResult>> {
+    return this.get<PagedResponse<UserSearchResult>>(API_ENDPOINTS.USER_SEARCH, {
+      params: { q: query, page: page.toString(), size: size.toString() }
     });
   }
 

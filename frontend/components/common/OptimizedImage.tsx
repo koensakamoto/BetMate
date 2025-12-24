@@ -16,7 +16,7 @@ interface OptimizedImageProps {
   borderRadius?: number;
   /** How the image should be resized to fit its container */
   contentFit?: ImageContentFit;
-  /** Transition duration in ms (default: 200) */
+  /** Transition duration in ms (default: 50) */
   transition?: number;
   /** Custom blurhash placeholder */
   blurhash?: string;
@@ -83,7 +83,7 @@ export const OptimizedImage = React.memo(function OptimizedImage({
   aspectRatio,
   borderRadius = 0,
   contentFit = 'cover',
-  transition = 200,
+  transition = 50,
   blurhash,
   disablePlaceholder = true,
   priority = 'normal',

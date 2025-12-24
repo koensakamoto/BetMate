@@ -10,6 +10,8 @@ import com.rivalpicks.repository.user.UserSettingsRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -92,6 +94,18 @@ public class UserService {
             return List.of();
         }
         return userRepository.searchUsersByName(searchTerm.trim(), currentUserId);
+    }
+
+    /**
+     * Searches users by name with pagination, excluding the current user.
+     */
+    public Page<User> searchUsersPaginated(@NotNull String searchTerm,
+                                           @NotNull Long currentUserId,
+                                           Pageable pageable) {
+        if (searchTerm.trim().isEmpty()) {
+            return Page.empty(pageable);
+        }
+        return userRepository.searchUsersByNamePaginated(searchTerm.trim(), currentUserId, pageable);
     }
 
     /**

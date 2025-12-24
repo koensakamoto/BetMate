@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import {
   groupService,
   GroupSummaryResponse,
@@ -7,6 +7,7 @@ import {
   PendingRequestResponse,
   GroupUpdateRequest
 } from '../services/group/groupService';
+import { PagedResponse } from '../types/api';
 
 // Query keys for cache management
 export const groupKeys = {
@@ -20,23 +21,38 @@ export const groupKeys = {
   pendingRequestCount: (groupId: number) => [...groupKeys.all, 'pendingRequestCount', groupId] as const,
 };
 
+// Cache configuration - prevents unnecessary refetches on tab switches
+const GROUP_LIST_STALE_TIME = 5 * 60 * 1000; // 5 minutes
+
 /**
- * Hook to fetch user's groups
+ * Hook to fetch user's groups (paginated with infinite scroll)
  */
 export function useMyGroups() {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: groupKeys.myGroups(),
-    queryFn: () => groupService.getMyGroups(),
+    queryFn: ({ pageParam = 0 }) => groupService.getMyGroups({ page: pageParam, size: 20 }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.last) return undefined;
+      return lastPage.page + 1;
+    },
+    staleTime: GROUP_LIST_STALE_TIME,
   });
 }
 
 /**
- * Hook to fetch public groups
+ * Hook to fetch public groups (paginated with infinite scroll)
  */
 export function usePublicGroups() {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: groupKeys.publicGroups(),
-    queryFn: () => groupService.getPublicGroups(),
+    queryFn: ({ pageParam = 0 }) => groupService.getPublicGroups({ page: pageParam, size: 20 }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.last) return undefined;
+      return lastPage.page + 1;
+    },
+    staleTime: GROUP_LIST_STALE_TIME,
   });
 }
 
@@ -55,19 +71,22 @@ export function useGroup(groupId: number | undefined) {
     initialData: () => {
       if (!groupId) return undefined;
 
-      // Check myGroups cache first
-      const myGroups = queryClient.getQueryData<GroupSummaryResponse[]>(groupKeys.myGroups());
-      const fromMyGroups = myGroups?.find(g => g.id === groupId);
-      if (fromMyGroups) {
-        // Convert GroupSummaryResponse to GroupDetailResponse shape
-        return fromMyGroups as GroupDetailResponse;
+      // Check myGroups cache first (now paginated)
+      const myGroupsData = queryClient.getQueryData<{ pages: PagedResponse<GroupSummaryResponse>[] }>(groupKeys.myGroups());
+      if (myGroupsData?.pages) {
+        for (const page of myGroupsData.pages) {
+          const found = page.content.find(g => g.id === groupId);
+          if (found) return found as GroupDetailResponse;
+        }
       }
 
-      // Check publicGroups cache
-      const publicGroups = queryClient.getQueryData<GroupSummaryResponse[]>(groupKeys.publicGroups());
-      const fromPublicGroups = publicGroups?.find(g => g.id === groupId);
-      if (fromPublicGroups) {
-        return fromPublicGroups as GroupDetailResponse;
+      // Check publicGroups cache (now paginated)
+      const publicGroupsData = queryClient.getQueryData<{ pages: PagedResponse<GroupSummaryResponse>[] }>(groupKeys.publicGroups());
+      if (publicGroupsData?.pages) {
+        for (const page of publicGroupsData.pages) {
+          const found = page.content.find(g => g.id === groupId);
+          if (found) return found as GroupDetailResponse;
+        }
       }
 
       return undefined;
@@ -78,13 +97,19 @@ export function useGroup(groupId: number | undefined) {
 }
 
 /**
- * Hook to search groups
+ * Hook to search groups (paginated with infinite scroll)
  */
 export function useSearchGroups(query: string) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: groupKeys.search(query),
-    queryFn: () => groupService.searchGroups(query),
+    queryFn: ({ pageParam = 0 }) => groupService.searchGroups(query, { page: pageParam, size: 20 }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.last) return undefined;
+      return lastPage.page + 1;
+    },
     enabled: query.length > 0,
+    staleTime: GROUP_LIST_STALE_TIME,
   });
 }
 

@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { userService, UserProfileUpdateRequest } from '../../services/user/userService';
 import SettingsInput from '../../components/settings/SettingsInput';
 import { useAuth } from '../../contexts/AuthContext';
+import { VALIDATION } from '../../constants/validation';
 import { debugLog, errorLog } from '../../config/env';
 import { getErrorMessage } from '../../utils/errorUtils';
 import { Avatar } from '../../components/common/Avatar';
@@ -149,18 +150,18 @@ export default function EditProfile() {
 
     if (!formData.firstName.trim()) {
       newErrors.firstName = 'First name is required';
-    } else if (formData.firstName.trim().length < 2) {
-      newErrors.firstName = 'First name must be at least 2 characters';
+    } else if (formData.firstName.trim().length > VALIDATION.FIRST_NAME_MAX_LENGTH) {
+      newErrors.firstName = `First name must be ${VALIDATION.FIRST_NAME_MAX_LENGTH} characters or less`;
     }
 
     if (!formData.lastName.trim()) {
       newErrors.lastName = 'Last name is required';
-    } else if (formData.lastName.trim().length < 2) {
-      newErrors.lastName = 'Last name must be at least 2 characters';
+    } else if (formData.lastName.trim().length > VALIDATION.LAST_NAME_MAX_LENGTH) {
+      newErrors.lastName = `Last name must be ${VALIDATION.LAST_NAME_MAX_LENGTH} characters or less`;
     }
 
-    if (formData.bio.length > 150) {
-      newErrors.bio = 'Bio must be 150 characters or less';
+    if (formData.bio.length > VALIDATION.BIO_MAX_LENGTH) {
+      newErrors.bio = `Bio must be ${VALIDATION.BIO_MAX_LENGTH} characters or less`;
     }
 
     setErrors(newErrors);
@@ -204,11 +205,17 @@ export default function EditProfile() {
   };
 
   const updateField = (field: keyof typeof formData, value: string) => {
-    // Limit bio length
-    if (field === 'bio' && value.length > 150) {
+    // Limit field lengths
+    if (field === 'firstName' && value.length > VALIDATION.FIRST_NAME_MAX_LENGTH) {
       return;
     }
-    
+    if (field === 'lastName' && value.length > VALIDATION.LAST_NAME_MAX_LENGTH) {
+      return;
+    }
+    if (field === 'bio' && value.length > VALIDATION.BIO_MAX_LENGTH) {
+      return;
+    }
+
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
@@ -434,7 +441,7 @@ export default function EditProfile() {
                 fontSize: 12,
                 color: 'rgba(255, 255, 255, 0.35)'
               }}>
-                {formData.bio.length}/150
+                {formData.bio.length}/{VALIDATION.BIO_MAX_LENGTH}
               </Text>
             </View>
             <SettingsInput

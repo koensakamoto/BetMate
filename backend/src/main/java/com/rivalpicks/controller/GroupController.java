@@ -1,5 +1,6 @@
 package com.rivalpicks.controller;
 
+import com.rivalpicks.dto.common.PagedResponseDto;
 import com.rivalpicks.dto.group.request.GroupCreationRequestDto;
 import com.rivalpicks.dto.group.request.GroupUpdateRequestDto;
 import com.rivalpicks.dto.group.request.UpdateMemberRoleRequestDto;
@@ -26,6 +27,9 @@ import com.rivalpicks.service.storage.StorageService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -96,59 +100,69 @@ public class GroupController {
     }
 
     /**
-     * Get public groups for discovery.
+     * Get public groups for discovery (paginated).
      * Excludes groups that the current user is already a member of.
      */
     @GetMapping("/public")
-    public ResponseEntity<List<GroupSummaryResponseDto>> getPublicGroups(Authentication authentication) {
+    public ResponseEntity<PagedResponseDto<GroupSummaryResponseDto>> getPublicGroups(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
         User currentUser = userService.getUserByUsername(authentication.getName())
             .orElseThrow(() -> new RuntimeException("User not found"));
-            
-        List<Group> allPublicGroups = groupService.getPublicGroups();
-        List<Group> userGroups = groupMembershipService.getUserGroups(currentUser);
-        
-        // Filter out groups the user is already a member of
-        List<Group> filteredGroups = allPublicGroups.stream()
-            .filter(group -> userGroups.stream()
-                .noneMatch(userGroup -> userGroup.getId().equals(group.getId())))
-            .toList();
-            
-        List<GroupSummaryResponseDto> response = filteredGroups.stream()
+
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Group> groupsPage = groupService.getPublicGroupsPaginated(currentUser, pageable);
+
+        // Convert to DTOs
+        List<GroupSummaryResponseDto> content = groupsPage.getContent().stream()
             .map(group -> convertToSummaryResponse(group, currentUser))
             .toList();
-        return ResponseEntity.ok(response);
+
+        return ResponseEntity.ok(new PagedResponseDto<>(content, page, size, groupsPage.getTotalElements()));
     }
 
     /**
-     * Get groups that the current user is a member of.
+     * Get groups that the current user is a member of (paginated).
      */
     @GetMapping("/my-groups")
-    public ResponseEntity<List<GroupSummaryResponseDto>> getMyGroups(Authentication authentication) {
+    public ResponseEntity<PagedResponseDto<GroupSummaryResponseDto>> getMyGroups(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
         User currentUser = userService.getUserByUsername(authentication.getName())
             .orElseThrow(() -> new RuntimeException("User not found"));
-            
-        List<Group> userGroups = groupMembershipService.getUserGroups(currentUser);
-        List<GroupSummaryResponseDto> response = userGroups.stream()
+
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Group> groupsPage = groupMembershipService.getUserGroupsPaginated(currentUser, pageable);
+
+        List<GroupSummaryResponseDto> content = groupsPage.getContent().stream()
             .map(group -> convertToSummaryResponse(group, currentUser))
             .toList();
-            
-        return ResponseEntity.ok(response);
+
+        return ResponseEntity.ok(new PagedResponseDto<>(content, page, size, groupsPage.getTotalElements()));
     }
 
     /**
-     * Search groups by name or description.
+     * Search groups by name or description (paginated).
      */
     @GetMapping("/search")
-    public ResponseEntity<List<GroupSummaryResponseDto>> searchGroups(
-            @RequestParam String q, Authentication authentication) {
+    public ResponseEntity<PagedResponseDto<GroupSummaryResponseDto>> searchGroups(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
         User currentUser = userService.getUserByUsername(authentication.getName())
             .orElseThrow(() -> new RuntimeException("User not found"));
-            
-        List<Group> groups = groupService.searchGroups(q);
-        List<GroupSummaryResponseDto> response = groups.stream()
+
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Group> groupsPage = groupService.searchGroupsPaginated(q, pageable);
+
+        List<GroupSummaryResponseDto> content = groupsPage.getContent().stream()
             .map(group -> convertToSummaryResponse(group, currentUser))
             .toList();
-        return ResponseEntity.ok(response);
+
+        return ResponseEntity.ok(new PagedResponseDto<>(content, page, size, groupsPage.getTotalElements()));
     }
 
     /**

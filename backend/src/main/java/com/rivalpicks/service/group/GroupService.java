@@ -11,6 +11,8 @@ import com.rivalpicks.repository.group.GroupMembershipRepository;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -78,6 +80,23 @@ public class GroupService {
      */
     public List<Group> getPublicGroups() {
         return groupRepository.findPublicGroups();
+    }
+
+    /**
+     * Retrieves paginated public groups for discovery, excluding groups the user is already a member of.
+     */
+    public Page<Group> getPublicGroupsPaginated(@NotNull User user, @NotNull Pageable pageable) {
+        return groupRepository.findPublicGroupsExcludingUserPaginated(user, pageable);
+    }
+
+    /**
+     * Searches groups by name or description with pagination.
+     */
+    public Page<Group> searchGroupsPaginated(@NotNull String searchTerm, @NotNull Pageable pageable) {
+        if (searchTerm.trim().isEmpty()) {
+            return Page.empty(pageable);
+        }
+        return groupRepository.searchGroupsPaginated(searchTerm.trim(), pageable);
     }
 
     /**

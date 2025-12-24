@@ -3,6 +3,7 @@ package com.rivalpicks.service.security;
 import com.rivalpicks.exception.JwtException;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -132,7 +133,7 @@ public class JwtService {
             throw new JwtException.UnsupportedTokenException("JWT token is unsupported", e);
         } catch (MalformedJwtException e) {
             throw new JwtException.MalformedTokenException("JWT token is malformed", e);
-        } catch (SecurityException e) {
+        } catch (SignatureException e) {
             throw new JwtException.InvalidSignatureException("JWT signature validation failed", e);
         } catch (IllegalArgumentException e) {
             throw new JwtException.InvalidTokenException("JWT token is invalid", e);

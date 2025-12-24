@@ -42,7 +42,7 @@ public class Group {
     @Pattern(regexp = "^[a-zA-Z0-9\\s_-]+$", message = "Group name can only contain letters, numbers, spaces, underscores, and hyphens")
     private String groupName;
 
-    @Column(length = 1000)
+    @Column(length = 200)
     private String description;
 
     @Column(length = 500)

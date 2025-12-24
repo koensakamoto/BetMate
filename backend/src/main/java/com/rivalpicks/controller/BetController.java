@@ -204,29 +204,88 @@ public class BetController {
     }
 
     /**
-     * Get bets where current user has participated.
+     * Get bets where current user has participated (paginated).
      */
     @GetMapping("/my")
-    public ResponseEntity<List<BetSummaryResponseDto>> getMyBets(
+    public ResponseEntity<PagedResponseDto<BetSummaryResponseDto>> getMyBets(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
             Authentication authentication) {
-        
+
         User currentUser = userService.getUserByUsername(authentication.getName())
             .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        // Get user's participations and extract the bets (including ACTIVE, WON, LOST, etc.)
-        List<BetParticipation> participations = betParticipationService.getUserParticipations(currentUser);
 
-        // Include all participation statuses (ACTIVE, WON, LOST) for "My Bets"
-        List<Bet> bets = participations.stream()
+        Pageable pageable = PageRequest.of(page, size);
+        var participationsPage = betParticipationService.getUserParticipationsPaged(currentUser, pageable);
+
+        List<BetSummaryResponseDto> content = participationsPage.getContent().stream()
             .map(BetParticipation::getBet)
             .distinct()
-            .toList();
-
-        List<BetSummaryResponseDto> response = bets.stream()
             .map(bet -> convertToSummaryResponse(bet, currentUser))
             .toList();
-        
-        return ResponseEntity.ok(response);
+
+        return ResponseEntity.ok(new PagedResponseDto<>(
+            content,
+            participationsPage.getNumber(),
+            participationsPage.getSize(),
+            participationsPage.getTotalElements()
+        ));
+    }
+
+    /**
+     * Get user's lost social bets (for Losses tab, paginated).
+     */
+    @GetMapping("/my/losses")
+    public ResponseEntity<PagedResponseDto<BetSummaryResponseDto>> getMyLosses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        var lossesPage = betParticipationService.getUserLossesPaged(currentUser, pageable);
+
+        List<BetSummaryResponseDto> content = lossesPage.getContent().stream()
+            .map(BetParticipation::getBet)
+            .map(bet -> convertToSummaryResponse(bet, currentUser))
+            .toList();
+
+        return ResponseEntity.ok(new PagedResponseDto<>(
+            content,
+            lossesPage.getNumber(),
+            lossesPage.getSize(),
+            lossesPage.getTotalElements()
+        ));
+    }
+
+    /**
+     * Get user's won social bets (for Winnings tab, paginated).
+     */
+    @GetMapping("/my/winnings")
+    public ResponseEntity<PagedResponseDto<BetSummaryResponseDto>> getMyWinnings(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+
+        User currentUser = userService.getUserByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        var winningsPage = betParticipationService.getUserWinningsPaged(currentUser, pageable);
+
+        List<BetSummaryResponseDto> content = winningsPage.getContent().stream()
+            .map(BetParticipation::getBet)
+            .map(bet -> convertToSummaryResponse(bet, currentUser))
+            .toList();
+
+        return ResponseEntity.ok(new PagedResponseDto<>(
+            content,
+            winningsPage.getNumber(),
+            winningsPage.getSize(),
+            winningsPage.getTotalElements()
+        ));
     }
 
     /**
