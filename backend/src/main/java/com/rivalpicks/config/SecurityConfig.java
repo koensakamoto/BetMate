@@ -94,8 +94,8 @@ public class SecurityConfig {
     };
 
     private static final String[] PUBLIC_STATIC_ENDPOINTS = {
-        "/privacy-policy.html",
-        "/terms-of-service.html"
+        "/privacy-policy",
+        "/terms-of-service"
     };
 
     private static final String[] ADMIN_ENDPOINTS = {
