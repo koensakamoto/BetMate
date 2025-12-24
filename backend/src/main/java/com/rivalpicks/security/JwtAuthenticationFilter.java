@@ -64,7 +64,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         "/ws/**",
         "/.well-known/**",
         "/auth/**",   // Deep link fallbacks for when app is not installed
-        "/invite/**"  // Group invite fallbacks for when app is not installed
+        "/invite/**",  // Group invite fallbacks for when app is not installed
+        "/api/legal/**"  // Public legal pages (privacy policy, terms of service)
     );
 
     // Endpoints that accept optional authentication
