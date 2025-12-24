@@ -93,9 +93,8 @@ public class SecurityConfig {
         "/invite/**"  // Group invite fallbacks for when app is not installed
     };
 
-    private static final String[] PUBLIC_STATIC_ENDPOINTS = {
-        "/privacy-policy",
-        "/terms-of-service"
+    private static final String[] PUBLIC_LEGAL_ENDPOINTS = {
+        "/api/legal/**"
     };
 
     private static final String[] ADMIN_ENDPOINTS = {
@@ -144,7 +143,7 @@ public class SecurityConfig {
                 .requestMatchers(PUBLIC_FILE_ENDPOINTS).permitAll()
                 .requestMatchers(PUBLIC_APP_LINKS_ENDPOINTS).permitAll()
                 .requestMatchers(PUBLIC_DEEP_LINK_FALLBACK_ENDPOINTS).permitAll()
-                .requestMatchers(PUBLIC_STATIC_ENDPOINTS).permitAll()
+                .requestMatchers(PUBLIC_LEGAL_ENDPOINTS).permitAll()
 
                 // Admin endpoints require ADMIN role
                 .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")

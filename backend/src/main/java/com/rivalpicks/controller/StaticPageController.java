@@ -3,9 +3,11 @@ package com.rivalpicks.controller;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequestMapping("/api/legal")
 public class StaticPageController {
 
     @GetMapping(value = "/privacy-policy", produces = MediaType.TEXT_HTML_VALUE)
