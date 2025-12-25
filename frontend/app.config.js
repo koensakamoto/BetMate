@@ -21,6 +21,7 @@ export default {
     ios: {
       supportsTablet: true,
       usesAppleSignIn: true,
+      buildNumber: "20",
       associatedDomains: ["applinks:api.rivalpicksapp.com"],
       infoPlist: {
         NSAppTransportSecurity: IS_PROD

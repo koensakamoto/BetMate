@@ -256,8 +256,9 @@ const GroupMemberView: React.FC<GroupMemberViewProps> = ({ groupData: initialGro
                 onPress={() => {
                   const currentGroupId = typeof groupData.id === 'string' ? groupData.id : groupData.id[0];
                   router.push({
-                    pathname: `/(app)/group/${currentGroupId}/config`,
+                    pathname: '/(app)/group/[groupId]/config' as const,
                     params: {
+                      groupId: currentGroupId,
                       groupName: groupData.name,
                       groupDescription: groupData.description,
                       groupPictureUrl: (groupData as any).groupPictureUrl || '',

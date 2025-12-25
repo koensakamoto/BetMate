@@ -1,6 +1,7 @@
 import { BaseApiService } from '../api/baseService';
 import { API_ENDPOINTS } from '../../config/api';
 import { PagedResponse } from '../../types/api';
+import { getContentType } from '../../utils/fileUtils';
 
 // React Native FormData file type
 interface FormDataFile {
@@ -205,7 +206,7 @@ export class GroupService extends BaseApiService {
     // Create file object for the image
     const fileToUpload: FormDataFile = {
       uri: imageUri,
-      type: 'image/jpeg',
+      type: getContentType(fileName),
       name: fileName
     };
 

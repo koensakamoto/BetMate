@@ -457,6 +457,32 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
   // RENDER METHODS
   // ==========================================
 
+  // Get effective username for message alignment - memoized for performance
+  const effectiveUsername = useMemo(() => {
+    // Try username field first
+    if (user && user.username && typeof user.username === 'string' && user.username.trim() !== '') {
+      return user.username.trim();
+    }
+
+    // Fallback to name field
+    if (user && user.name && typeof user.name === 'string' && user.name.trim() !== '') {
+      return user.name.trim();
+    }
+
+    // Fallback to email prefix (before @)
+    if (user && user.email && typeof user.email === 'string' && user.email.includes('@')) {
+      return user.email.split('@')[0].trim();
+    }
+
+    // Last resort - use user ID
+    if (user && user.id) {
+      return `user_${user.id}`;
+    }
+
+    // DEVELOPMENT: For testing purposes when user is not authenticated
+    return 'dev_user';
+  }, [user]);
+
   const renderMessage = useCallback(({ item, index }: { item: MessageResponse; index: number }) => {
     // Note: FlatList is inverted, so index 0 is newest (bottom of screen)
     // "Above" visually = index + 1 in array (older message)
@@ -525,32 +551,6 @@ const GroupMessagingChat: React.FC<GroupMessagingChatProps> = ({
       </View>
     );
   }
-
-  // Get effective username for message alignment - memoized for performance
-  const effectiveUsername = useMemo(() => {
-    // Try username field first
-    if (user && user.username && typeof user.username === 'string' && user.username.trim() !== '') {
-      return user.username.trim();
-    }
-
-    // Fallback to name field
-    if (user && user.name && typeof user.name === 'string' && user.name.trim() !== '') {
-      return user.name.trim();
-    }
-
-    // Fallback to email prefix (before @)
-    if (user && user.email && typeof user.email === 'string' && user.email.includes('@')) {
-      return user.email.split('@')[0].trim();
-    }
-
-    // Last resort - use user ID
-    if (user && user.id) {
-      return `user_${user.id}`;
-    }
-
-    // DEVELOPMENT: For testing purposes when user is not authenticated
-    return 'dev_user';
-  }, [user]);
 
   return (
     <Animated.View

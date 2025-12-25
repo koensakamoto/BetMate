@@ -2,6 +2,7 @@ import { BaseApiService } from '../api/baseService';
 import { API_ENDPOINTS } from '../../config/api';
 import { ApiResponse, NotificationPreferences, NotificationPreferencesUpdate, PagedResponse } from '../../types/api';
 import { apiClient } from '../api/baseClient';
+import { getContentType } from '../../utils/fileUtils';
 
 // React Native FormData file type (not officially typed by RN)
 interface FormDataFile {
@@ -205,19 +206,6 @@ export class UserService extends BaseApiService {
    * Upload profile picture
    */
   async uploadProfilePicture(imageUri: string, fileName: string): Promise<UserProfileResponse> {
-    // Determine content type from file extension
-    const getContentType = (filename: string): string => {
-      const ext = filename.split('.').pop()?.toLowerCase();
-      const typeMap: Record<string, string> = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp',
-      };
-      return typeMap[ext || ''] || 'image/jpeg';
-    };
-
     const formData = new FormData();
 
     // Create file object from image URI for React Native

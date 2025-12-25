@@ -20,6 +20,111 @@ public class StaticPageController {
         return ResponseEntity.ok(TERMS_OF_SERVICE_HTML);
     }
 
+    @GetMapping(value = "/support", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> support() {
+        return ResponseEntity.ok(SUPPORT_HTML);
+    }
+
+    private static final String SUPPORT_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support - RivalPicks</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0a0a0f;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.6;
+            padding: 40px 24px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 { color: #ffffff; font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .subtitle { color: rgba(255, 255, 255, 0.5); font-size: 16px; margin-bottom: 48px; }
+        h2 { color: #ffffff; font-size: 20px; font-weight: 700; margin-top: 40px; margin-bottom: 16px; }
+        p { margin-bottom: 16px; font-size: 15px; }
+        ul { margin-bottom: 16px; padding-left: 24px; }
+        li { margin-bottom: 12px; font-size: 15px; }
+        .contact-box {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 16px;
+            text-align: center;
+        }
+        .email-link {
+            color: #00D4AA;
+            font-size: 18px;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .email-link:hover { text-decoration: underline; }
+        .faq-item { margin-bottom: 24px; }
+        .faq-question { color: #ffffff; font-weight: 600; margin-bottom: 8px; }
+        .footer {
+            text-align: center;
+            padding-top: 40px;
+            margin-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Support</h1>
+    <p class="subtitle">We're here to help</p>
+
+    <h2>Contact Us</h2>
+    <p>Have a question, issue, or feedback? Reach out to us and we'll get back to you as soon as possible.</p>
+    <div class="contact-box">
+        <p style="margin-bottom: 12px; color: rgba(255, 255, 255, 0.6);">Email us at</p>
+        <a href="mailto:rivalpicksapp@gmail.com" class="email-link">rivalpicksapp@gmail.com</a>
+    </div>
+
+    <h2>Frequently Asked Questions</h2>
+
+    <div class="faq-item">
+        <p class="faq-question">How do I create a bet?</p>
+        <p>Tap the "+" button on the home screen, enter your bet details, set a deadline, and invite friends to participate.</p>
+    </div>
+
+    <div class="faq-item">
+        <p class="faq-question">What are credits?</p>
+        <p>Credits are the virtual currency used in RivalPicks for betting. They have no real-world monetary value and are just for fun.</p>
+    </div>
+
+    <div class="faq-item">
+        <p class="faq-question">How do I join a group?</p>
+        <p>You can join a group by receiving an invite link from a friend, or by searching for public groups in the Groups tab.</p>
+    </div>
+
+    <div class="faq-item">
+        <p class="faq-question">How do I delete my account?</p>
+        <p>Go to Settings → Account → Delete Account. This will permanently remove all your data.</p>
+    </div>
+
+    <div class="faq-item">
+        <p class="faq-question">I forgot my password</p>
+        <p>On the login screen, tap "Forgot Password" and enter your email. We'll send you a link to reset it.</p>
+    </div>
+
+    <h2>Response Time</h2>
+    <p>We typically respond within 24-48 hours. For urgent issues, please include "URGENT" in your email subject.</p>
+
+    <div class="footer">
+        <p>RivalPicks v1.0.0</p>
+        <p style="margin-top: 8px; font-size: 12px; color: rgba(255, 255, 255, 0.3);">© 2025 RivalPicks. All rights reserved.</p>
+    </div>
+</body>
+</html>
+""";
+
     private static final String PRIVACY_POLICY_HTML = """
 <!DOCTYPE html>
 <html lang="en">
@@ -47,7 +152,7 @@ public class StaticPageController {
         li { margin-bottom: 12px; font-size: 15px; }
         .contact-box { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px; margin-top: 8px; }
         .footer { text-align: center; padding-top: 40px; margin-top: 40px; border-top: 1px solid rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.4); font-size: 13px; }
-        a { color: #6366f1; }
+        a { color: #00D4AA; }
     </style>
 </head>
 <body>
@@ -206,7 +311,7 @@ public class StaticPageController {
         li { margin-bottom: 12px; font-size: 15px; }
         .contact-box { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px; margin-top: 8px; }
         .footer { text-align: center; padding-top: 40px; margin-top: 40px; border-top: 1px solid rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.4); font-size: 13px; }
-        a { color: #6366f1; }
+        a { color: #00D4AA; }
     </style>
 </head>
 <body>

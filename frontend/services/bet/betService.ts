@@ -1,6 +1,7 @@
 import { BaseApiService } from '../api/baseService';
 import { API_ENDPOINTS } from '../../config/api';
 import { PagedResponse } from '../../types/api';
+import { getContentType } from '../../utils/fileUtils';
 
 // React Native FormData file type
 interface FormDataFile {
@@ -352,18 +353,6 @@ class BetService extends BaseApiService {
   // Upload fulfillment proof photo
   // Returns the storedValue (for saving to DB) - the backend will resolve it to a display URL when needed
   async uploadFulfillmentProof(betId: number, imageUri: string, fileName: string): Promise<string> {
-    const getContentType = (filename: string): string => {
-      const ext = filename.split('.').pop()?.toLowerCase();
-      const typeMap: Record<string, string> = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp',
-      };
-      return typeMap[ext || ''] || 'image/jpeg';
-    };
-
     const formData = new FormData();
     const file: FormDataFile = {
       uri: imageUri,
